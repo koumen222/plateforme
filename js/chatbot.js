@@ -14,8 +14,8 @@
     const chatbotInput = document.getElementById('chatbotInput');
     const chatbotSend = document.getElementById('chatbotSend');
 
-    // Clé API OpenAI - À remplacer par votre clé API
-    const OPENAI_API_KEY = 'VOTRE_CLE_API_OPENAI_ICI';
+    // Clé API OpenAI
+    const OPENAI_API_KEY = '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';
     const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
 
     // Historique de conversation avec contexte complet de la formation
