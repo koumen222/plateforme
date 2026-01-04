@@ -167,7 +167,35 @@
         </main>
     </div>
 
+    <!-- Chatbot -->
+    <button class="chatbot-toggle" aria-label="Ouvrir le chat" id="chatbotToggle">💬</button>
+    <div class="chatbot-container" id="chatbotContainer">
+        <div class="chatbot-header">
+            <h3>💬 Support Formation</h3>
+            <button class="chatbot-close" aria-label="Fermer le chat" id="chatbotClose">×</button>
+        </div>
+        <div class="chatbot-messages" id="chatbotMessages">
+            <div class="chatbot-message bot">
+                <div class="chatbot-avatar">🤖</div>
+                <div class="chatbot-content">
+                    Bonjour ! Je suis là pour vous aider avec la formation Andromeda. Posez-moi vos questions !
+                </div>
+            </div>
+        </div>
+        <div class="chatbot-input-container">
+            <input 
+                type="text" 
+                class="chatbot-input" 
+                id="chatbotInput" 
+                placeholder="Tapez votre question..."
+                autocomplete="off"
+            >
+            <button class="chatbot-send" id="chatbotSend">Envoyer</button>
+        </div>
+    </div>
+
     <script src="js/app.js"></script>
+    <script src="js/chatbot.js"></script>
 </body>
 </html>
 
