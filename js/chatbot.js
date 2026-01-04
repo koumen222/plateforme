@@ -76,7 +76,7 @@ Activation de la campagne Andromeda :
 - Noter les premiers résultats sans intervenir
 - Laisser tourner au moins 24h sans modification
 
-JOUR 6 - APPRENTISSAGE :
+JOUR 6 - ANALYSE ET OPTIMISATION :
 Analyse des premiers résultats après 2 jours :
 - Ne couper aucune publicité à ce stade
 - Noter : Les adsets qui génèrent des achats
@@ -172,6 +172,15 @@ Utilise ce contenu pour répondre précisément aux questions des utilisateurs s
         const loadingMessage = addLoadingMessage();
 
         try {
+            // Vérifier si la clé API est configurée
+            if (!OPENAI_API_KEY || OPENAI_API_KEY === 'VOTRE_CLE_API_OPENAI_ICI') {
+                removeLoadingMessage(loadingMessage);
+                addMessage('⚠️ Clé API OpenAI non configurée. Veuillez ajouter votre clé API dans le fichier js/chatbot.js', 'bot');
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+                return;
+            }
+
             const response = await fetch(OPENAI_API_URL, {
                 method: 'POST',
                 headers: {
@@ -186,13 +195,33 @@ Utilise ce contenu pour répondre précisément aux questions des utilisateurs s
                 })
             });
 
+            // Vérifier si la réponse est OK
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                removeLoadingMessage(loadingMessage);
+                
+                if (response.status === 401) {
+                    addMessage('❌ Erreur d\'authentification : Clé API invalide ou expirée. Vérifiez votre clé API OpenAI.', 'bot');
+                } else if (response.status === 429) {
+                    addMessage('❌ Trop de requêtes : Veuillez patienter quelques instants avant de réessayer.', 'bot');
+                } else if (response.status === 403) {
+                    addMessage('❌ Accès refusé : Problème CORS ou restrictions de votre clé API. Utilisez un backend pour contourner cette limitation.', 'bot');
+                } else {
+                    addMessage('❌ Erreur ' + response.status + ': ' + (errorData.error?.message || 'Erreur inconnue'), 'bot');
+                }
+                console.error('Erreur HTTP:', response.status, errorData);
+                chatbotSend.disabled = false;
+                chatbotInput.focus();
+                return;
+            }
+
             const data = await response.json();
 
             // Supprimer le message de chargement
             removeLoadingMessage(loadingMessage);
 
             if (data.error) {
-                addMessage('❌ Erreur : ' + data.error.message, 'bot');
+                addMessage('❌ Erreur OpenAI : ' + data.error.message, 'bot');
                 console.error('Erreur OpenAI:', data.error);
             } else if (data.choices && data.choices[0]) {
                 const botResponse = data.choices[0].message.content;
@@ -202,9 +231,17 @@ Utilise ce contenu pour répondre précisément aux questions des utilisateurs s
                 addMessage('Désolé, je n\'ai pas pu générer de réponse.', 'bot');
             }
         } catch (error) {
-            console.error('Erreur:', error);
+            console.error('Erreur complète:', error);
             removeLoadingMessage(loadingMessage);
-            addMessage('❌ Erreur de connexion. Vérifiez votre connexion internet et votre clé API OpenAI.', 'bot');
+            
+            // Messages d'erreur plus spécifiques
+            if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                addMessage('❌ Erreur CORS : L\'API OpenAI ne peut pas être appelée directement depuis le navigateur. Utilisez un backend/proxy pour résoudre ce problème.', 'bot');
+            } else if (error.message) {
+                addMessage('❌ Erreur : ' + error.message, 'bot');
+            } else {
+                addMessage('❌ Erreur de connexion. Vérifiez votre connexion internet et votre clé API OpenAI.', 'bot');
+            }
         } finally {
             chatbotSend.disabled = false;
             chatbotInput.focus();
