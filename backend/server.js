@@ -2,8 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import fetch from "node-fetch";
+import { connectDB } from "./config/database.js";
+import authRoutes from "./routes/auth.js";
+import videoRoutes from "./routes/videos.js";
 
 dotenv.config();
+
 const app = express();
 
 app.use(cors({
@@ -13,10 +17,23 @@ app.use(cors({
 
 app.use(express.json());
 
+// Routes
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Route de test pour vérifier que le serveur répond
+app.get("/api/test", (req, res) => {
+  res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
+});
+
+// Routes d'authentification
+app.use("/api", authRoutes);
+
+// Routes protégées (vidéos)
+app.use("/api", videoRoutes);
+
+// Route chatbot
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body;
 
@@ -42,4 +59,22 @@ app.post("/api/chat", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Backend running"));
+
+// Démarrer le serveur après la connexion MongoDB
+const startServer = async () => {
+  try {
+    // Connexion MongoDB
+    await connectDB();
+    
+    // Démarrer le serveur Express
+    app.listen(PORT, () => {
+      console.log(`🚀 Backend running on port ${PORT}`);
+      console.log(`📡 API disponible sur http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error('❌ Impossible de démarrer le serveur:', error);
+    process.exit(1);
+  }
+};
+
+startServer();
