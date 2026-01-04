@@ -68,7 +68,7 @@
         if (!nextLessonBtn) return;
 
         // Déterminer la prochaine leçon
-        const lessons = ['index.html', 'lesson1.html', 'lesson2.html', 'lesson3.html', 'lesson4.html', 'lesson5.html'];
+        const lessons = ['index.html', 'lesson1.html', 'lesson2.html', 'lesson4.html', 'lesson5.html', 'lesson6.html', 'lesson7.html', 'lesson8.html'];
         const currentIndex = lessons.indexOf(currentPage);
         
         if (currentIndex < lessons.length - 1) {
