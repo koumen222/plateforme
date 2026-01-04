@@ -14,9 +14,12 @@
     const chatbotInput = document.getElementById('chatbotInput');
     const chatbotSend = document.getElementById('chatbotSend');
 
-    // Clé API OpenAI
-    const OPENAI_API_KEY = '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';
-    const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+    // URL de l'API backend - Utilise CONFIG si disponible, sinon valeur par défaut
+    const BACKEND_URL = (typeof CONFIG !== 'undefined' && CONFIG.BACKEND_URL) 
+        ? CONFIG.BACKEND_URL 
+        : (window.location.origin === 'file://' ? 'http://localhost:3000' : '');
+    
+    const API_URL = BACKEND_URL ? `${BACKEND_URL}/api/chat` : '/api/chat';
 
     // Historique de conversation avec contexte complet de la formation
     let conversationHistory = [
@@ -172,26 +175,15 @@ Utilise ce contenu pour répondre précisément aux questions des utilisateurs s
         const loadingMessage = addLoadingMessage();
 
         try {
-            // Vérifier si la clé API est configurée
-            if (!OPENAI_API_KEY || OPENAI_API_KEY === 'VOTRE_CLE_API_OPENAI_ICI') {
-                removeLoadingMessage(loadingMessage);
-                addMessage('⚠️ Clé API OpenAI non configurée. Veuillez ajouter votre clé API dans le fichier js/chatbot.js', 'bot');
-                chatbotSend.disabled = false;
-                chatbotInput.focus();
-                return;
-            }
 
-            const response = await fetch(OPENAI_API_URL, {
+            const response = await fetch(API_URL, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: "gpt-4o-mini",
-                    messages: conversationHistory,
-                    temperature: 0.7,
-                    max_tokens: 500
+                    message: message,
+                    conversationHistory: conversationHistory
                 })
             });
 
@@ -236,7 +228,7 @@ Utilise ce contenu pour répondre précisément aux questions des utilisateurs s
             
             // Messages d'erreur plus spécifiques
             if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
-                addMessage('❌ Erreur CORS : L\'API OpenAI ne peut pas être appelée directement depuis le navigateur. Utilisez un backend/proxy pour résoudre ce problème.', 'bot');
+                addMessage('❌ Erreur de connexion : Le serveur backend n\'est pas démarré. Lancez "npm start" dans un terminal pour démarrer le serveur.', 'bot');
             } else if (error.message) {
                 addMessage('❌ Erreur : ' + error.message, 'bot');
             } else {

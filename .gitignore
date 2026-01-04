@@ -28,3 +28,7 @@ yarn.lock
 .env
 .env.local
 
+# Node modules et dépendances
+node_modules/
+package-lock.json
+
