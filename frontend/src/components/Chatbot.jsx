@@ -107,8 +107,6 @@ export default function Chatbot() {
     { role: 'system', content: SYSTEM_PROMPT }
   ])
 
-  const API_URL = CONFIG.BACKEND_URL ? `${CONFIG.BACKEND_URL}/api/chat` : '/api/chat'
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -124,7 +122,7 @@ export default function Chatbot() {
     setLoading(true)
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -138,7 +136,7 @@ export default function Chatbot() {
       }
 
       const data = await response.json()
-      const botMessage = data.choices?.[0]?.message?.content || 'Désolé, je n\'ai pas pu traiter votre demande.'
+      const botMessage = data.reply || data.choices?.[0]?.message?.content || 'Désolé, je n\'ai pas pu traiter votre demande.'
 
       setMessages(prev => [...prev, { role: 'bot', content: botMessage }])
       conversationHistoryRef.current.push({ role: 'assistant', content: botMessage })
