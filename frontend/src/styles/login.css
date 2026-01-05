@@ -160,3 +160,50 @@
   margin: 0;
 }
 
+/* Champ téléphone avec indicateur de pays */
+.phone-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.phone-input-wrapper:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.phone-indicator {
+  padding: 0.875rem 0.75rem;
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  font-size: 0.847rem;
+  font-weight: 600;
+  border-right: 1px solid var(--border);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.phone-input {
+  flex: 1;
+  padding: 0.875rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.847rem;
+  outline: none;
+}
+
+.phone-input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.6;
+}
+
+.phone-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+

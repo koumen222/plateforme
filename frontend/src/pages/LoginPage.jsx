@@ -16,6 +16,13 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
 
+  // Vérifier si on doit afficher le mode inscription depuis l'état
+  useEffect(() => {
+    if (location.state?.register) {
+      setIsLogin(false)
+    }
+  }, [location.state])
+
   // Rediriger si déjà connecté
   useEffect(() => {
     if (isAuthenticated) {
@@ -130,15 +137,19 @@ export default function LoginPage() {
 
               <div className="form-group">
                 <label htmlFor="phoneNumber">Numéro de téléphone</label>
-                <input
-                  type="tel"
-                  id="phoneNumber"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  required
-                  placeholder="+237 6 76 77 83 77"
-                  disabled={loading}
-                />
+                <div className="phone-input-wrapper">
+                  <span className="phone-indicator">+237</span>
+                  <input
+                    type="tel"
+                    id="phoneNumber"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    required
+                    placeholder="6 76 77 83 77"
+                    disabled={loading}
+                    className="phone-input"
+                  />
+                </div>
               </div>
             </>
           )}
