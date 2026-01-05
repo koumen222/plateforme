@@ -117,5 +117,58 @@ router.get('/lesson/:lessonId', authenticate, async (req, res) => {
   }
 });
 
+// POST /api/comments/:id/response - Répondre à un commentaire (utilisateur répond à la réponse admin)
+router.post('/:id/response', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { response } = req.body;
+
+    if (!response || response.trim().length === 0) {
+      return res.status(400).json({ error: 'La réponse est requise' });
+    }
+
+    if (response.length > 2000) {
+      return res.status(400).json({ error: 'La réponse ne peut pas dépasser 2000 caractères' });
+    }
+
+    // Vérifier que l'utilisateur est actif
+    if (req.user.status !== 'active') {
+      return res.status(403).json({ 
+        error: 'Votre compte doit être actif pour répondre à un commentaire',
+        status: req.user.status
+      });
+    }
+
+    const comment = await Comment.findById(id);
+    if (!comment) {
+      return res.status(404).json({ error: 'Commentaire non trouvé' });
+    }
+
+    // Vérifier que le commentaire appartient à l'utilisateur
+    if (comment.userId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Vous ne pouvez répondre qu\'à vos propres commentaires' });
+    }
+
+    // Vérifier qu'il y a une réponse admin
+    if (!comment.adminResponse) {
+      return res.status(400).json({ error: 'Ce commentaire n\'a pas encore de réponse de l\'administrateur' });
+    }
+
+    comment.userResponse = response.trim();
+    await comment.save();
+
+    console.log(`💬 Réponse utilisateur ajoutée au commentaire ${id}`);
+
+    res.json({
+      success: true,
+      message: 'Réponse envoyée avec succès',
+      comment
+    });
+  } catch (error) {
+    console.error('Erreur réponse commentaire:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'envoi de la réponse' });
+  }
+});
+
 export default router;
 

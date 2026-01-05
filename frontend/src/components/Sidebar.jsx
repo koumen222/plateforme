@@ -93,8 +93,19 @@ export default function Sidebar() {
       </button>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
-          <h1>📚 Formation FB Ads</h1>
-          <p>Maîtrisez la publicité Facebook</p>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+            <div>
+              <h1>📚 Formation FB Ads</h1>
+              <p>Maîtrisez la publicité Facebook</p>
+            </div>
+            <button 
+              className="sidebar-close-btn"
+              onClick={() => setIsOpen(false)}
+              aria-label="Fermer le menu"
+            >
+              ✕
+            </button>
+          </div>
         </div>
         <nav>
           <ul className="sidebar-nav">

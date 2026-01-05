@@ -873,9 +873,16 @@ body {
         padding: 1rem;
     }
 
-    .video-wrapper {
-        padding-bottom: 75%; /* Augmenter la hauteur pour mobile */
+    /* Vidéo verrouillée - taille augmentée pour mobile */
+    .video-wrapper.video-locked {
+        padding-bottom: 75%; /* Augmenter la hauteur pour mobile quand verrouillée */
         min-height: 400px; /* Hauteur minimale pour afficher tout le contenu */
+    }
+
+    /* Vidéo déverrouillée - taille normale */
+    .video-wrapper.video-unlocked {
+        padding-bottom: 56.25%; /* Taille normale 16:9 */
+        min-height: auto;
     }
 
     .video-lock-overlay {

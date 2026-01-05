@@ -451,6 +451,31 @@ label {
   color: var(--text-tertiary);
 }
 
+.sidebar-close-btn {
+  display: none; /* Caché sur desktop */
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: var(--space-xs);
+  line-height: 1;
+  transition: all var(--transition-base);
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .sidebar-close-btn {
+    display: block; /* Visible sur mobile */
+  }
+}
+
 .sidebar-nav {
   flex: 1;
   padding: var(--space-md) var(--space-lg);

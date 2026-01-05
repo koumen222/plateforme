@@ -58,7 +58,7 @@ export default function VideoPlayer({ video, title }) {
           {title}
         </h3>
       )}
-      <div className="video-wrapper">
+      <div className={`video-wrapper ${!canWatchVideo ? 'video-locked' : 'video-unlocked'}`}>
         {!canWatchVideo ? (
           <div className="video-lock-overlay">
             <div className="video-lock-content">

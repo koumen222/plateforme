@@ -33,6 +33,11 @@ const commentSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: null
+  },
+  userResponse: {
+    type: String,
+    trim: true,
+    default: null
   }
 }, {
   timestamps: true // Mongoose gère automatiquement createdAt et updatedAt

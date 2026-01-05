@@ -16,6 +16,9 @@ export default function LessonPage({ lesson }) {
   const [newComment, setNewComment] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [loadingComments, setLoadingComments] = useState(false)
+  const [replyingTo, setReplyingTo] = useState(null)
+  const [replyText, setReplyText] = useState('')
+  const [submittingReply, setSubmittingReply] = useState(false)
 
   if (!lesson) return null
 
@@ -267,6 +270,51 @@ export default function LessonPage({ lesson }) {
     }
   }
 
+  const handleSubmitReply = async (commentId) => {
+    if (!replyText.trim()) {
+      return
+    }
+
+    if (replyText.length > 2000) {
+      alert('La réponse ne peut pas dépasser 2000 caractères')
+      return
+    }
+
+    setSubmittingReply(true)
+
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/comments/${commentId}/response`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          response: replyText.trim()
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        console.log('✅ Réponse envoyée avec succès:', data.comment)
+        setReplyText('')
+        setReplyingTo(null)
+        setTimeout(() => {
+          fetchComments()
+        }, 500)
+      } else {
+        console.error('❌ Erreur lors de l\'envoi de la réponse:', data.error)
+        alert(`Erreur: ${data.error || 'Impossible d\'envoyer la réponse'}`)
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'envoi de la réponse:', error)
+      alert('Erreur lors de l\'envoi de la réponse')
+    } finally {
+      setSubmittingReply(false)
+    }
+  }
+
   const getStatusBadge = (status) => {
     const badges = {
       pending: { label: 'En attente', class: 'comment-status-pending' },
@@ -452,6 +500,66 @@ export default function LessonPage({ lesson }) {
                         <div className="lesson-comment-response-content">
                           {comment.adminResponse}
                         </div>
+                        {comment.userId === user?._id && !comment.userResponse && (
+                          <div className="lesson-comment-reply-section">
+                            {replyingTo === comment._id ? (
+                              <div className="lesson-comment-reply-form">
+                                <textarea
+                                  value={replyText}
+                                  onChange={(e) => setReplyText(e.target.value)}
+                                  placeholder="Répondre à l'administrateur..."
+                                  className="lesson-comment-textarea"
+                                  rows={3}
+                                  maxLength={2000}
+                                />
+                                <div className="lesson-comment-form-footer">
+                                  <div className="lesson-comment-char-count">
+                                    {replyText.length} / 2000 caractères
+                                  </div>
+                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setReplyingTo(null)
+                                        setReplyText('')
+                                      }}
+                                      className="lesson-comment-submit-btn"
+                                      style={{ background: 'var(--bg-tertiary)' }}
+                                    >
+                                      Annuler
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSubmitReply(comment._id)}
+                                      disabled={submittingReply || !replyText.trim()}
+                                      className="lesson-comment-submit-btn"
+                                    >
+                                      {submittingReply ? 'Envoi...' : 'Envoyer'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setReplyingTo(comment._id)}
+                                className="lesson-comment-reply-btn"
+                              >
+                                💬 Répondre
+                              </button>
+                            )}
+                          </div>
+                        )}
+                        {comment.userResponse && (
+                          <div className="lesson-comment-user-response">
+                            <div className="lesson-comment-response-header">
+                              <strong>Votre réponse :</strong>
+                            </div>
+                            <div className="lesson-comment-response-content">
+                              {comment.userResponse}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
