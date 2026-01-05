@@ -55,9 +55,14 @@ export default function LoginPage() {
           return
         }
         // Ajouter le préfixe du pays sélectionné si pas déjà présent
-        const formattedPhone = phoneNumber.trim().startsWith('+') 
-          ? phoneNumber.trim() 
-          : `${selectedCountry}${phoneNumber.trim()}`
+        let formattedPhone = phoneNumber.trim()
+        
+        // Si le numéro ne commence pas par +, ajouter le préfixe du pays sélectionné
+        if (!formattedPhone.startsWith('+')) {
+          formattedPhone = `${selectedCountry}${formattedPhone}`
+        }
+        // Si le numéro commence déjà par un préfixe, le garder tel quel
+        
         result = await register(name, email, formattedPhone, password)
       }
 
