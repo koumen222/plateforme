@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 
-export default function VideoPlayer({ video, title, lessonId }) {
+export default function VideoPlayer({ video, title }) {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
 
@@ -10,22 +10,19 @@ export default function VideoPlayer({ video, title, lessonId }) {
 
   const { type, url } = video
 
-  // La première vidéo (leçon 1) est accessible sans connexion
-  const isFirstLesson = lessonId === 1
-  
-  // Vérifier si l'utilisateur est connecté ET que son compte est actif, OU si c'est la première leçon
-  const canWatchVideo = isFirstLesson || (isAuthenticated && user && user.status === 'active')
+  // Vérifier si l'utilisateur est connecté ET que son compte est actif
+  const canWatchVideo = isAuthenticated && user && user.status === 'active'
 
   const handleUnlockClick = () => {
     if (!isAuthenticated) {
-      // Pas connecté, rediriger vers la page d'inscription
-      navigate('/login', { state: { from: { pathname: window.location.pathname }, register: true } })
+      // Pas connecté, rediriger vers la page de connexion
+      navigate('/login', { state: { from: { pathname: window.location.pathname } } })
     } else if (user && user.status === 'pending') {
       // Connecté mais pas validé, rediriger vers le profil
       navigate('/profil')
     } else {
-      // Autre cas, rediriger vers l'inscription
-      navigate('/login', { state: { from: { pathname: window.location.pathname }, register: true } })
+      // Autre cas, rediriger vers la connexion
+      navigate('/login', { state: { from: { pathname: window.location.pathname } } })
     }
   }
 

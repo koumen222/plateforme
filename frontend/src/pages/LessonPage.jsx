@@ -64,9 +64,6 @@ export default function LessonPage({ lesson }) {
       const coursesData = await coursesResponse.json()
       const courses = coursesData.courses || []
       
-      // Trier les cours par order pour correspondre aux leçons
-      const sortedCourses = [...courses].sort((a, b) => (a.order || 0) - (b.order || 0))
-      
       // Récupérer la progression depuis la DB
       const progressResponse = await fetch(`${CONFIG.BACKEND_URL}/api/progress`, {
         headers: {
@@ -78,9 +75,9 @@ export default function LessonPage({ lesson }) {
         const progressData = await progressResponse.json()
         setProgress(progressData.progress)
         
-        // Trouver le cours correspondant à cette leçon (par index, car les cours sont triés par order)
-        if (sortedCourses[lessonIndex]) {
-          const courseId = sortedCourses[lessonIndex]._id || sortedCourses[lessonIndex].id
+        // Trouver le cours correspondant à cette leçon
+        if (courses[lessonIndex]) {
+          const courseId = courses[lessonIndex]._id || courses[lessonIndex].id
           
           // Vérifier si ce cours est complété dans la progression
           const courseProgress = progressData.progress.courses?.find(c => {
@@ -91,16 +88,19 @@ export default function LessonPage({ lesson }) {
           if (courseProgress) {
             const completed = courseProgress.completed === true
             setIsCompleted(completed)
-            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}) - Cours: ${sortedCourses[lessonIndex].title} - ${completed ? '✅ Complétée' : '❌ Non complétée'}`)
+            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}): ${completed ? '✅ Complétée' : '❌ Non complétée'}`)
           } else {
             // Si pas trouvé, le cours n'est pas complété
             setIsCompleted(false)
-            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}) - Cours: ${sortedCourses[lessonIndex].title} - ❌ Non complétée (pas de progression trouvée)`)
+            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}): ❌ Non complétée (pas de progression trouvée)`)
           }
         } else {
-          // Si pas de cours correspondant, la leçon n'est pas complétée
-          setIsCompleted(false)
-          console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}): ❌ Non complétée (pas de cours correspondant)`)
+          // Fallback: vérifier par numéro de leçon si pas de cours correspondant
+          const lessonNumber = lessonIndex + 1
+          const completedLessons = progressData.progress.completedLessons || progressData.progress.completedCourses || 0
+          const isCompletedByNumber = lessonNumber <= completedLessons
+          setIsCompleted(isCompletedByNumber)
+          console.log(`📚 Leçon ${lessonNumber}: ${isCompletedByNumber ? '✅ Complétée' : '❌ Non complétée'} (fallback)`)
         }
       }
     } catch (error) {
@@ -133,13 +133,8 @@ export default function LessonPage({ lesson }) {
         
         // Marquer le cours correspondant à cette leçon comme complété
         // On utilise l'index de la leçon pour trouver le cours correspondant
-        // Les cours doivent être triés par order pour correspondre aux leçons
-        const sortedCourses = [...courses].sort((a, b) => (a.order || 0) - (b.order || 0))
-        
-        if (sortedCourses[currentIndex]) {
-          const courseId = sortedCourses[currentIndex]._id || sortedCourses[currentIndex].id
-          
-          console.log(`📚 Marquage leçon ${currentIndex + 1} (${lesson.title}) - Cours ID: ${courseId}`)
+        if (courses[currentIndex]) {
+          const courseId = courses[currentIndex]._id || courses[currentIndex].id
           
           // Utiliser l'endpoint correct pour marquer la progression
           const response = await fetch(`${CONFIG.BACKEND_URL}/api/courses/progress/${courseId}`, {
@@ -360,10 +355,10 @@ export default function LessonPage({ lesson }) {
 
       {/* Videos */}
       {lesson.video && (
-        <VideoPlayer video={lesson.video} lessonId={lesson.id} />
+        <VideoPlayer video={lesson.video} />
       )}
       {lesson.videos && lesson.videos.map((video, idx) => (
-        <VideoPlayer key={idx} video={video} title={video.title} lessonId={lesson.id} />
+        <VideoPlayer key={idx} video={video} title={video.title} />
       ))}
 
       {/* Summary */}

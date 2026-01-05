@@ -278,6 +278,35 @@ export default function AdminUsersPage() {
     return badges[role] || badges.student
   }
 
+  const generateWhatsAppLink = (user) => {
+    // Nettoyer le numéro de téléphone (enlever les espaces, +, etc.)
+    let phoneNumber = user.phoneNumber || ''
+    phoneNumber = phoneNumber.replace(/[\s\-\(\)]/g, '') // Enlever espaces, tirets, parenthèses
+    if (phoneNumber.startsWith('+')) {
+      phoneNumber = phoneNumber.substring(1) // Enlever le +
+    }
+    
+    // Nom de l'utilisateur ou email comme fallback
+    const userName = user.name?.trim() || user.email?.split('@')[0] || 'Cher utilisateur'
+    
+    // Message personnalisé
+    const message = `Bonjour ${userName},\n\nVotre compte est en attente d'activation. Pour finaliser votre paiement et accéder à toutes les vidéos de formation, veuillez procéder au paiement.\n\nMerci de votre confiance !`
+    
+    // Générer le lien WhatsApp
+    const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
+    return whatsappUrl
+  }
+
+  const handleWhatsAppClick = (user) => {
+    if (!user.phoneNumber) {
+      showNotification('Numéro de téléphone non renseigné pour cet utilisateur', 'error')
+      return
+    }
+    
+    const whatsappUrl = generateWhatsAppLink(user)
+    window.open(whatsappUrl, '_blank', 'noopener,noreferrer')
+  }
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -464,13 +493,22 @@ export default function AdminUsersPage() {
                           ✏️ Modifier
                         </button>
                         {user.status === 'pending' && (
-                          <button
-                            onClick={() => handleValidate(user._id)}
-                            className="admin-btn admin-btn-validate"
-                            title="Valider l'utilisateur (passe en actif)"
-                          >
-                            ✅ Valider
-                          </button>
+                          <>
+                            <button
+                              onClick={() => handleWhatsAppClick(user)}
+                              className="admin-btn admin-btn-whatsapp"
+                              title={`Envoyer un message WhatsApp à ${user.name || user.email} pour demander le paiement`}
+                            >
+                              💬 WhatsApp
+                            </button>
+                            <button
+                              onClick={() => handleValidate(user._id)}
+                              className="admin-btn admin-btn-validate"
+                              title="Valider l'utilisateur (passe en actif)"
+                            >
+                              ✅ Valider
+                            </button>
+                          </>
                         )}
                         <select
                           value={user.status}
@@ -728,6 +766,17 @@ export default function AdminUsersPage() {
               </div>
             </div>
             <div className="admin-modal-actions" style={{ flexDirection: 'column', gap: '10px' }}>
+              {selectedUser.status === 'pending' && (
+                <button
+                  onClick={() => {
+                    handleWhatsAppClick(selectedUser)
+                  }}
+                  className="admin-btn admin-btn-whatsapp"
+                  style={{ width: '100%' }}
+                >
+                  💬 Envoyer un message WhatsApp pour demander le paiement
+                </button>
+              )}
               {selectedUser.role === 'student' && selectedUser.status === 'active' && (
                 <button
                   onClick={async () => {
