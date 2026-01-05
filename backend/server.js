@@ -183,9 +183,10 @@ const startServer = async () => {
     }
     
     // Démarrer le serveur Express
-    app.listen(PORT, () => {
+    app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Backend running on port ${PORT}`);
       console.log(`📡 API disponible sur http://localhost:${PORT}`);
+      console.log(`🌐 Environnement: ${process.env.NODE_ENV || 'development'}`);
       console.log(`\n📋 Routes disponibles:`);
       console.log(`   POST /api/register - Inscription utilisateur`);
       console.log(`   POST /api/login - Connexion`);
