@@ -72,9 +72,13 @@ export default function AdminUsersPage() {
         fetchUsers()
         
         // Déclencher un événement pour notifier le changement de statut
-        window.dispatchEvent(new CustomEvent('userStatusChanged', { 
-          detail: { userId, newStatus: 'active' } 
-        }))
+        const event = new CustomEvent('userStatusChanged', { 
+          detail: { userId, newStatus: 'active' },
+          bubbles: true,
+          cancelable: true
+        })
+        window.dispatchEvent(event)
+        console.log('📢 Événement userStatusChanged dispatché:', { userId, newStatus: 'active' })
       } else {
         const data = await response.json()
         showNotification(data.error || 'Erreur lors de la validation', 'error')
