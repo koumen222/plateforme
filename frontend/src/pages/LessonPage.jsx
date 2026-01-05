@@ -133,8 +133,13 @@ export default function LessonPage({ lesson }) {
         
         // Marquer le cours correspondant à cette leçon comme complété
         // On utilise l'index de la leçon pour trouver le cours correspondant
-        if (courses[currentIndex]) {
-          const courseId = courses[currentIndex]._id || courses[currentIndex].id
+        // Les cours doivent être triés par order pour correspondre aux leçons
+        const sortedCourses = [...courses].sort((a, b) => (a.order || 0) - (b.order || 0))
+        
+        if (sortedCourses[currentIndex]) {
+          const courseId = sortedCourses[currentIndex]._id || sortedCourses[currentIndex].id
+          
+          console.log(`📚 Marquage leçon ${currentIndex + 1} (${lesson.title}) - Cours ID: ${courseId}`)
           
           // Utiliser l'endpoint correct pour marquer la progression
           const response = await fetch(`${CONFIG.BACKEND_URL}/api/courses/progress/${courseId}`, {

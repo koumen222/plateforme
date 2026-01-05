@@ -156,29 +156,64 @@ const startServer = async () => {
     // Plus de création automatique d'admin
     // L'admin doit créer son compte via /admin/login (première connexion uniquement)
     
-    // Créer des cours par défaut s'ils n'existent pas
+    // Créer des cours par défaut s'ils n'existent pas (8 cours correspondant aux 8 leçons)
     const Course = (await import('./models/Course.js')).default;
     const defaultCourses = [
       {
-        title: 'Introduction à la Plateforme de Formation',
-        description: 'Découvrez comment utiliser notre plateforme de formation en ligne. Ce cours vous guidera à travers toutes les fonctionnalités et vous aidera à démarrer votre parcours d\'apprentissage.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
+        title: 'JOUR 1 - Introduction',
+        description: 'Bienvenue dans la formation Andromeda ! Cette méthode révolutionnaire vous permettra de créer des campagnes Facebook Ads performantes qui génèrent des ventes.',
+        videoId: '148751763',
         module: 1,
         order: 1
       },
       {
-        title: 'Les Bases du Contenu Pédagogique',
-        description: 'Apprenez les fondamentaux pour créer et structurer du contenu pédagogique efficace. Ce cours vous enseignera les meilleures pratiques pour concevoir des formations engageantes.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
+        title: 'JOUR 2 - La structure de campagne',
+        description: 'Découvrez comment structurer vos campagnes Facebook Ads pour maximiser vos résultats et générer des ventes.',
+        videoId: '148751763',
         module: 1,
         order: 2
       },
       {
-        title: 'Suivi et Évaluation de la Progression',
-        description: 'Comprenez comment suivre votre progression dans les cours et évaluer vos acquis. Ce module vous explique le système de suivi et les outils d\'évaluation disponibles.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
+        title: 'JOUR 3 - Créer la créative Andromeda',
+        description: 'Apprenez à créer des créatives performantes selon la méthode Andromeda pour vos campagnes Facebook Ads.',
+        videoId: '148751763',
         module: 1,
         order: 3
+      },
+      {
+        title: 'JOUR 4 - Paramétrer le compte publicitaire',
+        description: 'Maîtrisez la configuration de votre compte publicitaire Facebook pour optimiser vos campagnes.',
+        videoId: '148751763',
+        module: 1,
+        order: 4
+      },
+      {
+        title: 'JOUR 5 - Lancement',
+        description: 'Découvrez les meilleures pratiques pour lancer vos campagnes Facebook Ads avec succès.',
+        videoId: '148751763',
+        module: 1,
+        order: 5
+      },
+      {
+        title: 'JOUR 6 - Analyse et optimisation',
+        description: 'Apprenez à analyser les performances de vos campagnes et à les optimiser pour de meilleurs résultats.',
+        videoId: '148751763',
+        module: 1,
+        order: 6
+      },
+      {
+        title: 'JOUR 7 - Mini Scaling',
+        description: 'Maîtrisez les techniques de scaling pour augmenter progressivement vos budgets et vos résultats.',
+        videoId: '148751763',
+        module: 1,
+        order: 7
+      },
+      {
+        title: 'JOUR 8 - Réservation Coaching',
+        description: 'Finalisez votre formation et réservez votre session de coaching personnalisé.',
+        videoId: '148751763',
+        module: 1,
+        order: 8
       }
     ];
     
