@@ -107,9 +107,13 @@ export default function AdminUsersPage() {
         fetchUsers()
         
         // Déclencher un événement pour notifier les autres onglets/composants
-        window.dispatchEvent(new CustomEvent('userStatusChanged', { 
-          detail: { userId, newStatus } 
-        }))
+        const event = new CustomEvent('userStatusChanged', { 
+          detail: { userId, newStatus },
+          bubbles: true,
+          cancelable: true
+        })
+        window.dispatchEvent(event)
+        console.log('📢 Événement userStatusChanged dispatché:', { userId, newStatus })
         
         return true
       } else {
@@ -178,9 +182,13 @@ export default function AdminUsersPage() {
         
         // Déclencher un événement si le statut a changé
         if (data.user && data.user.status) {
-          window.dispatchEvent(new CustomEvent('userStatusChanged', { 
-            detail: { userId: editingUser._id, newStatus: data.user.status } 
-          }))
+          const event = new CustomEvent('userStatusChanged', { 
+            detail: { userId: editingUser._id, newStatus: data.user.status },
+            bubbles: true,
+            cancelable: true
+          })
+          window.dispatchEvent(event)
+          console.log('📢 Événement userStatusChanged dispatché:', { userId: editingUser._id, newStatus: data.user.status })
         }
       } else {
         const data = await response.json()

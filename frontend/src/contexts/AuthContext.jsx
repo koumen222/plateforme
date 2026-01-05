@@ -184,6 +184,7 @@ export function AuthProvider({ children }) {
     if (!token) return { success: false, error: 'Non authentifié' }
     
     try {
+      console.log('🔄 Rafraîchissement des données utilisateur...')
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/user/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -57,9 +57,20 @@ export default function ProfilePage() {
     }
 
     // Écouter les événements de changement de statut depuis l'admin
-    const handleStatusChange = async () => {
+    const handleStatusChange = async (event) => {
       if (token) {
-        await refreshUser()
+        console.log('📢 Événement userStatusChanged reçu:', event.detail)
+        const result = await refreshUser()
+        if (result.success && result.statusChanged) {
+          setMessage({ 
+            type: 'success', 
+            text: `Votre statut a été mis à jour: ${result.user.status === 'active' ? 'Actif' : result.user.status === 'pending' ? 'En attente' : 'Inactif'}` 
+          })
+          // Si le statut devient actif, charger la progression
+          if (result.user.status === 'active' && token) {
+            fetchProgress()
+          }
+        }
       }
     }
 
