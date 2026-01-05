@@ -97,7 +97,7 @@ export default function Chatbot() {
   const [messages, setMessages] = useState([
     {
       role: 'bot',
-      content: 'Bonjour ! Je suis là pour vous aider avec la formation Andromeda. Posez-moi vos questions !'
+      content: 'Bonjour ! 👋\n\nPour toute question concernant la formation Andromeda, n\'hésitez pas à poser vos questions directement à Morgan.\n\nJe suis là pour vous aider avec les informations de la formation, mais pour un accompagnement personnalisé, contactez Morgan ! 💬'
     }
   ])
   const [input, setInput] = useState('')
@@ -176,6 +176,9 @@ export default function Chatbot() {
           >
             ×
           </button>
+        </div>
+        <div className="chatbot-notification">
+          <strong>💡 Astuce :</strong> Pour des questions personnalisées, contactez directement Morgan !
         </div>
         <div className="chatbot-messages">
           {messages.map((msg, idx) => (

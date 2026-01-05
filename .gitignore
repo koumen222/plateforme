@@ -28,7 +28,18 @@ yarn.lock
 .env
 .env.local
 
-# Node modules et dépendances
-node_modules/
-package-lock.json
+# Build
+dist/
+dist-ssr/
+*.local
 
+# Vite
+.vite/
+
+# React
+*.react.js
+
+# Frontend
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/

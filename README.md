@@ -26,35 +26,36 @@ Plateforme de formation e-learning sur Facebook Ads utilisant la méthode Androm
 
 ## 🚀 Technologies
 
-- HTML5
-- CSS3 (design moderne avec animations)
-- JavaScript vanilla
-- Node.js/Express pour le backend (chatbot)
-- OpenAI API pour le chatbot
+### Frontend
+- **React 18** - Bibliothèque UI moderne
+- **React Router** - Navigation SPA
+- **Vite** - Build tool ultra-rapide
+- **CSS3** - Design moderne avec animations
+
+### Backend
+- **Node.js/Express** - Serveur API
+- **OpenAI API** - Chatbot intelligent
 
 ## 📁 Structure des fichiers
 
 ```
 /plateforme
- ├── index.html          (JOUR 1)
- ├── lesson1.html        (JOUR 2)
- ├── lesson2.html        (JOUR 3)
- ├── lesson4.html        (JOUR 4)
- ├── lesson5.html        (JOUR 5)
- ├── lesson6.html        (JOUR 6)
- ├── lesson7.html        (JOUR 7)
- ├── lesson8.html        (JOUR 8)
- ├── css/
- │   └── style.css       (Styles principaux)
- ├── js/
- │   ├── app.js          (JavaScript principal)
- │   └── chatbot.js      (Chatbot OpenAI)
- ├── backend/
- │   ├── server.js       (Serveur backend Express)
- │   ├── package.json    (Dépendances Node.js backend)
- │   └── .env            (Variables d'environnement)
+ ├── frontend/              # Application React
+ │   ├── src/
+ │   │   ├── components/    # Composants React
+ │   │   ├── pages/         # Pages/leçons
+ │   │   ├── data/          # Données des leçons
+ │   │   ├── config/        # Configuration
+ │   │   └── styles/        # Styles CSS
+ │   ├── package.json
+ │   ├── vite.config.js
+ │   └── index.html
+ ├── backend/               # API Backend
+ │   ├── server.js
+ │   ├── package.json
+ │   └── .env
  └── assets/
-     └── docs/           (Ressources téléchargeables)
+     └── docs/              # Ressources téléchargeables
 ```
 
 ## 🌿 Branches
@@ -64,76 +65,83 @@ Plateforme de formation e-learning sur Facebook Ads utilisant la méthode Androm
 
 ## 🔧 Installation et utilisation
 
-### Option 1 : Utilisation simple (sans chatbot)
+### Développement Local
 
-Ouvrez simplement `index.html` dans un navigateur web pour commencer la formation.
+#### 1. Backend
 
-### Option 2 : Avec chatbot OpenAI (recommandé)
+```bash
+cd backend
+npm install
+```
 
-1. **Installer Node.js** (si ce n'est pas déjà fait)
-   - Téléchargez depuis https://nodejs.org/
+Créez un fichier `.env` :
+```env
+OPENAI_API_KEY=votre_cle_api_openai
+PORT=3000
+```
 
-2. **Installer les dépendances du backend**
-   ```bash
-   cd backend
-   npm install
-   ```
+Démarrez le backend :
+```bash
+npm start
+```
 
-3. **Configurer la clé API OpenAI**
-   - Créez un fichier `.env` dans le dossier `backend/`
-   - Ajoutez : `OPENAI_API_KEY=votre_cle_api_ici`
-   - Ou modifiez directement dans `backend/server.js` (ligne 23)
+#### 2. Frontend
 
-4. **Démarrer le serveur**
-   ```bash
-   cd backend
-   npm start
-   ```
+```bash
+cd frontend
+npm install
+```
 
-5. **Ouvrir dans le navigateur**
-   - Allez sur `http://localhost:3000`
+Créez un fichier `.env` (optionnel) :
+```env
+VITE_BACKEND_URL=http://localhost:3000
+```
+
+Démarrez le frontend :
+```bash
+npm run dev
+```
+
+Accédez à `http://localhost:5173`
+
+### Build Production
+
+```bash
+cd frontend
+npm run build
+```
+
+Les fichiers optimisés seront dans `frontend/dist/`
 
 ## 🚀 Hébergement
 
-### Frontend et Backend séparés (recommandé pour la production)
+### Frontend (Vercel/Netlify)
 
-Le frontend (fichiers HTML/CSS/JS) et le backend (API Node.js) peuvent être hébergés séparément.
+Le frontend peut être hébergé sur :
+- **Vercel** (recommandé) - Connectez votre repo, dossier racine: `frontend/`
+- **Netlify** - Base directory: `frontend/`
+- **GitHub Pages** - Après build, déployez `dist/`
 
-#### Hébergement du Frontend
+### Backend (Render/Heroku)
 
-Le frontend peut être hébergé sur n'importe quel service de fichiers statiques :
-- **Netlify** : Glissez-déposez le dossier ou connectez votre repo GitHub
-- **Vercel** : Connectez votre repo GitHub
-- **GitHub Pages** : Activez Pages dans les paramètres de votre repo
-- **Serveur web classique** (Apache, Nginx) : Déployez les fichiers HTML/CSS/JS
+Le backend doit être hébergé séparément :
+- **Render** - Voir `backend/README.md`
+- **Heroku** - Voir `backend/README.md`
+- **Railway** - Voir `backend/README.md`
 
-#### Hébergement du Backend
+### Configuration après déploiement
 
-Voir `backend/README.md` pour les instructions complètes d'hébergement du backend.
-
-**Options populaires :**
-- Heroku
-- Railway
-- Render
-- VPS (DigitalOcean, AWS, etc.)
-
-#### Configuration après déploiement
-
-1. Déployez le backend et notez son URL (ex: `https://votre-backend.herokuapp.com`)
-2. Dans le frontend, modifiez `js/config.js` :
+1. Déployez le backend et notez son URL (ex: `https://votre-backend.onrender.com`)
+2. Dans le frontend, créez `.env.production` ou modifiez `src/config/config.js` :
    ```javascript
-   BACKEND_URL: 'https://votre-backend.herokuapp.com'
+   VITE_BACKEND_URL=https://votre-backend.onrender.com
    ```
-3. Ou ajoutez dans vos fichiers HTML (avant `config.js`) :
-   ```html
-   <script>
-     window.CONFIG_BACKEND_URL = 'https://votre-backend.herokuapp.com';
-   </script>
-   ```
+3. Rebuild et redéployez le frontend
 
 ## 📝 Notes importantes
 
 - Le chatbot nécessite un serveur backend pour fonctionner (problème CORS)
 - La clé API OpenAI doit être configurée dans `backend/.env`
 - Pour la production, hébergez le backend et le frontend séparément pour de meilleures performances
-- Voir `backend/README.md` pour plus de détails sur le backend et son hébergement
+- Voir `frontend/README.md` pour plus de détails sur le frontend
+- Voir `backend/README.md` pour plus de détails sur le backend

@@ -1,25 +1,64 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
+import AdminLayout from './components/admin/AdminLayout'
 import LessonPage from './pages/LessonPage'
 import CoachingPage from './pages/CoachingPage'
+import LoginPage from './pages/LoginPage'
+import ProfilePage from './pages/ProfilePage'
+import AdminLoginPage from './pages/admin/AdminLoginPage'
+import AdminDashboardPage from './pages/admin/AdminDashboardPage'
+import AdminUsersPage from './pages/admin/AdminUsersPage'
+import AdminCommentsPage from './pages/admin/AdminCommentsPage'
+import CommentsPage from './pages/CommentsPage'
 import { lessons } from './data/lessons'
 
 function App() {
   return (
-    <Router>
-      <Layout>
+    <ThemeProvider>
+      <AuthProvider>
+      <Router
+        future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}
+      >
         <Routes>
-          <Route path="/" element={<LessonPage lesson={lessons[0]} />} />
-          <Route path="/jour-2" element={<LessonPage lesson={lessons[1]} />} />
-          <Route path="/jour-3" element={<LessonPage lesson={lessons[2]} />} />
-          <Route path="/jour-4" element={<LessonPage lesson={lessons[3]} />} />
-          <Route path="/jour-5" element={<LessonPage lesson={lessons[4]} />} />
-          <Route path="/jour-6" element={<LessonPage lesson={lessons[5]} />} />
-          <Route path="/jour-7" element={<LessonPage lesson={lessons[6]} />} />
-          <Route path="/jour-8" element={<CoachingPage lesson={lessons[7]} />} />
+          {/* Routes étudiant/formation */}
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/*"
+            element={
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<LessonPage lesson={lessons[0]} />} />
+                  <Route path="/jour-2" element={<LessonPage lesson={lessons[1]} />} />
+                  <Route path="/jour-3" element={<LessonPage lesson={lessons[2]} />} />
+                  <Route path="/jour-4" element={<LessonPage lesson={lessons[3]} />} />
+                  <Route path="/jour-5" element={<LessonPage lesson={lessons[4]} />} />
+                  <Route path="/jour-6" element={<LessonPage lesson={lessons[5]} />} />
+                  <Route path="/jour-7" element={<LessonPage lesson={lessons[6]} />} />
+                  <Route path="/jour-8" element={<CoachingPage lesson={lessons[7]} />} />
+                        <Route path="/profil" element={<ProfilePage />} />
+                        <Route path="/commentaires" element={<CommentsPage />} />
+                       </Routes>
+                     </Layout>
+                   }
+                 />
+
+          {/* Routes admin */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+                 <Route path="/admin/*" element={<AdminLayout />}>
+                   <Route index element={<AdminDashboardPage />} />
+                   <Route path="users" element={<AdminUsersPage />} />
+                   <Route path="comments" element={<AdminCommentsPage />} />
+                   <Route path="settings" element={<div className="admin-page-header"><h1>Paramètres</h1><p>Page de paramètres à venir</p></div>} />
+                 </Route>
         </Routes>
-      </Layout>
-    </Router>
+      </Router>
+      </AuthProvider>
+    </ThemeProvider>
   )
 }
 
