@@ -360,10 +360,10 @@ export default function LessonPage({ lesson }) {
 
       {/* Videos */}
       {lesson.video && (
-        <VideoPlayer video={lesson.video} />
+        <VideoPlayer video={lesson.video} lessonId={lesson.id} />
       )}
       {lesson.videos && lesson.videos.map((video, idx) => (
-        <VideoPlayer key={idx} video={video} title={video.title} />
+        <VideoPlayer key={idx} video={video} title={video.title} lessonId={lesson.id} />
       ))}
 
       {/* Summary */}

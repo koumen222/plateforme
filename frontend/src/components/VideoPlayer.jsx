@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 
-export default function VideoPlayer({ video, title }) {
+export default function VideoPlayer({ video, title, lessonId }) {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
 
@@ -10,8 +10,11 @@ export default function VideoPlayer({ video, title }) {
 
   const { type, url } = video
 
-  // Vérifier si l'utilisateur est connecté ET que son compte est actif
-  const canWatchVideo = isAuthenticated && user && user.status === 'active'
+  // La première vidéo (leçon 1) est accessible sans connexion
+  const isFirstLesson = lessonId === 1
+  
+  // Vérifier si l'utilisateur est connecté ET que son compte est actif, OU si c'est la première leçon
+  const canWatchVideo = isFirstLesson || (isAuthenticated && user && user.status === 'active')
 
   const handleUnlockClick = () => {
     if (!isAuthenticated) {
