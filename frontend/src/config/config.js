@@ -11,7 +11,7 @@ const getBackendUrl = () => {
   }
   
   // Sinon, utiliser l'URL de production par défaut
-  return 'https://plateforme-1-93yq.onrender.com'
+  return 'https://plateforme-r1h7.onrender.com'
 }
 
 export const CONFIG = {
