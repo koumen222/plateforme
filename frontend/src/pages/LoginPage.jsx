@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState('+237') // Cameroun par défaut
   const { login, register, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
