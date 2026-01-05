@@ -53,7 +53,11 @@ export default function LoginPage() {
           setLoading(false)
           return
         }
-        result = await register(name, email, phoneNumber, password)
+        // Ajouter le préfixe +237 si pas déjà présent
+        const formattedPhone = phoneNumber.trim().startsWith('+237') 
+          ? phoneNumber.trim() 
+          : `+237${phoneNumber.trim()}`
+        result = await register(name, email, formattedPhone, password)
       }
 
       if (result.success) {
