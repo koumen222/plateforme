@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { countries } from '../data/countries'
@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const { login, register, isAuthenticated } = useAuth()
+  const { login, register, loginWithGoogle, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const [selectedCountry, setSelectedCountry] = useState(countries.find(c => c.code === 'CM') || countries[0])
@@ -42,6 +42,72 @@ export default function LoginPage() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [showCountryDropdown])
 
+  const handleGoogleSignIn = useCallback(async (response) => {
+    setError('')
+    setLoading(true)
+
+    try {
+      const result = await loginWithGoogle(response.credential)
+      
+      if (result.success) {
+        const from = location.state?.from?.pathname || '/'
+        navigate(from, { replace: true })
+      } else {
+        setError(result.error || 'Erreur lors de l\'authentification Google')
+      }
+    } catch (err) {
+      setError(err.message || 'Une erreur est survenue lors de l\'authentification Google')
+    } finally {
+      setLoading(false)
+    }
+  }, [loginWithGoogle, navigate, location])
+
+  // Initialiser Google Sign-In
+  useEffect(() => {
+    const initGoogleSignIn = () => {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID
+      
+      if (window.google && window.google.accounts && clientId) {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleSignIn,
+        })
+
+        // Attendre que le DOM soit prêt
+        setTimeout(() => {
+          const buttonContainer = document.getElementById('google-signin-button')
+          if (buttonContainer) {
+            // Nettoyer le conteneur avant de rendre le bouton
+            buttonContainer.innerHTML = ''
+            
+            window.google.accounts.id.renderButton(buttonContainer, {
+              theme: 'outline',
+              size: 'large',
+              text: isLogin ? 'signin_with' : 'signup_with',
+              width: '100%',
+            })
+          }
+        }, 100)
+      }
+    }
+
+    // Attendre que le script Google soit chargé
+    if (window.google && window.google.accounts) {
+      initGoogleSignIn()
+    } else {
+      // Attendre que le script se charge
+      const checkGoogle = setInterval(() => {
+        if (window.google && window.google.accounts) {
+          clearInterval(checkGoogle)
+          initGoogleSignIn()
+        }
+      }, 100)
+
+      // Nettoyer après 5 secondes si Google ne se charge pas
+      setTimeout(() => clearInterval(checkGoogle), 5000)
+    }
+  }, [isLogin, handleGoogleSignIn])
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
@@ -52,7 +118,7 @@ export default function LoginPage() {
       if (isLogin) {
         // Connexion : utiliser emailOrPhone
         if (!emailOrPhone || !password) {
-          setError('Email/téléphone et mot de passe requis')
+          setError('⚠️ Veuillez remplir tous les champs : email/téléphone et mot de passe sont requis')
           setLoading(false)
           return
         }
@@ -60,7 +126,32 @@ export default function LoginPage() {
       } else {
         // Inscription : utiliser name, email, phoneNumber, password
         if (!name || !email || !phoneNumber || !password) {
-          setError('Tous les champs sont requis')
+          setError('⚠️ Veuillez remplir tous les champs : nom, email, téléphone et mot de passe sont requis')
+          setLoading(false)
+          return
+        }
+        // Validation du nom
+        if (name.trim().length < 2) {
+          setError('⚠️ Le nom doit contenir au moins 2 caractères')
+          setLoading(false)
+          return
+        }
+        // Validation de l'email
+        const emailRegex = /^\S+@\S+\.\S+$/
+        if (!emailRegex.test(email)) {
+          setError('⚠️ Veuillez entrer une adresse email valide (exemple : votre@email.com)')
+          setLoading(false)
+          return
+        }
+        // Validation du téléphone
+        if (phoneNumber.trim().length < 5) {
+          setError('⚠️ Veuillez entrer un numéro de téléphone valide')
+          setLoading(false)
+          return
+        }
+        // Validation du mot de passe
+        if (password.length < 6) {
+          setError('⚠️ Le mot de passe doit contenir au moins 6 caractères')
           setLoading(false)
           return
         }
@@ -78,10 +169,46 @@ export default function LoginPage() {
         const from = location.state?.from?.pathname || '/'
         navigate(from, { replace: true })
       } else {
-        setError(result.error || 'Une erreur est survenue')
+        // Messages d'erreur plus clairs pour l'utilisateur
+        const errorMessage = result.error || 'Une erreur est survenue'
+        let userFriendlyError = errorMessage
+        
+        // Traduire les erreurs techniques en messages compréhensibles
+        if (errorMessage.includes('Email/téléphone ou mot de passe incorrect')) {
+          userFriendlyError = '❌ Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.'
+        } else if (errorMessage.includes('Compte en attente')) {
+          userFriendlyError = '⏳ Votre compte est en attente de validation. Contactez l\'administrateur pour activer votre compte.'
+        } else if (errorMessage.includes('déjà utilisé')) {
+          if (errorMessage.includes('email')) {
+            userFriendlyError = '❌ Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous avec ce compte.'
+          } else if (errorMessage.includes('téléphone')) {
+            userFriendlyError = '❌ Ce numéro de téléphone est déjà utilisé. Utilisez un autre numéro ou connectez-vous avec ce compte.'
+          }
+        } else if (errorMessage.includes('champs sont requis')) {
+          userFriendlyError = '⚠️ ' + errorMessage
+        } else if (errorMessage.includes('caractères')) {
+          userFriendlyError = '⚠️ ' + errorMessage
+        } else if (errorMessage.includes('Erreur serveur')) {
+          userFriendlyError = '❌ Erreur de connexion au serveur. Veuillez réessayer dans quelques instants.'
+        } else if (errorMessage.includes('Erreur')) {
+          userFriendlyError = '❌ ' + errorMessage
+        }
+        
+        setError(userFriendlyError)
       }
     } catch (err) {
-      setError(err.message || 'Une erreur est survenue')
+      // Messages d'erreur pour les exceptions
+      let errorMessage = 'Une erreur est survenue'
+      if (err.message) {
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          errorMessage = '❌ Problème de connexion. Vérifiez votre connexion internet et réessayez.'
+        } else if (err.message.includes('JSON')) {
+          errorMessage = '❌ Erreur de communication avec le serveur. Veuillez réessayer.'
+        } else {
+          errorMessage = '❌ ' + err.message
+        }
+      }
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -104,6 +231,28 @@ export default function LoginPage() {
             {error}
           </div>
         )}
+
+        {/* Bouton Google en premier */}
+        <div className="google-signin-container">
+          <div id="google-signin-button"></div>
+          {!import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+            <div className="google-signin-placeholder">
+              <button type="button" className="google-btn-placeholder" disabled>
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.615z" fill="#4285F4"/>
+                  <path d="M9 18c2.43 0 4.467-.806 5.96-2.184l-2.908-2.258c-.806.54-1.837.86-3.052.86-2.347 0-4.33-1.585-5.04-3.715H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+                  <path d="M3.96 10.703c-.18-.54-.282-1.117-.282-1.703s.102-1.163.282-1.703V4.965H.957C.348 6.175 0 7.55 0 9s.348 2.825.957 4.035l3.003-2.332z" fill="#FBBC05"/>
+                  <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.965L3.96 7.297C4.67 5.167 6.653 3.58 9 3.58z" fill="#EA4335"/>
+                </svg>
+                Continuer avec Google
+              </button>
+              <small className="google-config-note">⚠️ Google OAuth non configuré</small>
+            </div>
+          )}
+        </div>
+        <div className="login-divider">
+          <span>ou</span>
+        </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           {!isLogin && (

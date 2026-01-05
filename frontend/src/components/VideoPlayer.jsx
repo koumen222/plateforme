@@ -15,14 +15,14 @@ export default function VideoPlayer({ video, title }) {
 
   const handleUnlockClick = () => {
     if (!isAuthenticated) {
-      // Pas connecté, rediriger vers la page de connexion
-      navigate('/login', { state: { from: { pathname: window.location.pathname } } })
+      // Pas connecté, rediriger vers la page d'inscription
+      navigate('/login', { state: { from: { pathname: window.location.pathname }, register: true } })
     } else if (user && user.status === 'pending') {
       // Connecté mais pas validé, rediriger vers le profil
       navigate('/profil')
     } else {
-      // Autre cas, rediriger vers la connexion
-      navigate('/login', { state: { from: { pathname: window.location.pathname } } })
+      // Autre cas, rediriger vers l'inscription
+      navigate('/login', { state: { from: { pathname: window.location.pathname }, register: true } })
     }
   }
 
@@ -30,8 +30,8 @@ export default function VideoPlayer({ video, title }) {
     if (!isAuthenticated) {
       return {
         title: 'Vidéo verrouillée',
-        message: 'Connectez-vous pour accéder à cette vidéo de formation',
-        button: 'Débloquer la vidéo'
+        message: 'Créez un compte pour accéder à cette vidéo de formation',
+        button: 'S\'inscrire maintenant'
       }
     } else if (user && user.status === 'pending') {
       return {
@@ -43,8 +43,8 @@ export default function VideoPlayer({ video, title }) {
     } else {
       return {
         title: 'Vidéo verrouillée',
-        message: 'Vous devez être connecté pour accéder à cette vidéo',
-        button: 'Débloquer la vidéo'
+        message: 'Créez un compte pour accéder à cette vidéo',
+        button: 'S\'inscrire maintenant'
       }
     }
   }

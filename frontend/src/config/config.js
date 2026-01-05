@@ -17,5 +17,6 @@ const getBackendUrl = () => {
 export const CONFIG = {
   BACKEND_URL: getBackendUrl(),
   MORGAN_PHONE: '23767768377', // Numéro WhatsApp de Morgan (sans + pour l'URL WhatsApp)
-  WHATSAPP_MESSAGE: 'Je veux payer pour avoir mon activation'
+  WHATSAPP_MESSAGE: 'Je veux payer pour avoir mon activation',
+  GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
 };

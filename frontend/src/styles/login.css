@@ -322,3 +322,79 @@
   opacity: 0.6;
 }
 
+/* Styles pour le séparateur et Google Sign-In */
+.login-divider {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 1.5rem 0;
+  color: var(--text-secondary);
+  font-size: 0.794rem;
+}
+
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.login-divider span {
+  padding: 0 1rem;
+}
+
+.google-signin-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  margin-bottom: 0;
+  margin-top: 0.5rem;
+}
+
+.google-signin-container > div {
+  width: 100%;
+  max-width: 100%;
+}
+
+.google-signin-container iframe {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.google-signin-placeholder {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.google-btn-placeholder {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 0.847rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  cursor: not-allowed;
+  opacity: 0.6;
+  transition: all 0.2s ease;
+}
+
+.google-btn-placeholder svg {
+  flex-shrink: 0;
+}
+
+.google-config-note {
+  font-size: 0.688rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+

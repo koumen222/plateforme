@@ -18,15 +18,26 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    required: [true, 'Le numéro de téléphone est requis'],
+    required: false,
     unique: true,
+    sparse: true, // Permet plusieurs null
     trim: true,
     match: [/^[\d\s\-\+\(\)]+$/, 'Numéro de téléphone invalide']
   },
   password: {
     type: String,
-    required: [true, 'Mot de passe est requis'],
+    required: false,
     minlength: 6
+  },
+  googleId: {
+    type: String,
+    unique: true,
+    sparse: true
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
   },
   role: {
     type: String,
@@ -60,8 +71,8 @@ const userSchema = new mongoose.Schema({
 
 // Hash du mot de passe avant sauvegarde
 userSchema.pre('save', async function() {
-  // Si le mot de passe n'a pas été modifié, ne rien faire
-  if (!this.isModified('password')) {
+  // Si le mot de passe n'a pas été modifié ou n'existe pas, ne rien faire
+  if (!this.isModified('password') || !this.password) {
     return;
   }
   

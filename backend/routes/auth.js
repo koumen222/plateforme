@@ -1,9 +1,14 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
+
+// Configuration Google OAuth
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const client = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -131,11 +136,22 @@ router.post('/register', async (req, res) => {
 
     // Validation
     if (!name || !email || !phoneNumber || !password) {
-      return res.status(400).json({ error: 'Tous les champs sont requis (nom, email, téléphone, mot de passe)' });
+      return res.status(400).json({ error: 'Veuillez remplir tous les champs : nom, email, téléphone et mot de passe sont requis' });
     }
 
-    if (name.length < 2) {
+    if (name.trim().length < 2) {
       return res.status(400).json({ error: 'Le nom doit contenir au moins 2 caractères' });
+    }
+
+    // Validation de l'email
+    const emailRegex = /^\S+@\S+\.\S+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Veuillez entrer une adresse email valide (exemple : votre@email.com)' });
+    }
+
+    // Validation du téléphone
+    if (phoneNumber.trim().length < 5) {
+      return res.status(400).json({ error: 'Veuillez entrer un numéro de téléphone valide' });
     }
 
     if (password.length < 6) {
@@ -145,13 +161,13 @@ router.post('/register', async (req, res) => {
     // Vérifier si l'email est déjà utilisé
     const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
     if (existingUserByEmail) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      return res.status(400).json({ error: 'Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous avec ce compte.' });
     }
 
     // Vérifier si le numéro de téléphone est déjà utilisé
     const existingUserByPhone = await User.findOne({ phoneNumber: phoneNumber.trim() });
     if (existingUserByPhone) {
-      return res.status(400).json({ error: 'Ce numéro de téléphone est déjà utilisé' });
+      return res.status(400).json({ error: 'Ce numéro de téléphone est déjà utilisé. Utilisez un autre numéro ou connectez-vous avec ce compte.' });
     }
 
     // Créer un utilisateur étudiant avec status: "pending"
@@ -233,13 +249,21 @@ router.post('/register', async (req, res) => {
     console.error('❌ Erreur registration:', error);
     console.error('   Stack:', error.stack);
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      // Erreur de duplication MongoDB
+      if (error.keyPattern?.email) {
+        return res.status(400).json({ error: 'Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous avec ce compte.' });
+      } else if (error.keyPattern?.phoneNumber) {
+        return res.status(400).json({ error: 'Ce numéro de téléphone est déjà utilisé. Utilisez un autre numéro ou connectez-vous avec ce compte.' });
+      }
+      return res.status(400).json({ error: 'Ces informations sont déjà utilisées. Utilisez d\'autres informations ou connectez-vous.' });
     }
     if (error.name === 'ValidationError') {
-      return res.status(400).json({ error: error.message });
+      // Messages d'erreur de validation plus clairs
+      const validationErrors = Object.values(error.errors).map(err => err.message).join(', ');
+      return res.status(400).json({ error: `Erreur de validation : ${validationErrors}` });
     }
     res.status(500).json({ 
-      error: 'Erreur lors de la création du compte',
+      error: 'Une erreur est survenue lors de la création de votre compte. Veuillez réessayer dans quelques instants.',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -252,7 +276,7 @@ router.post('/login', async (req, res) => {
 
     // Validation
     if (!emailOrPhone || !password) {
-      return res.status(400).json({ error: 'Email/téléphone et mot de passe requis' });
+      return res.status(400).json({ error: 'Veuillez remplir tous les champs : email/téléphone et mot de passe sont requis' });
     }
 
     // Déterminer si c'est un email ou un numéro de téléphone
@@ -270,7 +294,7 @@ router.post('/login', async (req, res) => {
 
     if (!user) {
       console.log(`❌ Utilisateur non trouvé avec ${isEmail ? 'email' : 'téléphone'}: ${emailOrPhone}`);
-      return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect' });
+      return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.' });
     }
     
     console.log(`✅ Utilisateur trouvé: ${user.name} (${user.email}, ${user.phoneNumber})`);
@@ -280,13 +304,19 @@ router.post('/login', async (req, res) => {
     // Vérifier le mot de passe
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
-      return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect' });
+      return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.' });
     }
 
     // Vérifier le statut de l'utilisateur
     if (user.status !== 'active') {
+      let statusMessage = 'Votre compte est en attente de validation par l\'administrateur. Contactez l\'administrateur pour activer votre compte.';
+      if (user.status === 'pending') {
+        statusMessage = 'Votre compte est en attente d\'activation. Contactez l\'administrateur via WhatsApp pour finaliser votre paiement et activer votre compte.';
+      } else if (user.status === 'inactive') {
+        statusMessage = 'Votre compte est inactif. Contactez l\'administrateur pour réactiver votre compte.';
+      }
       return res.status(403).json({ 
-        error: 'Compte en attente de validation par l\'administrateur',
+        error: statusMessage,
         status: user.status
       });
     }
@@ -319,7 +349,100 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur login:', error);
-    res.status(500).json({ error: 'Erreur lors de la connexion' });
+    res.status(500).json({ error: 'Une erreur est survenue lors de la connexion. Veuillez réessayer dans quelques instants.' });
+  }
+});
+
+// POST /api/auth/google - Authentification Google
+router.post('/auth/google', async (req, res) => {
+  try {
+    if (!client) {
+      return res.status(500).json({ error: 'Authentification Google non configurée' });
+    }
+
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({ error: 'Token Google manquant' });
+    }
+
+    // Vérifier le token Google
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: GOOGLE_CLIENT_ID,
+    });
+
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email non fourni par Google' });
+    }
+
+    // Chercher un utilisateur existant par googleId ou email
+    let user = await User.findOne({
+      $or: [
+        { googleId },
+        { email: email.toLowerCase() }
+      ]
+    });
+
+    if (user) {
+      // Utilisateur existant - mise à jour si nécessaire
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+        if (!user.name && name) {
+          user.name = name;
+        }
+        await user.save();
+      }
+    } else {
+      // Nouvel utilisateur - créer le compte
+      user = new User({
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        googleId,
+        authProvider: 'google',
+        role: 'student',
+        status: 'pending', // En attente de validation par l'admin
+        // phoneNumber et password sont optionnels pour les utilisateurs Google
+      });
+
+      await user.save();
+    }
+
+    // Générer le token JWT
+    const token = jwt.sign(
+      { userId: user._id, email: user.email, status: user.status, role: user.role },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
+
+    const userResponse = {
+      id: user._id.toString(),
+      _id: user._id.toString(),
+      name: user.name || '',
+      email: user.email,
+      phoneNumber: user.phoneNumber || '',
+      status: user.status,
+      role: user.role,
+      authProvider: user.authProvider,
+      createdAt: user.createdAt
+    };
+
+    console.log(`✅ Authentification Google réussie - Utilisateur: ${userResponse.name} (${userResponse.email})`);
+
+    res.json({
+      message: user.status === 'active' ? 'Connexion réussie' : 'Compte créé avec succès',
+      token,
+      user: userResponse
+    });
+  } catch (error) {
+    console.error('❌ Erreur authentification Google:', error);
+    res.status(500).json({ 
+      error: 'Une erreur est survenue lors de l\'authentification Google. Veuillez réessayer.' 
+    });
   }
 });
 

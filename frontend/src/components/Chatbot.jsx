@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 
 const SYSTEM_PROMPT = `Tu es un assistant expert en formation Facebook Ads et méthode Andromeda. Tu as accès à tout le contenu détaillé de la formation. Réponds de manière concise, professionnelle et en français.
@@ -93,6 +94,7 @@ PRINCIPES CLÉS DE LA MÉTHODE ANDROMEDA :
 Utilise ce contenu pour répondre précisément aux questions des utilisateurs sur la formation.`
 
 export default function Chatbot() {
+  const { token, isAuthenticated, user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
     {
@@ -115,6 +117,23 @@ export default function Chatbot() {
     const message = input.trim()
     if (!message || loading) return
 
+    // Vérifier que l'utilisateur est connecté et actif
+    if (!isAuthenticated || !token) {
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        content: '⚠️ Vous devez être connecté pour utiliser le chatbot. Veuillez vous connecter ou vous inscrire.' 
+      }])
+      return
+    }
+
+    if (user && user.status !== 'active') {
+      setMessages(prev => [...prev, { 
+        role: 'bot', 
+        content: '⚠️ Votre compte doit être actif pour accéder au chatbot. Contactez l\'administrateur pour activer votre compte.' 
+      }])
+      return
+    }
+
     const userMessage = { role: 'user', content: message }
     setMessages(prev => [...prev, userMessage])
     conversationHistoryRef.current.push(userMessage)
@@ -124,15 +143,29 @@ export default function Chatbot() {
     try {
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({
           message,
           conversationHistory: conversationHistoryRef.current
         })
       })
 
+      // Gestion des erreurs HTTP spécifiques
       if (!response.ok) {
-        throw new Error('Erreur API')
+        const errorData = await response.json().catch(() => ({}))
+        
+        if (response.status === 401) {
+          throw new Error('Votre session a expiré. Veuillez vous reconnecter.')
+        } else if (response.status === 403) {
+          throw new Error(errorData.error || 'Votre compte doit être actif pour accéder au chatbot.')
+        } else if (response.status === 500) {
+          throw new Error('Erreur serveur. Veuillez réessayer dans quelques instants.')
+        } else {
+          throw new Error(errorData.error || 'Erreur lors de la communication avec le serveur.')
+        }
       }
 
       const data = await response.json()
@@ -141,9 +174,22 @@ export default function Chatbot() {
       setMessages(prev => [...prev, { role: 'bot', content: botMessage }])
       conversationHistoryRef.current.push({ role: 'assistant', content: botMessage })
     } catch (error) {
+      // Messages d'erreur spécifiques selon le type d'erreur
+      let errorMessage = '❌ Erreur de connexion.'
+      
+      if (error.message) {
+        errorMessage = `❌ ${error.message}`
+      } else if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+        errorMessage = '❌ Impossible de se connecter au serveur. Vérifiez que le backend est démarré et que votre connexion internet fonctionne.'
+      } else if (error.message.includes('NetworkError') || error.message.includes('fetch')) {
+        errorMessage = '❌ Problème de connexion réseau. Vérifiez votre connexion internet.'
+      } else {
+        errorMessage = '❌ Erreur lors de la communication avec le serveur. Veuillez réessayer.'
+      }
+      
       setMessages(prev => [...prev, { 
         role: 'bot', 
-        content: '❌ Erreur de connexion. Vérifiez votre connexion internet et que le backend est démarré.' 
+        content: errorMessage
       }])
     } finally {
       setLoading(false)
