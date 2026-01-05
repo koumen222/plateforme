@@ -50,6 +50,12 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
+// Middleware de logging pour debug
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.originalUrl}`, req.body ? 'avec body' : 'sans body');
+  next();
+});
+
 // Routes
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -60,8 +66,10 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
 });
 
-// Routes d'authentification
+// Routes d'authentification (doit être avant les autres routes /api)
+console.log('📋 Chargement des routes d\'authentification...');
 app.use("/api", authRoutes);
+console.log('✅ Routes d\'authentification chargées: /api/register, /api/login, /api/user/me, /api/profile, /api/admin/*');
 
 // Routes protégées (vidéos)
 app.use("/api", videoRoutes);
@@ -109,6 +117,22 @@ app.post("/api/chat", authenticate, async (req, res) => {
     console.error(err);
     res.status(500).json({ error: "OpenAI error" });
   }
+});
+
+// Middleware de gestion des routes non trouvées (doit être après toutes les routes)
+app.use((req, res, next) => {
+  console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ 
+    error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
+    availableRoutes: [
+      'POST /api/register',
+      'POST /api/login',
+      'GET /api/user/me',
+      'PUT /api/profile',
+      'POST /api/admin/register',
+      'GET /api/admin/check'
+    ]
+  });
 });
 
 const PORT = process.env.PORT || 3000;
@@ -162,6 +186,14 @@ const startServer = async () => {
     app.listen(PORT, () => {
       console.log(`🚀 Backend running on port ${PORT}`);
       console.log(`📡 API disponible sur http://localhost:${PORT}`);
+      console.log(`\n📋 Routes disponibles:`);
+      console.log(`   POST /api/register - Inscription utilisateur`);
+      console.log(`   POST /api/login - Connexion`);
+      console.log(`   GET  /api/user/me - Profil utilisateur`);
+      console.log(`   PUT  /api/profile - Mise à jour profil`);
+      console.log(`   POST /api/admin/register - Inscription admin`);
+      console.log(`   GET  /api/admin/check - Vérifier admin`);
+      console.log(`\n✅ Serveur prêt à recevoir des requêtes!\n`);
     });
   } catch (error) {
     console.error('❌ Impossible de démarrer le serveur:', error);
