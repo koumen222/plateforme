@@ -98,7 +98,7 @@ app.use("/api/admin", adminRoutes);
 
 // Route chatbot (protégée - nécessite statut active)
 app.post("/api/chat", authenticate, async (req, res) => {
-  const { message } = req.body;
+  const { message, conversationHistory } = req.body;
 
   try {
     // Vérifier que l'utilisateur est actif
@@ -109,6 +109,27 @@ app.post("/api/chat", authenticate, async (req, res) => {
       });
     }
 
+    if (!message) {
+      return res.status(400).json({ error: 'Le message est requis' });
+    }
+
+    // Préparer les messages pour OpenAI
+    // Utiliser l'historique de conversation si fourni, sinon créer un nouveau contexte
+    let messages = [];
+    
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      // Filtrer et formater l'historique (exclure les messages système pour OpenAI)
+      messages = conversationHistory
+        .filter(msg => msg.role !== 'system')
+        .map(msg => ({
+          role: msg.role === 'bot' ? 'assistant' : msg.role,
+          content: msg.content
+        }));
+    } else {
+      // Si pas d'historique, créer un message simple
+      messages = [{ role: "user", content: message }];
+    }
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -117,15 +138,31 @@ app.post("/api/chat", authenticate, async (req, res) => {
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: [{ role: "user", content: message }]
+        messages: messages
       })
     });
 
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('Erreur OpenAI API:', errorData);
+      return res.status(response.status).json({ 
+        error: errorData.error?.message || 'Erreur lors de la communication avec OpenAI' 
+      });
+    }
+
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('Format de réponse OpenAI inattendu:', data);
+      return res.status(500).json({ error: 'Format de réponse OpenAI inattendu' });
+    }
+
     res.json({ reply: data.choices[0].message.content });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "OpenAI error" });
+    console.error('Erreur chatbot:', err);
+    res.status(500).json({ 
+      error: err.message || "Erreur lors du traitement de votre message" 
+    });
   }
 });
 
@@ -139,6 +176,8 @@ app.use((req, res, next) => {
       'POST /api/login',
       'GET /api/user/me',
       'PUT /api/profile',
+      'POST /api/auth/google',
+      'POST /api/chat',
       'POST /api/admin/register',
       'GET /api/admin/check'
     ]
