@@ -138,15 +138,16 @@
 .profile-notice-content h3 {
   font-size: 1.05875rem;
   font-weight: 700;
-  color: #fbbf24;
+  color: #ffffff;
   margin: 0 0 0.75rem 0;
 }
 
 .profile-notice-content p {
-  color: #fbbf24;
+  color: #ffffff;
   margin: 0 0 1rem 0;
   line-height: 1.6;
   font-size: 0.847rem;
+  opacity: 0.95;
 }
 
 .whatsapp-btn {
