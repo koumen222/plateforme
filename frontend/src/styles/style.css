@@ -405,6 +405,7 @@ body {
     text-align: center;
     padding: 1.2rem;
     max-width: 400px;
+    width: 100%;
 }
 
 .video-lock-icon {
@@ -427,15 +428,16 @@ body {
 .video-lock-content h3 {
     font-size: 1.2705rem;
     font-weight: 700;
-    color: var(--text-primary);
+    color: #ffffff;
     margin-bottom: 0.75rem;
 }
 
 .video-lock-content p {
     font-size: 0.847rem;
-    color: var(--text-secondary);
+    color: #ffffff;
     margin-bottom: 1.2rem;
     line-height: 1.6;
+    opacity: 0.95;
 }
 
 .video-lock-actions {
@@ -868,7 +870,38 @@ body {
     .video-container,
     .summary-card,
     .downloads-section {
-        padding: 1.25rem;
+        padding: 1rem;
+    }
+
+    .video-lock-content {
+        padding: 1rem;
+        max-width: 100%;
+    }
+
+    .video-lock-content h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .video-lock-content p {
+        font-size: 0.8rem;
+        margin-bottom: 1rem;
+        padding: 0 0.5rem;
+    }
+
+    .video-lock-icon {
+        font-size: 2.5rem;
+        margin-bottom: 0.6rem;
+    }
+
+    .video-lock-actions {
+        gap: 0.6rem;
+    }
+
+    .video-unlock-btn,
+    .video-whatsapp-btn {
+        padding: 0.75rem 1.5rem;
+        font-size: 0.8rem;
     }
 
     .mobile-menu-toggle {
@@ -1351,6 +1384,35 @@ body {
 }
 
 @media (max-width: 480px) {
+    .video-lock-content {
+        padding: 0.8rem;
+    }
+
+    .video-lock-content h3 {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .video-lock-content p {
+        font-size: 0.75rem;
+        margin-bottom: 0.8rem;
+        padding: 0 0.3rem;
+    }
+
+    .video-lock-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .video-unlock-btn,
+    .video-whatsapp-btn {
+        padding: 0.65rem 1.2rem;
+        font-size: 0.75rem;
+    }
+
+    .video-container {
+        padding: 0.8rem;
+    }
     .chatbot-toggle {
         bottom: 0.75rem;
         right: 0.75rem;

@@ -31,7 +31,7 @@ export default function VideoPlayer({ video, title }) {
       return {
         title: 'Vidéo verrouillée',
         message: 'Connectez-vous pour accéder à cette vidéo de formation',
-        button: 'Se connecter'
+        button: 'Débloquer la vidéo'
       }
     } else if (user && user.status === 'pending') {
       return {
@@ -44,7 +44,7 @@ export default function VideoPlayer({ video, title }) {
       return {
         title: 'Vidéo verrouillée',
         message: 'Vous devez être connecté pour accéder à cette vidéo',
-        button: 'Se connecter'
+        button: 'Débloquer la vidéo'
       }
     }
   }
