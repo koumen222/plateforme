@@ -57,6 +57,28 @@ app.use((req, res, next) => {
 });
 
 // Routes
+// Route racine pour vérifier que le service est en ligne (nécessaire pour Render)
+app.get("/", (req, res) => {
+  res.json({
+    status: "ok",
+    message: "Backend API Plateforme Andromeda is running",
+    version: "1.0.0",
+    endpoints: {
+      health: "/health",
+      test: "/api/test",
+      register: "POST /api/register",
+      login: "POST /api/login",
+      profile: "GET /api/user/me",
+      updateProfile: "PUT /api/profile"
+    }
+  });
+});
+
+// Route HEAD pour la racine (nécessaire pour les health checks)
+app.head("/", (req, res) => {
+  res.status(200).end();
+});
+
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
