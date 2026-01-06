@@ -124,17 +124,39 @@ export default function Sidebar() {
                  </ul>
                </nav>
 
-               {isAuthenticated && user?.status === 'active' && (
-                 <div className="sidebar-comments-link">
-                   <Link
-                     to="/commentaires"
-                     className={`sidebar-auth-link ${location.pathname === '/commentaires' ? 'active' : ''}`}
-                     onClick={() => setIsOpen(false)}
-                   >
-                     💬 Commentaires
-                   </Link>
-                 </div>
-               )}
+                 {isAuthenticated && user?.status === 'active' && (
+                   <>
+                     <div className="sidebar-comments-link">
+                       <Link
+                         to="/commentaires"
+                         className={`sidebar-auth-link ${location.pathname === '/commentaires' ? 'active' : ''}`}
+                         onClick={() => setIsOpen(false)}
+                       >
+                         💬 Commentaires
+                       </Link>
+                     </div>
+                     <div className="sidebar-comments-link">
+                       <Link
+                         to="/produits-gagnants"
+                         className={`sidebar-auth-link ${location.pathname === '/produits-gagnants' ? 'active' : ''}`}
+                         onClick={() => setIsOpen(false)}
+                       >
+                         🏆 Produits Gagnants
+                       </Link>
+                     </div>
+                     <div className="sidebar-comments-link">
+                       <a
+                         href="/meta-sandbox/index.html"
+                         target="_blank"
+                         rel="noopener noreferrer"
+                         className="sidebar-auth-link"
+                         onClick={() => setIsOpen(false)}
+                       >
+                         📊 Simulateur Ads
+                       </a>
+                     </div>
+                   </>
+                 )}
         
         {isAuthenticated && user?.status === 'active' && (
           <div className="sidebar-progress">
