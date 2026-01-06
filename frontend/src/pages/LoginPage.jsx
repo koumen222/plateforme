@@ -30,6 +30,35 @@ export default function LoginPage() {
       const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
     }
+    
+    // Vérifier les paramètres d'erreur dans l'URL
+    const urlParams = new URLSearchParams(location.search)
+    const errorParam = urlParams.get('error')
+    if (errorParam) {
+      let errorMessage = ''
+      switch (errorParam) {
+        case 'no_token':
+          errorMessage = '❌ Erreur d\'authentification : token manquant. Veuillez réessayer.'
+          break
+        case 'no_user':
+          errorMessage = '❌ Erreur d\'authentification : utilisateur non trouvé. Veuillez réessayer.'
+          break
+        case 'invalid_user_id':
+          errorMessage = '❌ Erreur d\'authentification : identifiant utilisateur invalide. Veuillez réessayer.'
+          break
+        case 'google_auth_failed':
+          errorMessage = '❌ L\'authentification Google a échoué. Veuillez réessayer.'
+          break
+        case 'callback_error':
+          errorMessage = '❌ Erreur lors du traitement de l\'authentification. Veuillez réessayer.'
+          break
+        default:
+          errorMessage = `❌ Erreur d'authentification : ${errorParam}. Veuillez réessayer.`
+      }
+      setError(errorMessage)
+      // Nettoyer l'URL en supprimant le paramètre d'erreur
+      navigate(location.pathname, { replace: true })
+    }
   }, [isAuthenticated, navigate, location])
 
   // Fermer le dropdown de pays quand on clique ailleurs
