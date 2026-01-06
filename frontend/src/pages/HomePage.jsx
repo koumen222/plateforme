@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { CONFIG } from '../config/config'
+import { getImageUrl } from '../utils/imageUtils'
 import axios from 'axios'
 import '../styles/home.css'
 
@@ -105,18 +106,14 @@ export default function HomePage() {
           >
             <div className="course-card-image">
               <img
-                src={
-                  course.coverImage 
-                    ? (course.coverImage.startsWith('http')
-                        ? course.coverImage 
-                        : course.coverImage.startsWith('/img/') || course.coverImage.startsWith('/assets/')
-                        ? course.coverImage
-                        : `${CONFIG.BACKEND_URL}${course.coverImage.startsWith('/') ? course.coverImage : '/' + course.coverImage}`)
-                    : '/img/fbads.svg'
-                }
+                src={getImageUrl(course.coverImage)}
                 alt={course.title}
                 onError={(e) => {
-                  e.target.src = '/img/fbads.svg'
+                  // En cas d'erreur, essayer l'image par défaut
+                  const defaultImg = '/img/fbads.svg'
+                  if (e.target.src !== defaultImg && !e.target.src.includes(defaultImg)) {
+                    e.target.src = defaultImg
+                  }
                 }}
               />
               {course.isDefault && (

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
+import { getImageUrl } from '../../utils/imageUtils'
 import axios from 'axios'
 import '../../styles/admin.css'
 import '../../styles/admin-courses.css'
@@ -679,9 +680,7 @@ export default function AdminCoursesPage() {
                       Aperçu:
                     </div>
                     <img
-                      src={formData.coverImage.startsWith('http') || formData.coverImage.startsWith('/') 
-                        ? formData.coverImage 
-                        : `${CONFIG.BACKEND_URL}${formData.coverImage}`}
+                      src={getImageUrl(formData.coverImage)}
                       alt="Aperçu"
                       style={{
                         width: '100%',
@@ -908,9 +907,7 @@ export default function AdminCoursesPage() {
                                       Aperçu:
                                     </div>
                                     <img
-                                      src={editCourseForm.coverImage.startsWith('http') || editCourseForm.coverImage.startsWith('/') 
-                                        ? editCourseForm.coverImage 
-                                        : `${CONFIG.BACKEND_URL}${editCourseForm.coverImage}`}
+                                      src={getImageUrl(editCourseForm.coverImage)}
                                       alt="Aperçu"
                                       style={{
                                         width: '100%',
@@ -990,9 +987,7 @@ export default function AdminCoursesPage() {
                             {expandedCourse.coverImage && (
                               <div style={{ marginTop: '0.75rem' }}>
                                 <img
-                                  src={expandedCourse.coverImage.startsWith('http') || expandedCourse.coverImage.startsWith('/') 
-                                    ? expandedCourse.coverImage 
-                                    : `${CONFIG.BACKEND_URL}${expandedCourse.coverImage}`}
+                                  src={getImageUrl(expandedCourse.coverImage)}
                                   alt={expandedCourse.title}
                                   style={{
                                     width: '100%',
