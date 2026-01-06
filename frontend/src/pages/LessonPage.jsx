@@ -10,7 +10,7 @@ import '../styles/comments.css'
 import '../styles/profile.css'
 
 export default function LessonPage({ lesson }) {
-  const { user, token, isAuthenticated, setUser } = useAuth()
+  const { user, token, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const [isCompleted, setIsCompleted] = useState(false)
   const [isMarking, setIsMarking] = useState(false)
@@ -79,30 +79,8 @@ export default function LessonPage({ lesson }) {
   const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
 
-  // Charger l'utilisateur automatiquement sur la page d'accueil
-  useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken) {
-      axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${storedToken}`
-        },
-        withCredentials: true
-      })
-      .then(res => {
-        if (res.data.success && res.data.user) {
-          setUser(res.data.user);
-        }
-      })
-      .catch(error => {
-        // Ignorer silencieusement les erreurs 401 (utilisateur non connecté)
-        if (error.response?.status !== 401) {
-          console.error('Erreur lors du chargement de l\'utilisateur:', error);
-        }
-        setUser(null);
-      });
-    }
-  }, []);
+  // Ne pas charger l'utilisateur ici - il est déjà géré par AuthContext
+  // L'utilisateur est déjà disponible via le hook useAuth()
 
   useEffect(() => {
     if (isAuthenticated && user?.status === 'active' && token && lesson) {
