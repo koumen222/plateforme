@@ -460,7 +460,7 @@ export default function AdminCoursesPage() {
     setEditCourseForm({
       title: course.title || '',
       description: course.description || '',
-      coverImage: course.coverImage || '/img/fbads.png',
+      coverImage: course.coverImage || '/img/fbads.svg',
       slug: course.slug || '',
       isDefault: course.isDefault || false,
       isPublished: course.isPublished || false
