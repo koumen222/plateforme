@@ -7,7 +7,7 @@ import { authenticate } from '../middleware/auth.js';
 const router = express.Router();
 
 // Configuration Google OAuth
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
 const client = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';

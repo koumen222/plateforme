@@ -13,13 +13,29 @@ npm install
 
 ## Configuration
 
-Créez un fichier `.env` à la racine du dossier `backend/` avec votre clé API OpenAI :
+Créez un fichier `.env` à la racine du dossier `backend/` avec vos clés API :
 
 ```env
+# MongoDB
+MONGO_URI=mongodb://localhost:27017/plateforme-formation
+
+# JWT
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRES_IN=7d
+
+# Google OAuth (déjà configuré par défaut, peut être surchargé)
+GOOGLE_CLIENT_ID=1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
+# OpenAI API (pour le chatbot)
 OPENAI_API_KEY=votre_cle_api_openai_ici
+
+# Frontend URL (pour CORS)
+FRONTEND_URL=http://localhost:5173
 PORT=3000
-FRONTEND_URL=https://votre-frontend.com  # Optionnel : pour configurer CORS
 ```
+
+**Note :** Le `GOOGLE_CLIENT_ID` est déjà configuré par défaut dans le code. Vous pouvez le surcharger avec une variable d'environnement si nécessaire.
 
 ## Démarrage en développement
 

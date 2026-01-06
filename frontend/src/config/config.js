@@ -18,5 +18,5 @@ export const CONFIG = {
   BACKEND_URL: getBackendUrl(),
   MORGAN_PHONE: '237676778377', // Numéro WhatsApp de Morgan (sans + pour l'URL WhatsApp)
   WHATSAPP_MESSAGE: 'Je veux payer pour avoir mon activation',
-  GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || ''
+  GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com'
 };

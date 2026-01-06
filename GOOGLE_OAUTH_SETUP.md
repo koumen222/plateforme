@@ -28,13 +28,16 @@
 
 #### Backend (.env)
 ```env
-GOOGLE_CLIENT_ID=votre-client-id-google.apps.googleusercontent.com
+GOOGLE_CLIENT_ID=1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
 ```
 
 #### Frontend (.env)
 ```env
-VITE_GOOGLE_CLIENT_ID=votre-client-id-google.apps.googleusercontent.com
+VITE_GOOGLE_CLIENT_ID=1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com
 ```
+
+**Note :** Le client_id est déjà configuré par défaut dans `config.js`. Vous pouvez le surcharger avec une variable d'environnement si nécessaire.
 
 ### 4. Redémarrer les serveurs
 
