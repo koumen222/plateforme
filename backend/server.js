@@ -163,16 +163,37 @@ app.get("/auth/google/callback",
   }),
   async (req, res) => {
     try {
+      console.log('🔐 ========== GOOGLE CALLBACK HANDLER ==========');
       const user = req.user;
+      
       if (!user) {
-        return res.redirect(`${FRONTEND_URL}/login`);
+        console.error('❌ Pas d\'utilisateur dans req.user');
+        return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
       }
 
+      console.log('   - User reçu:', JSON.stringify(user, null, 2));
+      console.log('   - User._id:', user._id);
+      console.log('   - User._id type:', typeof user._id);
+      console.log('   - User status:', user.status);
+      console.log('   - User role:', user.role);
+
+      // S'assurer que _id est une string (peut être un ObjectId)
+      const userId = user._id ? user._id.toString() : null;
+      
+      if (!userId) {
+        console.error('❌ User ID manquant ou invalide');
+        return res.redirect(`${FRONTEND_URL}/login?error=invalid_user_id`);
+      }
+
+      console.log('   - User ID pour JWT:', userId);
+
       const token = jwt.sign(
-        { userId: user._id, status: user.status, role: user.role },
+        { userId: userId, status: user.status || 'pending', role: user.role || 'student' },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
+
+      console.log('   - Token JWT généré avec succès');
 
       res.cookie("safitech_token", token, {
         httpOnly: true,
@@ -181,11 +202,20 @@ app.get("/auth/google/callback",
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
+      console.log('   - Cookie safitech_token défini');
+      console.log('   - Redirection vers:', `${FRONTEND_URL}/auth/callback`);
+      console.log('🔐 ========== FIN GOOGLE CALLBACK ==========');
+
       // Rediriger vers la page de callback pour finaliser l'authentification
       return res.redirect(`${FRONTEND_URL}/auth/callback`);
     } catch (error) {
-      console.error("Google callback error:", error);
-      return res.redirect(`${FRONTEND_URL}/login`);
+      console.error("❌ ========== ERREUR GOOGLE CALLBACK ==========");
+      console.error("   - Error message:", error.message);
+      console.error("   - Error stack:", error.stack);
+      console.error("   - Error name:", error.name);
+      console.error("   - req.user:", req.user);
+      console.error("❌ ===========================================");
+      return res.redirect(`${FRONTEND_URL}/login?error=callback_error`);
     }
   }
 );

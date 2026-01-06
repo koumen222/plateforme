@@ -60,20 +60,55 @@ export const configurePassport = () => {
 
       if (!user) {
         console.log('   - Nouvel utilisateur à créer');
-        // Nouvel utilisateur - créer le compte avec User.create()
-        // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
-        // 🔥 Traitement identique aux utilisateurs classiques : status "pending" jusqu'à validation admin
-        user = await User.create({
-          name: profile.displayName || email.split('@')[0],
-          email: profile.emails?.[0]?.value || email.toLowerCase(),
-          googleId: profile.id,
-          authProvider: "google",
-          emailVerified: false, // Même règle que les utilisateurs classiques
-          accountStatus: "pending", // Même règle que les utilisateurs classiques
-          role: 'student',
-          status: 'pending' // Même règle que les utilisateurs classiques
-        });
-        console.log('   - ✅ Nouvel utilisateur créé:', user.email);
+        
+        // Vérifier si un utilisateur existe déjà avec cet email
+        const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
+        if (existingUserByEmail) {
+          console.log('   - ⚠️ Utilisateur existant avec cet email, mise à jour avec googleId');
+          // Mettre à jour l'utilisateur existant pour ajouter googleId et changer authProvider
+          existingUserByEmail.googleId = googleId;
+          existingUserByEmail.authProvider = "google";
+          if (!existingUserByEmail.name && name) {
+            existingUserByEmail.name = name;
+          }
+          await existingUserByEmail.save();
+          user = existingUserByEmail;
+          console.log('   - ✅ Utilisateur mis à jour avec Google OAuth');
+        } else {
+          // Nouvel utilisateur - créer le compte avec User.create()
+          // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
+          // 🔥 Traitement identique aux utilisateurs classiques : status "pending" jusqu'à validation admin
+          try {
+            user = await User.create({
+              name: profile.displayName || email.split('@')[0],
+              email: profile.emails?.[0]?.value || email.toLowerCase(),
+              googleId: profile.id,
+              authProvider: "google",
+              emailVerified: false, // Même règle que les utilisateurs classiques
+              accountStatus: "pending", // Même règle que les utilisateurs classiques
+              role: 'student',
+              status: 'pending' // Même règle que les utilisateurs classiques
+            });
+            console.log('   - ✅ Nouvel utilisateur créé:', user.email);
+          } catch (createError) {
+            console.error('   - ❌ Erreur lors de la création de l\'utilisateur:', createError);
+            // Si l'erreur est due à un email dupliqué, essayer de récupérer l'utilisateur
+            if (createError.code === 11000 && createError.keyPattern?.email) {
+              console.log('   - Email déjà utilisé, récupération de l\'utilisateur existant');
+              user = await User.findOne({ email: email.toLowerCase() });
+              if (user) {
+                user.googleId = googleId;
+                user.authProvider = "google";
+                await user.save();
+                console.log('   - ✅ Utilisateur mis à jour avec Google OAuth');
+              } else {
+                throw createError;
+              }
+            } else {
+              throw createError;
+            }
+          }
+        }
         console.log('   - User ID:', user._id);
         console.log('   - Status: pending (en attente de validation admin)');
       } else {
@@ -89,20 +124,30 @@ export const configurePassport = () => {
       }
 
       console.log('🔐 ========== FIN PASSPORT STRATEGY ==========');
+      
+      // Vérifier que l'utilisateur a un _id valide
+      if (!user || !user._id) {
+        console.error('❌ ERREUR: Utilisateur sans _id valide');
+        return done(new Error('Utilisateur sans ID valide'), null);
+      }
+      
       // Convertir l'objet User MongoDB en objet simple pour la session
       const userObj = {
-        _id: user._id,
+        _id: user._id.toString(), // S'assurer que _id est une string
         googleId: user.googleId,
         name: user.name,
         email: user.email,
-        status: user.status,
-        role: user.role,
-        authProvider: user.authProvider
+        status: user.status || 'pending',
+        role: user.role || 'student',
+        authProvider: user.authProvider || 'google'
       };
+      
       // Ne pas inclure phoneNumber si il est null/undefined (évite les problèmes d'index)
       if (user.phoneNumber) {
         userObj.phoneNumber = user.phoneNumber;
       }
+      
+      console.log('   - UserObj créé:', JSON.stringify(userObj, null, 2));
       return done(null, userObj);
     } catch (error) {
       console.error('❌ ========== ERREUR PASSPORT STRATEGY ==========');
