@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { lessons } from '../data/lessons'
+import PayButton from '../components/PayButton'
 import '../styles/profile.css'
 
 export default function ProfilePage() {
@@ -161,7 +162,46 @@ export default function ProfilePage() {
   }
 
   if (!user) {
-    return null
+    return (
+      <div className="profile-container">
+        <div className="profile-header">
+          <h1>👤 Mon Profil</h1>
+          <p>Chargement de vos informations...</p>
+        </div>
+        <div className="profile-card">
+          <div style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            padding: '3rem',
+            textAlign: 'center'
+          }}>
+            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+            <p style={{ color: 'var(--text-secondary)' }}>Chargement de votre profil...</p>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              Si cette page ne se charge pas, veuillez vous reconnecter.
+            </p>
+            <button
+              onClick={() => navigate('/login')}
+              style={{
+                marginTop: '1.5rem',
+                padding: '0.75rem 1.5rem',
+                backgroundColor: 'var(--primary-color)',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '1rem',
+                fontWeight: 'bold'
+              }}
+            >
+              Se connecter
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   const getStatusLabel = (status) => {
