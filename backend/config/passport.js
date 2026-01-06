@@ -18,10 +18,17 @@ export const configurePassport = () => {
   // Les URIs autorisés dans Google Cloud Console sont :
   // - http://localhost:3000/auth/google/callback (développement)
   // - https://www.safitech.shop/auth/google/callback (production)
+  // - https://votre-app.onrender.com/auth/google/callback (Render)
   const getCallbackURL = () => {
     // Si GOOGLE_CALLBACK_URL est défini explicitement, l'utiliser
     if (process.env.GOOGLE_CALLBACK_URL) {
       return process.env.GOOGLE_CALLBACK_URL;
+    }
+    
+    // Sur Render, utiliser RENDER_EXTERNAL_URL si disponible
+    if (process.env.RENDER_EXTERNAL_URL) {
+      const renderUrl = process.env.RENDER_EXTERNAL_URL.replace(/\/$/, ''); // Enlever le slash final
+      return `${renderUrl}/auth/google/callback`;
     }
     
     // En développement local
@@ -38,6 +45,9 @@ export const configurePassport = () => {
   console.log('🔐 Configuration Google OAuth:');
   console.log('   - Client ID:', GOOGLE_CLIENT_ID.substring(0, 30) + '...');
   console.log('   - Callback URL:', callbackURL);
+  console.log('   - RENDER_EXTERNAL_URL:', process.env.RENDER_EXTERNAL_URL || 'non défini');
+  console.log('   - GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'non défini');
+  console.log('   - NODE_ENV:', process.env.NODE_ENV || 'non défini');
 
   // Configuration de la stratégie Google OAuth
   passport.use(new GoogleStrategy({

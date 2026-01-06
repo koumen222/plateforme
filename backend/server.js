@@ -62,15 +62,23 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
+// Configuration pour Render (trust proxy)
+// Sur Render, le serveur est derrière un proxy, il faut faire confiance au proxy
+if (process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production') {
+  app.set('trust proxy', 1);
+  console.log('🔒 Trust proxy activé pour Render/production');
+}
+
 // Configuration de la session pour Passport
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en production
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 heures
+    maxAge: 24 * 60 * 60 * 1000, // 24 heures
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Pour OAuth cross-domain
   }
 }));
 
@@ -81,9 +89,17 @@ app.use(passport.session());
 // Configurer la stratégie Google OAuth (définie dans config/passport.js)
 configurePassport();
 
-// Middleware de logging pour debug
+// Log de confirmation des routes OAuth
+console.log('🔐 Routes OAuth Google configurées:');
+console.log('   - GET /auth/google');
+console.log('   - GET /auth/google/callback');
+
+// Middleware de logging pour debug (exclure les health checks pour réduire le bruit)
 app.use((req, res, next) => {
-  console.log(`📥 ${req.method} ${req.originalUrl}`, req.body ? 'avec body' : 'sans body');
+  // Ne pas logger les health checks
+  if (req.originalUrl !== '/health' && req.originalUrl !== '/') {
+    console.log(`📥 ${req.method} ${req.originalUrl}`, req.body ? 'avec body' : 'sans body');
+  }
   next();
 });
 
@@ -110,7 +126,11 @@ app.get("/health", (req, res) => {
  * GET /auth/google
  * Redirige l'utilisateur vers Google pour l'authentification
  */
-app.get("/auth/google", passport.authenticate("google", { 
+app.get("/auth/google", (req, res, next) => {
+  console.log('🔐 Requête OAuth Google reçue:', req.method, req.originalUrl);
+  console.log('   Query params:', req.query);
+  next();
+}, passport.authenticate("google", { 
   scope: ["profile", "email"] 
 }));
 
@@ -119,11 +139,14 @@ app.get("/auth/google", passport.authenticate("google", {
  * Callback OAuth après authentification Google
  * Redirige vers https://www.safitech.shop/dashboard.html après succès
  */
-app.get("/auth/google/callback", 
-  passport.authenticate("google", { 
-    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` 
-  }),
-  async (req, res) => {
+app.get("/auth/google/callback", (req, res, next) => {
+  console.log('🔄 Callback OAuth Google reçue:', req.method, req.originalUrl);
+  console.log('   Query params:', req.query);
+  console.log('   User dans session:', req.user ? 'présent' : 'absent');
+  next();
+}, passport.authenticate("google", { 
+  failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` 
+}), async (req, res) => {
     try {
       const user = req.user;
       

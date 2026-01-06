@@ -16,11 +16,14 @@
 4. Configurez :
    - **Name** : Plateforme Formation (ou le nom de votre choix)
    - **Authorized JavaScript origins** :
-     - `http://localhost:5173` (développement)
-     - `https://votre-domaine.com` (production)
+     - `http://localhost:5173` (développement frontend)
+     - `http://localhost:3000` (développement backend)
+     - `https://www.safitech.shop` (production frontend)
+     - `https://plateforme-r1h7.onrender.com` (production backend Render)
    - **Authorized redirect URIs** :
-     - `http://localhost:5173` (développement)
-     - `https://votre-domaine.com` (production)
+     - `http://localhost:3000/auth/google/callback` (développement)
+     - `https://www.safitech.shop/auth/google/callback` (production avec domaine personnalisé)
+     - `https://plateforme-r1h7.onrender.com/auth/google/callback` (production Render - **OBLIGATOIRE**)
 5. Cliquez sur **Create**
 6. Copiez le **Client ID** généré
 
@@ -53,10 +56,35 @@ Après avoir configuré les variables d'environnement, redémarrez :
 4. Autorisez l'application
 5. Vous devriez être connecté automatiquement
 
+## Configuration pour Render
+
+Si votre backend est hébergé sur Render (comme `https://plateforme-r1h7.onrender.com`) :
+
+1. **Render définit automatiquement** la variable d'environnement `RENDER_EXTERNAL_URL`
+2. Le code détecte automatiquement cette URL et l'utilise pour le callback OAuth
+3. **IMPORTANT** : Vous devez ajouter l'URL de callback Render dans Google Cloud Console :
+   - `https://plateforme-r1h7.onrender.com/auth/google/callback`
+
+### Vérification de la configuration
+
+Après le déploiement sur Render, vérifiez les logs au démarrage. Vous devriez voir :
+```
+🔐 Configuration Google OAuth:
+   - Client ID: 1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34...
+   - Callback URL: https://plateforme-r1h7.onrender.com/auth/google/callback
+   - RENDER_EXTERNAL_URL: https://plateforme-r1h7.onrender.com
+```
+
+Si le callback URL n'est pas correct, vous pouvez forcer l'URL avec une variable d'environnement sur Render :
+```
+GOOGLE_CALLBACK_URL=https://plateforme-r1h7.onrender.com/auth/google/callback
+```
+
 ## Notes importantes
 
 - Les utilisateurs créés via Google n'ont pas besoin de mot de passe
 - Le numéro de téléphone est optionnel pour les utilisateurs Google
 - Les comptes créés via Google sont en statut "pending" par défaut (en attente de validation par l'admin)
 - Si un utilisateur existe déjà avec le même email, il sera connecté automatiquement
+- **Sur Render** : Le backend doit avoir `trust proxy` activé (déjà configuré automatiquement)
 
