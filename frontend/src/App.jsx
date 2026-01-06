@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 import AdminLayout from './components/admin/AdminLayout'
+import PrivateRoute from './components/PrivateRoute'
 import LessonPage from './pages/LessonPage'
 import CoachingPage from './pages/CoachingPage'
 import LoginPage from './pages/LoginPage'
@@ -32,6 +33,16 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/landing" element={<LandingPage />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <LessonPage lesson={lessons[0]} />
+                </Layout>
+              </PrivateRoute>
+            } 
+          />
           <Route
             path="/*"
             element={

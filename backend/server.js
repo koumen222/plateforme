@@ -18,6 +18,7 @@ import dotenv from "dotenv";
 import session from "express-session";
 import passport from "passport";
 import fetch from "node-fetch";
+import cookieParser from "cookie-parser";
 import { connectDB } from "./config/database.js";
 import { configurePassport } from "./config/passport.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
@@ -75,6 +76,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 app.use(express.json());
+app.use(cookieParser());
 
 // Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
 app.set("trust proxy", 1);
@@ -164,32 +166,24 @@ app.get("/auth/google/callback",
         { expiresIn: JWT_EXPIRES_IN }
       );
 
+      // Stocker le token dans un cookie httpOnly
+      res.cookie("safitech_token", token, {
+        httpOnly: true,
+        secure: true, // HTTPS uniquement
+        sameSite: "none", // Nécessaire pour cross-domain (Render)
+        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
+      });
+
       // Vérifier le statut du compte avant redirection
       if (user.accountStatus === "pending") {
-        const pendingUrl = new URL(`${FRONTEND_URL}/email-pending.html`);
-        pendingUrl.searchParams.set('token', token);
-        return res.redirect(pendingUrl.toString());
+        return res.redirect(`${FRONTEND_URL}/email-pending.html`);
       }
 
-      // Rediriger vers le dashboard avec le token dans l'URL
-      const dashboardUrl = new URL(`${FRONTEND_URL}/dashboard.html`);
-      dashboardUrl.searchParams.set('token', token);
-      dashboardUrl.searchParams.set('user', JSON.stringify({
-        id: user._id.toString(),
-        _id: user._id.toString(),
-        name: user.name || '',
-        email: user.email,
-        phoneNumber: user.phoneNumber || '',
-        status: user.status,
-        accountStatus: user.accountStatus,
-        emailVerified: user.emailVerified,
-        role: user.role,
-        authProvider: user.authProvider
-      }));
-
       console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
+      console.log(`   Token stocké dans cookie safitech_token`);
       
-      res.redirect(dashboardUrl.toString());
+      // Rediriger vers le dashboard (sans token dans l'URL)
+      res.redirect(`${FRONTEND_URL}/dashboard`);
     } catch (error) {
       console.error('❌ Erreur callback Google:', error);
       res.redirect(`${FRONTEND_URL}/login?error=google_auth_error`);
@@ -200,6 +194,37 @@ app.get("/auth/google/callback",
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
+});
+
+// Route GET /api/auth/me - Récupérer l'utilisateur depuis le cookie
+app.get("/api/auth/me", authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user._id.toString(),
+        _id: user._id.toString(),
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        status: user.status,
+        accountStatus: user.accountStatus,
+        emailVerified: user.emailVerified,
+        role: user.role,
+        authProvider: user.authProvider,
+        createdAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des données utilisateur' });
+  }
 });
 
 // Routes d'authentification (doit être avant les autres routes /api)

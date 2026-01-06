@@ -1,19 +1,25 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 
+/**
+ * Middleware pour authentifier via cookie ou header Authorization
+ * Priorité : cookie safitech_token > header Authorization
+ */
 export const authenticate = async (req, res, next) => {
   try {
-    // Récupérer le token depuis le header Authorization
-    const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Token manquant ou invalide' });
+    let token = null;
+
+    // 1. Essayer de récupérer le token depuis le cookie
+    if (req.cookies && req.cookies.safitech_token) {
+      token = req.cookies.safitech_token;
+    }
+    // 2. Sinon, essayer depuis le header Authorization (pour compatibilité)
+    else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      token = req.headers.authorization.substring(7);
     }
 
-    const token = authHeader.substring(7); // Enlever "Bearer "
-
     if (!token) {
-      return res.status(401).json({ error: 'Token manquant' });
+      return res.status(401).json({ error: 'Token manquant ou invalide' });
     }
 
     // Vérifier le token
@@ -39,6 +45,12 @@ export const authenticate = async (req, res, next) => {
     res.status(500).json({ error: 'Erreur d\'authentification' });
   }
 };
+
+/**
+ * Middleware isAuthenticated (alias pour authenticate)
+ * Utilisé pour les routes qui nécessitent une authentification
+ */
+export const isAuthenticated = authenticate;
 
 /**
  * Middleware pour vérifier le statut du compte

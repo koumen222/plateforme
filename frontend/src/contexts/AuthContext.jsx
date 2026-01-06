@@ -1,29 +1,40 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { CONFIG } from '../config/config'
+import axios from 'axios'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [token, setToken] = useState(localStorage.getItem('token'))
+  const [token, setToken] = useState(null) // Token n'est plus utilisé depuis localStorage
 
   useEffect(() => {
-    // Vérifier si un token existe dans le localStorage
-    const storedToken = localStorage.getItem('token')
-    const storedUser = localStorage.getItem('user')
-
-    if (storedToken && storedUser) {
-      setToken(storedToken)
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (e) {
-        console.error('Erreur parsing user:', e)
-        localStorage.removeItem('user')
-        localStorage.removeItem('token')
+    // Récupérer l'utilisateur depuis le cookie via /api/auth/me
+    axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+      withCredentials: true
+    })
+    .then(res => {
+      if (res.data.success && res.data.user) {
+        setUser(res.data.user)
+        // Garder le token pour compatibilité avec les anciennes routes
+        const storedToken = localStorage.getItem('token')
+        if (storedToken) {
+          setToken(storedToken)
+        }
       }
-    }
-    setLoading(false)
+    })
+    .catch(() => {
+      // Pas d'utilisateur connecté ou erreur
+      setUser(null)
+      setToken(null)
+      // Nettoyer le localStorage si nécessaire
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+    })
+    .finally(() => {
+      setLoading(false)
+    })
   }, [])
 
   const login = async (emailOrPhone, password) => {
