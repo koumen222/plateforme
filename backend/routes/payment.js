@@ -4,9 +4,22 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
-const LYGOS_API_KEY = process.env.LYGOS_API_KEY;
-const LYGOS_BASE_URL = process.env.LYGOS_BASE_URL || 'https://api.lygosapp.com/v1';
+const LYGOS_API_KEY = process.env.LYGOS_API_KEY || process.env.LYGOS_SECRET_KEY;
+const LYGOS_BASE_URL = process.env.LYGOS_BASE_URL || process.env.LYGOS_API_URL || 'https://api.lygosapp.com/v1';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
+
+// Log des variables d'environnement au démarrage (sans exposer les valeurs complètes)
+console.log('🔑 ========== CONFIGURATION LYGOS ==========');
+console.log('   - LYGOS_API_KEY défini:', !!LYGOS_API_KEY);
+console.log('   - LYGOS_API_KEY length:', LYGOS_API_KEY ? LYGOS_API_KEY.length : 0);
+console.log('   - LYGOS_API_KEY preview:', LYGOS_API_KEY ? `${LYGOS_API_KEY.substring(0, 10)}...` : 'undefined');
+console.log('   - LYGOS_BASE_URL:', LYGOS_BASE_URL);
+console.log('   - Variables process.env disponibles:');
+console.log('     * LYGOS_API_KEY:', !!process.env.LYGOS_API_KEY);
+console.log('     * LYGOS_SECRET_KEY:', !!process.env.LYGOS_SECRET_KEY);
+console.log('     * LYGOS_BASE_URL:', !!process.env.LYGOS_BASE_URL);
+console.log('     * LYGOS_API_URL:', !!process.env.LYGOS_API_URL);
+console.log('🔑 ========== FIN CONFIGURATION ==========');
 
 /**
  * POST /api/payment/init
@@ -29,10 +42,20 @@ router.post('/init', async (req, res) => {
       });
     }
 
+    // Vérification détaillée des variables d'environnement
+    console.log('🔍 ========== VÉRIFICATION VARIABLES LYGOS ==========');
+    console.log('   - LYGOS_API_KEY défini:', !!LYGOS_API_KEY);
+    console.log('   - LYGOS_API_KEY value:', LYGOS_API_KEY ? `${LYGOS_API_KEY.substring(0, 10)}...` : 'undefined');
+    console.log('   - LYGOS_BASE_URL:', LYGOS_BASE_URL);
+    console.log('   - process.env.LYGOS_API_KEY:', process.env.LYGOS_API_KEY ? 'défini' : 'undefined');
+    console.log('   - process.env.LYGOS_SECRET_KEY:', process.env.LYGOS_SECRET_KEY ? 'défini' : 'undefined');
+    console.log('🔍 ========== FIN VÉRIFICATION ==========');
+
     if (!LYGOS_API_KEY) {
       console.error('❌ LYGOS_API_KEY non définie dans .env');
+      console.error('   - Vérifiez que LYGOS_API_KEY ou LYGOS_SECRET_KEY est défini sur Render');
       return res.status(500).json({ 
-        error: 'Configuration du paiement manquante' 
+        error: 'Configuration du paiement manquante - LYGOS_API_KEY non définie' 
       });
     }
 
@@ -42,6 +65,7 @@ router.post('/init', async (req, res) => {
     console.log('   - Phone:', phone || 'Non fourni');
     console.log('   - Provider:', provider || 'Non fourni');
     console.log('   - Base URL:', LYGOS_BASE_URL);
+    console.log('   - API Key utilisé:', LYGOS_API_KEY ? `${LYGOS_API_KEY.substring(0, 10)}...` : 'undefined');
 
     // Préparer les URLs de callback
     const successUrl = `${FRONTEND_URL}/payment-success?order_id=${encodeURIComponent(order_id)}`;
@@ -69,6 +93,11 @@ router.post('/init', async (req, res) => {
     }
 
     // Appeler l'API Lygos
+    console.log('📤 Appel API Lygos...');
+    console.log('   - URL:', `${LYGOS_BASE_URL}/gateway`);
+    console.log('   - Headers api-key:', LYGOS_API_KEY ? `${LYGOS_API_KEY.substring(0, 10)}...` : 'undefined');
+    console.log('   - Body:', JSON.stringify(lygosBody, null, 2));
+    
     const response = await fetch(`${LYGOS_BASE_URL}/gateway`, {
       method: 'POST',
       headers: {
@@ -77,6 +106,10 @@ router.post('/init', async (req, res) => {
       },
       body: JSON.stringify(lygosBody)
     });
+    
+    console.log('📥 Réponse reçue de Lygos');
+    console.log('   - Status:', response.status);
+    console.log('   - StatusText:', response.statusText);
 
     let data;
     try {
