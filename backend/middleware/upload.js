@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 const uploadsDir = path.join(__dirname, '..', 'uploads', 'courses');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
+  console.log('📁 Dossier uploads créé:', uploadsDir);
+} else {
+  console.log('📁 Dossier uploads existe déjà:', uploadsDir);
 }
 
 // Configuration du stockage

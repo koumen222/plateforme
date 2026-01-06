@@ -77,14 +77,23 @@ router.post('/upload/course-image', (req, res, next) => {
 
       const imagePath = getImagePublicPath(req.file.filename);
       
-      console.log('✅ Image uploadée:', req.file.filename);
-      console.log('   Chemin:', imagePath);
+      // Logs détaillés pour savoir où l'image est stockée
+      console.log('✅ Image uploadée avec succès');
+      console.log('   - Nom du fichier:', req.file.filename);
+      console.log('   - Chemin complet sur le serveur:', req.file.path);
+      console.log('   - Taille:', (req.file.size / 1024).toFixed(2), 'KB');
+      console.log('   - Type MIME:', req.file.mimetype);
+      console.log('   - Chemin public (URL):', imagePath);
+      console.log('   - URL complète:', `${process.env.FRONTEND_URL || 'http://localhost:3000'}${imagePath}`);
       
       res.json({
         success: true,
         message: 'Image uploadée avec succès',
         imagePath: imagePath,
-        filename: req.file.filename
+        filename: req.file.filename,
+        filePath: req.file.path, // Chemin complet sur le serveur
+        size: req.file.size,
+        mimetype: req.file.mimetype
       });
     } catch (error) {
       console.error('Erreur upload image:', error);
