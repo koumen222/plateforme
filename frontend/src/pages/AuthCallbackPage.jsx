@@ -13,20 +13,28 @@ export default function AuthCallbackPage() {
       withCredentials: true
     })
     .then(res => {
-      if (res.data.user) {
+      // La réponse est { success: true, user: {...} }
+      if (res.data.success && res.data.user) {
         setUser(res.data.user)
         console.log('✅ Authentification Google réussie - Utilisateur:', res.data.user.name || res.data.user.email)
         console.log('   Status:', res.data.user.status)
+        console.log('   Account Status:', res.data.user.accountStatus)
         
-        // Rediriger vers la page d'accueil
-        window.location.href = "/"
+        // Attendre un peu pour que le state soit mis à jour avant la redirection
+        setTimeout(() => {
+          window.location.href = "/"
+        }, 100)
       } else {
-        console.error('❌ Pas d\'utilisateur dans la réponse')
+        console.error('❌ Pas d\'utilisateur dans la réponse:', res.data)
         window.location.href = "/"
       }
     })
     .catch(error => {
       console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error)
+      if (error.response) {
+        console.error('   Status:', error.response.status)
+        console.error('   Data:', error.response.data)
+      }
       // Rediriger vers la page d'accueil même en cas d'erreur
       window.location.href = "/"
     })

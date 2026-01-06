@@ -117,6 +117,14 @@ app.use((req, res, next) => {
   next();
 });
 
+// Middleware pour rediriger dashboard.html vers safitech.shop
+app.use((req, res, next) => {
+  if (req.originalUrl.includes("dashboard.html")) {
+    return res.redirect("https://www.safitech.shop/");
+  }
+  next();
+});
+
 // Routes
 // Route racine pour vérifier que le service est en ligne (nécessaire pour Render)
 app.get("/", (req, res) => {
@@ -173,8 +181,8 @@ app.get("/auth/google/callback",
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      // 🔥 RESTER SUR LA PAGE D'ACCUEIL
-      return res.redirect(`${FRONTEND_URL}/`);
+      // Rediriger vers la page de callback pour finaliser l'authentification
+      return res.redirect(`${FRONTEND_URL}/auth/callback`);
     } catch (error) {
       console.error("Google callback error:", error);
       return res.redirect(`${FRONTEND_URL}/login`);
