@@ -18,15 +18,19 @@ const userSchema = new mongoose.Schema({
   },
   phoneNumber: {
     type: String,
-    required: false,
+    required: function () {
+      return this.authProvider === "local";
+    },
     unique: true,
-    sparse: true, // Permet plusieurs null
+    sparse: true, // Permet plusieurs null (obligatoire pour Google OAuth)
     trim: true,
     match: [/^[\d\s\-\+\(\)]+$/, 'Numéro de téléphone invalide']
   },
   password: {
     type: String,
-    required: false,
+    required: function () {
+      return this.authProvider === "local";
+    },
     minlength: 6
   },
   googleId: {
@@ -37,7 +41,7 @@ const userSchema = new mongoose.Schema({
   authProvider: {
     type: String,
     enum: ['local', 'google'],
-    default: 'local'
+    required: true
   },
   role: {
     type: String,
@@ -67,6 +71,19 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   }
+});
+
+// Hook pre-validate : définir authProvider par défaut si absent (pour compatibilité avec anciens utilisateurs)
+userSchema.pre('validate', function(next) {
+  // Si authProvider n'est pas défini, le définir selon les données disponibles
+  if (!this.authProvider) {
+    if (this.googleId) {
+      this.authProvider = 'google';
+    } else {
+      this.authProvider = 'local';
+    }
+  }
+  next();
 });
 
 // Hash du mot de passe avant sauvegarde

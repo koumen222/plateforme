@@ -53,53 +53,35 @@ export const configurePassport = () => {
         return done(new Error('Email non fourni par Google'), null);
       }
 
-      // Chercher un utilisateur existant par googleId ou email
-      console.log('   - Recherche utilisateur avec email:', email.toLowerCase());
+      // Chercher un utilisateur existant par googleId
       console.log('   - Recherche utilisateur avec googleId:', googleId);
       
-      let user = await User.findOne({
-        $or: [
-          { googleId },
-          { email: email.toLowerCase() }
-        ]
-      });
+      let user = await User.findOne({ googleId: googleId });
 
-      if (user) {
+      if (!user) {
+        console.log('   - Nouvel utilisateur à créer');
+        // Nouvel utilisateur - créer le compte avec User.create()
+        // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
+        user = await User.create({
+          name: profile.displayName || email.split('@')[0],
+          email: email.toLowerCase(),
+          googleId: profile.id,
+          authProvider: "google",
+          role: 'student',
+          status: 'pending' // En attente de validation par l'admin
+        });
+        console.log('   - ✅ Nouvel utilisateur créé:', user.email);
+        console.log('   - User ID:', user._id);
+      } else {
         console.log('   - ✅ Utilisateur existant trouvé:', user.email);
         console.log('   - User ID:', user._id);
         console.log('   - User status:', user.status);
-        // Utilisateur existant - mise à jour si nécessaire
-        if (!user.googleId) {
-          console.log('   - Mise à jour: ajout googleId');
-          user.googleId = googleId;
-          user.authProvider = 'google';
-        }
+        // Mise à jour si nécessaire
         if (!user.name && name) {
           console.log('   - Mise à jour: ajout name');
           user.name = name;
+          await user.save();
         }
-        await user.save();
-        console.log('   - Utilisateur mis à jour avec succès');
-      } else {
-        console.log('   - Nouvel utilisateur à créer');
-        // Nouvel utilisateur - créer le compte
-        // Ne pas inclure phoneNumber si il n'existe pas (évite les problèmes d'index unique)
-        const userData = {
-          name: name || email.split('@')[0],
-          email: email.toLowerCase(),
-          googleId,
-          authProvider: 'google',
-          role: 'student',
-          status: 'pending' // En attente de validation par l'admin
-        };
-        
-        // Ne pas définir phoneNumber si il n'existe pas (undefined plutôt que null)
-        // Cela permet à l'index sparse de fonctionner correctement
-        
-        user = new User(userData);
-        await user.save();
-        console.log('   - ✅ Nouvel utilisateur créé:', user.email);
-        console.log('   - User ID:', user._id);
       }
 
       console.log('🔐 ========== FIN PASSPORT STRATEGY ==========');

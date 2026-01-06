@@ -76,6 +76,7 @@ router.post('/admin/register', async (req, res) => {
       email: trimmedEmail, 
       phoneNumber: trimmedPhone,
       password,
+      authProvider: "local",
       role: 'superadmin',
       status: 'active'
     });
@@ -180,6 +181,7 @@ router.post('/register', async (req, res) => {
       email: trimmedEmail, 
       phoneNumber: trimmedPhone,
       password,
+      authProvider: "local",
       status: 'pending'
     });
     
