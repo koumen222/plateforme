@@ -26,7 +26,7 @@ export default function LoginPage() {
       setIsLogin(false)
     }
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/dashboard'
+      const from = location.state?.from?.pathname || '/'
       navigate(from, { replace: true })
     }
   }, [isAuthenticated, navigate, location])
@@ -100,7 +100,7 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-        const from = location.state?.from?.pathname || '/dashboard'
+        const from = location.state?.from?.pathname || '/'
         navigate(from, { replace: true })
       } else {
         // Messages d'erreur plus clairs pour l'utilisateur

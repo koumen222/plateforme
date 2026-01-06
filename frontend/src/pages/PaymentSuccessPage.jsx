@@ -120,7 +120,7 @@ export default function PaymentSuccessPage() {
         <h2>Erreur</h2>
         <p style={{ color: '#c33' }}>{error}</p>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           style={{
             padding: '0.75rem 1.5rem',
             fontSize: '1rem',
@@ -131,7 +131,7 @@ export default function PaymentSuccessPage() {
             cursor: 'pointer'
           }}
         >
-          Retour au dashboard
+          Retour à l'accueil
         </button>
       </div>
     )
@@ -174,7 +174,7 @@ export default function PaymentSuccessPage() {
         )}
 
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           style={{
             marginTop: '2rem',
             padding: '0.75rem 2rem',
@@ -190,7 +190,7 @@ export default function PaymentSuccessPage() {
           onMouseOver={(e) => e.target.style.backgroundColor = '#357ae8'}
           onMouseOut={(e) => e.target.style.backgroundColor = '#4285F4'}
         >
-          Retour au dashboard
+          Retour à l'accueil
         </button>
       </div>
     )

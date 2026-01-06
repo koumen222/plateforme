@@ -30,7 +30,7 @@ export default function PaymentFailedPage() {
 
       <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           style={{
             padding: '0.75rem 2rem',
             fontSize: '1rem',
@@ -44,7 +44,7 @@ export default function PaymentFailedPage() {
           onMouseOver={(e) => e.target.style.backgroundColor = '#357ae8'}
           onMouseOut={(e) => e.target.style.backgroundColor = '#4285F4'}
         >
-          Retour au dashboard
+          Retour à l'accueil
         </button>
         
         <button

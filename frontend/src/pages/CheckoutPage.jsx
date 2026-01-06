@@ -14,7 +14,7 @@ export default function CheckoutPage() {
     // Sinon, on redirige vers le dashboard
     if (!checkoutId) {
       console.warn('⚠️ Aucun checkoutId dans l\'URL')
-      navigate('/dashboard', { replace: true })
+      navigate('/', { replace: true })
       return
     }
 
@@ -31,10 +31,10 @@ export default function CheckoutPage() {
     // Rediriger immédiatement vers la page de paiement LYGOS
     window.location.href = lygosCheckoutUrl
     
-    // Si la redirection échoue, on redirige vers le dashboard après 3 secondes
+    // Si la redirection échoue, on redirige vers la page d'accueil après 3 secondes
     const timer = setTimeout(() => {
-      console.log('⚠️ La redirection vers LYGOS a peut-être échoué, retour au dashboard')
-      navigate('/dashboard', { replace: true })
+      console.log('⚠️ La redirection vers LYGOS a peut-être échoué, retour à l\'accueil')
+      navigate('/', { replace: true })
     }, 3000)
 
     setLoading(false)
@@ -75,7 +75,7 @@ export default function CheckoutPage() {
         <h1 style={{ color: '#dc3545' }}>Erreur</h1>
         <p style={{ color: 'var(--text-secondary)' }}>{error}</p>
         <button
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate('/')}
           style={{
             marginTop: '1rem',
             padding: '12px 24px',
@@ -88,7 +88,7 @@ export default function CheckoutPage() {
             fontWeight: 'bold'
           }}
         >
-          Retour au dashboard
+          Retour à l'accueil
         </button>
       </div>
     )

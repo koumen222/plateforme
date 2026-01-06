@@ -58,10 +58,10 @@ export default function AuthCallbackPage() {
           // 6. Nettoyer l'URL (supprimer le token de l'URL pour sécurité)
           console.log('🧹 Nettoyage de l\'URL - suppression du token')
           
-          // 7. Rediriger vers le dashboard
-          console.log('✅ Redirection vers /dashboard')
+          // 7. Rediriger vers la page d'accueil
+          console.log('✅ Redirection vers la page d\'accueil')
           console.log('🔐 ========== FIN AUTH CALLBACK ==========')
-          navigate('/dashboard', { replace: true })
+          navigate('/', { replace: true })
         } else {
           console.error('❌ Pas d\'utilisateur dans la réponse:', res.data)
           // Nettoyer et rediriger vers login
