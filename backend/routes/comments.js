@@ -23,7 +23,8 @@ router.post('/', async (req, res) => {
     }
 
     // Vérifier que l'utilisateur est actif
-    if (req.user.status !== 'active') {
+    // 🔥 Les utilisateurs Google sont toujours autorisés
+    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour laisser un commentaire',
         status: req.user.status
@@ -136,7 +137,8 @@ router.post('/:id/response', async (req, res) => {
     }
 
     // Vérifier que l'utilisateur est actif
-    if (req.user.status !== 'active') {
+    // 🔥 Les utilisateurs Google sont toujours autorisés
+    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour répondre à un commentaire',
         status: req.user.status

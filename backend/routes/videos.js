@@ -7,7 +7,8 @@ const router = express.Router();
 router.get('/secure/videos', authenticate, (req, res) => {
   try {
     // Vérifier que l'utilisateur est actif
-    if (req.user.status !== 'active') {
+    // 🔥 Les utilisateurs Google sont toujours autorisés
+    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour accéder aux vidéos',
         status: req.user.status

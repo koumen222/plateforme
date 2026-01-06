@@ -56,6 +56,7 @@ export const isAuthenticated = authenticate;
  * Middleware pour vérifier le statut du compte
  * Pour les routes API : retourne une erreur JSON
  * Pour les routes HTML : redirige vers email-pending.html
+ * 🔥 Les utilisateurs Google ne sont jamais bloqués (activation automatique)
  */
 export const checkAccountStatus = (req, res, next) => {
   if (!req.user) {
@@ -66,6 +67,12 @@ export const checkAccountStatus = (req, res, next) => {
     return res.redirect("/login");
   }
 
+  // 🔥 Les utilisateurs Google sont toujours autorisés (pas de restrictions)
+  if (req.user.authProvider === "google") {
+    return next();
+  }
+
+  // Pour les utilisateurs locaux, vérifier le statut
   if (req.user.accountStatus === "pending") {
     // Si c'est une requête API, retourner JSON
     if (req.path.startsWith('/api/')) {
