@@ -19,6 +19,23 @@ import ProductsPage from './pages/ProductsPage'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
 
+// Composant pour nettoyer l'URL des anciens paramètres token/user
+function CleanUrlRedirect() {
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    // Si l'URL contient des paramètres token ou user, les supprimer
+    if (location.search.includes('token=') || location.search.includes('user=')) {
+      const cleanPath = location.pathname
+      console.log('🧹 Nettoyage de l\'URL - suppression des paramètres token/user')
+      navigate(cleanPath, { replace: true })
+    }
+  }, [location, navigate])
+
+  return null
+}
+
 function App() {
   return (
     <ThemeProvider>
