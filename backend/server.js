@@ -3,9 +3,9 @@ import cors from "cors";
 import dotenv from "dotenv";
 import session from "express-session";
 import passport from "passport";
-import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import fetch from "node-fetch";
 import { connectDB } from "./config/database.js";
+import { configurePassport } from "./config/passport.js";
 import { authenticate } from "./middleware/auth.js";
 import User from "./models/User.js";
 import jwt from "jsonwebtoken";
@@ -18,8 +18,11 @@ import commentsRoutes from "./routes/comments.js";
 
 dotenv.config();
 
+// Configuration des secrets et URLs
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
+const SESSION_SECRET = process.env.SESSION_SECRET || JWT_SECRET;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
 
 const app = express();
 
@@ -61,7 +64,7 @@ app.use(express.json());
 
 // Configuration de la session pour Passport
 app.use(session({
-  secret: process.env.SESSION_SECRET || JWT_SECRET,
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
@@ -75,101 +78,8 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Configuration Google OAuth avec Passport
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
-const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
-
-// Détection automatique de l'URL du callback OAuth
-// Les URIs autorisés dans Google Cloud Console sont :
-// - http://localhost:3000/auth/google/callback (développement)
-// - https://www.safitech.shop/auth/google/callback (production)
-const getCallbackURL = () => {
-  // Si GOOGLE_CALLBACK_URL est défini explicitement, l'utiliser
-  if (process.env.GOOGLE_CALLBACK_URL) {
-    return process.env.GOOGLE_CALLBACK_URL;
-  }
-  
-  // En développement local
-  if (process.env.NODE_ENV !== 'production' || !process.env.PORT) {
-    return 'http://localhost:3000/auth/google/callback';
-  }
-  
-  // En production, utiliser safitech.shop
-  return 'https://www.safitech.shop/auth/google/callback';
-};
-
-const GOOGLE_CALLBACK_URL = getCallbackURL();
-const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://www.safitech.shop' : 'http://localhost:3000');
-
-console.log('🔐 Configuration Google OAuth:');
-console.log('   - Client ID:', GOOGLE_CLIENT_ID.substring(0, 30) + '...');
-console.log('   - Callback URL:', GOOGLE_CALLBACK_URL);
-console.log('   - Frontend URL:', FRONTEND_URL);
-
-passport.use(new GoogleStrategy({
-  clientID: GOOGLE_CLIENT_ID,
-  clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL: GOOGLE_CALLBACK_URL
-}, async (accessToken, refreshToken, profile, done) => {
-  try {
-    const { id: googleId, emails, displayName: name, photos } = profile;
-    const email = emails?.[0]?.value;
-
-    if (!email) {
-      return done(new Error('Email non fourni par Google'), null);
-    }
-
-    // Chercher un utilisateur existant par googleId ou email
-    let user = await User.findOne({
-      $or: [
-        { googleId },
-        { email: email.toLowerCase() }
-      ]
-    });
-
-    if (user) {
-      // Utilisateur existant - mise à jour si nécessaire
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.authProvider = 'google';
-      }
-      if (!user.name && name) {
-        user.name = name;
-      }
-      await user.save();
-    } else {
-      // Nouvel utilisateur - créer le compte
-      user = new User({
-        name: name || email.split('@')[0],
-        email: email.toLowerCase(),
-        googleId,
-        authProvider: 'google',
-        role: 'student',
-        status: 'pending'
-      });
-      await user.save();
-    }
-
-    return done(null, user);
-  } catch (error) {
-    return done(error, null);
-  }
-}));
-
-// Sérialisation utilisateur pour la session
-passport.serializeUser((user, done) => {
-  done(null, user._id);
-});
-
-passport.deserializeUser(async (id, done) => {
-  try {
-    const user = await User.findById(id);
-    done(null, user);
-  } catch (error) {
-    done(error, null);
-  }
-});
+// Configurer la stratégie Google OAuth (définie dans config/passport.js)
+configurePassport();
 
 // Middleware de logging pour debug
 app.use((req, res, next) => {
@@ -197,12 +107,36 @@ app.get("/auth/google", passport.authenticate("google", {
   scope: ["profile", "email"] 
 }));
 
+// ============================================
+// Routes Google OAuth
+// ============================================
+
+/**
+ * GET /auth/google
+ * Redirige l'utilisateur vers Google pour l'authentification
+ */
+app.get("/auth/google", passport.authenticate("google", { 
+  scope: ["profile", "email"] 
+}));
+
+/**
+ * GET /auth/google/callback
+ * Callback OAuth après authentification Google
+ * Redirige vers https://www.safitech.shop/dashboard.html après succès
+ */
 app.get("/auth/google/callback", 
-  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  passport.authenticate("google", { 
+    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` 
+  }),
   async (req, res) => {
     try {
       const user = req.user;
       
+      if (!user) {
+        console.error('❌ Utilisateur non trouvé après authentification Google');
+        return res.redirect(`${FRONTEND_URL}/login?error=user_not_found`);
+      }
+
       // Générer le token JWT
       const token = jwt.sign(
         { userId: user._id, email: user.email, status: user.status, role: user.role },
@@ -210,10 +144,10 @@ app.get("/auth/google/callback",
         { expiresIn: JWT_EXPIRES_IN }
       );
 
-      // Rediriger vers le frontend avec le token dans l'URL
-      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`);
-      redirectUrl.searchParams.set('token', token);
-      redirectUrl.searchParams.set('user', JSON.stringify({
+      // Rediriger vers le dashboard avec le token dans l'URL
+      const dashboardUrl = new URL(`${FRONTEND_URL}/dashboard.html`);
+      dashboardUrl.searchParams.set('token', token);
+      dashboardUrl.searchParams.set('user', JSON.stringify({
         id: user._id.toString(),
         _id: user._id.toString(),
         name: user.name || '',
@@ -225,7 +159,9 @@ app.get("/auth/google/callback",
       }));
 
       console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
-      res.redirect(redirectUrl.toString());
+      console.log(`   Redirection vers: ${dashboardUrl.toString()}`);
+      
+      res.redirect(dashboardUrl.toString());
     } catch (error) {
       console.error('❌ Erreur callback Google:', error);
       res.redirect(`${FRONTEND_URL}/login?error=google_auth_error`);
