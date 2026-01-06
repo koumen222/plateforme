@@ -79,12 +79,38 @@ app.use(passport.session());
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
+
+// Détection automatique de l'URL du callback OAuth
+// Les URIs autorisés dans Google Cloud Console sont :
+// - http://localhost:3000/auth/google/callback (développement)
+// - https://www.safitech.shop/auth/google/callback (production)
+const getCallbackURL = () => {
+  // Si GOOGLE_CALLBACK_URL est défini explicitement, l'utiliser
+  if (process.env.GOOGLE_CALLBACK_URL) {
+    return process.env.GOOGLE_CALLBACK_URL;
+  }
+  
+  // En développement local
+  if (process.env.NODE_ENV !== 'production' || !process.env.PORT) {
+    return 'http://localhost:3000/auth/google/callback';
+  }
+  
+  // En production, utiliser safitech.shop
+  return 'https://www.safitech.shop/auth/google/callback';
+};
+
+const GOOGLE_CALLBACK_URL = getCallbackURL();
+const BACKEND_URL = process.env.BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'https://www.safitech.shop' : 'http://localhost:3000');
+
+console.log('🔐 Configuration Google OAuth:');
+console.log('   - Client ID:', GOOGLE_CLIENT_ID.substring(0, 30) + '...');
+console.log('   - Callback URL:', GOOGLE_CALLBACK_URL);
+console.log('   - Frontend URL:', FRONTEND_URL);
 
 passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,
   clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL: `${BACKEND_URL}/auth/google/callback`
+  callbackURL: GOOGLE_CALLBACK_URL
 }, async (accessToken, refreshToken, profile, done) => {
   try {
     const { id: googleId, emails, displayName: name, photos } = profile;
