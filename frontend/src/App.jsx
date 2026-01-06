@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
@@ -17,6 +17,7 @@ import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
 import { lessons } from './data/lessons'
+import { useEffect } from 'react'
 
 function App() {
   return (
@@ -33,6 +34,11 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/landing" element={<LandingPage />} />
+          {/* Redirection depuis l'ancien système (dashboard.html avec token dans l'URL) */}
+          <Route 
+            path="/dashboard.html" 
+            element={<Navigate to="/dashboard" replace />} 
+          />
           <Route 
             path="/dashboard" 
             element={
