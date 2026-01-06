@@ -308,8 +308,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.' });
     }
 
-    // Vérifier le statut de l'utilisateur (sauf Google qui est toujours actif)
-    if (user.authProvider !== 'google' && user.status !== 'active') {
+    // Vérifier le statut de l'utilisateur (même règle pour tous)
+    if (user.status !== 'active') {
       let statusMessage = 'Votre compte est en attente de validation par l\'administrateur. Contactez l\'administrateur pour activer votre compte.';
       if (user.status === 'pending') {
         statusMessage = 'Votre compte est en attente d\'activation. Contactez l\'administrateur via WhatsApp pour finaliser votre paiement et activer votre compte.';

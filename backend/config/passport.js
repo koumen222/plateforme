@@ -62,33 +62,24 @@ export const configurePassport = () => {
         console.log('   - Nouvel utilisateur à créer');
         // Nouvel utilisateur - créer le compte avec User.create()
         // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
-        // 🔥 Google active automatiquement le compte (status: "active", emailVerified: true)
+        // 🔥 Traitement identique aux utilisateurs classiques : status "pending" jusqu'à validation admin
         user = await User.create({
           name: profile.displayName || email.split('@')[0],
           email: profile.emails?.[0]?.value || email.toLowerCase(),
           googleId: profile.id,
           authProvider: "google",
-          emailVerified: true, // 🔥 Email vérifié par Google
-          accountStatus: "active", // 🔥 Compte activé automatiquement
+          emailVerified: false, // Même règle que les utilisateurs classiques
+          accountStatus: "pending", // Même règle que les utilisateurs classiques
           role: 'student',
-          status: 'active' // 🔥 Statut actif automatiquement
+          status: 'pending' // Même règle que les utilisateurs classiques
         });
         console.log('   - ✅ Nouvel utilisateur créé:', user.email);
         console.log('   - User ID:', user._id);
-        console.log('   - Status: active (Google OAuth)');
+        console.log('   - Status: pending (en attente de validation admin)');
       } else {
         console.log('   - ✅ Utilisateur existant trouvé:', user.email);
         console.log('   - User ID:', user._id);
-        console.log('   - User status avant:', user.status);
-        // 🔥 Débloquer même les anciens comptes Google
-        if (user.status !== 'active' || user.accountStatus !== 'active') {
-          console.log('   - Mise à jour: activation du compte Google');
-          user.status = 'active';
-          user.accountStatus = 'active';
-          user.emailVerified = true;
-          await user.save();
-          console.log('   - Status après: active');
-        }
+        console.log('   - User status:', user.status);
         // Mise à jour si nécessaire
         if (!user.name && name) {
           console.log('   - Mise à jour: ajout name');

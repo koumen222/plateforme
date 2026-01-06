@@ -22,9 +22,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Le commentaire ne peut pas dépasser 2000 caractères' });
     }
 
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour laisser un commentaire',
         status: req.user.status
@@ -136,9 +135,8 @@ router.post('/:id/response', async (req, res) => {
       return res.status(400).json({ error: 'La réponse ne peut pas dépasser 2000 caractères' });
     }
 
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour répondre à un commentaire',
         status: req.user.status

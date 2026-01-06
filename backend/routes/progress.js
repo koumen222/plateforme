@@ -12,9 +12,8 @@ router.use(checkAccountStatus);
 // GET /api/progress - Récupérer la progression de l'utilisateur
 router.get('/', async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Compte en attente de validation',
         status: req.user.status

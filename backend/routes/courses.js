@@ -24,9 +24,8 @@ router.get('/', async (req, res) => {
 // GET /api/secure/courses - Liste des cours avec vidéo (protégé, JWT + status active)
 router.get('/secure/courses', authenticate, async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Compte en attente de validation par l\'administrateur',
         status: req.user.status
@@ -73,9 +72,8 @@ router.post('/progress/:courseId', authenticate, async (req, res) => {
       return res.status(404).json({ error: 'Cours non trouvé' });
     }
 
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Compte en attente de validation',
         status: req.user.status

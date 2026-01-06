@@ -174,8 +174,10 @@ app.get("/auth/google/callback",
         maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
       });
 
-      // 🔥 Les utilisateurs Google sont toujours actifs, pas de vérification nécessaire
-      // (Le statut est déjà mis à "active" dans passport.js)
+      // Vérifier le statut du compte avant redirection (même règle pour tous)
+      if (user.accountStatus === "pending") {
+        return res.redirect(`${FRONTEND_URL}/email-pending.html`);
+      }
 
       console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
       console.log(`   Token stocké dans cookie safitech_token`);
@@ -258,8 +260,8 @@ app.post("/api/chat", authenticate, async (req, res) => {
   const { message, conversationHistory } = req.body;
 
   try {
-    // Vérifier que l'utilisateur est actif (sauf Google qui est toujours actif)
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour accéder au chat',
         status: req.user.status

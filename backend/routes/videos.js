@@ -6,9 +6,8 @@ const router = express.Router();
 // Route protégée : GET /api/secure/videos
 router.get('/secure/videos', authenticate, (req, res) => {
   try {
-    // Vérifier que l'utilisateur est actif
-    // 🔥 Les utilisateurs Google sont toujours autorisés
-    if (req.user.authProvider !== 'google' && req.user.status !== 'active') {
+    // Vérifier que l'utilisateur est actif (même règle pour tous)
+    if (req.user.status !== 'active') {
       return res.status(403).json({ 
         error: 'Votre compte doit être actif pour accéder aux vidéos',
         status: req.user.status
