@@ -8,6 +8,8 @@ Intégration de l'API LYGOS pour permettre les paiements Mobile Money au Camerou
 
 ### Variables d'environnement Backend
 
+#### Pour le développement local (fichier `.env`)
+
 Ajoutez ces variables dans votre fichier `.env` du backend :
 
 ```env
@@ -16,13 +18,24 @@ LYGOS_API_KEY=sk_live_xxxxxxxxx
 LYGOS_BASE_URL=https://api.lygosapp.com/v1
 
 # Frontend URL (pour les callbacks)
+FRONTEND_URL=http://localhost:5173
+```
+
+#### Pour la production (Render)
+
+**⚠️ IMPORTANT :** Sur Render, allez dans votre service backend → **Environment** et ajoutez :
+
+```
+LYGOS_API_KEY=votre_cle_api_lygos
+LYGOS_BASE_URL=https://api.lygosapp.com/v1
 FRONTEND_URL=https://www.safitech.shop
 ```
 
-**Note :** Pour le développement local, utilisez :
-```env
-FRONTEND_URL=http://localhost:5173
-```
+**Note :** Le code supporte aussi ces noms alternatifs (pour compatibilité) :
+- `LYGOS_SECRET_KEY` au lieu de `LYGOS_API_KEY`
+- `LYGOS_API_URL` au lieu de `LYGOS_BASE_URL`
+
+**Vérification :** Après avoir ajouté les variables sur Render, redéployez le service. Les logs afficheront si les variables sont bien définies ou si elles sont `undefined`.
 
 ### Obtenir votre clé API LYGOS
 
