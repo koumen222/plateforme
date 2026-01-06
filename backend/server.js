@@ -171,11 +171,12 @@ app.get("/auth/google/callback",
         return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
       }
 
-      console.log('   - User reçu:', JSON.stringify(user, null, 2));
-      console.log('   - User._id:', user._id);
-      console.log('   - User._id type:', typeof user._id);
-      console.log('   - User status:', user.status);
-      console.log('   - User role:', user.role);
+      console.log('✅ Utilisateur reçu de Google OAuth');
+      console.log('   - Email:', user.email);
+      console.log('   - Nom:', user.name);
+      console.log('   - User ID:', user._id);
+      console.log('   - Status:', user.status);
+      console.log('   - Role:', user.role);
 
       // S'assurer que _id est une string (peut être un ObjectId)
       const userId = user._id ? user._id.toString() : null;
@@ -185,16 +186,23 @@ app.get("/auth/google/callback",
         return res.redirect(`${FRONTEND_URL}/login?error=invalid_user_id`);
       }
 
-      console.log('   - User ID pour JWT:', userId);
-
+      // Générer le token JWT
       const token = jwt.sign(
-        { userId: userId, status: user.status || 'pending', role: user.role || 'student' },
+        { 
+          userId: userId, 
+          email: user.email,
+          status: user.status || 'pending', 
+          role: user.role || 'student' 
+        },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
-      console.log('   - Token JWT généré avec succès');
+      console.log('✅ Token JWT généré avec succès');
+      console.log('   - Token length:', token.length);
+      console.log('   - Expires in:', JWT_EXPIRES_IN);
 
+      // Stocker le token dans un cookie (pour compatibilité)
       res.cookie("safitech_token", token, {
         httpOnly: true,
         secure: true,
@@ -202,12 +210,15 @@ app.get("/auth/google/callback",
         maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      console.log('   - Cookie safitech_token défini');
-      console.log('   - Redirection vers:', `${FRONTEND_URL}/auth/callback`);
+      console.log('✅ Cookie safitech_token défini');
+
+      // Rediriger vers la page de callback avec le token dans l'URL (pour localStorage)
+      // Le frontend va extraire le token et le stocker dans localStorage
+      const redirectUrl = `${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`;
+      console.log('✅ Redirection vers:', redirectUrl);
       console.log('🔐 ========== FIN GOOGLE CALLBACK ==========');
 
-      // Rediriger vers la page de callback pour finaliser l'authentification
-      return res.redirect(`${FRONTEND_URL}/auth/callback`);
+      return res.redirect(redirectUrl);
     } catch (error) {
       console.error("❌ ========== ERREUR GOOGLE CALLBACK ==========");
       console.error("   - Error message:", error.message);

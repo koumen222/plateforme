@@ -59,42 +59,50 @@ export const configurePassport = () => {
       let user = await User.findOne({ googleId: googleId });
 
       if (!user) {
-        console.log('   - Nouvel utilisateur à créer');
+        console.log('   - 📝 Nouvel utilisateur à créer');
         
         // Vérifier si un utilisateur existe déjà avec cet email
         const existingUserByEmail = await User.findOne({ email: email.toLowerCase() });
         if (existingUserByEmail) {
-          console.log('   - ⚠️ Utilisateur existant avec cet email, mise à jour avec googleId');
+          console.log('   - 🔄 Utilisateur existant avec cet email trouvé');
+          console.log('   -   Email:', existingUserByEmail.email);
+          console.log('   -   Mise à jour avec googleId et authProvider');
           // Mettre à jour l'utilisateur existant pour ajouter googleId et changer authProvider
           existingUserByEmail.googleId = googleId;
           existingUserByEmail.authProvider = "google";
           if (!existingUserByEmail.name && name) {
             existingUserByEmail.name = name;
+            console.log('   -   Mise à jour du nom:', name);
           }
           await existingUserByEmail.save();
           user = existingUserByEmail;
           console.log('   - ✅ Utilisateur mis à jour avec Google OAuth');
+          console.log('   -   User ID:', user._id.toString());
+          console.log('   -   Status:', user.status);
         } else {
-          // Nouvel utilisateur - créer le compte avec User.create()
-          // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
-          // 🔥 Traitement identique aux utilisateurs classiques : status "pending" jusqu'à validation admin
+          // Nouvel utilisateur - créer le compte automatiquement
+          console.log('   - 🆕 Création automatique du compte');
           try {
             user = await User.create({
               name: profile.displayName || email.split('@')[0],
               email: profile.emails?.[0]?.value || email.toLowerCase(),
               googleId: profile.id,
               authProvider: "google",
-              emailVerified: false, // Même règle que les utilisateurs classiques
-              accountStatus: "pending", // Même règle que les utilisateurs classiques
+              emailVerified: false,
+              accountStatus: "pending",
               role: 'student',
-              status: 'pending' // Même règle que les utilisateurs classiques
+              status: 'pending'
             });
-            console.log('   - ✅ Nouvel utilisateur créé:', user.email);
+            console.log('   - ✅ Nouvel utilisateur créé automatiquement');
+            console.log('   -   Email:', user.email);
+            console.log('   -   Nom:', user.name);
+            console.log('   -   User ID:', user._id.toString());
+            console.log('   -   Status: pending (en attente de validation admin)');
           } catch (createError) {
             console.error('   - ❌ Erreur lors de la création de l\'utilisateur:', createError);
             // Si l'erreur est due à un email dupliqué, essayer de récupérer l'utilisateur
             if (createError.code === 11000 && createError.keyPattern?.email) {
-              console.log('   - Email déjà utilisé, récupération de l\'utilisateur existant');
+              console.log('   - 🔄 Email déjà utilisé, récupération de l\'utilisateur existant');
               user = await User.findOne({ email: email.toLowerCase() });
               if (user) {
                 user.googleId = googleId;
@@ -109,15 +117,16 @@ export const configurePassport = () => {
             }
           }
         }
-        console.log('   - User ID:', user._id);
-        console.log('   - Status: pending (en attente de validation admin)');
       } else {
-        console.log('   - ✅ Utilisateur existant trouvé:', user.email);
-        console.log('   - User ID:', user._id);
-        console.log('   - User status:', user.status);
+        console.log('   - ✅ Utilisateur existant trouvé (par googleId)');
+        console.log('   -   Email:', user.email);
+        console.log('   -   Nom:', user.name);
+        console.log('   -   User ID:', user._id.toString());
+        console.log('   -   Status:', user.status);
+        console.log('   -   Role:', user.role);
         // Mise à jour si nécessaire
         if (!user.name && name) {
-          console.log('   - Mise à jour: ajout name');
+          console.log('   - 🔄 Mise à jour: ajout name');
           user.name = name;
           await user.save();
         }

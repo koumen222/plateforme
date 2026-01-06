@@ -7,32 +7,78 @@ const AuthContext = createContext(null)
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [token, setToken] = useState(null) // Token n'est plus utilisé depuis localStorage
+  const [token, setToken] = useState(() => {
+    // Charger le token depuis localStorage au démarrage
+    return localStorage.getItem('token') || null
+  })
 
   useEffect(() => {
-    // Récupérer l'utilisateur depuis le cookie via /api/auth/me
-    axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
-      withCredentials: true
-    })
-    .then(res => {
-      if (res.data.success && res.data.user) {
-        setUser(res.data.user)
-        // Le token est maintenant dans un cookie httpOnly, plus besoin de localStorage
-        // On garde setToken(null) pour compatibilité avec le code existant
-        setToken(null)
+    console.log('🔐 ========== AUTH CONTEXT INIT ==========')
+    
+    // Récupérer le token depuis localStorage
+    const storedToken = localStorage.getItem('token')
+    const storedUser = localStorage.getItem('user')
+    
+    if (storedToken) {
+      console.log('✅ Token trouvé dans localStorage')
+      console.log('   - Token length:', storedToken.length)
+      setToken(storedToken)
+      
+      // Si on a aussi l'utilisateur en cache, l'utiliser temporairement
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser)
+          setUser(userData)
+          console.log('✅ Utilisateur chargé depuis localStorage:', userData.email)
+        } catch (e) {
+          console.error('❌ Erreur parsing user depuis localStorage:', e)
+        }
       }
-    })
-    .catch(() => {
-      // Pas d'utilisateur connecté ou erreur
-      setUser(null)
+      
+      // Vérifier le token avec le backend
+      axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`
+        },
+        withCredentials: true
+      })
+      .then(res => {
+        if (res.data.success && res.data.user) {
+          const userData = res.data.user
+          setUser(userData)
+          // Mettre à jour le localStorage avec les données fraîches
+          localStorage.setItem('user', JSON.stringify(userData))
+          console.log('✅ Token valide - Utilisateur:', userData.email)
+          console.log('   - Status:', userData.status)
+          console.log('   - Role:', userData.role)
+        } else {
+          console.error('❌ Réponse invalide du serveur')
+          // Token invalide, nettoyer
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+        }
+      })
+      .catch(error => {
+        console.error('❌ Token invalide ou expiré:', error.response?.status)
+        // Token invalide, nettoyer
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setToken(null)
+        setUser(null)
+      })
+      .finally(() => {
+        setLoading(false)
+        console.log('🔐 ========== FIN AUTH CONTEXT INIT ==========')
+      })
+    } else {
+      console.log('⚠️ Pas de token dans localStorage')
       setToken(null)
-      // Nettoyer le localStorage si nécessaire
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-    })
-    .finally(() => {
+      setUser(null)
       setLoading(false)
-    })
+      console.log('🔐 ========== FIN AUTH CONTEXT INIT ==========')
+    }
   }, [])
 
   const login = async (emailOrPhone, password) => {
@@ -215,14 +261,20 @@ export function AuthProvider({ children }) {
 
 
   const refreshUser = async () => {
-    if (!token) return { success: false, error: 'Non authentifié' }
-    
     try {
       console.log('🔄 Rafraîchissement des données utilisateur...')
-      const response = await fetch(`${CONFIG.BACKEND_URL}/api/user/me`, {
+      const currentToken = token || localStorage.getItem('token')
+      
+      if (!currentToken) {
+        console.error('❌ Pas de token pour rafraîchir l\'utilisateur')
+        return { success: false, error: 'Pas de token' }
+      }
+
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/auth/me`, {
         headers: {
-          'Authorization': `Bearer ${token}`,
+          'Authorization': `Bearer ${currentToken}`
         },
+        credentials: 'include'
       })
 
       const contentType = response.headers.get('content-type')
@@ -238,7 +290,7 @@ export function AuthProvider({ children }) {
         throw new Error(data.error || 'Erreur lors de la récupération des données')
       }
 
-      const { user: userData } = data
+      const userData = data.user
       
       // Vérifier si le statut a changé
       const oldStatus = user?.status
@@ -254,12 +306,19 @@ export function AuthProvider({ children }) {
       return { success: true, user: userData, statusChanged: oldStatus !== newStatus }
     } catch (error) {
       console.error('Erreur refreshUser:', error)
+      // Si le token est invalide, nettoyer
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        setToken(null)
+        setUser(null)
+      }
       return { success: false, error: error.message }
     }
   }
 
-  // isAuthenticated basé uniquement sur user (le token est dans un cookie httpOnly)
-  const isAuthenticated = !!user
+  // isAuthenticated basé sur token ET user
+  const isAuthenticated = !!(token && user)
 
   return (
     <AuthContext.Provider
@@ -272,6 +331,7 @@ export function AuthProvider({ children }) {
         register,
         logout,
         updateUser,
+        setUser, // Exposer setUser pour permettre la mise à jour directe
         updateProfile,
         refreshUser,
       }}
