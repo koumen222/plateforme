@@ -17,11 +17,9 @@ export function AuthProvider({ children }) {
     .then(res => {
       if (res.data.success && res.data.user) {
         setUser(res.data.user)
-        // Garder le token pour compatibilité avec les anciennes routes
-        const storedToken = localStorage.getItem('token')
-        if (storedToken) {
-          setToken(storedToken)
-        }
+        // Le token est maintenant dans un cookie httpOnly, plus besoin de localStorage
+        // On garde setToken(null) pour compatibilité avec le code existant
+        setToken(null)
       }
     })
     .catch(() => {
@@ -260,7 +258,8 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const isAuthenticated = !!user && !!token
+  // isAuthenticated basé uniquement sur user (le token est dans un cookie httpOnly)
+  const isAuthenticated = !!user
 
   return (
     <AuthContext.Provider

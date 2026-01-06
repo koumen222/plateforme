@@ -1,39 +1,36 @@
 import { useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import axios from 'axios'
+import { CONFIG } from '../config/config'
 
 export default function AuthCallbackPage() {
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { updateUser, setToken } = useAuth()
+  const { setUser } = useAuth()
 
   useEffect(() => {
-    const token = searchParams.get('token')
-    const userParam = searchParams.get('user')
-
-    if (token && userParam) {
-      try {
-        const user = JSON.parse(userParam)
+    // Récupérer l'utilisateur depuis le cookie via /api/auth/me
+    // Le token est déjà dans le cookie après la redirection depuis Google
+    axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+      withCredentials: true
+    })
+    .then(res => {
+      if (res.data.success && res.data.user) {
+        setUser(res.data.user)
+        console.log('✅ Authentification Google réussie - Utilisateur:', res.data.user.name || res.data.user.email)
         
-        // Sauvegarder le token et l'utilisateur
-        setToken(token)
-        updateUser(user)
-        localStorage.setItem('token', token)
-        localStorage.setItem('user', JSON.stringify(user))
-
-        console.log('✅ Authentification Google réussie - Utilisateur:', user.name || user.email)
-        
-        // Rediriger vers la page d'accueil
-        navigate('/', { replace: true })
-      } catch (error) {
-        console.error('Erreur lors du traitement du callback:', error)
-        navigate('/login?error=callback_error', { replace: true })
+        // Rediriger vers le dashboard
+        navigate('/dashboard', { replace: true })
+      } else {
+        console.error('❌ Pas d\'utilisateur dans la réponse')
+        navigate('/login?error=no_user', { replace: true })
       }
-    } else {
-      // Pas de token, rediriger vers login
-      navigate('/login?error=no_token', { replace: true })
-    }
-  }, [searchParams, navigate, updateUser, setToken])
+    })
+    .catch(error => {
+      console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error)
+      navigate('/login?error=callback_error', { replace: true })
+    })
+  }, [navigate, setUser])
 
   return (
     <div style={{ 
