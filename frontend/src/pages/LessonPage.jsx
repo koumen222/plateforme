@@ -94,7 +94,13 @@ export default function LessonPage({ lesson }) {
           setUser(res.data.user);
         }
       })
-      .catch(() => setUser(null));
+      .catch(error => {
+        // Ignorer silencieusement les erreurs 401 (utilisateur non connecté)
+        if (error.response?.status !== 401) {
+          console.error('Erreur lors du chargement de l\'utilisateur:', error);
+        }
+        setUser(null);
+      });
     }
   }, []);
 

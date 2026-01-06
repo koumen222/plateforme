@@ -70,6 +70,16 @@ export default function AuthCallbackPage() {
           navigate('/login', { replace: true })
         }
       } catch (error) {
+        // Ignorer silencieusement les erreurs 401 (token invalide)
+        if (error.response?.status === 401) {
+          console.error('❌ Token invalide ou expiré')
+        } else {
+          console.error('❌ Erreur lors de l\'authentification:', error)
+        }
+        if (error.response) {
+          console.error('   - Status:', error.response.status)
+          console.error('   - Data:', error.response.data)
+        }
         console.error('❌ Erreur lors de l\'authentification:', error)
         if (error.response) {
           console.error('   - Status:', error.response.status)

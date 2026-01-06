@@ -61,12 +61,21 @@ export function AuthProvider({ children }) {
         }
       })
       .catch(error => {
-        console.error('❌ Token invalide ou expiré:', error.response?.status)
-        // Token invalide, nettoyer
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setToken(null)
-        setUser(null)
+        // Ne logger que si ce n'est pas une erreur 401 normale (utilisateur non connecté)
+        if (error.response?.status === 401) {
+          // Token invalide ou expiré, nettoyer silencieusement
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+        } else {
+          console.error('❌ Erreur lors de la vérification du token:', error.response?.status || error.message)
+          // Nettoyer en cas d'erreur serveur aussi
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+        }
       })
       .finally(() => {
         setLoading(false)
@@ -305,14 +314,16 @@ export function AuthProvider({ children }) {
       
       return { success: true, user: userData, statusChanged: oldStatus !== newStatus }
     } catch (error) {
-      console.error('Erreur refreshUser:', error)
-      // Si le token est invalide, nettoyer
+      // Si le token est invalide (401), nettoyer silencieusement
       if (error.response?.status === 401) {
         localStorage.removeItem('token')
         localStorage.removeItem('user')
         setToken(null)
         setUser(null)
+        return { success: false, error: 'Token invalide ou expiré' }
       }
+      // Pour les autres erreurs, logger
+      console.error('Erreur refreshUser:', error)
       return { success: false, error: error.message }
     }
   }

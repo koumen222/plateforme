@@ -51,15 +51,23 @@ export default function PaymentSuccessPage() {
               // Mettre à jour l'utilisateur dans le contexte
               const token = localStorage.getItem('token')
               if (token) {
-                const userResponse = await axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
+                try {
+                  const userResponse = await axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    },
+                    withCredentials: true
+                  })
+                  
+                  if (userResponse.data.success && userResponse.data.user) {
+                    setUser(userResponse.data.user)
+                    console.log('✅ Utilisateur mis à jour dans le contexte')
                   }
-                })
-                
-                if (userResponse.data.success && userResponse.data.user) {
-                  setUser(userResponse.data.user)
-                  console.log('✅ Utilisateur mis à jour dans le contexte')
+                } catch (err) {
+                  // Ignorer silencieusement les erreurs 401 (token invalide)
+                  if (err.response?.status !== 401) {
+                    console.error('Erreur lors de la récupération de l\'utilisateur:', err)
+                  }
                 }
               }
             }
