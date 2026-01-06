@@ -100,30 +100,60 @@ router.post('/init', async (req, res) => {
       });
     }
 
-    if (!data.link) {
-      console.error('❌ Pas de link dans la réponse Lygos:', data);
+    // Log de la réponse complète pour debug
+    console.log('📥 Réponse complète de Lygos:', JSON.stringify(data, null, 2));
+    
+    // Vérifier si le lien existe (peut être dans différents champs)
+    let paymentLink = data.link || data.payment_link || data.url || data.paymentUrl || data.checkout_url;
+    
+    if (!paymentLink) {
+      console.error('❌ Pas de lien de paiement dans la réponse Lygos');
+      console.error('   - Réponse complète:', JSON.stringify(data, null, 2));
+      console.error('   - Champs disponibles:', Object.keys(data));
       return res.status(500).json({ 
         error: 'Réponse invalide de l\'API de paiement - lien manquant',
         details: process.env.NODE_ENV === 'development' ? data : undefined
       });
     }
 
-    // Vérifier que le lien est valide
-    if (!data.link.startsWith('http://') && !data.link.startsWith('https://')) {
-      console.error('❌ Lien de paiement invalide:', data.link);
+    // Normaliser le lien si nécessaire
+    // Si le lien ne commence pas par http/https, essayer de le compléter
+    if (!paymentLink.startsWith('http://') && !paymentLink.startsWith('https://')) {
+      console.warn('⚠️ Lien de paiement ne commence pas par http/https:', paymentLink);
+      
+      // Si c'est un chemin relatif, essayer de le compléter avec le domaine Lygos
+      if (paymentLink.startsWith('/')) {
+        paymentLink = `https://api.lygosapp.com${paymentLink}`;
+        console.log('   - Lien normalisé:', paymentLink);
+      } else {
+        // Si c'est autre chose, logger pour debug
+        console.error('❌ Format de lien inattendu:', paymentLink);
+        console.error('   - Type:', typeof paymentLink);
+        console.error('   - Longueur:', paymentLink.length);
+        return res.status(500).json({ 
+          error: 'Lien de paiement invalide reçu de l\'API',
+          details: process.env.NODE_ENV === 'development' ? { receivedLink: paymentLink, fullResponse: data } : undefined
+        });
+      }
+    }
+    
+    // Vérification finale
+    if (!paymentLink.startsWith('http://') && !paymentLink.startsWith('https://')) {
+      console.error('❌ Lien de paiement toujours invalide après normalisation:', paymentLink);
       return res.status(500).json({ 
-        error: 'Lien de paiement invalide reçu de l\'API' 
+        error: 'Lien de paiement invalide reçu de l\'API',
+        details: process.env.NODE_ENV === 'development' ? { receivedLink: paymentLink } : undefined
       });
     }
 
     console.log('✅ Paiement initialisé avec succès');
-    console.log('   - Link:', data.link);
+    console.log('   - Link:', paymentLink);
     console.log('💳 ========== FIN INITIALISATION ==========');
 
     // Retourner le link avec succès
     res.json({ 
       success: true,
-      link: data.link 
+      link: paymentLink 
     });
   } catch (error) {
     console.error('❌ Erreur initialisation paiement:', error);
