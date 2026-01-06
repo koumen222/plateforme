@@ -31,19 +31,46 @@ export default function PayButton({ amount, orderId, onSuccess, onError }) {
       const response = await axios.post(`${CONFIG.BACKEND_URL}/api/payment/init`, {
         amount: amount,
         order_id: orderId
+      }, {
+        timeout: 30000 // 30 secondes de timeout
       })
 
-      if (response.data.link) {
-        console.log('✅ Lien de paiement reçu:', response.data.link)
+      if (response.data && response.data.link) {
+        const paymentLink = response.data.link
+        console.log('✅ Lien de paiement reçu:', paymentLink)
+        
+        // Vérifier que le lien est valide
+        if (!paymentLink.startsWith('http://') && !paymentLink.startsWith('https://')) {
+          throw new Error('Lien de paiement invalide')
+        }
+        
+        // Appeler onSuccess avant la redirection
+        if (onSuccess) {
+          onSuccess()
+        }
         
         // Rediriger directement vers le lien de paiement LYGOS
-        window.location.href = response.data.link
+        // Utiliser replace() pour éviter les problèmes de navigation
+        window.location.replace(paymentLink)
       } else {
-        throw new Error('Lien de paiement non reçu')
+        throw new Error('Lien de paiement non reçu dans la réponse')
       }
     } catch (err) {
       console.error('❌ Erreur initialisation paiement:', err)
-      const errorMessage = err.response?.data?.error || err.message || 'Erreur lors de l\'initialisation du paiement'
+      console.error('   - Détails:', err.response?.data || err.message)
+      
+      let errorMessage = 'Erreur lors de l\'initialisation du paiement'
+      
+      if (err.response?.data?.error) {
+        errorMessage = err.response.data.error
+      } else if (err.message) {
+        errorMessage = err.message
+      } else if (err.response?.status === 500) {
+        errorMessage = 'Erreur serveur. Veuillez réessayer plus tard.'
+      } else if (err.response?.status === 401 || err.response?.status === 403) {
+        errorMessage = 'Vous devez être connecté pour effectuer un paiement.'
+      }
+      
       setError(errorMessage)
       if (onError) {
         onError(errorMessage)

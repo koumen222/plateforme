@@ -78,19 +78,41 @@ router.post('/init', async (req, res) => {
       body: JSON.stringify(lygosBody)
     });
 
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (parseError) {
+      console.error('❌ Erreur parsing réponse Lygos:', parseError);
+      const text = await response.text();
+      console.error('   - Réponse brute:', text);
+      return res.status(500).json({ 
+        error: 'Réponse invalide de l\'API de paiement' 
+      });
+    }
 
     if (!response.ok) {
       console.error('❌ Erreur API Lygos:', data);
+      console.error('   - Status:', response.status);
+      console.error('   - StatusText:', response.statusText);
       return res.status(response.status).json({ 
-        error: data.message || 'Erreur lors de l\'initialisation du paiement' 
+        error: data.message || data.error || 'Erreur lors de l\'initialisation du paiement',
+        details: process.env.NODE_ENV === 'development' ? data : undefined
       });
     }
 
     if (!data.link) {
       console.error('❌ Pas de link dans la réponse Lygos:', data);
       return res.status(500).json({ 
-        error: 'Réponse invalide de l\'API de paiement' 
+        error: 'Réponse invalide de l\'API de paiement - lien manquant',
+        details: process.env.NODE_ENV === 'development' ? data : undefined
+      });
+    }
+
+    // Vérifier que le lien est valide
+    if (!data.link.startsWith('http://') && !data.link.startsWith('https://')) {
+      console.error('❌ Lien de paiement invalide:', data.link);
+      return res.status(500).json({ 
+        error: 'Lien de paiement invalide reçu de l\'API' 
       });
     }
 
@@ -98,8 +120,11 @@ router.post('/init', async (req, res) => {
     console.log('   - Link:', data.link);
     console.log('💳 ========== FIN INITIALISATION ==========');
 
-    // Retourner uniquement le link
-    res.json({ link: data.link });
+    // Retourner le link avec succès
+    res.json({ 
+      success: true,
+      link: data.link 
+    });
   } catch (error) {
     console.error('❌ Erreur initialisation paiement:', error);
     res.status(500).json({ 
