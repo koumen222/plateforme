@@ -5,6 +5,8 @@
 
 [build.environment]
   NODE_VERSION = "18"
+  # VITE_BACKEND_URL sera configuré dans les variables d'environnement Netlify
+  # VITE_BACKEND_URL = "https://plateforme-r1h7.onrender.com"
 
 # Redirections pour SPA (Single Page Application)
 # Toutes les routes doivent pointer vers index.html pour que React Router fonctionne

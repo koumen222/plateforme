@@ -1,17 +1,21 @@
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
-  // Si VITE_BACKEND_URL est défini, l'utiliser
+  // Si VITE_BACKEND_URL est défini, l'utiliser (priorité)
   if (import.meta.env.VITE_BACKEND_URL) {
+    console.log('🌐 BACKEND_URL depuis VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL)
     return import.meta.env.VITE_BACKEND_URL
   }
   
   // En développement local (mode dev de Vite), utiliser localhost
   if (import.meta.env.DEV) {
+    console.log('🌐 BACKEND_URL mode DEV: http://localhost:3000')
     return 'http://localhost:3000'
   }
   
-  // Sinon, utiliser l'URL de production par défaut
-  return 'https://plateforme-r1h7.onrender.com'
+  // En production, utiliser l'URL de production par défaut
+  const prodUrl = 'https://plateforme-r1h7.onrender.com'
+  console.log('🌐 BACKEND_URL mode PROD:', prodUrl)
+  return prodUrl
 }
 
 export const CONFIG = {
