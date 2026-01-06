@@ -22,14 +22,21 @@ export default function CheckoutPage() {
     // Dans ce cas, on doit rediriger vers la vraie page de paiement LYGOS
     console.log('🔍 Checkout ID reçu:', checkoutId)
     
-    // On essaie de construire l'URL de paiement LYGOS
-    // Le format attendu est généralement : https://pay.lygosapp.com/checkout/{checkoutId}
-    const lygosCheckoutUrl = `https://pay.lygosapp.com/checkout/${checkoutId}`
+    // Vérifier si le checkoutId est déjà une URL complète
+    let lygosCheckoutUrl
+    if (checkoutId.startsWith('http://') || checkoutId.startsWith('https://')) {
+      // Si c'est déjà une URL complète, l'utiliser directement
+      lygosCheckoutUrl = checkoutId
+    } else {
+      // Sinon, construire l'URL de paiement LYGOS
+      // Le format attendu est généralement : https://pay.lygosapp.com/checkout/{checkoutId}
+      lygosCheckoutUrl = `https://pay.lygosapp.com/checkout/${checkoutId}`
+    }
     
     console.log('🔄 Redirection vers la page de paiement LYGOS:', lygosCheckoutUrl)
     
     // Rediriger immédiatement vers la page de paiement LYGOS
-    window.location.href = lygosCheckoutUrl
+    window.location.replace(lygosCheckoutUrl)
     
     // Si la redirection échoue, on redirige vers la page d'accueil après 3 secondes
     const timer = setTimeout(() => {

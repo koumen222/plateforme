@@ -6,3 +6,10 @@
 [build.environment]
   NODE_VERSION = "18"
 
+# Redirections pour SPA (Single Page Application)
+# Toutes les routes doivent pointer vers index.html pour que React Router fonctionne
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
