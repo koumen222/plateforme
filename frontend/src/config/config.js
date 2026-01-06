@@ -11,7 +11,7 @@ const getBackendUrl = () => {
   }
   
   // Sinon, utiliser l'URL de production par défaut
-  return 'https://plateforme-r1h7.onrender.com'
+  return 'http://localhost:3000'
 }
 
 export const CONFIG = {

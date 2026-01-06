@@ -27,7 +27,8 @@ const app = express();
 const allowedOrigins = [
   'http://localhost:5173', // Frontend Vite en développement
   'http://127.0.0.1:5173',  // Alternative localhost
-  'https://plateforme-zyfr.vercel.app', // Frontend en production
+  'https://www.safitech.shop', // Frontend en production
+  'https://safitech.shop', // Frontend en production (sans www)
   process.env.FRONTEND_URL // Variable d'environnement
 ].filter(Boolean); // Enlever les valeurs undefined
 
@@ -77,8 +78,8 @@ app.use(passport.session());
 // Configuration Google OAuth avec Passport
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
-const FRONTEND_URL = process.env.FRONTEND_URL || 'https://plateforme-zyfr.vercel.app';
-const BACKEND_URL = process.env.BACKEND_URL || 'https://plateforme-r1h7.onrender.com';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3000';
 
 passport.use(new GoogleStrategy({
   clientID: GOOGLE_CLIENT_ID,
