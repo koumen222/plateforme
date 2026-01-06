@@ -16,7 +16,7 @@ export default function AdminCoursesPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    coverImage: '/img/fbads.png',
+    coverImage: '/img/fbads.svg',
     slug: '',
     isDefault: false,
     isPublished: false
@@ -189,7 +189,7 @@ export default function AdminCoursesPage() {
         setFormData({
           title: '',
           description: '',
-          coverImage: '/img/fbads.png',
+          coverImage: '/img/fbads.svg',
           slug: '',
           isDefault: false,
           isPublished: false
@@ -473,7 +473,7 @@ export default function AdminCoursesPage() {
     setEditCourseForm({
       title: '',
       description: '',
-      coverImage: '/img/fbads.png',
+      coverImage: '/img/fbads.svg',
       slug: '',
       isDefault: false,
       isPublished: false
@@ -659,7 +659,7 @@ export default function AdminCoursesPage() {
                       id="coverImage"
                       value={formData.coverImage}
                       onChange={(e) => setFormData({ ...formData, coverImage: e.target.value })}
-                      placeholder="/img/fbads.png ou URL"
+                      placeholder="/img/fbads.svg ou URL"
                       className="admin-input"
                     />
                     <small className="admin-input-hint">
@@ -888,7 +888,7 @@ export default function AdminCoursesPage() {
                                       id="edit-coverImage"
                                       value={editCourseForm.coverImage}
                                       onChange={(e) => setEditCourseForm({ ...editCourseForm, coverImage: e.target.value })}
-                                      placeholder="/img/fbads.png ou URL"
+                                      placeholder="/img/fbads.svg ou URL"
                                       className="admin-input"
                                     />
                                     <small className="admin-input-hint">
@@ -985,7 +985,7 @@ export default function AdminCoursesPage() {
                               <strong>Description:</strong> {expandedCourse.description || 'Aucune description'}
                             </div>
                             <div style={{ marginBottom: '0.75rem' }}>
-                              <strong>Image:</strong> {expandedCourse.coverImage || '/img/fbads.png'}
+                              <strong>Image:</strong> {expandedCourse.coverImage || '/img/fbads.svg'}
                             </div>
                             {expandedCourse.coverImage && (
                               <div style={{ marginTop: '0.75rem' }}>

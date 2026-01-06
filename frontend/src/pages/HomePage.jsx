@@ -112,11 +112,11 @@ export default function HomePage() {
                         : course.coverImage.startsWith('/img/') || course.coverImage.startsWith('/assets/')
                         ? course.coverImage
                         : `${CONFIG.BACKEND_URL}${course.coverImage.startsWith('/') ? course.coverImage : '/' + course.coverImage}`)
-                    : '/img/fbads.png'
+                    : '/img/fbads.svg'
                 }
                 alt={course.title}
                 onError={(e) => {
-                  e.target.src = '/img/fbads.png'
+                  e.target.src = '/img/fbads.svg'
                 }}
               />
               {course.isDefault && (
