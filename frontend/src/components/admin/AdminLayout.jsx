@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
 import Chatbot from '../Chatbot'
+import Footer from '../Footer'
 import '../../styles/admin.css'
 
 export default function AdminLayout() {
@@ -84,6 +85,7 @@ export default function AdminLayout() {
       <main className="admin-main">
         <Outlet />
       </main>
+      <Footer />
       <Chatbot />
     </div>
   )

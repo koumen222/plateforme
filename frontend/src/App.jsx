@@ -59,13 +59,13 @@ function App() {
       >
         <CleanUrlRedirect />
         <Routes>
-          {/* Routes publiques sans layout */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/landing" element={<LandingPage />} />
-          <Route path="/payment-success" element={<PaymentSuccessPage />} />
-          <Route path="/payment-failed" element={<PaymentFailedPage />} />
-          <Route path="/safitech.shop/checkout/:checkoutId" element={<CheckoutPage />} />
-          <Route path="/checkout/:checkoutId" element={<CheckoutPage />} />
+          {/* Routes publiques avec PlatformLayout (Header + Footer) */}
+          <Route path="/login" element={<PlatformLayout><LoginPage /></PlatformLayout>} />
+          <Route path="/landing" element={<PlatformLayout><LandingPage /></PlatformLayout>} />
+          <Route path="/payment-success" element={<PlatformLayout><PaymentSuccessPage /></PlatformLayout>} />
+          <Route path="/payment-failed" element={<PlatformLayout><PaymentFailedPage /></PlatformLayout>} />
+          <Route path="/safitech.shop/checkout/:checkoutId" element={<PlatformLayout><CheckoutPage /></PlatformLayout>} />
+          <Route path="/checkout/:checkoutId" element={<PlatformLayout><CheckoutPage /></PlatformLayout>} />
           
           {/* Routes avec PlatformLayout (Header + Footer) */}
           <Route path="/" element={<PlatformLayout><HomePage /></PlatformLayout>} />
@@ -99,7 +99,7 @@ function App() {
           <Route path="/jour-8" element={<Navigate to="/course/facebook-ads/jour-8" replace />} />
 
           {/* Routes admin */}
-          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin/login" element={<PlatformLayout><AdminLoginPage /></PlatformLayout>} />
           <Route path="/admin/*" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
