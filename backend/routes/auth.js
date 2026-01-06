@@ -355,8 +355,10 @@ router.post('/login', async (req, res) => {
 
 // POST /api/auth/google - Authentification Google
 router.post('/auth/google', async (req, res) => {
+  console.log('🔵 Route /api/auth/google appelée');
   try {
     if (!client) {
+      console.error('❌ Client Google OAuth non initialisé');
       return res.status(500).json({ error: 'Authentification Google non configurée' });
     }
 

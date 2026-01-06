@@ -82,7 +82,7 @@ app.use("/api", authRoutes);
 console.log('✅ Routes d\'authentification chargées:');
 console.log('   - POST /api/register');
 console.log('   - POST /api/login');
-console.log('   - POST /api/auth/google');
+console.log('   - POST /api/auth/google ← Route Google OAuth');
 console.log('   - GET /api/user/me');
 console.log('   - PUT /api/profile');
 console.log('   - POST /api/admin/register');
