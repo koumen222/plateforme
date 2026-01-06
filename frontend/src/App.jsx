@@ -25,15 +25,11 @@ function CleanUrlRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Si l'URL est /dashboard.html, rediriger vers /dashboard
-    if (location.pathname === '/dashboard.html') {
-      console.log('🧹 Redirection /dashboard.html → /dashboard')
-      navigate('/dashboard', { replace: true })
-      return
-    }
+    const hasTokenParam = location.search.includes('token=')
+    const hasUserParam = location.search.includes('user=')
 
     // Si l'URL contient des paramètres token ou user, les supprimer
-    if (location.search.includes('token=') || location.search.includes('user=')) {
+    if (hasTokenParam || hasUserParam) {
       const cleanPath = location.pathname
       console.log('🧹 Nettoyage de l\'URL - suppression des paramètres token/user')
       navigate(cleanPath, { replace: true })
@@ -59,11 +55,6 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/landing" element={<LandingPage />} />
-          {/* Redirection depuis l'ancien système (dashboard.html avec token dans l'URL) */}
-          <Route 
-            path="/dashboard.html" 
-            element={<Navigate to="/dashboard" replace />} 
-          />
           <Route 
             path="/dashboard" 
             element={

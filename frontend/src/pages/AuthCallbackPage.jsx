@@ -1,11 +1,9 @@
 import { useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import axios from 'axios'
 import { CONFIG } from '../config/config'
 
 export default function AuthCallbackPage() {
-  const navigate = useNavigate()
   const { setUser } = useAuth()
 
   useEffect(() => {
@@ -15,22 +13,24 @@ export default function AuthCallbackPage() {
       withCredentials: true
     })
     .then(res => {
-      if (res.data.success && res.data.user) {
+      if (res.data.user) {
         setUser(res.data.user)
         console.log('✅ Authentification Google réussie - Utilisateur:', res.data.user.name || res.data.user.email)
+        console.log('   Status:', res.data.user.status)
         
-        // Rediriger vers le dashboard
-        navigate('/dashboard', { replace: true })
+        // Rediriger vers la page d'accueil
+        window.location.href = "/"
       } else {
         console.error('❌ Pas d\'utilisateur dans la réponse')
-        navigate('/login?error=no_user', { replace: true })
+        window.location.href = "/"
       }
     })
     .catch(error => {
       console.error('❌ Erreur lors de la récupération de l\'utilisateur:', error)
-      navigate('/login?error=callback_error', { replace: true })
+      // Rediriger vers la page d'accueil même en cas d'erreur
+      window.location.href = "/"
     })
-  }, [navigate, setUser])
+  }, [setUser])
 
   return (
     <div style={{ 

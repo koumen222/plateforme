@@ -4,10 +4,12 @@ import { lessons } from '../data/lessons'
 import VideoPlayer from '../components/VideoPlayer'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
+import axios from 'axios'
 import '../styles/comments.css'
+import '../styles/profile.css'
 
 export default function LessonPage({ lesson }) {
-  const { user, token, isAuthenticated } = useAuth()
+  const { user, token, isAuthenticated, setUser } = useAuth()
   const navigate = useNavigate()
   const [isCompleted, setIsCompleted] = useState(false)
   const [isMarking, setIsMarking] = useState(false)
@@ -25,6 +27,15 @@ export default function LessonPage({ lesson }) {
   const currentIndex = lessons.findIndex(l => l.id === lesson.id)
   const nextLesson = lessons[currentIndex + 1]
   const prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : null
+
+  // Charger l'utilisateur automatiquement sur la page d'accueil
+  useEffect(() => {
+    axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+      withCredentials: true
+    })
+    .then(res => setUser(res.data.user))
+    .catch(() => setUser(null));
+  }, []);
 
   useEffect(() => {
     if (isAuthenticated && user?.status === 'active' && token && lesson) {
@@ -352,6 +363,42 @@ export default function LessonPage({ lesson }) {
           )}
         </div>
       </header>
+
+      {/* Message d'alerte pour les utilisateurs pending */}
+      {isAuthenticated && user?.status === 'pending' && (
+        <div className="profile-notice profile-notice-pending" style={{ 
+          marginBottom: '2rem', 
+          marginTop: '1rem',
+          padding: '2rem',
+          textAlign: 'center',
+          maxWidth: '800px',
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}>
+          <div className="profile-notice-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+          <div className="profile-notice-content">
+            <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Compte en attente de validation</h3>
+            <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>
+              Votre compte est en attente d'activation. Les vidéos sont temporairement bloquées. 
+              Contactez Morgan via WhatsApp pour finaliser votre paiement et activer votre compte.
+            </p>
+            <a 
+              href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="whatsapp-btn"
+              style={{ 
+                display: 'inline-block',
+                padding: '0.75rem 1.5rem',
+                fontSize: '1rem',
+                marginTop: '0.5rem'
+              }}
+            >
+              💬 Contacter Morgan sur WhatsApp
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Videos */}
       {lesson.video && (

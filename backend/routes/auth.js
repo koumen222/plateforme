@@ -308,19 +308,8 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.' });
     }
 
-    // Vérifier le statut de l'utilisateur (même règle pour tous)
-    if (user.status !== 'active') {
-      let statusMessage = 'Votre compte est en attente de validation par l\'administrateur. Contactez l\'administrateur pour activer votre compte.';
-      if (user.status === 'pending') {
-        statusMessage = 'Votre compte est en attente d\'activation. Contactez l\'administrateur via WhatsApp pour finaliser votre paiement et activer votre compte.';
-      } else if (user.status === 'inactive') {
-        statusMessage = 'Votre compte est inactif. Contactez l\'administrateur pour réactiver votre compte.';
-      }
-      return res.status(403).json({ 
-        error: statusMessage,
-        status: user.status
-      });
-    }
+    // Ne jamais bloquer la connexion ici selon le status.
+    // Le frontend gérera les restrictions selon user.status
 
     // Générer le token JWT
     const token = jwt.sign(

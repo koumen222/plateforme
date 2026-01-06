@@ -132,12 +132,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Redirection pour les anciennes URLs avec token dans l'URL
-// Redirige /dashboard.html vers /dashboard (sans paramètres)
-app.get("/dashboard.html", (req, res) => {
-  // Supprimer tous les paramètres de l'URL (token, user, etc.)
-  res.redirect(`${FRONTEND_URL}/dashboard`);
-});
 
 // ============================================
 // Routes Google OAuth
@@ -156,45 +150,34 @@ app.get("/auth/google",
  * Callback OAuth après authentification Google
  */
 app.get("/auth/google/callback",
-  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  passport.authenticate("google", {
+    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`
+  }),
   async (req, res) => {
     try {
       const user = req.user;
-      
       if (!user) {
-        console.error('❌ Utilisateur non trouvé après authentification Google');
-        return res.redirect(`${FRONTEND_URL}/login?error=user_not_found`);
+        return res.redirect(`${FRONTEND_URL}/login`);
       }
 
-      // Générer le token JWT
       const token = jwt.sign(
-        { userId: user._id, email: user.email, status: user.status, role: user.role },
+        { userId: user._id, status: user.status, role: user.role },
         JWT_SECRET,
         { expiresIn: JWT_EXPIRES_IN }
       );
 
-      // Stocker le token dans un cookie httpOnly
       res.cookie("safitech_token", token, {
         httpOnly: true,
-        secure: true, // HTTPS uniquement
-        sameSite: "none", // Nécessaire pour cross-domain (Render)
-        maxAge: 7 * 24 * 60 * 60 * 1000 // 7 jours
+        secure: true,
+        sameSite: "none",
+        maxAge: 7 * 24 * 60 * 60 * 1000
       });
 
-      // Vérifier le statut du compte avant redirection (même règle pour tous)
-      if (user.accountStatus === "pending") {
-        // Rediriger vers le dashboard, le frontend gérera l'affichage du message pending
-        return res.redirect(`${FRONTEND_URL}/dashboard`);
-      }
-
-      console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
-      console.log(`   Token stocké dans cookie safitech_token`);
-      
-      // Rediriger vers le dashboard (sans token dans l'URL)
-      res.redirect(`${FRONTEND_URL}/dashboard`);
+      // 🔥 RESTER SUR LA PAGE D'ACCUEIL
+      return res.redirect(`${FRONTEND_URL}/`);
     } catch (error) {
-      console.error('❌ Erreur callback Google:', error);
-      res.redirect(`${FRONTEND_URL}/login?error=google_auth_error`);
+      console.error("Google callback error:", error);
+      return res.redirect(`${FRONTEND_URL}/login`);
     }
   }
 );
@@ -268,13 +251,8 @@ app.post("/api/chat", authenticate, async (req, res) => {
   const { message, conversationHistory } = req.body;
 
   try {
-    // Vérifier que l'utilisateur est actif (même règle pour tous)
-    if (req.user.status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Votre compte doit être actif pour accéder au chat',
-        status: req.user.status
-      });
-    }
+    // Le frontend gère les restrictions selon user.status
+    // Ne jamais bloquer ici selon le status
 
     if (!message) {
       return res.status(400).json({ error: 'Le message est requis' });
