@@ -18,26 +18,20 @@ export const configurePassport = () => {
   // Les URIs autorisés dans Google Cloud Console sont :
   // - http://localhost:3000/auth/google/callback (développement)
   // - https://www.safitech.shop/auth/google/callback (production)
-  // - https://votre-app.onrender.com/auth/google/callback (Render)
+  // - https://plateforme-r1h7.onrender.com/auth/google/callback (Render - URL fixe)
   const getCallbackURL = () => {
     // Si GOOGLE_CALLBACK_URL est défini explicitement, l'utiliser
     if (process.env.GOOGLE_CALLBACK_URL) {
       return process.env.GOOGLE_CALLBACK_URL;
     }
     
-    // Sur Render, utiliser RENDER_EXTERNAL_URL si disponible
-    if (process.env.RENDER_EXTERNAL_URL) {
-      const renderUrl = process.env.RENDER_EXTERNAL_URL.replace(/\/$/, ''); // Enlever le slash final
-      return `${renderUrl}/auth/google/callback`;
+    // URL fixe pour Render (production)
+    if (process.env.NODE_ENV === 'production' || process.env.RENDER_EXTERNAL_URL) {
+      return 'https://plateforme-r1h7.onrender.com/auth/google/callback';
     }
     
     // En développement local
-    if (process.env.NODE_ENV !== 'production' || !process.env.PORT) {
-      return 'http://localhost:3000/auth/google/callback';
-    }
-    
-    // En production, utiliser safitech.shop
-    return 'https://www.safitech.shop/auth/google/callback';
+    return 'http://localhost:3000/auth/google/callback';
   };
 
   const callbackURL = getCallbackURL();
@@ -57,9 +51,11 @@ export const configurePassport = () => {
   }, async (accessToken, refreshToken, profile, done) => {
     try {
       const { id: googleId, emails, displayName: name, photos } = profile;
-      const email = emails?.[0]?.value;
+      // Version sécurisée : vérifier que emails existe et contient au moins un élément
+      const email = profile.emails && profile.emails.length > 0 ? profile.emails[0].value : null;
 
       if (!email) {
+        console.error('❌ Email non fourni par Google. Profile:', JSON.stringify(profile, null, 2));
         return done(new Error('Email non fourni par Google'), null);
       }
 

@@ -1,3 +1,17 @@
+// Gestion des erreurs non capturées (doit être en premier)
+process.on("uncaughtException", err => {
+  console.error("❌ UNCAUGHT EXCEPTION:", err);
+  console.error("Stack:", err.stack);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("❌ UNHANDLED PROMISE REJECTION:", reason);
+  console.error("Promise:", promise);
+  if (reason && reason.stack) {
+    console.error("Stack:", reason.stack);
+  }
+});
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
