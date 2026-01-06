@@ -76,23 +76,21 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
-// Configuration pour Render (trust proxy)
-// Sur Render, le serveur est derrière un proxy, il faut faire confiance au proxy
-if (process.env.RENDER_EXTERNAL_URL || process.env.NODE_ENV === 'production') {
-  app.set('trust proxy', 1);
-  console.log('🔒 Trust proxy activé pour Render/production');
-}
+// Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
+app.set("trust proxy", 1);
+console.log('🔒 Trust proxy activé (nécessaire pour Render)');
 
-// Configuration de la session pour Passport
+// Configuration de la session pour Passport (OBLIGATOIRE pour Render)
 app.use(session({
+  name: "safitech.sid", // Nom du cookie de session
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en production
+    secure: true, // HTTPS uniquement (OBLIGATOIRE pour Render)
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 heures
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' // Pour OAuth cross-domain
+    sameSite: "none" // OBLIGATOIRE pour OAuth cross-domain sur Render
   }
 }));
 
@@ -140,79 +138,22 @@ app.get("/health", (req, res) => {
  * GET /auth/google
  * Redirige l'utilisateur vers Google pour l'authentification
  */
-app.get("/auth/google", (req, res, next) => {
-  console.log('🔐 Requête OAuth Google reçue:', req.method, req.originalUrl);
-  console.log('   Query params:', req.query);
-  next();
-}, passport.authenticate("google", { 
-  scope: ["profile", "email"] 
-}));
+app.get("/auth/google",
+  passport.authenticate("google", { scope: ["profile", "email"] })
+);
 
 /**
  * GET /auth/google/callback
  * Callback OAuth après authentification Google
- * Redirige vers https://www.safitech.shop/dashboard.html après succès
  */
-app.get("/auth/google/callback", (req, res, next) => {
-  console.log('🔄 ========== CALLBACK OAUTH GOOGLE ==========');
-  console.log('📥 Requête reçue:', req.method, req.originalUrl);
-  console.log('   - URL complète:', req.protocol + '://' + req.get('host') + req.originalUrl);
-  console.log('   - Query params:', JSON.stringify(req.query, null, 2));
-  console.log('   - Code OAuth présent:', !!req.query.code);
-  console.log('   - Error dans query:', req.query.error);
-  console.log('   - Headers:', {
-    'user-agent': req.get('user-agent'),
-    'referer': req.get('referer'),
-    'host': req.get('host')
-  });
-  console.log('   - Session ID:', req.sessionID);
-  console.log('   - User dans session (avant auth):', req.user ? JSON.stringify(req.user, null, 2) : 'absent');
-  console.log('   - Session data:', JSON.stringify(req.session, null, 2));
-  next();
-}, (req, res, next) => {
-  // Middleware pour capturer les erreurs Passport
-  passport.authenticate("google", { 
-    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`,
-    session: true
-  }, (err, user, info) => {
-    console.log('🔐 Passport authenticate callback');
-    console.log('   - Error:', err ? err.message : 'aucune');
-    console.log('   - User:', user ? user.email : 'absent');
-    console.log('   - Info:', info);
-    
-    if (err) {
-      console.error('❌ Erreur Passport authenticate:', err);
-      console.error('   - Stack:', err.stack);
-      return res.redirect(`${FRONTEND_URL}/login?error=google_auth_failed&details=${encodeURIComponent(err.message)}`);
-    }
-    
-    if (!user) {
-      console.error('❌ Pas d\'utilisateur retourné par Passport');
-      return res.redirect(`${FRONTEND_URL}/login?error=google_auth_failed&details=no_user`);
-    }
-    
-    // Connecter l'utilisateur à la session
-    req.logIn(user, (loginErr) => {
-      if (loginErr) {
-        console.error('❌ Erreur lors de la connexion à la session:', loginErr);
-        return res.redirect(`${FRONTEND_URL}/login?error=google_auth_failed&details=login_error`);
-      }
-      console.log('✅ Utilisateur connecté à la session:', user.email);
-      next();
-    });
-  })(req, res, next);
-}, async (req, res, next) => {
+app.get("/auth/google/callback",
+  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  async (req, res) => {
     try {
-      console.log('✅ Passport authenticate réussi');
-      console.log('   - User après auth:', req.user ? JSON.stringify(req.user, null, 2) : 'ABSENT');
-      console.log('   - User ID:', req.user?._id);
-      console.log('   - User email:', req.user?.email);
-      
       const user = req.user;
       
       if (!user) {
-        console.error('❌ ERREUR: Utilisateur non trouvé après authentification Google');
-        console.error('   - Session:', JSON.stringify(req.session, null, 2));
+        console.error('❌ Utilisateur non trouvé après authentification Google');
         return res.redirect(`${FRONTEND_URL}/login?error=user_not_found`);
       }
 
@@ -238,22 +179,10 @@ app.get("/auth/google/callback", (req, res, next) => {
       }));
 
       console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
-      console.log(`   - User ID: ${user._id}`);
-      console.log(`   - User status: ${user.status}`);
-      console.log(`   - User role: ${user.role}`);
-      console.log(`   - Token généré: ${token.substring(0, 50)}...`);
-      console.log(`   - Redirection vers: ${dashboardUrl.toString()}`);
-      console.log('🔄 ========== FIN CALLBACK OAUTH ==========');
       
       res.redirect(dashboardUrl.toString());
     } catch (error) {
-      console.error('❌ ========== ERREUR CALLBACK GOOGLE ==========');
-      console.error('   - Error message:', error.message);
-      console.error('   - Error stack:', error.stack);
-      console.error('   - Error name:', error.name);
-      console.error('   - User dans req:', req.user ? JSON.stringify(req.user, null, 2) : 'absent');
-      console.error('   - Session:', JSON.stringify(req.session, null, 2));
-      console.error('❌ ===========================================');
+      console.error('❌ Erreur callback Google:', error);
       res.redirect(`${FRONTEND_URL}/login?error=google_auth_error`);
     }
   }

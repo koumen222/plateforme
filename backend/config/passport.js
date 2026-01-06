@@ -14,34 +14,15 @@ export const configurePassport = () => {
     return;
   }
 
-  // Détection automatique de l'URL du callback OAuth
-  // Les URIs autorisés dans Google Cloud Console sont :
-  // - http://localhost:3000/auth/google/callback (développement)
-  // - https://www.safitech.shop/auth/google/callback (production)
-  // - https://plateforme-r1h7.onrender.com/auth/google/callback (Render - URL fixe)
-  const getCallbackURL = () => {
-    // Si GOOGLE_CALLBACK_URL est défini explicitement, l'utiliser
-    if (process.env.GOOGLE_CALLBACK_URL) {
-      return process.env.GOOGLE_CALLBACK_URL;
-    }
-    
-    // URL fixe pour Render (production)
-    if (process.env.NODE_ENV === 'production' || process.env.RENDER_EXTERNAL_URL) {
-      return 'https://plateforme-r1h7.onrender.com/auth/google/callback';
-    }
-    
-    // En développement local
-    return 'http://localhost:3000/auth/google/callback';
-  };
-
-  const callbackURL = getCallbackURL();
+  // URL de callback fixe pour Render (OBLIGATOIRE)
+  const callbackURL = process.env.GOOGLE_CALLBACK_URL || 
+    (process.env.NODE_ENV === 'production' || process.env.RENDER_EXTERNAL_URL
+      ? 'https://plateforme-r1h7.onrender.com/auth/google/callback'
+      : 'http://localhost:3000/auth/google/callback');
 
   console.log('🔐 Configuration Google OAuth:');
   console.log('   - Client ID:', GOOGLE_CLIENT_ID.substring(0, 30) + '...');
   console.log('   - Callback URL:', callbackURL);
-  console.log('   - RENDER_EXTERNAL_URL:', process.env.RENDER_EXTERNAL_URL || 'non défini');
-  console.log('   - GOOGLE_CALLBACK_URL:', process.env.GOOGLE_CALLBACK_URL || 'non défini');
-  console.log('   - NODE_ENV:', process.env.NODE_ENV || 'non défini');
 
   // Configuration de la stratégie Google OAuth
   passport.use(new GoogleStrategy({
@@ -116,7 +97,18 @@ export const configurePassport = () => {
       }
 
       console.log('🔐 ========== FIN PASSPORT STRATEGY ==========');
-      return done(null, user);
+      // Convertir l'objet User MongoDB en objet simple pour la session
+      const userObj = {
+        _id: user._id,
+        googleId: user.googleId,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        status: user.status,
+        role: user.role,
+        authProvider: user.authProvider
+      };
+      return done(null, userObj);
     } catch (error) {
       console.error('❌ ========== ERREUR PASSPORT STRATEGY ==========');
       console.error('   - Error message:', error.message);
@@ -128,26 +120,15 @@ export const configurePassport = () => {
     }
   }));
 
-  // Sérialisation utilisateur pour la session
+  // Sérialisation utilisateur pour la session (version simplifiée pour Render)
   passport.serializeUser((user, done) => {
-    console.log('📦 Serialize user:', user._id, user.email);
-    done(null, user._id);
+    // Sérialiser l'objet utilisateur complet pour éviter les problèmes de session
+    done(null, user);
   });
 
-  passport.deserializeUser(async (id, done) => {
-    try {
-      console.log('📦 Deserialize user ID:', id);
-      const user = await User.findById(id);
-      if (user) {
-        console.log('   - User trouvé:', user.email);
-      } else {
-        console.error('   - ❌ User non trouvé pour ID:', id);
-      }
-      done(null, user);
-    } catch (error) {
-      console.error('❌ Erreur deserializeUser:', error);
-      done(error, null);
-    }
+  passport.deserializeUser((obj, done) => {
+    // Désérialiser directement l'objet (pas besoin de requête DB)
+    done(null, obj);
   });
 };
 
