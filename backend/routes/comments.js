@@ -1,12 +1,16 @@
 import express from 'express';
 import Comment from '../models/Comment.js';
 import User from '../models/User.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, checkAccountStatus } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Appliquer les middlewares à toutes les routes
+router.use(authenticate);
+router.use(checkAccountStatus);
+
 // POST /api/comments - Créer un nouveau commentaire (utilisateur authentifié)
-router.post('/', authenticate, async (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { content, lessonId, lessonTitle } = req.body;
 
@@ -69,7 +73,7 @@ router.post('/', authenticate, async (req, res) => {
 });
 
 // GET /api/comments - Récupérer les commentaires de l'utilisateur connecté
-router.get('/', authenticate, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     console.log(`📋 Récupération commentaires pour ${req.user.email}`);
     
@@ -90,7 +94,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // GET /api/comments/lesson/:lessonId - Récupérer tous les commentaires d'une leçon spécifique
-router.get('/lesson/:lessonId', authenticate, async (req, res) => {
+router.get('/lesson/:lessonId', async (req, res) => {
   try {
     const { lessonId } = req.params;
     const lessonIdNum = parseInt(lessonId);
@@ -118,7 +122,7 @@ router.get('/lesson/:lessonId', authenticate, async (req, res) => {
 });
 
 // POST /api/comments/:id/response - Répondre à un commentaire (utilisateur répond à la réponse admin)
-router.post('/:id/response', authenticate, async (req, res) => {
+router.post('/:id/response', async (req, res) => {
   try {
     const { id } = req.params;
     const { response } = req.body;

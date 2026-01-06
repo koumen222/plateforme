@@ -20,7 +20,7 @@ import passport from "passport";
 import fetch from "node-fetch";
 import { connectDB } from "./config/database.js";
 import { configurePassport } from "./config/passport.js";
-import { authenticate } from "./middleware/auth.js";
+import { authenticate, checkAccountStatus } from "./middleware/auth.js";
 import User from "./models/User.js";
 import jwt from "jsonwebtoken";
 import authRoutes from "./routes/auth.js";
@@ -164,6 +164,13 @@ app.get("/auth/google/callback",
         { expiresIn: JWT_EXPIRES_IN }
       );
 
+      // Vérifier le statut du compte avant redirection
+      if (user.accountStatus === "pending") {
+        const pendingUrl = new URL(`${FRONTEND_URL}/email-pending.html`);
+        pendingUrl.searchParams.set('token', token);
+        return res.redirect(pendingUrl.toString());
+      }
+
       // Rediriger vers le dashboard avec le token dans l'URL
       const dashboardUrl = new URL(`${FRONTEND_URL}/dashboard.html`);
       dashboardUrl.searchParams.set('token', token);
@@ -174,6 +181,8 @@ app.get("/auth/google/callback",
         email: user.email,
         phoneNumber: user.phoneNumber || '',
         status: user.status,
+        accountStatus: user.accountStatus,
+        emailVerified: user.emailVerified,
         role: user.role,
         authProvider: user.authProvider
       }));

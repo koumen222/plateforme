@@ -64,9 +64,11 @@ export const configurePassport = () => {
         // ⚠️ Ne PAS définir phoneNumber pour les utilisateurs Google
         user = await User.create({
           name: profile.displayName || email.split('@')[0],
-          email: email.toLowerCase(),
+          email: profile.emails?.[0]?.value || email.toLowerCase(),
           googleId: profile.id,
           authProvider: "google",
+          emailVerified: false,
+          accountStatus: "pending",
           role: 'student',
           status: 'pending' // En attente de validation par l'admin
         });

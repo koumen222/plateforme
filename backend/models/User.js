@@ -53,6 +53,15 @@ const userSchema = new mongoose.Schema({
     enum: ['pending', 'active', 'inactive'],
     default: 'pending'
   },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  accountStatus: {
+    type: String,
+    enum: ["pending", "active", "blocked"],
+    default: "pending"
+  },
   progress: [{
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

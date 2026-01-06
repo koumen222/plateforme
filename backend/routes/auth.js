@@ -77,6 +77,8 @@ router.post('/admin/register', async (req, res) => {
       phoneNumber: trimmedPhone,
       password,
       authProvider: "local",
+      emailVerified: false,
+      accountStatus: "pending",
       role: 'superadmin',
       status: 'active'
     });
@@ -182,6 +184,8 @@ router.post('/register', async (req, res) => {
       phoneNumber: trimmedPhone,
       password,
       authProvider: "local",
+      emailVerified: false,
+      accountStatus: "pending",
       status: 'pending'
     });
     
@@ -438,7 +442,10 @@ router.get('/user/me', authenticate, async (req, res) => {
         email: user.email,
         phoneNumber: user.phoneNumber,
         status: user.status,
+        accountStatus: user.accountStatus,
+        emailVerified: user.emailVerified,
         role: user.role,
+        authProvider: user.authProvider,
         createdAt: user.createdAt
       }
     });

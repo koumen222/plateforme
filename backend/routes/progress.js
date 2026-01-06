@@ -1,12 +1,16 @@
 import express from 'express';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, checkAccountStatus } from '../middleware/auth.js';
 
 const router = express.Router();
 
+// Appliquer les middlewares à toutes les routes
+router.use(authenticate);
+router.use(checkAccountStatus);
+
 // GET /api/progress - Récupérer la progression de l'utilisateur
-router.get('/', authenticate, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
     // Vérifier que l'utilisateur est actif
     if (req.user.status !== 'active') {

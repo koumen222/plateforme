@@ -40,3 +40,41 @@ export const authenticate = async (req, res, next) => {
   }
 };
 
+/**
+ * Middleware pour vérifier le statut du compte
+ * Pour les routes API : retourne une erreur JSON
+ * Pour les routes HTML : redirige vers email-pending.html
+ */
+export const checkAccountStatus = (req, res, next) => {
+  if (!req.user) {
+    // Si c'est une requête API, retourner JSON
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+    return res.redirect("/login");
+  }
+
+  if (req.user.accountStatus === "pending") {
+    // Si c'est une requête API, retourner JSON
+    if (req.path.startsWith('/api/')) {
+      return res.status(403).json({ 
+        error: 'Votre compte est en attente de validation. Vérifiez votre email.',
+        accountStatus: 'pending',
+        emailVerified: req.user.emailVerified
+      });
+    }
+    // Sinon, rediriger vers la page d'attente
+    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
+    return res.redirect(`${FRONTEND_URL}/email-pending.html`);
+  }
+
+  if (req.user.accountStatus === "blocked") {
+    return res.status(403).json({ 
+      error: 'Votre compte a été bloqué. Contactez l\'administrateur.',
+      accountStatus: 'blocked'
+    });
+  }
+
+  next();
+};
+
