@@ -132,6 +132,13 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Redirection pour les anciennes URLs avec token dans l'URL
+// Redirige /dashboard.html vers /dashboard (sans paramètres)
+app.get("/dashboard.html", (req, res) => {
+  // Supprimer tous les paramètres de l'URL (token, user, etc.)
+  res.redirect(`${FRONTEND_URL}/dashboard`);
+});
+
 // ============================================
 // Routes Google OAuth
 // ============================================

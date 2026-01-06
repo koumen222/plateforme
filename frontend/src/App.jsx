@@ -25,6 +25,13 @@ function CleanUrlRedirect() {
   const navigate = useNavigate()
 
   useEffect(() => {
+    // Si l'URL est /dashboard.html, rediriger vers /dashboard
+    if (location.pathname === '/dashboard.html') {
+      console.log('🧹 Redirection /dashboard.html → /dashboard')
+      navigate('/dashboard', { replace: true })
+      return
+    }
+
     // Si l'URL contient des paramètres token ou user, les supprimer
     if (location.search.includes('token=') || location.search.includes('user=')) {
       const cleanPath = location.pathname
