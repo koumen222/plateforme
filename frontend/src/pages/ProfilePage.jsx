@@ -3,8 +3,8 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { lessons } from '../data/lessons'
-import PayButton from '../components/PayButton'
 import '../styles/profile.css'
+import PayButton from '../components/PayButton'
 
 export default function ProfilePage() {
   const { user, token, logout, updateUser, updateProfile, refreshUser } = useAuth()
