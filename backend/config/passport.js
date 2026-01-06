@@ -83,14 +83,20 @@ export const configurePassport = () => {
       } else {
         console.log('   - Nouvel utilisateur à créer');
         // Nouvel utilisateur - créer le compte
-        user = new User({
+        // Ne pas inclure phoneNumber si il n'existe pas (évite les problèmes d'index unique)
+        const userData = {
           name: name || email.split('@')[0],
           email: email.toLowerCase(),
           googleId,
           authProvider: 'google',
           role: 'student',
           status: 'pending' // En attente de validation par l'admin
-        });
+        };
+        
+        // Ne pas définir phoneNumber si il n'existe pas (undefined plutôt que null)
+        // Cela permet à l'index sparse de fonctionner correctement
+        
+        user = new User(userData);
         await user.save();
         console.log('   - ✅ Nouvel utilisateur créé:', user.email);
         console.log('   - User ID:', user._id);
@@ -103,11 +109,14 @@ export const configurePassport = () => {
         googleId: user.googleId,
         name: user.name,
         email: user.email,
-        phoneNumber: user.phoneNumber,
         status: user.status,
         role: user.role,
         authProvider: user.authProvider
       };
+      // Ne pas inclure phoneNumber si il est null/undefined (évite les problèmes d'index)
+      if (user.phoneNumber) {
+        userObj.phoneNumber = user.phoneNumber;
+      }
       return done(null, userObj);
     } catch (error) {
       console.error('❌ ========== ERREUR PASSPORT STRATEGY ==========');

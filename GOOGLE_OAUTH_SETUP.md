@@ -80,6 +80,37 @@ Si le callback URL n'est pas correct, vous pouvez forcer l'URL avec une variable
 GOOGLE_CALLBACK_URL=https://plateforme-r1h7.onrender.com/auth/google/callback
 ```
 
+## Correction de l'erreur E11000 duplicate key error
+
+Si vous rencontrez l'erreur `E11000 duplicate key error index: phoneNumber_1 dup key: { phoneNumber: null }` :
+
+### Problème
+L'index unique sur `phoneNumber` ne permet qu'un seul `null`. Quand plusieurs utilisateurs Google s'inscrivent (sans numéro de téléphone), ils ont tous `phoneNumber: null`, ce qui viole l'index unique.
+
+### Solution
+
+1. **Le modèle User a déjà `sparse: true`** sur `phoneNumber` (ligne 23 de `backend/models/User.js`)
+   - L'index sparse ignore les valeurs `null` dans l'unicité
+   - Plusieurs utilisateurs peuvent avoir `phoneNumber: null`
+
+2. **Supprimer l'ancien index MongoDB** (OBLIGATOIRE)
+   
+   Dans MongoDB Atlas :
+   - Allez dans votre cluster → Database → `plateforme` → Collection `users` → Indexes
+   - Trouvez l'index `phoneNumber_1`
+   - Cliquez sur "Drop" pour le supprimer
+   - Mongoose recréera automatiquement le nouvel index sparse au prochain démarrage
+
+   Ou via MongoDB Shell :
+   ```javascript
+   use plateforme
+   db.users.dropIndex("phoneNumber_1")
+   ```
+
+3. **La logique OAuth ne définit plus `phoneNumber` explicitement**
+   - Les utilisateurs Google n'auront pas de `phoneNumber` défini (undefined plutôt que null)
+   - Cela fonctionne parfaitement avec l'index sparse
+
 ## Notes importantes
 
 - Les utilisateurs créés via Google n'ont pas besoin de mot de passe
