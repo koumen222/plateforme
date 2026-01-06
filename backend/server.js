@@ -58,6 +58,92 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 
+// Configuration de la session pour Passport
+app.use(session({
+  secret: process.env.SESSION_SECRET || JWT_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 heures
+  }
+}));
+
+// Initialiser Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Configuration Google OAuth avec Passport
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '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';
+const FRONTEND_URL = process.env.FRONTEND_URL || 'https://plateforme-zyfr.vercel.app';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://plateforme-r1h7.onrender.com';
+
+passport.use(new GoogleStrategy({
+  clientID: GOOGLE_CLIENT_ID,
+  clientSecret: GOOGLE_CLIENT_SECRET,
+  callbackURL: `${BACKEND_URL}/auth/google/callback`
+}, async (accessToken, refreshToken, profile, done) => {
+  try {
+    const { id: googleId, emails, displayName: name, photos } = profile;
+    const email = emails?.[0]?.value;
+
+    if (!email) {
+      return done(new Error('Email non fourni par Google'), null);
+    }
+
+    // Chercher un utilisateur existant par googleId ou email
+    let user = await User.findOne({
+      $or: [
+        { googleId },
+        { email: email.toLowerCase() }
+      ]
+    });
+
+    if (user) {
+      // Utilisateur existant - mise à jour si nécessaire
+      if (!user.googleId) {
+        user.googleId = googleId;
+        user.authProvider = 'google';
+      }
+      if (!user.name && name) {
+        user.name = name;
+      }
+      await user.save();
+    } else {
+      // Nouvel utilisateur - créer le compte
+      user = new User({
+        name: name || email.split('@')[0],
+        email: email.toLowerCase(),
+        googleId,
+        authProvider: 'google',
+        role: 'student',
+        status: 'pending'
+      });
+      await user.save();
+    }
+
+    return done(null, user);
+  } catch (error) {
+    return done(error, null);
+  }
+}));
+
+// Sérialisation utilisateur pour la session
+passport.serializeUser((user, done) => {
+  done(null, user._id);
+});
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await User.findById(id);
+    done(null, user);
+  } catch (error) {
+    done(error, null);
+  }
+});
+
 // Middleware de logging pour debug
 app.use((req, res, next) => {
   console.log(`📥 ${req.method} ${req.originalUrl}`, req.body ? 'avec body' : 'sans body');
@@ -229,11 +315,12 @@ app.use((req, res, next) => {
   res.status(404).json({ 
     error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
     availableRoutes: [
+      'GET /auth/google',
+      'GET /auth/google/callback',
       'POST /api/register',
       'POST /api/login',
       'GET /api/user/me',
       'PUT /api/profile',
-      'POST /api/auth/google',
       'POST /api/chat',
       'POST /api/admin/register',
       'GET /api/admin/check'
