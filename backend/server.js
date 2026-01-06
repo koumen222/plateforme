@@ -183,7 +183,8 @@ app.get("/auth/google/callback",
 
       // Vérifier le statut du compte avant redirection (même règle pour tous)
       if (user.accountStatus === "pending") {
-        return res.redirect(`${FRONTEND_URL}/email-pending.html`);
+        // Rediriger vers le dashboard, le frontend gérera l'affichage du message pending
+        return res.redirect(`${FRONTEND_URL}/dashboard`);
       }
 
       console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);

@@ -77,9 +77,9 @@ export const checkAccountStatus = (req, res, next) => {
         emailVerified: req.user.emailVerified
       });
     }
-    // Sinon, rediriger vers la page d'attente
+    // Sinon, rediriger vers le dashboard, le frontend gérera l'affichage du message pending
     const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
-    return res.redirect(`${FRONTEND_URL}/email-pending.html`);
+    return res.redirect(`${FRONTEND_URL}/dashboard`);
   }
 
   if (req.user.accountStatus === "blocked") {

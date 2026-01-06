@@ -8,6 +8,12 @@ export default function PrivateRoute({ children }) {
     return null // Ou un spinner de chargement
   }
   
-  return user ? children : <Navigate to="/login" />
+  if (!user) {
+    return <Navigate to="/login" />
+  }
+  
+  // Si l'utilisateur est en pending, afficher un message au lieu de bloquer complètement
+  // Le composant enfant pourra gérer l'affichage du message pending
+  return children
 }
 
