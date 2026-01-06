@@ -1,9 +1,14 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import session from "express-session";
+import passport from "passport";
+import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import fetch from "node-fetch";
 import { connectDB } from "./config/database.js";
 import { authenticate } from "./middleware/auth.js";
+import User from "./models/User.js";
+import jwt from "jsonwebtoken";
 import authRoutes from "./routes/auth.js";
 import videoRoutes from "./routes/videos.js";
 import adminRoutes from "./routes/admin.js";
@@ -12,6 +17,9 @@ import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
 
 dotenv.config();
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 const app = express();
 
@@ -71,6 +79,47 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Routes Google OAuth (avant les autres routes /api)
+app.get("/auth/google", passport.authenticate("google", { 
+  scope: ["profile", "email"] 
+}));
+
+app.get("/auth/google/callback", 
+  passport.authenticate("google", { failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed` }),
+  async (req, res) => {
+    try {
+      const user = req.user;
+      
+      // Générer le token JWT
+      const token = jwt.sign(
+        { userId: user._id, email: user.email, status: user.status, role: user.role },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRES_IN }
+      );
+
+      // Rediriger vers le frontend avec le token dans l'URL
+      const redirectUrl = new URL(`${FRONTEND_URL}/auth/callback`);
+      redirectUrl.searchParams.set('token', token);
+      redirectUrl.searchParams.set('user', JSON.stringify({
+        id: user._id.toString(),
+        _id: user._id.toString(),
+        name: user.name || '',
+        email: user.email,
+        phoneNumber: user.phoneNumber || '',
+        status: user.status,
+        role: user.role,
+        authProvider: user.authProvider
+      }));
+
+      console.log(`✅ Authentification Google réussie - Utilisateur: ${user.name} (${user.email})`);
+      res.redirect(redirectUrl.toString());
+    } catch (error) {
+      console.error('❌ Erreur callback Google:', error);
+      res.redirect(`${FRONTEND_URL}/login?error=google_auth_error`);
+    }
+  }
+);
+
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
@@ -82,7 +131,8 @@ app.use("/api", authRoutes);
 console.log('✅ Routes d\'authentification chargées:');
 console.log('   - POST /api/register');
 console.log('   - POST /api/login');
-console.log('   - POST /api/auth/google ← Route Google OAuth');
+console.log('   - GET /auth/google ← Route Google OAuth (redirection)');
+console.log('   - GET /auth/google/callback ← Callback Google OAuth');
 console.log('   - GET /api/user/me');
 console.log('   - PUT /api/profile');
 console.log('   - POST /api/admin/register');

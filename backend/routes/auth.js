@@ -1,14 +1,9 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { OAuth2Client } from 'google-auth-library';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
-
-// Configuration Google OAuth
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com';
-const client = GOOGLE_CLIENT_ID ? new OAuth2Client(GOOGLE_CLIENT_ID) : null;
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
@@ -353,100 +348,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// POST /api/auth/google - Authentification Google
-router.post('/auth/google', async (req, res) => {
-  console.log('🔵 Route /api/auth/google appelée');
-  try {
-    if (!client) {
-      console.error('❌ Client Google OAuth non initialisé');
-      return res.status(500).json({ error: 'Authentification Google non configurée' });
-    }
-
-    const { credential } = req.body;
-
-    if (!credential) {
-      return res.status(400).json({ error: 'Token Google manquant' });
-    }
-
-    // Vérifier le token Google
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const { sub: googleId, email, name, picture } = payload;
-
-    if (!email) {
-      return res.status(400).json({ error: 'Email non fourni par Google' });
-    }
-
-    // Chercher un utilisateur existant par googleId ou email
-    let user = await User.findOne({
-      $or: [
-        { googleId },
-        { email: email.toLowerCase() }
-      ]
-    });
-
-    if (user) {
-      // Utilisateur existant - mise à jour si nécessaire
-      if (!user.googleId) {
-        user.googleId = googleId;
-        user.authProvider = 'google';
-        if (!user.name && name) {
-          user.name = name;
-        }
-        await user.save();
-      }
-    } else {
-      // Nouvel utilisateur - créer le compte
-      user = new User({
-        name: name || email.split('@')[0],
-        email: email.toLowerCase(),
-        googleId,
-        authProvider: 'google',
-        role: 'student',
-        status: 'pending', // En attente de validation par l'admin
-        // phoneNumber et password sont optionnels pour les utilisateurs Google
-      });
-
-      await user.save();
-    }
-
-    // Générer le token JWT
-    const token = jwt.sign(
-      { userId: user._id, email: user.email, status: user.status, role: user.role },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN }
-    );
-
-    const userResponse = {
-      id: user._id.toString(),
-      _id: user._id.toString(),
-      name: user.name || '',
-      email: user.email,
-      phoneNumber: user.phoneNumber || '',
-      status: user.status,
-      role: user.role,
-      authProvider: user.authProvider,
-      createdAt: user.createdAt
-    };
-
-    console.log(`✅ Authentification Google réussie - Utilisateur: ${userResponse.name} (${userResponse.email})`);
-
-    res.json({
-      message: user.status === 'active' ? 'Connexion réussie' : 'Compte créé avec succès',
-      token,
-      user: userResponse
-    });
-  } catch (error) {
-    console.error('❌ Erreur authentification Google:', error);
-    res.status(500).json({ 
-      error: 'Une erreur est survenue lors de l\'authentification Google. Veuillez réessayer.' 
-    });
-  }
-});
 
 // PUT /api/profile - Mettre à jour le profil de l'utilisateur connecté
 router.put('/profile', authenticate, async (req, res) => {

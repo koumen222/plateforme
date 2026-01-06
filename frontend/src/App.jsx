@@ -6,12 +6,15 @@ import AdminLayout from './components/admin/AdminLayout'
 import LessonPage from './pages/LessonPage'
 import CoachingPage from './pages/CoachingPage'
 import LoginPage from './pages/LoginPage'
+import AuthCallbackPage from './pages/AuthCallbackPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import CommentsPage from './pages/CommentsPage'
+import LandingPage from './pages/LandingPage'
+import ProductsPage from './pages/ProductsPage'
 import { lessons } from './data/lessons'
 
 function App() {
@@ -27,12 +30,15 @@ function App() {
         <Routes>
           {/* Routes étudiant/formation */}
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/auth/callback" element={<AuthCallbackPage />} />
+          <Route path="/landing" element={<LandingPage />} />
           <Route
             path="/*"
             element={
               <Layout>
                 <Routes>
                   <Route path="/" element={<LessonPage lesson={lessons[0]} />} />
+                  <Route path="/produits-gagnants" element={<ProductsPage />} />
                   <Route path="/jour-2" element={<LessonPage lesson={lessons[1]} />} />
                   <Route path="/jour-3" element={<LessonPage lesson={lessons[2]} />} />
                   <Route path="/jour-4" element={<LessonPage lesson={lessons[3]} />} />

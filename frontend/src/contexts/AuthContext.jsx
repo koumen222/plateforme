@@ -204,46 +204,6 @@ export function AuthProvider({ children }) {
     }
   }
 
-  const loginWithGoogle = async (credential) => {
-    try {
-      console.log('📤 Authentification Google en cours...')
-      
-      const response = await fetch(`${CONFIG.BACKEND_URL}/api/auth/google`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ credential }),
-      })
-
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Réponse non-JSON reçue:', text.substring(0, 200))
-        throw new Error(`Erreur serveur (${response.status}): ${response.statusText}`)
-      }
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur d\'authentification Google')
-      }
-
-      const { token: newToken, user: userData } = data
-      
-      console.log('✅ Authentification Google réussie - Utilisateur:', userData?.name || userData?.email)
-      
-      setToken(newToken)
-      setUser(userData)
-      localStorage.setItem('token', newToken)
-      localStorage.setItem('user', JSON.stringify(userData))
-      
-      return { success: true }
-    } catch (error) {
-      console.error('Erreur loginWithGoogle:', error)
-      return { success: false, error: error.message }
-    }
-  }
 
   const refreshUser = async () => {
     if (!token) return { success: false, error: 'Non authentifié' }
@@ -300,7 +260,6 @@ export function AuthProvider({ children }) {
         isAuthenticated,
         login,
         register,
-        loginWithGoogle,
         logout,
         updateUser,
         updateProfile,
