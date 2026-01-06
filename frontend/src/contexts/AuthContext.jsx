@@ -61,20 +61,30 @@ export function AuthProvider({ children }) {
         }
       })
       .catch(error => {
-        // Ne logger que si ce n'est pas une erreur 401 normale (utilisateur non connecté)
+        // Ne pas nettoyer si c'est juste une erreur 401 et qu'on a déjà un utilisateur en cache
+        // Cela peut arriver si le token vient d'être créé et n'est pas encore reconnu
         if (error.response?.status === 401) {
-          // Token invalide ou expiré, nettoyer silencieusement
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          setToken(null)
-          setUser(null)
+          // Si on a un utilisateur en cache, garder les données et juste logger
+          if (storedUser) {
+            console.log('⚠️ Token invalide mais utilisateur en cache conservé')
+            // Ne pas nettoyer, garder l'utilisateur en cache
+          } else {
+            // Pas d'utilisateur en cache, nettoyer
+            console.log('⚠️ Token invalide, nettoyage')
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            setToken(null)
+            setUser(null)
+          }
         } else {
           console.error('❌ Erreur lors de la vérification du token:', error.response?.status || error.message)
-          // Nettoyer en cas d'erreur serveur aussi
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          setToken(null)
-          setUser(null)
+          // Nettoyer en cas d'erreur serveur seulement si pas d'utilisateur en cache
+          if (!storedUser) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            setToken(null)
+            setUser(null)
+          }
         }
       })
       .finally(() => {
