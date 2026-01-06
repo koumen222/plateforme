@@ -33,6 +33,10 @@ OPENAI_API_KEY=votre_cle_api_openai_ici
 # Frontend URL (pour CORS)
 FRONTEND_URL=http://localhost:5173
 PORT=3000
+
+# API LYGOS (Paiement Mobile Money)
+LYGOS_API_KEY=sk_live_xxxxxxxxx
+LYGOS_BASE_URL=https://api.lygosapp.com/v1
 ```
 
 **Note :** Le `GOOGLE_CLIENT_ID` est déjà configuré par défaut dans le code. Vous pouvez le surcharger avec une variable d'environnement si nécessaire.

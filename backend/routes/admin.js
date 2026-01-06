@@ -1,8 +1,12 @@
 import express from 'express';
+import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
+import { uploadCourseImage, getImagePublicPath } from '../middleware/upload.js';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
+import Module from '../models/Module.js';
+import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
 
 const router = express.Router();
@@ -10,6 +14,13 @@ const router = express.Router();
 // Toutes les routes admin nécessitent une authentification ET un rôle admin/superadmin
 router.use(authenticate);
 router.use(requireAdmin);
+
+// Middleware de logging pour déboguer
+router.use((req, res, next) => {
+  console.log(`🔍 Route admin appelée: ${req.method} ${req.path}`);
+  console.log(`   Full URL: ${req.originalUrl}`);
+  next();
+});
 
 // POST /api/admin/validate/:id - Valider un utilisateur (mettre status: "active")
 router.post('/validate/:id', async (req, res) => {
@@ -40,30 +51,106 @@ router.post('/validate/:id', async (req, res) => {
   }
 });
 
-// POST /api/admin/course - Créer un nouveau cours
+// POST /api/admin/upload/course-image - Upload d'image pour un cours
+// IMPORTANT: Cette route doit être définie AVANT les routes avec paramètres dynamiques comme /:id
+router.post('/upload/course-image', (req, res, next) => {
+  uploadCourseImage.single('image')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Le fichier est trop volumineux (max 5MB)' });
+        }
+        return res.status(400).json({ error: `Erreur upload: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message || 'Erreur lors de l\'upload' });
+    }
+    
+    try {
+      console.log('📤 Route upload appelée - /upload/course-image');
+      console.log('   Method:', req.method);
+      console.log('   Original URL:', req.originalUrl);
+      console.log('   Content-Type:', req.headers['content-type']);
+      
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier uploadé' });
+      }
+
+      const imagePath = getImagePublicPath(req.file.filename);
+      
+      console.log('✅ Image uploadée:', req.file.filename);
+      console.log('   Chemin:', imagePath);
+      
+      res.json({
+        success: true,
+        message: 'Image uploadée avec succès',
+        imagePath: imagePath,
+        filename: req.file.filename
+      });
+    } catch (error) {
+      console.error('Erreur upload image:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload de l\'image' });
+    }
+  });
+});
+
+// POST /api/admin/course - Créer un nouveau cours avec Module 1 automatique
 router.post('/course', async (req, res) => {
   try {
-    const { title, description, videoId, module, order } = req.body;
+    const { title, description, coverImage, slug, isDefault, isPublished } = req.body;
 
     // Validation
-    if (!title || !videoId) {
-      return res.status(400).json({ error: 'Titre et ID vidéo requis' });
+    if (!title) {
+      return res.status(400).json({ error: 'Titre du cours requis' });
+    }
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug du cours requis' });
+    }
+
+    // Vérifier que le slug est unique
+    const existingCourse = await Course.findOne({ slug: slug.toLowerCase() });
+    if (existingCourse) {
+      return res.status(400).json({ error: 'Ce slug est déjà utilisé' });
+    }
+
+    // Si on définit un nouveau cours par défaut, retirer le statut par défaut des autres
+    if (isDefault) {
+      await Course.updateMany({ isDefault: true }, { isDefault: false });
     }
 
     const course = new Course({
-      title,
-      description: description || '',
-      videoId,
-      module: module || 1,
-      order: order || 0
+      title: title.trim(),
+      description: description?.trim() || '',
+      coverImage: coverImage?.trim() || '/img/fbads.png',
+      slug: slug.toLowerCase().trim(),
+      isDefault: isDefault || false,
+      isPublished: !!isPublished
     });
 
     await course.save();
 
+    // Créer automatiquement le Module 1
+    const module1 = new Module({
+      courseId: course._id,
+      title: 'Module 1 - Bases',
+      order: 1
+    });
+
+    await module1.save();
+
+    console.log('✅ Cours créé avec Module 1:', {
+      courseId: course._id,
+      courseTitle: course.title,
+      moduleId: module1._id
+    });
+
     res.status(201).json({
       success: true,
-      message: 'Cours créé avec succès',
-      course
+      message: 'Cours créé avec succès (Module 1 créé automatiquement)',
+      course: {
+        ...course.toObject(),
+        module: module1
+      }
     });
   } catch (error) {
     console.error('Erreur création cours:', error);
@@ -74,19 +161,310 @@ router.post('/course', async (req, res) => {
   }
 });
 
-// GET /api/admin/courses - Liste tous les cours
+// PUT /api/admin/course/:courseId - Modifier un cours (titre/slug/description/image/default/actif)
+router.put('/course/:courseId', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { title, description, coverImage, slug, isDefault, isPublished } = req.body;
+
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ error: 'Cours non trouvé' });
+
+    if (slug && slug.toLowerCase().trim() !== course.slug) {
+      const existing = await Course.findOne({ slug: slug.toLowerCase().trim() });
+      if (existing) return res.status(400).json({ error: 'Ce slug est déjà utilisé' });
+      course.slug = slug.toLowerCase().trim();
+    }
+
+    if (typeof title === 'string') course.title = title.trim();
+    if (typeof description === 'string') course.description = description.trim();
+    if (typeof coverImage === 'string') course.coverImage = coverImage.trim();
+
+    if (typeof isPublished === 'boolean') course.isPublished = isPublished;
+
+    if (typeof isDefault === 'boolean') {
+      if (isDefault) {
+        await Course.updateMany({ isDefault: true }, { isDefault: false });
+      }
+      course.isDefault = isDefault;
+    }
+
+    await course.save();
+
+    res.json({ success: true, course: course.toObject() });
+  } catch (error) {
+    console.error('Erreur modification cours:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification du cours' });
+  }
+});
+
+// DELETE /api/admin/course/:courseId - Supprimer un cours (cascade modules/leçons)
+router.delete('/course/:courseId', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await Course.findById(courseId);
+    if (!course) return res.status(404).json({ error: 'Cours non trouvé' });
+
+    const modules = await Module.find({ courseId: course._id });
+    for (const m of modules) {
+      await Lesson.deleteMany({ moduleId: m._id });
+    }
+    await Module.deleteMany({ courseId: course._id });
+    await Course.deleteOne({ _id: course._id });
+
+    res.json({ success: true, message: 'Cours supprimé' });
+  } catch (error) {
+    console.error('Erreur suppression cours:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du cours' });
+  }
+});
+
+// GET /api/admin/courses - Liste tous les cours avec leurs modules
 router.get('/courses', async (req, res) => {
   try {
-    const courses = await Course.find({}).sort({ module: 1, order: 1 });
+    const courses = await Course.find({}).sort({ createdAt: -1 });
+    
+    // Récupérer les modules pour chaque cours
+    const coursesWithModules = await Promise.all(
+      courses.map(async (course) => {
+        const modules = await Module.find({ courseId: course._id }).sort({ order: 1 });
+        return {
+          ...course.toObject(),
+          modulesCount: modules.length
+        };
+      })
+    );
     
     res.json({
       success: true,
-      courses,
+      courses: coursesWithModules,
       count: courses.length
     });
   } catch (error) {
     console.error('Erreur récupération cours:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des cours' });
+  }
+});
+
+// GET /api/admin/courses/:courseId - Détails d'un cours (modules + leçons)
+router.get('/courses/:courseId', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Cours non trouvé' });
+    }
+
+    const modules = await Module.find({ courseId: course._id }).sort({ order: 1 });
+    const modulesWithLessons = await Promise.all(
+      modules.map(async (m) => {
+        const lessons = await Lesson.find({ moduleId: m._id }).sort({ order: 1 });
+        return { ...m.toObject(), lessons };
+      })
+    );
+
+    res.json({
+      success: true,
+      course: {
+        ...course.toObject(),
+        modules: modulesWithLessons
+      }
+    });
+  } catch (error) {
+    console.error('Erreur détails cours admin:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du cours' });
+  }
+});
+
+// POST /api/admin/courses/:courseId/modules - Ajouter un module à un cours
+router.post('/courses/:courseId/modules', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { title, order } = req.body;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Cours non trouvé' });
+    }
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Titre du module requis' });
+    }
+
+    // Si order non fourni, on met à la fin
+    let finalOrder = Number.isFinite(Number(order)) ? Number(order) : null;
+    if (!finalOrder) {
+      const last = await Module.findOne({ courseId: course._id }).sort({ order: -1 });
+      finalOrder = (last?.order || 0) + 1;
+    }
+
+    // Empêcher doublon d'ordre dans le même cours
+    const existing = await Module.findOne({ courseId: course._id, order: finalOrder });
+    if (existing) {
+      return res.status(400).json({ error: `Un module existe déjà avec l'ordre ${finalOrder}` });
+    }
+
+    const module = new Module({
+      courseId: course._id,
+      title: String(title).trim(),
+      order: finalOrder
+    });
+    await module.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Module créé avec succès',
+      module
+    });
+  } catch (error) {
+    console.error('Erreur création module:', error);
+    res.status(500).json({ error: 'Erreur lors de la création du module' });
+  }
+});
+
+// PUT /api/admin/modules/:moduleId - Modifier un module
+router.put('/modules/:moduleId', async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { title, order } = req.body;
+
+    const module = await Module.findById(moduleId);
+    if (!module) return res.status(404).json({ error: 'Module non trouvé' });
+
+    if (typeof title === 'string' && title.trim()) module.title = title.trim();
+    if (Number.isFinite(Number(order))) module.order = Number(order);
+
+    // Empêcher doublon d'ordre dans le même cours
+    const conflict = await Module.findOne({ courseId: module.courseId, order: module.order, _id: { $ne: module._id } });
+    if (conflict) return res.status(400).json({ error: `Un module existe déjà avec l'ordre ${module.order}` });
+
+    await module.save();
+    res.json({ success: true, module: module.toObject() });
+  } catch (error) {
+    console.error('Erreur modification module:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification du module' });
+  }
+});
+
+// DELETE /api/admin/modules/:moduleId - Supprimer un module (cascade leçons)
+router.delete('/modules/:moduleId', async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const module = await Module.findById(moduleId);
+    if (!module) return res.status(404).json({ error: 'Module non trouvé' });
+
+    await Lesson.deleteMany({ moduleId: module._id });
+    await Module.deleteOne({ _id: module._id });
+
+    res.json({ success: true, message: 'Module supprimé' });
+  } catch (error) {
+    console.error('Erreur suppression module:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression du module' });
+  }
+});
+
+// POST /api/admin/modules/:moduleId/lessons - Ajouter une leçon (chapitre) à un module
+router.post('/modules/:moduleId/lessons', async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { title, videoId, order, locked, summary, resources, isCoaching, videoType } = req.body;
+
+    const module = await Module.findById(moduleId);
+    if (!module) {
+      return res.status(404).json({ error: 'Module non trouvé' });
+    }
+
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Titre de la leçon requis' });
+    }
+    if (!videoId || !String(videoId).trim()) {
+      return res.status(400).json({ error: 'videoId requis' });
+    }
+
+    // Si order non fourni, on met à la fin
+    let finalOrder = Number.isFinite(Number(order)) ? Number(order) : null;
+    if (!finalOrder) {
+      const last = await Lesson.findOne({ moduleId: module._id }).sort({ order: -1 });
+      finalOrder = (last?.order || 0) + 1;
+    }
+
+    // Empêcher doublon d'ordre dans le même module
+    const existing = await Lesson.findOne({ moduleId: module._id, order: finalOrder });
+    if (existing) {
+      return res.status(400).json({ error: `Une leçon existe déjà avec l'ordre ${finalOrder}` });
+    }
+
+    const lesson = new Lesson({
+      moduleId: module._id,
+      title: String(title).trim(),
+      videoId: String(videoId).trim(),
+      order: finalOrder,
+      locked: typeof locked === 'boolean' ? locked : false,
+      summary: summary && typeof summary === 'object' ? summary : { text: '', points: [] },
+      resources: Array.isArray(resources) ? resources : [],
+      isCoaching: !!isCoaching,
+      videoType: videoType || undefined
+    });
+
+    await lesson.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Leçon créée avec succès',
+      lesson
+    });
+  } catch (error) {
+    console.error('Erreur création leçon:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: error.message });
+    }
+    res.status(500).json({ error: 'Erreur lors de la création de la leçon' });
+  }
+});
+
+// PUT /api/admin/lessons/:lessonId - Modifier une leçon
+router.put('/lessons/:lessonId', async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const { title, videoId, order, locked, summary, resources, isCoaching, videoType } = req.body;
+
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) return res.status(404).json({ error: 'Leçon non trouvée' });
+
+    if (typeof title === 'string' && title.trim()) lesson.title = title.trim();
+    if (typeof videoId === 'string' && videoId.trim()) lesson.videoId = videoId.trim();
+    if (Number.isFinite(Number(order))) lesson.order = Number(order);
+    if (typeof locked === 'boolean') lesson.locked = locked;
+    if (typeof isCoaching === 'boolean') lesson.isCoaching = isCoaching;
+    if (typeof videoType === 'string') lesson.videoType = videoType;
+    if (summary && typeof summary === 'object') lesson.summary = summary;
+    if (Array.isArray(resources)) lesson.resources = resources;
+
+    // Empêcher doublon d'ordre dans le même module
+    const conflict = await Lesson.findOne({ moduleId: lesson.moduleId, order: lesson.order, _id: { $ne: lesson._id } });
+    if (conflict) return res.status(400).json({ error: `Une leçon existe déjà avec l'ordre ${lesson.order}` });
+
+    await lesson.save();
+    res.json({ success: true, lesson: lesson.toObject() });
+  } catch (error) {
+    console.error('Erreur modification leçon:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de la leçon' });
+  }
+});
+
+// DELETE /api/admin/lessons/:lessonId - Supprimer une leçon
+router.delete('/lessons/:lessonId', async (req, res) => {
+  try {
+    const { lessonId } = req.params;
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) return res.status(404).json({ error: 'Leçon non trouvée' });
+
+    await Lesson.deleteOne({ _id: lesson._id });
+    res.json({ success: true, message: 'Leçon supprimée' });
+  } catch (error) {
+    console.error('Erreur suppression leçon:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la leçon' });
   }
 });
 

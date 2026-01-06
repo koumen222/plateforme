@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { lessons } from '../data/lessons'
-import VideoPlayer from '../components/VideoPlayer'
+import ProtectedVideo from '../components/ProtectedVideo'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import axios from 'axios'
+import PayButton from '../components/PayButton'
 import '../styles/comments.css'
 import '../styles/profile.css'
 
@@ -22,19 +23,79 @@ export default function LessonPage({ lesson }) {
   const [replyText, setReplyText] = useState('')
   const [submittingReply, setSubmittingReply] = useState(false)
 
+  const [courseLessons, setCourseLessons] = useState([])
+
   if (!lesson) return null
 
-  const currentIndex = lessons.findIndex(l => l.id === lesson.id)
-  const nextLesson = lessons[currentIndex + 1]
-  const prevLesson = currentIndex > 0 ? lessons[currentIndex - 1] : null
+  // Charger les leçons du cours depuis la DB si la leçon vient de la DB
+  useEffect(() => {
+    if (lesson._id) {
+      const loadCourse = async () => {
+        try {
+          const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/facebook-ads`)
+          if (response.data.success && response.data.course.modules) {
+            const allLessons = []
+            response.data.course.modules.forEach((module) => {
+              if (module.lessons) {
+                module.lessons.forEach((l) => {
+                  const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
+                  const videoType = isYouTube ? 'youtube' : 'vimeo'
+                  const videoUrl = videoType === 'youtube' 
+                    ? `https://www.youtube.com/embed/${l.videoId}?rel=0&modestbranding=1&playsinline=1`
+                    : `https://player.vimeo.com/video/${l.videoId}?title=0&byline=0&portrait=0`
+                  const badgeMatch = l.title.match(/JOUR \d+/)
+                  const badge = badgeMatch ? badgeMatch[0] : `JOUR ${allLessons.length + 1}`
+                  const meta = l.title.split(' - ')[1] || 'Formation'
+                  allLessons.push({
+                    id: allLessons.length + 1,
+                    _id: l._id,
+                    path: `/course/facebook-ads/lesson/${l._id}`,
+                    title: l.title,
+                    badge: badge,
+                    meta: meta,
+                    video: { type: videoType, url: videoUrl },
+                    summary: l.summary || { text: '', points: [] },
+                    resources: l.resources || [],
+                    isCoaching: l.isCoaching || false
+                  })
+                })
+              }
+            })
+            setCourseLessons(allLessons)
+          }
+        } catch (error) {
+          console.error('Erreur chargement cours:', error)
+        }
+      }
+      loadCourse()
+    }
+  }, [lesson._id])
+
+  // Navigation : utiliser courseLessons si disponible, sinon lessons legacy
+  const allLessons = courseLessons.length > 0 ? courseLessons : lessons
+  const currentIndex = lesson._id 
+    ? allLessons.findIndex(l => l._id === lesson._id)
+    : lessons.findIndex(l => l.id === lesson.id)
+  const nextLesson = currentIndex >= 0 && currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null
+  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null
 
   // Charger l'utilisateur automatiquement sur la page d'accueil
   useEffect(() => {
-    axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
-      withCredentials: true
-    })
-    .then(res => setUser(res.data.user))
-    .catch(() => setUser(null));
+    const storedToken = localStorage.getItem('token');
+    if (storedToken) {
+      axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${storedToken}`
+        },
+        withCredentials: true
+      })
+      .then(res => {
+        if (res.data.success && res.data.user) {
+          setUser(res.data.user);
+        }
+      })
+      .catch(() => setUser(null));
+    }
   }, []);
 
   useEffect(() => {
@@ -192,11 +253,13 @@ export default function LessonPage({ lesson }) {
       // Marquer comme complété avant de passer à la suivante
       markAsCompleted().then(() => {
         if (nextLesson) {
-          navigate(nextLesson.path)
+          const nextPath = nextLesson.path || (nextLesson._id ? `/course/facebook-ads/lesson/${nextLesson._id}` : '')
+          if (nextPath) navigate(nextPath)
         }
       })
     } else if (nextLesson) {
-      navigate(nextLesson.path)
+      const nextPath = nextLesson.path || (nextLesson._id ? `/course/facebook-ads/lesson/${nextLesson._id}` : '')
+      if (nextPath) navigate(nextPath)
     }
   }
 
@@ -379,33 +442,80 @@ export default function LessonPage({ lesson }) {
           <div className="profile-notice-content">
             <h3 style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Compte en attente de validation</h3>
             <p style={{ fontSize: '1.1rem', marginBottom: '1.5rem' }}>
-              Votre compte est en attente d'activation. Les vidéos sont temporairement bloquées. 
-              Contactez Morgan via WhatsApp pour finaliser votre paiement et activer votre compte.
+              Pour activer votre compte et accéder à toutes les vidéos de formation, 
+              effectuez le paiement de la formation.
             </p>
-            <a 
-              href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="whatsapp-btn"
-              style={{ 
-                display: 'inline-block',
-                padding: '0.75rem 1.5rem',
-                fontSize: '1rem',
-                marginTop: '0.5rem'
-              }}
-            >
-              💬 Contacter Morgan sur WhatsApp
-            </a>
+            <div style={{ 
+              marginTop: '1.5rem', 
+              display: 'flex', 
+              flexDirection: 'column',
+              gap: '1rem',
+              alignItems: 'center',
+              width: '100%',
+              maxWidth: '400px',
+              marginLeft: 'auto',
+              marginRight: 'auto'
+            }}>
+              <PayButton
+                amount={CONFIG.FORMATION_AMOUNT}
+                orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
+                onSuccess={() => {
+                  console.log('Paiement initié avec succès')
+                }}
+                onError={(error) => {
+                  console.error('Erreur paiement:', error)
+                }}
+              />
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: '#856404',
+                margin: '0.5rem 0'
+              }}>
+                ou
+              </div>
+              <a
+                href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  color: '#fff',
+                  backgroundColor: '#25D366',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  transition: 'background-color 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  width: '100%',
+                  justifyContent: 'center'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#20BA5A'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#25D366'
+                }}
+              >
+                <span>💬</span>
+                <span>Contacter sur WhatsApp</span>
+              </a>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Videos */}
+      {/* Videos - Protégées par authentification */}
       {lesson.video && (
-        <VideoPlayer video={lesson.video} />
+        <ProtectedVideo video={lesson.video} />
       )}
       {lesson.videos && lesson.videos.map((video, idx) => (
-        <VideoPlayer key={idx} video={video} title={video.title} />
+        <ProtectedVideo key={idx} video={video} title={video.title} />
       ))}
 
       {/* Summary */}
@@ -455,7 +565,10 @@ export default function LessonPage({ lesson }) {
       {/* Navigation */}
       <div className="lesson-navigation">
         {prevLesson && (
-          <Link to={prevLesson.path} className="lesson-nav-btn lesson-nav-prev">
+          <Link 
+            to={prevLesson.path || (prevLesson._id ? `/course/facebook-ads/lesson/${prevLesson._id}` : '#')} 
+            className="lesson-nav-btn lesson-nav-prev"
+          >
             ← Leçon précédente
           </Link>
         )}

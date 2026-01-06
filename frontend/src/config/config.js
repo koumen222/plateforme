@@ -11,12 +11,13 @@ const getBackendUrl = () => {
   }
   
   // Sinon, utiliser l'URL de production par défaut
-  return 'http://localhost:3000'
+  return 'https://plateforme-r1h7.onrender.com'
 }
 
 export const CONFIG = {
   BACKEND_URL: getBackendUrl(),
   MORGAN_PHONE: '237676778377', // Numéro WhatsApp de Morgan (sans + pour l'URL WhatsApp)
   WHATSAPP_MESSAGE: 'Je veux payer pour avoir mon activation',
-  GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com'
+  GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com',
+  FORMATION_AMOUNT: 5000 // Montant de la formation en FCFA
 };

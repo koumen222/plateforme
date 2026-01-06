@@ -1,16 +1,29 @@
-import { Link, useLocation } from 'react-router-dom'
-import { lessons } from '../data/lessons'
-import { useState, useEffect, useCallback } from 'react'
+import { Link, useLocation, useParams } from 'react-router-dom'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import ThemeToggle from './ThemeToggle'
+import axios from 'axios'
 
 export default function Sidebar() {
   const location = useLocation()
+  const { slug } = useParams()
+  const slugFromPath = useMemo(() => {
+    if (location.pathname.startsWith('/course/')) {
+      return location.pathname.split('/')[2] || null
+    }
+    return null
+  }, [location.pathname])
+
+  const courseSlug = slug || slugFromPath || 'facebook-ads'
   const [isOpen, setIsOpen] = useState(false)
   const { isAuthenticated, user, token, logout, refreshUser } = useAuth()
   const [progress, setProgress] = useState(null)
   const [progressLoading, setProgressLoading] = useState(false)
+  const [course, setCourse] = useState(null)
+  const [lessons, setLessons] = useState([])
+  const [loadingCourse, setLoadingCourse] = useState(true)
+  const lastLoadedSlug = useRef(null)
 
   const toggleMenu = () => setIsOpen(!isOpen)
 
@@ -42,6 +55,48 @@ export default function Sidebar() {
       setProgressLoading(false)
     }
   }, [token, user?.status])
+
+  // Charger le cours et ses leçons depuis la DB (uniquement si le slug change réellement)
+  useEffect(() => {
+    // Ne recharger que si le slug a vraiment changé
+    if (lastLoadedSlug.current === courseSlug) {
+      return
+    }
+
+    const loadCourse = async () => {
+      try {
+        setLoadingCourse(true)
+        const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/${courseSlug}`)
+        
+        if (response.data.success) {
+          setCourse(response.data.course)
+          
+          // Extraire toutes les leçons de tous les modules
+          const allLessons = []
+          if (response.data.course.modules) {
+            response.data.course.modules.forEach((module) => {
+              if (module.lessons) {
+                module.lessons.forEach((lesson) => {
+                  allLessons.push({
+                    ...lesson,
+                    moduleTitle: module.title
+                  })
+                })
+              }
+            })
+          }
+          setLessons(allLessons)
+          lastLoadedSlug.current = courseSlug
+        }
+      } catch (error) {
+        console.error('Erreur chargement cours:', error)
+      } finally {
+        setLoadingCourse(false)
+      }
+    }
+
+    loadCourse()
+  }, [courseSlug])
 
   useEffect(() => {
     if (isAuthenticated && user?.status === 'active' && token) {
@@ -82,8 +137,56 @@ export default function Sidebar() {
     }
   }, [isAuthenticated, user, token, fetchProgress, refreshUser])
 
+  // Trouver la leçon active
+  const activeLessonIndex = useMemo(() => {
+    if (!lessons.length) return -1
+    const activeLesson = lessons.find((lesson) => 
+      location.pathname.includes(`/lesson/${lesson._id}`)
+    )
+    return activeLesson ? lessons.indexOf(activeLesson) : -1
+  }, [lessons, location.pathname])
+
   return (
     <>
+      {/* Menu compact mobile - affiché sous le header */}
+      {location.pathname.startsWith('/course/') && (
+        <div className="mobile-course-menu">
+          <div className="mobile-course-menu-content">
+            <div className="mobile-course-info">
+              <h3 className="mobile-course-title">
+                📚 {course?.title || (loadingCourse ? 'Chargement...' : 'Formation')}
+              </h3>
+              {isAuthenticated && user?.status === 'active' && progress && (
+                <div className="mobile-course-progress">
+                  <span className="mobile-progress-text">
+                    {progress.progressPercentage || 0}% complété
+                  </span>
+                  <div className="mobile-progress-bar">
+                    <div 
+                      className="mobile-progress-bar-fill" 
+                      style={{ width: `${progress.progressPercentage || 0}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
+              {activeLessonIndex >= 0 && lessons.length > 0 && (
+                <div className="mobile-current-lesson">
+                  Leçon {activeLessonIndex + 1} / {lessons.length}
+                </div>
+              )}
+            </div>
+            <button 
+              className="mobile-view-lessons-btn"
+              onClick={toggleMenu}
+              aria-label="Voir les leçons"
+            >
+              <span>📖</span>
+              <span>Voir les leçons</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       <button 
         className="mobile-menu-toggle" 
         aria-label="Menu"
@@ -95,8 +198,8 @@ export default function Sidebar() {
         <div className="sidebar-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div>
-              <h1>📚 Formation FB Ads</h1>
-              <p>Maîtrisez la publicité Facebook</p>
+              <h1>📚 {course?.title || 'Formation'}</h1>
+              <p>{course?.description || 'Chargement...'}</p>
             </div>
             <button 
               className="sidebar-close-btn"
@@ -108,21 +211,31 @@ export default function Sidebar() {
           </div>
         </div>
         <nav>
-          <ul className="sidebar-nav">
-            {lessons.map((lesson) => (
-              <li key={lesson.id}>
-                <Link
-                  to={lesson.path}
-                  className={location.pathname === lesson.path ? 'active' : ''}
-                  onClick={() => setIsOpen(false)}
-                >
-                  <span className="lesson-number">{lesson.id}</span>
-                  {lesson.title}
-                </Link>
-              </li>
-            ))}
-                 </ul>
-               </nav>
+          {loadingCourse ? (
+            <div style={{ padding: '1rem', textAlign: 'center' }}>Chargement...</div>
+          ) : (
+            <ul className="sidebar-nav">
+              {lessons.map((lesson, index) => {
+                const courseSlug = course?.slug || 'facebook-ads'
+                const lessonPath = `/course/${courseSlug}/lesson/${lesson._id}`
+                const isActive = location.pathname.includes(`/lesson/${lesson._id}`)
+                
+                return (
+                  <li key={lesson._id}>
+                    <Link
+                      to={lessonPath}
+                      className={isActive ? 'active' : ''}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <span className="lesson-number">{index + 1}</span>
+                      {lesson.title}
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </nav>
 
                  {isAuthenticated && user?.status === 'active' && (
                    <>

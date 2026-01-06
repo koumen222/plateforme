@@ -19,6 +19,8 @@ import session from "express-session";
 import passport from "passport";
 import fetch from "node-fetch";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import { connectDB } from "./config/database.js";
 import { configurePassport } from "./config/passport.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
@@ -30,6 +32,13 @@ import adminRoutes from "./routes/admin.js";
 import coursesRoutes from "./routes/courses.js";
 import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
+import paymentRoutes from "./routes/payment.js";
+import Course from "./models/Course.js";
+import Module from "./models/Module.js";
+import Lesson from "./models/Lesson.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -77,6 +86,10 @@ app.use(cors(corsOptions));
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Servir les fichiers statiques (images uploadées)
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+console.log('📁 Dossier uploads configuré: /uploads');
 
 // Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
 app.set("trust proxy", 1);
@@ -142,94 +155,23 @@ app.get("/health", (req, res) => {
 
 
 // ============================================
-// Routes Google OAuth
+// Routes Google OAuth - DÉSACTIVÉES
 // ============================================
+// Les routes OAuth Google ont été désactivées
+// L'authentification se fait maintenant uniquement via email/password
 
-/**
- * GET /auth/google
- * Redirige l'utilisateur vers Google pour l'authentification
- */
-app.get("/auth/google",
-  passport.authenticate("google", { scope: ["profile", "email"] })
-);
+// app.get("/auth/google",
+//   passport.authenticate("google", { scope: ["profile", "email"] })
+// );
 
-/**
- * GET /auth/google/callback
- * Callback OAuth après authentification Google
- */
-app.get("/auth/google/callback",
-  passport.authenticate("google", {
-    failureRedirect: `${FRONTEND_URL}/login?error=google_auth_failed`
-  }),
-  async (req, res) => {
-    try {
-      console.log('🔐 ========== GOOGLE CALLBACK HANDLER ==========');
-      const user = req.user;
-      
-      if (!user) {
-        console.error('❌ Pas d\'utilisateur dans req.user');
-        return res.redirect(`${FRONTEND_URL}/login?error=no_user`);
-      }
-
-      console.log('✅ Utilisateur reçu de Google OAuth');
-      console.log('   - Email:', user.email);
-      console.log('   - Nom:', user.name);
-      console.log('   - User ID:', user._id);
-      console.log('   - Status:', user.status);
-      console.log('   - Role:', user.role);
-
-      // S'assurer que _id est une string (peut être un ObjectId)
-      const userId = user._id ? user._id.toString() : null;
-      
-      if (!userId) {
-        console.error('❌ User ID manquant ou invalide');
-        return res.redirect(`${FRONTEND_URL}/login?error=invalid_user_id`);
-      }
-
-      // Générer le token JWT
-      const token = jwt.sign(
-        { 
-          userId: userId, 
-          email: user.email,
-          status: user.status || 'pending', 
-          role: user.role || 'student' 
-        },
-        JWT_SECRET,
-        { expiresIn: JWT_EXPIRES_IN }
-      );
-
-      console.log('✅ Token JWT généré avec succès');
-      console.log('   - Token length:', token.length);
-      console.log('   - Expires in:', JWT_EXPIRES_IN);
-
-      // Stocker le token dans un cookie (pour compatibilité)
-      res.cookie("safitech_token", token, {
-        httpOnly: true,
-        secure: true,
-        sameSite: "none",
-        maxAge: 7 * 24 * 60 * 60 * 1000
-      });
-
-      console.log('✅ Cookie safitech_token défini');
-
-      // Rediriger vers la page de callback avec le token dans l'URL (pour localStorage)
-      // Le frontend va extraire le token et le stocker dans localStorage
-      const redirectUrl = `${FRONTEND_URL}/auth/callback?token=${encodeURIComponent(token)}`;
-      console.log('✅ Redirection vers:', redirectUrl);
-      console.log('🔐 ========== FIN GOOGLE CALLBACK ==========');
-
-      return res.redirect(redirectUrl);
-    } catch (error) {
-      console.error("❌ ========== ERREUR GOOGLE CALLBACK ==========");
-      console.error("   - Error message:", error.message);
-      console.error("   - Error stack:", error.stack);
-      console.error("   - Error name:", error.name);
-      console.error("   - req.user:", req.user);
-      console.error("❌ ===========================================");
-      return res.redirect(`${FRONTEND_URL}/login?error=callback_error`);
-    }
-  }
-);
+// app.get("/auth/google/callback",
+//   passport.authenticate("google", {
+//     failureRedirect: `${FRONTEND_URL}/login`
+//   }),
+//   async (req, res) => {
+//     // ... code désactivé
+//   }
+// );
 
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
@@ -294,6 +236,14 @@ app.use("/api/comments", commentsRoutes);
 
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
+console.log('✅ Routes admin chargées:');
+console.log('   - POST /api/admin/upload/course-image');
+
+// Routes paiement (publiques)
+app.use("/api/payment", paymentRoutes);
+console.log('✅ Routes de paiement chargées:');
+console.log('   - POST /api/payment/init');
+console.log('   - GET /api/payment/verify/:order_id');
 
 // Route chatbot (protégée - nécessite statut active)
 app.post("/api/chat", authenticate, async (req, res) => {
@@ -390,39 +340,276 @@ const startServer = async () => {
     // Plus de création automatique d'admin
     // L'admin doit créer son compte via /admin/login (première connexion uniquement)
     
-    // Créer des cours par défaut s'ils n'existent pas
-    const Course = (await import('./models/Course.js')).default;
-    const defaultCourses = [
-      {
-        title: 'Introduction à la Plateforme de Formation',
-        description: 'Découvrez comment utiliser notre plateforme de formation en ligne. Ce cours vous guidera à travers toutes les fonctionnalités et vous aidera à démarrer votre parcours d\'apprentissage.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
-        module: 1,
-        order: 1
-      },
-      {
-        title: 'Les Bases du Contenu Pédagogique',
-        description: 'Apprenez les fondamentaux pour créer et structurer du contenu pédagogique efficace. Ce cours vous enseignera les meilleures pratiques pour concevoir des formations engageantes.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
-        module: 1,
-        order: 2
-      },
-      {
-        title: 'Suivi et Évaluation de la Progression',
-        description: 'Comprenez comment suivre votre progression dans les cours et évaluer vos acquis. Ce module vous explique le système de suivi et les outils d\'évaluation disponibles.',
-        videoId: '148751763', // ID Vimeo d'exemple (à remplacer par une vraie vidéo)
-        module: 1,
-        order: 3
-      }
-    ];
+    // S'assurer que Facebook Ads est "activé" (publié) par défaut
+    let facebookAdsCourse = await Course.findOne({ slug: 'facebook-ads' });
     
-    for (const courseData of defaultCourses) {
-      const existingCourse = await Course.findOne({ title: courseData.title });
+    if (!facebookAdsCourse) {
+      console.log('🚀 Initialisation automatique du cours Facebook Ads...');
       
-      if (!existingCourse) {
-        const course = new Course(courseData);
-        await course.save();
-        console.log(`✅ Cours par défaut créé: ${courseData.title}`);
+      // Créer le cours Facebook Ads
+      facebookAdsCourse = new Course({
+        title: 'Facebook Ads',
+        description: 'Apprendre à vendre avec Facebook Ads - Méthode Andromeda',
+        coverImage: '/img/fbads.png',
+        slug: 'facebook-ads',
+        isDefault: true,
+        isPublished: true
+      });
+      await facebookAdsCourse.save();
+      console.log('✅ Cours Facebook Ads créé');
+
+      // Créer le Module 1
+      const module1 = new Module({
+        courseId: facebookAdsCourse._id,
+        title: 'Module 1 - Formation Andromeda',
+        order: 1
+      });
+      await module1.save();
+      console.log('✅ Module 1 créé');
+
+      // Créer toutes les leçons
+      const lessonsData = [
+        {
+          title: 'JOUR 1 - Introduction',
+          videoId: '_FEzE2vdu_k',
+          order: 1,
+          summary: {
+            text: `Bienvenue dans la formation Andromeda ! Cette méthode révolutionnaire vous permettra de créer des campagnes Facebook Ads performantes qui génèrent des ventes. Dans ce premier jour, vous découvrirez les fondamentaux de la méthode et comment structurer votre approche pour maximiser vos résultats.`,
+            points: [
+              'Découvrir la méthode Andromeda',
+              'Comprendre la structure d\'une campagne performante',
+              'Préparer votre stratégie de lancement',
+              'Apprendre les bases du système de test',
+              'Maîtriser l\'approche progressive de scaling'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Andromeda - Jour des créas',
+              type: 'PDF',
+              link: '/assets/docs/andromeda-jour-des-creas.pdf',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 2 - La structure d\'une campagne qui nourrit Andromeda',
+          videoId: '1151322854',
+          order: 2,
+          summary: {
+            text: `Aujourd'hui, vous allez découvrir la structure complète d'une campagne Andromeda. Cette méthode révolutionnaire vous permettra de créer des campagnes qui génèrent des ventes de manière prévisible et scalable.`,
+            points: [
+              'Comprendre les principes fondamentaux de la méthode Andromeda',
+              'Découvrir la structure d\'une campagne qui convertit',
+              'Apprendre comment nourrir l\'algorithme Facebook efficacement',
+              'Maîtriser les éléments clés d\'une campagne performante',
+              'Préparer votre stratégie de test et d\'optimisation'
+            ]
+          },
+          resources: [
+            {
+              icon: '🎓',
+              title: 'Formation Comote Sora 2',
+              type: 'Lien vers la formation',
+              link: '#',
+              download: false
+            }
+          ]
+        },
+        {
+          title: 'JOUR 3 - Créer la créative Andromeda',
+          videoId: 'gdG0xjuF7SQ',
+          order: 3,
+          summary: {
+            text: `Aujourd'hui, vous allez créer la créative Andromeda, le cœur de votre campagne. Cette vidéo verticale doit captiver votre audience dès les premières secondes et suivre une structure précise pour maximiser les conversions.`,
+            points: [
+              '🎬 Vidéo verticale 9:16 – Durée : 20 à 30 secondes',
+              '🎣 Hook fort dans les 2 premières secondes pour captiver immédiatement',
+              '📐 Structure : Problème → Révélation → Preuve → Promesse → CTA',
+              '✨ Optimiser chaque élément pour maximiser l\'engagement',
+              '🎯 Créer une vidéo qui convertit efficacement'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Guide de création de campagne',
+              type: 'PDF • 4.2 MB',
+              link: '/assets/docs/guide-creation-campagne.pdf',
+              download: true
+            },
+            {
+              icon: '📝',
+              title: 'Formules de copywriting',
+              type: 'PDF • 1.8 MB',
+              link: '/assets/docs/formules-copywriting.pdf',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 4 - Paramétrer le compte publicitaire',
+          videoId: '1151323764',
+          order: 4,
+          summary: {
+            text: `Aujourd'hui, vous allez paramétrer correctement votre compte publicitaire Facebook. Cette configuration est essentielle pour que vos campagnes fonctionnent de manière optimale et que vous puissiez suivre précisément vos conversions.`,
+            points: [
+              '💰 Devise : HKD – Dollar Hong Kong',
+              '💳 Ajouter la carte bancaire au compte',
+              '💵 Créditer 25 $ (budget pour 5 jours à 5$/jour)',
+              '📊 Installer le Pixel Meta sur votre site web',
+              '🎯 Configurer l\'événement Purchase (achat) dans le Pixel',
+              '✅ Vérifier que le tracking fonctionne correctement'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Dictionnaire des métriques',
+              type: 'PDF • 2.8 MB',
+              link: '/assets/docs/dictionnaire-metriques.pdf',
+              download: true
+            },
+            {
+              icon: '📊',
+              title: 'Template de reporting',
+              type: 'XLSX • 1.5 MB',
+              link: '/assets/docs/template-reporting.xlsx',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 5 - Lancement',
+          videoId: '1151379720',
+          order: 5,
+          summary: {
+            text: `Le moment est venu ! Aujourd'hui, vous allez lancer votre campagne Andromeda. Cette étape est simple mais cruciale : vous devez activer la campagne et laisser l'algorithme faire son travail sans intervention.`,
+            points: [
+              '🚀 Activer la campagne préparée hier',
+              '⚠️ Ne rien modifier - Laisser l\'algorithme apprendre',
+              '👀 Observer uniquement les ventes générées',
+              '📊 Noter les premiers résultats sans intervenir',
+              '⏳ Laisser tourner au moins 24h sans modification'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Guide de démarrage',
+              type: 'PDF • 2.5 MB',
+              link: '/assets/docs/guide-demarrage.pdf',
+              download: true
+            },
+            {
+              icon: '📊',
+              title: 'Checklist de campagne',
+              type: 'PDF • 1.2 MB',
+              link: '/assets/docs/checklist-campagne.pdf',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 6 - Analyse et optimisation',
+          videoId: '148751763',
+          order: 6,
+          summary: {
+            text: `Après 2 jours de lancement, il est temps d'analyser les premiers résultats. Cette phase d'apprentissage est cruciale : vous allez observer ce qui fonctionne et ce qui ne fonctionne pas, sans pour autant intervenir prématurément.`,
+            points: [
+              '⚠️ Ne couper aucune publicité à ce stade',
+              '📝 Noter : Les adsets qui génèrent des achats',
+              '📝 Noter : Les adsets complètement ignorés (0 engagement)',
+              '📊 Analyser les métriques sans modifier',
+              '⏳ Laisser l\'algorithme continuer son apprentissage',
+              '📈 Observer les tendances émergentes'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Livre blanc stratégies avancées',
+              type: 'PDF • 5.2 MB',
+              link: '/assets/docs/livre-blanc-strategies.pdf',
+              download: true
+            },
+            {
+              icon: '📊',
+              title: 'Exemples de funnel complets',
+              type: 'PDF • 3.8 MB',
+              link: '/assets/docs/exemples-funnel.pdf',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 7 - Mini Scaling',
+          videoId: '148751763',
+          order: 7,
+          summary: {
+            text: `Après 3 jours d'observation, il est temps de faire votre première optimisation. Cette étape de mini scaling vous permettra d'éliminer les adsets morts et d'augmenter progressivement le budget de votre campagne performante.`,
+            points: [
+              '✂️ Couper uniquement les adsets totalement morts (0 engagement, 0 résultat)',
+              '📈 Augmenter le budget de la campagne de +20 % maximum',
+              '⚠️ Ne pas modifier les adsets qui génèrent des résultats',
+              '💰 Maintenir un budget raisonnable pour continuer l\'apprentissage',
+              '📊 Observer l\'impact de ces modifications sur les performances',
+              '⏳ Laisser tourner 24h avant toute nouvelle modification'
+            ]
+          },
+          resources: [
+            {
+              icon: '📄',
+              title: 'Guide de scaling progressif',
+              type: 'PDF • 2.8 MB',
+              link: '/assets/docs/guide-scaling.pdf',
+              download: true
+            },
+            {
+              icon: '📊',
+              title: 'Template d\'optimisation',
+              type: 'XLSX • 1.2 MB',
+              link: '/assets/docs/template-optimisation.xlsx',
+              download: true
+            }
+          ]
+        },
+        {
+          title: 'JOUR 8 - Réservation Coaching',
+          videoId: '148751763',
+          order: 8,
+          isCoaching: true,
+          summary: {
+            text: `Félicitations ! Vous avez terminé la formation Andromeda. Il est maintenant temps de réserver votre session de coaching personnalisée pour approfondir vos connaissances et optimiser vos campagnes.`,
+            points: []
+          },
+          resources: []
+        }
+      ];
+
+      for (const lessonData of lessonsData) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          title: lessonData.title,
+          videoId: lessonData.videoId,
+          order: lessonData.order,
+          locked: false,
+          summary: lessonData.summary || {},
+          resources: lessonData.resources || [],
+          isCoaching: lessonData.isCoaching || false
+        });
+        await lesson.save();
+        console.log(`✅ Leçon ${lessonData.order} créée: ${lessonData.title}`);
+      }
+      
+      console.log('✅ Cours Facebook Ads initialisé avec succès !');
+    } else {
+      console.log('ℹ️ Cours Facebook Ads existe déjà');
+      if (facebookAdsCourse.isPublished !== true) {
+        facebookAdsCourse.isPublished = true;
+        await facebookAdsCourse.save();
+        console.log('✅ Facebook Ads publié (visible sur la home)');
       }
     }
     

@@ -54,8 +54,8 @@ export const isAuthenticated = authenticate;
 
 /**
  * Middleware pour vérifier le statut du compte
- * Pour les routes API : retourne une erreur JSON
- * Pour les routes HTML : redirige vers email-pending.html
+ * Le frontend gère les restrictions pour les utilisateurs pending.
+ * On bloque uniquement les comptes "blocked".
  * 🔥 Tous les utilisateurs (Google et classiques) suivent les mêmes règles
  */
 export const checkAccountStatus = (req, res, next) => {
@@ -67,21 +67,10 @@ export const checkAccountStatus = (req, res, next) => {
     return res.redirect("/login");
   }
 
-  // Tous les utilisateurs (Google et classiques) suivent les mêmes règles
-  if (req.user.accountStatus === "pending") {
-    // Si c'est une requête API, retourner JSON
-    if (req.path.startsWith('/api/')) {
-      return res.status(403).json({ 
-        error: 'Votre compte est en attente de validation. Vérifiez votre email.',
-        accountStatus: 'pending',
-        emailVerified: req.user.emailVerified
-      });
-    }
-    // Sinon, rediriger vers le dashboard, le frontend gérera l'affichage du message pending
-    const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
-    return res.redirect(`${FRONTEND_URL}/dashboard`);
-  }
+  // Ne jamais bloquer les utilisateurs pending ici.
+  // Le frontend gérera les restrictions selon user.status
 
+  // Bloquer uniquement les comptes "blocked"
   if (req.user.accountStatus === "blocked") {
     return res.status(403).json({ 
       error: 'Votre compte a été bloqué. Contactez l\'administrateur.',

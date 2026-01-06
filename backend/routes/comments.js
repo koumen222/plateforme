@@ -22,13 +22,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Le commentaire ne peut pas dépasser 2000 caractères' });
     }
 
-    // Vérifier que l'utilisateur est actif (même règle pour tous)
-    if (req.user.status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Votre compte doit être actif pour laisser un commentaire',
-        status: req.user.status
-      });
-    }
+    // Le frontend gère les restrictions selon user.status
+    // Ne jamais bloquer ici selon le status
 
     const user = await User.findById(req.user._id);
     if (!user) {
@@ -135,13 +130,8 @@ router.post('/:id/response', async (req, res) => {
       return res.status(400).json({ error: 'La réponse ne peut pas dépasser 2000 caractères' });
     }
 
-    // Vérifier que l'utilisateur est actif (même règle pour tous)
-    if (req.user.status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Votre compte doit être actif pour répondre à un commentaire',
-        status: req.user.status
-      });
-    }
+    // Le frontend gère les restrictions selon user.status
+    // Ne jamais bloquer ici selon le status
 
     const comment = await Comment.findById(id);
     if (!comment) {

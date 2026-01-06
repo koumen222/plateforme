@@ -284,13 +284,14 @@ router.post('/login', async (req, res) => {
     const isEmail = /^\S+@\S+\.\S+$/.test(emailOrPhone);
     
     // Trouver l'utilisateur par email ou téléphone
+    // Utiliser .select('+password') pour inclure le mot de passe (normalement exclu par select: false)
     let user;
     if (isEmail) {
       console.log(`🔍 Recherche par email: ${emailOrPhone.toLowerCase()}`);
-      user = await User.findOne({ email: emailOrPhone.toLowerCase() });
+      user = await User.findOne({ email: emailOrPhone.toLowerCase() }).select('+password');
     } else {
       console.log(`🔍 Recherche par téléphone: ${emailOrPhone.trim()}`);
-      user = await User.findOne({ phoneNumber: emailOrPhone.trim() });
+      user = await User.findOne({ phoneNumber: emailOrPhone.trim() }).select('+password');
     }
 
     if (!user) {
@@ -298,9 +299,16 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.' });
     }
     
-    console.log(`✅ Utilisateur trouvé: ${user.name} (${user.email}, ${user.phoneNumber})`);
+    console.log(`✅ Utilisateur trouvé: ${user.name} (${user.email})`);
     console.log(`   Nom: "${user.name}"`);
     console.log(`   Statut: ${user.status}`);
+    console.log(`   PhoneNumber: ${user.phoneNumber || 'N/A'}`);
+
+    // Vérifier que l'utilisateur a un mot de passe (pour les utilisateurs locaux)
+    if (!user.password) {
+      console.log('⚠️ Utilisateur sans mot de passe (probablement Google OAuth)');
+      return res.status(401).json({ error: 'Ce compte utilise l\'authentification Google. Connectez-vous avec Google.' });
+    }
 
     // Vérifier le mot de passe
     const isPasswordValid = await user.comparePassword(password);
@@ -338,8 +346,14 @@ router.post('/login', async (req, res) => {
       user: userResponse
     });
   } catch (error) {
-    console.error('Erreur login:', error);
-    res.status(500).json({ error: 'Une erreur est survenue lors de la connexion. Veuillez réessayer dans quelques instants.' });
+    console.error('❌ Erreur login:', error);
+    console.error('   - Error name:', error.name);
+    console.error('   - Error message:', error.message);
+    console.error('   - Error stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Une erreur est survenue lors de la connexion. Veuillez réessayer dans quelques instants.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 });
 

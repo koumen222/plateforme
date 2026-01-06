@@ -2,20 +2,28 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 import { AuthProvider } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
+import PlatformLayout from './components/PlatformLayout'
 import AdminLayout from './components/admin/AdminLayout'
 import PrivateRoute from './components/PrivateRoute'
 import LessonPage from './pages/LessonPage'
 import CoachingPage from './pages/CoachingPage'
 import LoginPage from './pages/LoginPage'
-import AuthCallbackPage from './pages/AuthCallbackPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
+import AdminCoursesPage from './pages/admin/AdminCoursesPage'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
+import GenerateurPubPage from './pages/GenerateurPubPage'
+import CommunautePage from './pages/CommunautePage'
+import PaymentSuccessPage from './pages/PaymentSuccessPage'
+import PaymentFailedPage from './pages/PaymentFailedPage'
+import CheckoutPage from './pages/CheckoutPage'
+import HomePage from './pages/HomePage'
+import CourseRouter from './pages/CourseRouter'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
 
@@ -51,49 +59,54 @@ function App() {
       >
         <CleanUrlRedirect />
         <Routes>
-          {/* Routes étudiant/formation */}
+          {/* Routes publiques sans layout */}
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/auth/callback" element={<AuthCallbackPage />} />
           <Route path="/landing" element={<LandingPage />} />
-          <Route 
-            path="/dashboard" 
-            element={
-              <PrivateRoute>
-                <Layout>
-                  <LessonPage lesson={lessons[0]} />
-                </Layout>
-              </PrivateRoute>
-            } 
-          />
+          <Route path="/payment-success" element={<PaymentSuccessPage />} />
+          <Route path="/payment-failed" element={<PaymentFailedPage />} />
+          <Route path="/safitech.shop/checkout/:checkoutId" element={<CheckoutPage />} />
+          <Route path="/checkout/:checkoutId" element={<CheckoutPage />} />
+          
+          {/* Routes avec PlatformLayout (Header + Footer) */}
+          <Route path="/" element={<PlatformLayout><HomePage /></PlatformLayout>} />
+          <Route path="/home" element={<PlatformLayout><HomePage /></PlatformLayout>} />
+          <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
+          <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
+          <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
+          <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
+          <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
+          
+          {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
           <Route
-            path="/*"
+            path="/course/:slug/*"
             element={
-              <Layout>
-                <Routes>
-                  <Route path="/" element={<LessonPage lesson={lessons[0]} />} />
-                  <Route path="/produits-gagnants" element={<ProductsPage />} />
-                  <Route path="/jour-2" element={<LessonPage lesson={lessons[1]} />} />
-                  <Route path="/jour-3" element={<LessonPage lesson={lessons[2]} />} />
-                  <Route path="/jour-4" element={<LessonPage lesson={lessons[3]} />} />
-                  <Route path="/jour-5" element={<LessonPage lesson={lessons[4]} />} />
-                  <Route path="/jour-6" element={<LessonPage lesson={lessons[5]} />} />
-                  <Route path="/jour-7" element={<LessonPage lesson={lessons[6]} />} />
-                  <Route path="/jour-8" element={<CoachingPage lesson={lessons[7]} />} />
-                        <Route path="/profil" element={<ProfilePage />} />
-                        <Route path="/commentaires" element={<CommentsPage />} />
-                       </Routes>
-                     </Layout>
-                   }
-                 />
+              <PlatformLayout>
+                <Layout>
+                  <CourseRouter />
+                </Layout>
+              </PlatformLayout>
+            }
+          />
+          
+          {/* Routes legacy pour compatibilité */}
+          <Route path="/dashboard" element={<Navigate to="/course/facebook-ads/dashboard" replace />} />
+          <Route path="/jour-2" element={<Navigate to="/course/facebook-ads/jour-2" replace />} />
+          <Route path="/jour-3" element={<Navigate to="/course/facebook-ads/jour-3" replace />} />
+          <Route path="/jour-4" element={<Navigate to="/course/facebook-ads/jour-4" replace />} />
+          <Route path="/jour-5" element={<Navigate to="/course/facebook-ads/jour-5" replace />} />
+          <Route path="/jour-6" element={<Navigate to="/course/facebook-ads/jour-6" replace />} />
+          <Route path="/jour-7" element={<Navigate to="/course/facebook-ads/jour-7" replace />} />
+          <Route path="/jour-8" element={<Navigate to="/course/facebook-ads/jour-8" replace />} />
 
           {/* Routes admin */}
           <Route path="/admin/login" element={<AdminLoginPage />} />
-                 <Route path="/admin/*" element={<AdminLayout />}>
-                   <Route index element={<AdminDashboardPage />} />
-                   <Route path="users" element={<AdminUsersPage />} />
-                   <Route path="comments" element={<AdminCommentsPage />} />
-                   <Route path="settings" element={<div className="admin-page-header"><h1>Paramètres</h1><p>Page de paramètres à venir</p></div>} />
-                 </Route>
+          <Route path="/admin/*" element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="courses" element={<AdminCoursesPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="comments" element={<AdminCommentsPage />} />
+            <Route path="settings" element={<div className="admin-page-header"><h1>Paramètres</h1><p>Page de paramètres à venir</p></div>} />
+          </Route>
         </Routes>
       </Router>
       </AuthProvider>

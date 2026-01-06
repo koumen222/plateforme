@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { useNavigate, useLocation, Link, Outlet } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
+import Chatbot from '../Chatbot'
 import '../../styles/admin.css'
 
 export default function AdminLayout() {
@@ -32,6 +33,7 @@ export default function AdminLayout() {
 
   const navItems = [
     { path: '/admin', label: 'Tableau de bord', icon: '📊' },
+    { path: '/admin/courses', label: 'Cours', icon: '📚' },
     { path: '/admin/users', label: 'Utilisateurs', icon: '👥' },
     { path: '/admin/comments', label: 'Commentaires', icon: '💬' },
     { path: '/admin/settings', label: 'Paramètres', icon: '⚙️' }
@@ -82,6 +84,7 @@ export default function AdminLayout() {
       <main className="admin-main">
         <Outlet />
       </main>
+      <Chatbot />
     </div>
   )
 }

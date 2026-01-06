@@ -110,3 +110,4 @@ function getQualityScore(quality) {
   return scores[quality] || 0.5;
 }
 
+

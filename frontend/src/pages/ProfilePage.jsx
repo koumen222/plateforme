@@ -316,16 +316,69 @@ export default function ProfilePage() {
               <h3>Votre compte est en attente d'activation</h3>
               <p>
                 Pour activer votre compte et accéder à toutes les vidéos de formation, 
-                contactez Morgan via WhatsApp pour finaliser votre paiement.
+                effectuez le paiement de la formation.
               </p>
-              <a 
-                href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="whatsapp-btn"
-              >
-                💬 Contacter Morgan sur WhatsApp
-              </a>
+              <div style={{ 
+                marginTop: '1.5rem', 
+                display: 'flex', 
+                flexDirection: 'column',
+                gap: '1rem',
+                alignItems: 'center',
+                width: '100%',
+                maxWidth: '400px',
+                marginLeft: 'auto',
+                marginRight: 'auto'
+              }}>
+                <PayButton
+                  amount={CONFIG.FORMATION_AMOUNT}
+                  orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
+                  onSuccess={() => {
+                    console.log('Paiement initié avec succès')
+                  }}
+                  onError={(error) => {
+                    console.error('Erreur paiement:', error)
+                  }}
+                />
+                <div style={{ 
+                  fontSize: '0.9rem', 
+                  color: 'var(--text-secondary)',
+                  margin: '0.5rem 0'
+                }}>
+                  ou
+                </div>
+                <a
+                  href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    fontSize: '1rem',
+                    fontWeight: 'bold',
+                    color: '#fff',
+                    backgroundColor: '#25D366',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    transition: 'background-color 0.2s',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                    width: '100%',
+                    justifyContent: 'center'
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.backgroundColor = '#20BA5A'
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.backgroundColor = '#25D366'
+                  }}
+                >
+                  <span>💬</span>
+                  <span>Contacter sur WhatsApp</span>
+                </a>
+              </div>
             </div>
           </div>
         )}

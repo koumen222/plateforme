@@ -19,7 +19,8 @@ export default function AuthCallbackPage() {
         
         if (!token) {
           console.error('❌ Pas de token dans l\'URL')
-          navigate('/login?error=no_token', { replace: true })
+          // Nettoyer l'URL et rediriger vers login
+          navigate('/login', { replace: true })
           return
         }
 
@@ -53,13 +54,20 @@ export default function AuthCallbackPage() {
           console.log('   - Email:', userData.email)
           console.log('   - Status:', userData.status)
           console.log('   - Role:', userData.role)
+          
+          // 6. Nettoyer l'URL (supprimer le token de l'URL pour sécurité)
+          console.log('🧹 Nettoyage de l\'URL - suppression du token')
+          
+          // 7. Rediriger vers le dashboard
+          console.log('✅ Redirection vers /dashboard')
           console.log('🔐 ========== FIN AUTH CALLBACK ==========')
-
-          // 6. Rediriger vers le dashboard
-          navigate('/', { replace: true })
+          navigate('/dashboard', { replace: true })
         } else {
           console.error('❌ Pas d\'utilisateur dans la réponse:', res.data)
-          navigate('/login?error=no_user', { replace: true })
+          // Nettoyer et rediriger vers login
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          navigate('/login', { replace: true })
         }
       } catch (error) {
         console.error('❌ Erreur lors de l\'authentification:', error)
@@ -70,7 +78,8 @@ export default function AuthCallbackPage() {
         // Nettoyer le localStorage en cas d'erreur
         localStorage.removeItem('token')
         localStorage.removeItem('user')
-        navigate('/login?error=auth_failed', { replace: true })
+        // Nettoyer l'URL et rediriger vers login
+        navigate('/login', { replace: true })
       }
     }
 

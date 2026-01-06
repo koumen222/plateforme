@@ -8,30 +8,45 @@ const courseSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    trim: true
+    trim: true,
+    default: ''
   },
-  videoId: {
+  coverImage: {
     type: String,
-    required: [true, 'ID vidéo requis (Vimeo)']
+    trim: true,
+    default: '/img/fbads.png'
   },
-  module: {
-    type: Number,
-    required: [true, 'Numéro de module requis'],
-    default: 1
+  slug: {
+    type: String,
+    required: [true, 'Slug du cours requis'],
+    unique: true,
+    trim: true,
+    lowercase: true,
+    match: [/^[a-z0-9-]+$/, 'Le slug ne peut contenir que des lettres minuscules, chiffres et tirets']
   },
-  order: {
-    type: Number,
-    required: [true, 'Ordre requis'],
-    default: 0
+  isDefault: {
+    type: Boolean,
+    default: false
+  },
+  isPublished: {
+    // Si false => n'apparait pas sur la home
+    type: Boolean,
+    default: false
   },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-// Index pour trier par module et ordre
-courseSchema.index({ module: 1, order: 1 });
+// Index pour le cours par défaut
+courseSchema.index({ isDefault: 1 });
+courseSchema.index({ isPublished: 1 });
 
 export default mongoose.model('Course', courseSchema);
-

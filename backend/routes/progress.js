@@ -12,13 +12,8 @@ router.use(checkAccountStatus);
 // GET /api/progress - Récupérer la progression de l'utilisateur
 router.get('/', async (req, res) => {
   try {
-    // Vérifier que l'utilisateur est actif (même règle pour tous)
-    if (req.user.status !== 'active') {
-      return res.status(403).json({ 
-        error: 'Compte en attente de validation',
-        status: req.user.status
-      });
-    }
+    // Le frontend gère les restrictions selon user.status
+    // Ne jamais bloquer ici selon le status
 
     const user = await User.findById(req.user._id).populate('progress.courseId');
     const courses = await Course.find({}).sort({ module: 1, order: 1 });

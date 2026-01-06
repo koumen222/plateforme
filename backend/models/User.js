@@ -16,42 +16,42 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Email invalide']
   },
+  phone: {
+    type: String,
+    trim: true,
+    sparse: true,
+    match: [/^[\d\s\-\+\(\)]+$/, 'Numéro de téléphone invalide']
+  },
   phoneNumber: {
     type: String,
-    required: function () {
-      return this.authProvider === "local";
-    },
-    unique: true,
-    sparse: true, // Permet plusieurs null (obligatoire pour Google OAuth)
     trim: true,
+    sparse: true,
     match: [/^[\d\s\-\+\(\)]+$/, 'Numéro de téléphone invalide']
   },
   password: {
     type: String,
-    required: function () {
-      return this.authProvider === "local";
-    },
-    minlength: 6
+    minlength: 6,
+    select: false
+  },
+  role: {
+    type: String,
+    enum: ['student', 'admin', 'superadmin'],
+    default: 'student'
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'active', 'blocked'],
+    default: 'pending'
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
   },
   googleId: {
     type: String,
     unique: true,
     sparse: true
-  },
-  authProvider: {
-    type: String,
-    enum: ['local', 'google'],
-    required: true
-  },
-  role: {
-    type: String,
-    enum: ['student', 'superadmin'],
-    default: 'student'
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'active', 'inactive'],
-    default: 'pending'
   },
   emailVerified: {
     type: Boolean,
@@ -59,8 +59,8 @@ const userSchema = new mongoose.Schema({
   },
   accountStatus: {
     type: String,
-    enum: ["pending", "active", "blocked"],
-    default: "pending"
+    enum: ['pending', 'active', 'blocked'],
+    default: 'pending'
   },
   progress: [{
     courseId: {
@@ -79,38 +79,41 @@ const userSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
   }
+}, {
+  timestamps: true
 });
 
-// Hook pre-validate : définir authProvider par défaut si absent (pour compatibilité avec anciens utilisateurs)
-userSchema.pre('validate', function(next) {
-  // Si authProvider n'est pas défini, le définir selon les données disponibles
-  if (!this.authProvider) {
-    if (this.googleId) {
-      this.authProvider = 'google';
-    } else {
-      this.authProvider = 'local';
-    }
-  }
-  next();
-});
-
-// Hash du mot de passe avant sauvegarde
-userSchema.pre('save', async function() {
-  // Si le mot de passe n'a pas été modifié ou n'existe pas, ne rien faire
+// Hash automatique du mot de passe avant sauvegarde
+// Version compatible avec toutes les versions de Mongoose
+userSchema.pre('save', function() {
+  // Ne hasher que si le mot de passe a été modifié et qu'il existe
   if (!this.isModified('password') || !this.password) {
     return;
   }
-  
-  // Hasher le mot de passe
-  const salt = await bcrypt.genSalt(10);
-  this.password = await bcrypt.hash(this.password, salt);
+
+  // Hasher le mot de passe de manière synchrone pour éviter les problèmes avec next()
+  const salt = bcrypt.genSaltSync(10);
+  this.password = bcrypt.hashSync(this.password, salt);
 });
 
 // Méthode pour comparer les mots de passe
 userSchema.methods.comparePassword = async function(candidatePassword) {
+  if (!this.password) {
+    return false;
+  }
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-export default mongoose.model('User', userSchema);
+// Méthode pour obtenir les données publiques de l'utilisateur
+userSchema.methods.toPublicJSON = function() {
+  const userObject = this.toObject();
+  delete userObject.password;
+  return userObject;
+};
 
+export default mongoose.model('User', userSchema);

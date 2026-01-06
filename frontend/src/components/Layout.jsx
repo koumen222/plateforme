@@ -1,5 +1,4 @@
 import Sidebar from './Sidebar'
-import Chatbot from './Chatbot'
 
 export default function Layout({ children }) {
   return (
@@ -8,7 +7,6 @@ export default function Layout({ children }) {
       <main className="main-content">
         {children}
       </main>
-      <Chatbot />
     </div>
   )
 }
