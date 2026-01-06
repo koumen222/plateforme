@@ -154,12 +154,19 @@ router.post('/init', async (req, res) => {
     if (!paymentLink.startsWith('http://') && !paymentLink.startsWith('https://')) {
       console.warn('⚠️ Lien de paiement ne commence pas par http/https:', paymentLink);
       
-      // Si c'est un chemin relatif, essayer de le compléter avec le domaine Lygos
+      // Si c'est un chemin relatif (commence par /)
       if (paymentLink.startsWith('/')) {
         paymentLink = `https://api.lygosapp.com${paymentLink}`;
-        console.log('   - Lien normalisé:', paymentLink);
-      } else {
-        // Si c'est autre chose, logger pour debug
+        console.log('   - Lien normalisé (chemin relatif):', paymentLink);
+      } 
+      // Si c'est un domaine sans protocole (contient un point mais pas de http)
+      else if (paymentLink.includes('.') && !paymentLink.includes('://')) {
+        // Ajouter https:// au début
+        paymentLink = `https://${paymentLink}`;
+        console.log('   - Lien normalisé (domaine sans protocole):', paymentLink);
+      } 
+      // Autre format inattendu
+      else {
         console.error('❌ Format de lien inattendu:', paymentLink);
         console.error('   - Type:', typeof paymentLink);
         console.error('   - Longueur:', paymentLink.length);
