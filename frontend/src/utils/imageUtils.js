@@ -7,33 +7,36 @@ import { CONFIG } from '../config/config'
  * @returns {string} URL complète de l'image
  */
 export function getImageUrl(imagePath, defaultImage = '/img/fbads.svg') {
+  // En production, logger seulement en mode développement
+  const isDev = import.meta.env.DEV
+  
   if (!imagePath) {
-    console.log('🖼️ getImageUrl: Pas de chemin, utilisation image par défaut:', defaultImage)
+    if (isDev) console.log('🖼️ getImageUrl: Pas de chemin, utilisation image par défaut:', defaultImage)
     return defaultImage
   }
   
   // Si c'est déjà une URL complète (http/https), l'utiliser telle quelle
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    console.log('🖼️ getImageUrl: URL complète détectée:', imagePath)
+    if (isDev) console.log('🖼️ getImageUrl: URL complète détectée:', imagePath)
     return imagePath
   }
   
   // Si c'est un chemin uploadé (/uploads/...), préfixer avec BACKEND_URL
   if (imagePath.startsWith('/uploads/')) {
     const fullUrl = `${CONFIG.BACKEND_URL}${imagePath}`
-    console.log('🖼️ getImageUrl: Image uploadée:', imagePath, '→', fullUrl, 'BACKEND_URL:', CONFIG.BACKEND_URL)
+    if (isDev) console.log('🖼️ getImageUrl: Image uploadée:', imagePath, '→', fullUrl)
     return fullUrl
   }
   
   // Si c'est un chemin statique frontend (/img/, /assets/), utiliser tel quel
   if (imagePath.startsWith('/img/') || imagePath.startsWith('/assets/')) {
-    console.log('🖼️ getImageUrl: Image statique frontend:', imagePath)
+    if (isDev) console.log('🖼️ getImageUrl: Image statique frontend:', imagePath)
     return imagePath
   }
   
   // Sinon, préfixer avec BACKEND_URL
   const fullUrl = `${CONFIG.BACKEND_URL}${imagePath.startsWith('/') ? imagePath : '/' + imagePath}`
-  console.log('🖼️ getImageUrl: Chemin relatif, préfixé:', imagePath, '→', fullUrl, 'BACKEND_URL:', CONFIG.BACKEND_URL)
+  if (isDev) console.log('🖼️ getImageUrl: Chemin relatif, préfixé:', imagePath, '→', fullUrl)
   return fullUrl
 }
 
