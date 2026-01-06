@@ -102,11 +102,6 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// Routes Google OAuth (avant les autres routes /api)
-app.get("/auth/google", passport.authenticate("google", { 
-  scope: ["profile", "email"] 
-}));
-
 // ============================================
 // Routes Google OAuth
 // ============================================
