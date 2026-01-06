@@ -132,10 +132,34 @@ export function AuthProvider({ children }) {
       
       console.log('✅ Connexion réussie - Utilisateur:', userData?.name || userData?.email)
       
+      if (!newToken) {
+        console.error('❌ ERREUR: Pas de token dans la réponse de connexion!')
+        throw new Error('Token manquant dans la réponse du serveur')
+      }
+      
+      if (!userData) {
+        console.error('❌ ERREUR: Pas de données utilisateur dans la réponse!')
+        throw new Error('Données utilisateur manquantes dans la réponse du serveur')
+      }
+      
+      console.log('   - Token reçu, length:', newToken.length)
+      console.log('   - User data:', { name: userData.name, email: userData.email, status: userData.status })
+      
+      // Stocker le token et l'utilisateur
       setToken(newToken)
       setUser(userData)
       localStorage.setItem('token', newToken)
       localStorage.setItem('user', JSON.stringify(userData))
+      
+      // Vérifier que le token est bien stocké
+      const storedToken = localStorage.getItem('token')
+      if (storedToken !== newToken) {
+        console.error('❌ Erreur: Token non correctement stocké dans localStorage')
+        console.error('   - Token original:', newToken.substring(0, 20) + '...')
+        console.error('   - Token stocké:', storedToken?.substring(0, 20) + '...')
+      } else {
+        console.log('✅ Token correctement stocké dans localStorage')
+      }
       
       return { success: true }
     } catch (error) {
