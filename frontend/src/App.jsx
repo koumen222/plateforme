@@ -29,6 +29,7 @@ function App() {
           v7_relativeSplatPath: true
         }}
       >
+        <CleanUrlRedirect />
         <Routes>
           {/* Routes étudiant/formation */}
           <Route path="/login" element={<LoginPage />} />
