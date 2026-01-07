@@ -1,7 +1,7 @@
 import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import VideoPlayer from './VideoPlayer'
-import PayButton from './PayButton'
+import SubscriptionButton from './SubscriptionButton'
 import { CONFIG } from '../config/config'
 
 export default function ProtectedVideo({ video, title }) {
@@ -113,28 +113,23 @@ export default function ProtectedVideo({ video, title }) {
       }}>
         <div style={{ fontSize: '4rem' }}>⏳</div>
         <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#856404' }}>
-          Compte en attente de validation
+          Abonnez-vous pour accéder à toutes les vidéos
         </h2>
         <p style={{ fontSize: '1.1rem', color: '#856404', maxWidth: '500px', margin: 0 }}>
-          Pour activer votre compte et accéder à cette vidéo, effectuez le paiement de la formation.
+          Pour débloquer toutes les vidéos de formation, choisissez votre abonnement. 
+          Accès illimité à tous les cours et ressources.
         </p>
         <div style={{ 
           marginTop: '1.5rem', 
-          display: 'flex', 
-          flexDirection: 'column',
-          gap: '1rem',
-          alignItems: 'center',
           width: '100%',
-          maxWidth: '400px'
+          maxWidth: '800px'
         }}>
-          <PayButton
-            amount={CONFIG.FORMATION_AMOUNT}
-            orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
+          <SubscriptionButton
             onSuccess={() => {
-              console.log('Paiement initié avec succès')
+              console.log('Paiement abonnement initié avec succès')
             }}
             onError={(error) => {
-              console.error('Erreur paiement:', error)
+              console.error('Erreur paiement abonnement:', error)
             }}
           />
           <div style={{ 

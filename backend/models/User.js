@@ -62,6 +62,15 @@ const userSchema = new mongoose.Schema({
     enum: ['pending', 'active', 'blocked'],
     default: 'pending'
   },
+  subscriptionType: {
+    type: String,
+    enum: ['monthly', 'yearly'],
+    default: null
+  },
+  subscriptionExpiry: {
+    type: Date,
+    default: null
+  },
   progress: [{
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

@@ -11,8 +11,22 @@ export default function VideoPlayer({ video, title }) {
 
   const { type, url } = video
 
-  // Vérifier si l'utilisateur est connecté ET que son compte est actif
-  const canWatchVideo = isAuthenticated && user && user.status === 'active'
+  // Vérifier si l'utilisateur a un abonnement actif
+  const hasActiveSubscription = () => {
+    if (!isAuthenticated || !user) return false
+    
+    // Vérifier si l'utilisateur a un abonnement valide
+    if (user.subscriptionExpiry) {
+      const expiryDate = new Date(user.subscriptionExpiry)
+      const now = new Date()
+      return expiryDate > now
+    }
+    
+    // Fallback: vérifier le statut 'active' pour compatibilité
+    return user.status === 'active'
+  }
+  
+  const canWatchVideo = hasActiveSubscription()
 
   const handleUnlockClick = () => {
     if (!isAuthenticated) {
@@ -31,21 +45,20 @@ export default function VideoPlayer({ video, title }) {
     if (!isAuthenticated) {
       return {
         title: 'Vidéo verrouillée',
-        message: 'Créez un compte pour accéder à cette vidéo de formation',
+        message: 'Créez un compte et abonnez-vous pour accéder à toutes les vidéos de formation',
         button: 'S\'inscrire maintenant'
-      }
-    } else if (user && user.status === 'pending') {
-      return {
-        title: 'Vidéo verrouillée',
-        message: 'Votre compte est en attente d\'activation. Effectuez le paiement pour activer votre compte.',
-        button: 'Voir mon profil',
-        showPayment: true
       }
     } else {
+      // Vérifier si l'abonnement a expiré
+      const isExpired = user?.subscriptionExpiry && new Date(user.subscriptionExpiry) <= new Date()
+      
       return {
         title: 'Vidéo verrouillée',
-        message: 'Créez un compte pour accéder à cette vidéo',
-        button: 'S\'inscrire maintenant'
+        message: isExpired 
+          ? 'Votre abonnement a expiré. Renouvelez votre abonnement pour continuer à accéder à toutes les vidéos.'
+          : 'Abonnez-vous pour débloquer toutes les vidéos de formation. Accès illimité à tous les cours.',
+        button: 'Voir mon profil',
+        showPayment: true
       }
     }
   }
@@ -81,17 +94,14 @@ export default function VideoPlayer({ video, title }) {
                 maxWidth: '400px'
               }}>
                 {lockInfo.showPayment && user && (
-                  <>
-                    <PayButton
-                      amount={CONFIG.FORMATION_AMOUNT}
-                      orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
-                      onSuccess={() => {
-                        console.log('Paiement initié avec succès')
-                      }}
-                      onError={(error) => {
-                        console.error('Erreur paiement:', error)
-                      }}
-                    />
+                  <SubscriptionButton
+                    onSuccess={() => {
+                      console.log('Paiement abonnement initié avec succès')
+                    }}
+                    onError={(error) => {
+                      console.error('Erreur paiement abonnement:', error)
+                    }}
+                  />
                     <div style={{ 
                       fontSize: '0.9rem', 
                       color: 'var(--text-secondary)',

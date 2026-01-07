@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { lessons } from '../data/lessons'
 import '../styles/profile.css'
-import PayButton from '../components/PayButton'
+import SubscriptionButton from '../components/SubscriptionButton'
 
 export default function ProfilePage() {
   const { user, token, logout, updateUser, updateProfile, refreshUser } = useAuth()
@@ -349,34 +349,28 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {user.status === 'pending' && (
+        {(!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
           <div className="profile-notice profile-notice-pending">
             <div className="profile-notice-icon">⏳</div>
             <div className="profile-notice-content">
-              <h3>Votre compte est en attente d'activation</h3>
+              <h3>Abonnez-vous pour accéder à toutes les vidéos</h3>
               <p>
-                Pour activer votre compte et accéder à toutes les vidéos de formation, 
-                effectuez le paiement de la formation.
+                Pour débloquer toutes les vidéos de formation, choisissez votre abonnement. 
+                Accès illimité à tous les cours et ressources.
               </p>
               <div style={{ 
                 marginTop: '1.5rem', 
-                display: 'flex', 
-                flexDirection: 'column',
-                gap: '1rem',
-                alignItems: 'center',
                 width: '100%',
-                maxWidth: '400px',
+                maxWidth: '800px',
                 marginLeft: 'auto',
                 marginRight: 'auto'
               }}>
-                <PayButton
-                  amount={CONFIG.FORMATION_AMOUNT}
-                  orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
+                <SubscriptionButton
                   onSuccess={() => {
-                    console.log('Paiement initié avec succès')
+                    console.log('Paiement abonnement initié avec succès')
                   }}
                   onError={(error) => {
-                    console.error('Erreur paiement:', error)
+                    console.error('Erreur paiement abonnement:', error)
                   }}
                 />
                 <div style={{ 

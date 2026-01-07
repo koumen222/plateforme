@@ -27,7 +27,7 @@ console.log('🔑 ========== FIN CONFIGURATION ==========');
  */
 router.post('/init', async (req, res) => {
   try {
-    const { amount, order_id, phone, provider } = req.body;
+    const { amount, order_id, phone, provider, subscription_type } = req.body;
 
     // Validation
     if (!amount || !order_id) {
@@ -304,17 +304,33 @@ router.post('/activate', async (req, res) => {
 
     console.log('🔄 ========== ACTIVATION AUTOMATIQUE ==========');
     console.log('   - Order ID:', order_id);
+    console.log('   - Subscription Type:', subscription_type);
 
-    // Extraire l'ID utilisateur de l'order_id (format: PAY-{userId}-{timestamp})
-    const orderIdMatch = order_id.match(/^PAY-(.+?)-(\d+)$/);
-    if (!orderIdMatch) {
+    // Extraire l'ID utilisateur de l'order_id (format: PAY-{userId}-{timestamp} ou SUB-{userId}-{type}-{timestamp})
+    let userId, isSubscription = false, detectedSubscriptionType = null;
+    
+    const payMatch = order_id.match(/^PAY-(.+?)-(\d+)$/);
+    const subMatch = order_id.match(/^SUB-(.+?)-(monthly|yearly)-(\d+)$/);
+    
+    if (subMatch) {
+      userId = subMatch[1];
+      detectedSubscriptionType = subMatch[2];
+      isSubscription = true;
+      console.log('   - Type: Abonnement');
+      console.log('   - Type détecté:', detectedSubscriptionType);
+    } else if (payMatch) {
+      userId = payMatch[1];
+      console.log('   - Type: Paiement unique');
+    } else {
       console.error('❌ Format order_id invalide:', order_id);
       return res.status(400).json({ 
         error: 'Format order_id invalide' 
       });
     }
 
-    const userId = orderIdMatch[1];
+    // Utiliser le type d'abonnement fourni ou détecté
+    const finalSubscriptionType = subscription_type || detectedSubscriptionType;
+    
     console.log('   - User ID extrait:', userId);
 
     // Vérifier d'abord le paiement
@@ -372,6 +388,24 @@ router.post('/activate', async (req, res) => {
       });
     }
 
+    // Si c'est un abonnement, calculer la date d'expiration
+    if (isSubscription && finalSubscriptionType) {
+      const now = new Date();
+      let expiryDate = new Date();
+      
+      if (finalSubscriptionType === 'monthly') {
+        expiryDate.setMonth(now.getMonth() + 1);
+        console.log('   - Abonnement mensuel: expiration dans 1 mois');
+      } else if (finalSubscriptionType === 'yearly') {
+        expiryDate.setFullYear(now.getFullYear() + 1);
+        console.log('   - Abonnement annuel: expiration dans 1 an');
+      }
+      
+      user.subscriptionType = finalSubscriptionType;
+      user.subscriptionExpiry = expiryDate;
+      console.log('   - Date d\'expiration:', expiryDate.toISOString());
+    }
+    
     // Activer l'utilisateur
     user.status = 'active';
     await user.save();
