@@ -32,7 +32,10 @@ export default function LessonPage({ lesson }) {
     if (lesson._id) {
       const loadCourse = async () => {
         try {
-          const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/facebook-ads`)
+          // Déterminer le slug du cours depuis le pathname ou utiliser facebook-ads par défaut
+          const pathParts = window.location.pathname.split('/')
+          const courseSlug = pathParts[2] || 'facebook-ads'
+          const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/${courseSlug}`)
           if (response.data.success && response.data.course.modules) {
             const allLessons = []
             response.data.course.modules.forEach((module) => {
@@ -40,16 +43,36 @@ export default function LessonPage({ lesson }) {
                 module.lessons.forEach((l) => {
                   const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
                   const videoType = isYouTube ? 'youtube' : 'vimeo'
-                  const videoUrl = videoType === 'youtube' 
-                    ? `https://www.youtube.com/embed/${l.videoId}?rel=0&modestbranding=1&playsinline=1`
-                    : `https://player.vimeo.com/video/${l.videoId}?title=0&byline=0&portrait=0`
+                  // Amélioration de la détection et construction de l'URL vidéo
+                  let videoUrl = ''
+                  const videoId = l.videoId.toString().trim()
+                  
+                  if (videoType === 'youtube') {
+                    // Si c'est une URL complète, extraire l'ID
+                    let youtubeId = videoId
+                    if (videoId.includes('youtube.com/watch?v=')) {
+                      youtubeId = videoId.split('v=')[1]?.split('&')[0] || videoId
+                    } else if (videoId.includes('youtu.be/')) {
+                      youtubeId = videoId.split('youtu.be/')[1]?.split('?')[0] || videoId
+                    } else if (videoId.includes('youtube.com/embed/')) {
+                      youtubeId = videoId.split('embed/')[1]?.split('?')[0] || videoId
+                    }
+                    videoUrl = `https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&playsinline=1&autoplay=0`
+                  } else {
+                    // Vimeo - extraire l'ID si c'est une URL
+                    let vimeoId = videoId
+                    if (videoId.includes('vimeo.com/')) {
+                      vimeoId = videoId.split('vimeo.com/')[1]?.split('?')[0] || videoId
+                    }
+                    videoUrl = `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&autoplay=0`
+                  }
                   const badgeMatch = l.title.match(/JOUR \d+/)
                   const badge = badgeMatch ? badgeMatch[0] : `JOUR ${allLessons.length + 1}`
                   const meta = l.title.split(' - ')[1] || 'Formation'
                   allLessons.push({
                     id: allLessons.length + 1,
                     _id: l._id,
-                    path: `/course/facebook-ads/lesson/${l._id}`,
+                    path: `/course/${courseSlug}/lesson/${l._id}`,
                     title: l.title,
                     badge: badge,
                     meta: meta,

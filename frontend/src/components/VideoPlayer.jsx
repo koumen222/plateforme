@@ -142,6 +142,17 @@ export default function VideoPlayer({ video, title }) {
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
           allowFullScreen
           title={title || 'Video player'}
+          style={{
+            width: '100%',
+            height: '100%',
+            minHeight: '400px'
+          }}
+          onLoad={() => {
+            console.log('✅ Vidéo chargée avec succès:', url)
+          }}
+          onError={(e) => {
+            console.error('❌ Erreur chargement vidéo:', url)
+          }}
         ></iframe>
         )}
       </div>
