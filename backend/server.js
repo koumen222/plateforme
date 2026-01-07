@@ -33,6 +33,11 @@ import coursesRoutes from "./routes/courses.js";
 import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
 import paymentRoutes from "./routes/payment.js";
+import successRadarRoutes from "./routes/successRadar.js";
+import { startSuccessRadarCron, runSuccessRadarOnce } from "./services/successRadarCron.js";
+
+// Vérifier que le module Success Radar est bien chargé
+console.log('✅ Module Success Radar importé:', typeof successRadarRoutes);
 import Course from "./models/Course.js";
 import Module from "./models/Module.js";
 import Lesson from "./models/Lesson.js";
@@ -234,6 +239,11 @@ app.use("/api/progress", progressRoutes);
 // Routes commentaires (protégées)
 app.use("/api/comments", commentsRoutes);
 
+// Success Radar (protégé - accès selon status)
+app.use("/api", successRadarRoutes);
+console.log('✅ Routes Success Radar chargées:');
+console.log('   - GET /api/success-radar');
+
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
 console.log('✅ Routes admin chargées:');
@@ -323,6 +333,7 @@ app.use((req, res, next) => {
       'GET /api/user/me',
       'PUT /api/profile',
       'POST /api/chat',
+      'GET /api/success-radar',
       'POST /api/admin/register',
       'GET /api/admin/check'
     ]
@@ -612,6 +623,10 @@ const startServer = async () => {
         console.log('✅ Facebook Ads publié (visible sur la home)');
       }
     }
+    
+    // Démarrer le Success Radar (cron + exécution initiale)
+    startSuccessRadarCron();
+    runSuccessRadarOnce();
     
     // Démarrer le serveur Express
     app.listen(PORT, '0.0.0.0', () => {

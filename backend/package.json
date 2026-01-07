@@ -29,6 +29,8 @@
     "mongoose": "^9.1.1",
     "multer": "^2.0.2",
     "node-fetch": "^3.3.2",
+    "node-cron": "^3.0.3",
+    "openai": "^4.80.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0"
   }

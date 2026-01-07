@@ -260,14 +260,14 @@ export default function Chatbot({ className = '' }) {
             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
               <FiMessageCircle className="w-5 h-5" />
             </div>
-            <h3 className="font-bold text-lg-bold">Support Formation</h3>
+            <h3 className="font-bold text-lg-bold text-white">Support Formation</h3>
           </div>
           <button 
             className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-xl font-bold transition-colors"
             aria-label="Fermer le chat"
             onClick={() => setIsOpen(false)}
           >
-            <FiX className="w-5 h-5" />
+            <FiX className="w-5 h-5 text-white" />
           </button>
         </div>
 
@@ -289,7 +289,7 @@ export default function Chatbot({ className = '' }) {
               <div className={`max-w-[75%] rounded-2xl p-4 ${
                 msg.role === 'user' 
                   ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md' 
-                  : 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700 shadow-sm'
+                  : 'bg-card text-primary border border-theme shadow-sm'
               }`}>
                 <div className="whitespace-pre-wrap text-md leading-relaxed">{msg.content}</div>
               </div>
@@ -307,7 +307,7 @@ export default function Chatbot({ className = '' }) {
               <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
                 <FiMessageCircle className="w-5 h-5" />
               </div>
-              <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-700 shadow-sm">
+              <div className="bg-card rounded-2xl p-4 border border-theme shadow-sm">
                 <div className="flex gap-2">
                   <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
@@ -320,28 +320,34 @@ export default function Chatbot({ className = '' }) {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-2xl">
+        <div className="p-4 bg-secondary border-t border-theme rounded-b-2xl">
           <div className="flex gap-2">
             <input
               type="text"
-              className="flex-1 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8B5E3C] focus:border-[#8B5E3C] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 text-md"
+              className="input-startup flex-1 text-md placeholder:text-secondary/60"
               placeholder="Tapez votre question..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               disabled={loading}
             />
-            <button 
-              className="w-12 h-12 text-white rounded-xl flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed shadow-sm bg-brand hover:bg-brand-600"
-              onClick={sendMessage}
-              disabled={loading}
-            >
-              <FiSend />
-            </button>
+           <button
+  type="button"
+  className="btn-primary px-4 h-12 rounded-xl flex items-center justify-center gap-2
+             hover:scale-105 transition-transform
+             disabled:opacity-50 disabled:cursor-not-allowed"
+  onClick={sendMessage}
+  disabled={loading}
+  aria-label="Envoyer le message"
+>
+  <FiSend className="w-5 h-5" />
+  Envoyer
+</button>
+
+
           </div>
         </div>
       </div>
     </div>
   )
 }
-

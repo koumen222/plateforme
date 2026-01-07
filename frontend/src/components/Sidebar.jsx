@@ -147,178 +147,178 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:block w-64 flex-shrink-0 h-[calc(100vh-4rem)] bg-bg-secondary border-r border-border overflow-y-auto">
+    <aside className="hidden md:block w-64 flex-shrink-0 h-[calc(100vh-4rem)] bg-secondary border-r border-theme overflow-y-auto">
       {/* Header du cours */}
-      <div className="p-4 sm:p-6 border-b border-border">
+      <div className="p-4 border-b border-theme">
         <div className="flex-1">
-          <h1 className="text-base sm:text-lg font-bold text-text-primary mb-2">{course?.title || 'Formation'}</h1>
-          <p className="text-xs sm:text-sm text-text-secondary line-clamp-2">{course?.description || 'Chargement...'}</p>
+          <h1 className="text-lg font-bold text-primary mb-2">{course?.title || 'Formation'}</h1>
+          <p className="text-sm text-secondary line-clamp-2">{course?.description || 'Chargement...'}</p>
         </div>
-            </div>
+      </div>
 
       {/* Liste des leçons */}
-      <nav className="p-3 sm:p-4">
-          {loadingCourse ? (
-          <div className="p-4 text-center text-text-secondary text-sm">Chargement...</div>
-          ) : (
-            <ul className="space-y-1">
-              {lessons.map((lesson, index) => {
-                const courseSlug = course?.slug || 'facebook-ads'
-                const lessonPath = `/course/${courseSlug}/lesson/${lesson._id}`
-                const isActive = location.pathname.includes(`/lesson/${lesson._id}`)
-                
-                return (
-                  <li key={lesson._id}>
-                    <Link
-                      to={lessonPath}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
-                        isActive 
-                          ? 'bg-brand text-white font-semibold' 
-                          : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                      }`}
-                    >
-                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-xs font-medium">
-                        {index + 1}
-                      </span>
-                      <span className="flex-1 truncate">{lesson.title}</span>
-                    </Link>
-                  </li>
-                )
-              })}
-            </ul>
-          )}
-        </nav>
+      <nav className="p-4">
+        {loadingCourse ? (
+          <div className="p-4 text-center text-secondary text-sm">Chargement...</div>
+        ) : (
+          <ul className="space-y-1">
+            {lessons.map((lesson, index) => {
+              const courseSlug = course?.slug || 'facebook-ads'
+              const lessonPath = `/course/${courseSlug}/lesson/${lesson._id}`
+              const isActive = location.pathname.includes(`/lesson/${lesson._id}`)
+              
+              return (
+                <li key={lesson._id}>
+                  <Link
+                    to={lessonPath}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
+                      isActive 
+                        ? 'bg-accent text-white font-semibold' 
+                        : 'text-primary hover:bg-hover'
+                    }`}
+                  >
+                    <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-xs font-medium">
+                      {index + 1}
+                    </span>
+                    <span className="flex-1 truncate">{lesson.title}</span>
+                  </Link>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </nav>
 
       {/* Section commentaires et produits gagnants */}
-        {isAuthenticated && user?.status === 'active' && (
-        <div className="p-3 sm:p-4 border-t border-border">
+      {isAuthenticated && user?.status === 'active' && (
+        <div className="p-4 border-t border-theme">
           <div className="px-3 py-2 mb-2">
-              <Link
-                to="/commentaires"
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
-                  location.pathname === '/commentaires' 
-                    ? 'bg-brand text-white font-semibold' 
-                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                }`}
-              >
+            <Link
+              to="/commentaires"
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
+                location.pathname === '/commentaires' 
+                  ? 'bg-accent text-white font-semibold' 
+                  : 'text-primary hover:bg-hover'
+              }`}
+            >
               <FiMessageSquare className="w-4 h-4" /> Commentaires
-              </Link>
-            </div>
-          <div className="px-3 py-2 mb-2">
-              <Link
-                to="/produits-gagnants"
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
-                  location.pathname === '/produits-gagnants' 
-                    ? 'bg-brand text-white font-semibold' 
-                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                }`}
-              >
-                Produits Gagnants
-              </Link>
-            </div>
-            </div>
-        )}
-        
-      {/* Progression */}
-        {isAuthenticated && user?.status === 'active' && (
-        <div className="p-3 sm:p-4 border-t border-border">
-            {progressLoading ? (
-              <div className="text-center text-text-secondary text-sm py-2">Chargement...</div>
-            ) : progress ? (
-              <>
-                <div className="flex justify-between items-center mb-2">
-                <span className="text-xs sm:text-sm font-semibold text-text-primary">Ma Progression</span>
-                <span className="text-xs sm:text-sm font-semibold text-brand">{progress.progressPercentage || 0}%</span>
-                </div>
-                <div className="h-2 bg-bg-hover rounded-full overflow-hidden mb-2">
-                  <div 
-                    className="h-full bg-brand rounded-full transition-all duration-300 shadow-sm"
-                    style={{ width: `${progress.progressPercentage || 0}%` }}
-                  ></div>
-                </div>
-                <div className="text-xs text-text-secondary text-center">
-                  {progress.completedLessons || progress.completedCourses || 0} / {progress.totalLessons || 8} leçons complétées
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="flex justify-between items-center mb-2">
-                <span className="text-xs sm:text-sm font-semibold text-text-primary">Ma Progression</span>
-                <span className="text-xs sm:text-sm font-semibold text-brand">0%</span>
-                </div>
-                <div className="h-2 bg-bg-hover rounded-full overflow-hidden mb-2">
-                  <div 
-                    className="h-full bg-brand rounded-full transition-all duration-300"
-                    style={{ width: '0%' }}
-                  ></div>
-                </div>
-                <div className="text-xs text-text-secondary text-center">
-                  0 / 8 leçons complétées
-                </div>
-              </>
-            )}
+            </Link>
           </div>
-        )}
-
-      {/* Theme toggle */}
-      <div className="p-3 sm:p-4 border-t border-border">
-          <ThemeToggle />
+          <div className="px-3 py-2 mb-2">
+            <Link
+              to="/produits-gagnants"
+              className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
+                location.pathname === '/produits-gagnants' 
+                  ? 'bg-accent text-white font-semibold' 
+                  : 'text-primary hover:bg-hover'
+              }`}
+            >
+              Produits Gagnants
+            </Link>
+          </div>
         </div>
-
-      {/* Profil et déconnexion */}
-      <div className="p-3 sm:p-4 border-t border-border space-y-2">
-          {isAuthenticated ? (
+      )}
+      
+      {/* Progression */}
+      {isAuthenticated && user?.status === 'active' && (
+        <div className="p-4 border-t border-theme">
+          {progressLoading ? (
+            <div className="text-center text-secondary text-sm py-2">Chargement...</div>
+          ) : progress ? (
             <>
-              <Link
-                to="/profil"
-                className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
-                  location.pathname === '/profil' 
-                    ? 'bg-brand text-white font-semibold' 
-                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                }`}
-              >
-                {user?.name?.trim() || user?.email || 'Mon Profil'}
-              </Link>
-              {user?.role === 'superadmin' && (
-                <Link
-                  to="/admin"
-                  className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
-                    location.pathname.startsWith('/admin') 
-                      ? 'bg-brand text-white font-semibold' 
-                      : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                  }`}
-                >
-                  Administration
-                </Link>
-              )}
-              <button
-              onClick={logout}
-                className="w-full text-left px-3 py-2 rounded-xl text-sm bg-brand text-white hover:bg-brand-600 transition-colors font-medium"
-              >
-                Se déconnecter
-              </button>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-semibold text-primary">Ma Progression</span>
+                <span className="text-sm font-semibold text-accent">{progress.progressPercentage || 0}%</span>
+              </div>
+              <div className="h-2 bg-hover rounded-full overflow-hidden mb-2">
+                <div 
+                  className="h-full bg-accent rounded-full transition-all duration-300"
+                  style={{ width: `${progress.progressPercentage || 0}%` }}
+                ></div>
+              </div>
+              <div className="text-xs text-secondary text-center">
+                {progress.completedLessons || progress.completedCourses || 0} / {progress.totalLessons || 8} leçons complétées
+              </div>
             </>
           ) : (
             <>
-              <Link
-                to="/login"
-                className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
-                  location.pathname === '/login' 
-                    ? 'bg-brand text-white font-semibold' 
-                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
-                }`}
-              >
-                Se connecter
-              </Link>
-              <Link
-                to="/admin/login"
-                className="block px-3 py-2 rounded-xl text-sm text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black transition-colors"
-              >
-                Espace Admin
-              </Link>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-semibold text-primary">Ma Progression</span>
+                <span className="text-sm font-semibold text-accent">0%</span>
+              </div>
+              <div className="h-2 bg-hover rounded-full overflow-hidden mb-2">
+                <div 
+                  className="h-full bg-accent rounded-full transition-all duration-300"
+                  style={{ width: '0%' }}
+                ></div>
+              </div>
+              <div className="text-xs text-secondary text-center">
+                0 / 8 leçons complétées
+              </div>
             </>
           )}
         </div>
-      </aside>
+      )}
+
+      {/* Theme toggle */}
+      <div className="p-4 border-t border-theme">
+        <ThemeToggle />
+      </div>
+
+      {/* Profil et déconnexion */}
+      <div className="p-4 border-t border-theme space-y-2">
+        {isAuthenticated ? (
+          <>
+            <Link
+              to="/profil"
+              className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
+                location.pathname === '/profil' 
+                  ? 'bg-accent text-white font-semibold' 
+                  : 'text-primary hover:bg-hover'
+              }`}
+            >
+              {user?.name?.trim() || user?.email || 'Mon Profil'}
+            </Link>
+            {user?.role === 'superadmin' && (
+              <Link
+                to="/admin"
+                className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
+                  location.pathname.startsWith('/admin') 
+                    ? 'bg-accent text-white font-semibold' 
+                    : 'text-primary hover:bg-hover'
+                }`}
+              >
+                Administration
+              </Link>
+            )}
+            <button
+              onClick={logout}
+              className="btn-primary w-full text-left px-3 py-2 text-sm font-medium"
+            >
+              Se déconnecter
+            </button>
+          </>
+        ) : (
+          <>
+            <Link
+              to="/login"
+              className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
+                location.pathname === '/login' 
+                  ? 'bg-accent text-white font-semibold' 
+                  : 'text-primary hover:bg-hover'
+              }`}
+            >
+              Se connecter
+            </Link>
+            <Link
+              to="/admin/login"
+              className="block px-3 py-2 rounded-xl text-sm text-primary hover:bg-hover transition-colors"
+            >
+              Espace Admin
+            </Link>
+          </>
+        )}
+      </div>
+    </aside>
   )
 }

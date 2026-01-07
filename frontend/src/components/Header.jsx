@@ -54,11 +54,11 @@ export default function Header() {
 
   return (
     <>
-      <header className="sticky top-0 z-[100] bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 backdrop-blur-lg bg-opacity-95">
+      <header className="sticky top-0 z-[100] bg-primary border-b border-theme backdrop-blur-lg bg-opacity-95">
         <div className="container-startup">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-16 lg:h-20">
-            <Link to="/" className="flex items-center gap-2 text-gray-900 dark:text-white font-semibold text-lg lg:text-xl hover:opacity-80 transition-opacity">
+            <Link to="/" className="flex items-center gap-2 text-primary font-semibold text-lg lg:text-xl hover:opacity-80 transition-opacity">
               <FiShoppingBag className="w-6 h-6 lg:w-7 lg:h-7" />
               <span>Ecom Starter</span>
             </Link>
@@ -68,8 +68,8 @@ export default function Header() {
                 to="/" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/') && !isActive('/course') 
-                    ? 'bg-brand text-white' 
-                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
                 }`}
               >
                 Accueil
@@ -78,8 +78,8 @@ export default function Header() {
                 to="/cours" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/cours') 
-                    ? 'bg-brand text-white' 
-                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
                 }`}
               >
                 Cours
@@ -88,8 +88,8 @@ export default function Header() {
                 to="/produits-gagnants" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/produits-gagnants') 
-                    ? 'bg-brand text-white' 
-                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
                 }`}
               >
                 Produits Gagnants
@@ -98,8 +98,8 @@ export default function Header() {
                 to="/generateur-pub" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/generateur-pub') 
-                    ? 'bg-brand text-white' 
-                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
                 }`}
               >
                 Générateur de Pub
@@ -108,8 +108,8 @@ export default function Header() {
                 to="/communaute" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/communaute') 
-                    ? 'bg-brand text-white' 
-                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
                 }`}
               >
                 Communauté
@@ -123,16 +123,16 @@ export default function Header() {
                 <div className="relative" ref={profileMenuRef}>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-semibold text-sm">
+                    <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
                       {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <span className="hidden lg:inline text-sm font-medium text-black dark:text-black">
+                    <span className="hidden lg:inline text-sm font-medium text-primary">
                       {user?.name || user?.email?.split('@')[0]}
                     </span>
                     <svg 
-                      className={`hidden lg:block w-4 h-4 text-black transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
+                      className={`hidden lg:block w-4 h-4 text-primary transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -142,14 +142,14 @@ export default function Header() {
                   </button>
 
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
-                      <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <div className="font-semibold text-black dark:text-black">{user?.name || 'Utilisateur'}</div>
-                        <div className="text-sm text-black dark:text-black mt-1">{user?.email}</div>
+                    <div className="absolute right-0 mt-2 w-64 bg-card rounded-xl shadow-xl border border-theme overflow-hidden z-50">
+                      <div className="p-4 border-b border-theme">
+                        <div className="font-semibold text-primary">{user?.name || 'Utilisateur'}</div>
+                        <div className="text-sm text-primary mt-1">{user?.email}</div>
                         <div className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${
                           user?.status === 'active' 
-                            ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-black' 
-                            : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-black'
+                            ? 'status-active' 
+                            : 'status-pending'
                         }`}>
                           {user?.status === 'active' ? 'Actif' : 'En attente'}
                         </div>
@@ -157,23 +157,23 @@ export default function Header() {
                       <div className="py-1">
                         <Link 
                           to="/profil" 
-                          className="block px-4 py-2 text-sm text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="block px-4 py-2 text-sm text-primary hover:bg-secondary transition-colors"
                           onClick={() => setShowProfileMenu(false)}
                         >
                           Mon profil
                         </Link>
                         <Link 
                           to="/commentaires" 
-                          className="block px-4 py-2 text-sm text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="block px-4 py-2 text-sm text-primary hover:bg-secondary transition-colors"
                           onClick={() => setShowProfileMenu(false)}
                         >
                           Mes commentaires
                         </Link>
                       </div>
-                      <div className="border-t border-gray-200 dark:border-gray-700">
+                      <div className="border-t border-theme">
                         <button 
                           onClick={handleLogout} 
-                          className="w-full text-left px-4 py-2 text-sm bg-brand text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
+                          className="btn-primary w-full text-left px-4 py-2 text-sm font-medium"
                         >
                           Déconnexion
                         </button>
@@ -184,7 +184,7 @@ export default function Header() {
               ) : (
                 <Link 
                   to="/login" 
-                  className="inline-flex items-center px-4 py-2 bg-brand text-white font-semibold rounded-xl hover:bg-brand-600 transition-colors text-sm shadow-sm"
+                  className="btn-primary inline-flex items-center px-4 py-2 text-sm shadow-sm"
                 >
                   Se connecter
                 </Link>
@@ -197,16 +197,16 @@ export default function Header() {
             {/* Hamburger à gauche */}
             <button
               onClick={toggleMobileMenu}
-              className="flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors z-10"
+              className="flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors z-10"
               aria-label="Menu mobile"
             >
-              <FiMenu className="w-6 h-6 text-gray-900 dark:text-white" />
+              <FiMenu className="w-6 h-6 text-primary" />
             </button>
 
             {/* Logo centré absolu */}
             <Link 
               to="/" 
-              className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-gray-900 dark:text-white font-semibold text-base hover:opacity-80 transition-opacity"
+              className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-primary font-semibold text-base hover:opacity-80 transition-opacity"
             >
               <FiShoppingBag className="w-5 h-5" />
               <span>Ecom Starter</span>
@@ -214,16 +214,16 @@ export default function Header() {
 
             {/* Icône compte à droite */}
             {isAuthenticated ? (
-              <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-semibold text-sm">
+              <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
                 {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
               </div>
             ) : (
               <Link
                 to="/login"
-                className="flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors"
                 aria-label="Se connecter"
               >
-                <FiUser className="w-6 h-6 text-gray-900 dark:text-white" />
+                <FiUser className="w-6 h-6 text-primary" />
               </Link>
             )}
           </div>
