@@ -55,11 +55,25 @@
   }
 
   .btn-secondary {
-    @apply px-6 py-3 bg-white text-gray-600 font-semibold rounded-2xl border border-gray-200 hover:bg-gray-50 transition-all duration-200 shadow-sm;
+    @apply px-6 py-3 bg-white font-semibold rounded-2xl border-2 transition-all duration-200 shadow-sm;
+    color: #8B5E3C;
+    border-color: #8B5E3C;
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background-color: #8B5E3C;
+    color: white;
   }
 
   [data-theme="dark"] .btn-secondary {
-    @apply bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700;
+    @apply bg-gray-800;
+    color: #8B5E3C;
+    border-color: #8B5E3C;
+  }
+
+  [data-theme="dark"] .btn-secondary:hover:not(:disabled) {
+    background-color: #8B5E3C;
+    color: white;
   }
 
   .card-startup {

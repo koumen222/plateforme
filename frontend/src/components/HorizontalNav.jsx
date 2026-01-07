@@ -42,7 +42,7 @@ export default function HorizontalNav() {
                   className={`flex items-center gap-2 px-3 py-3 sm:px-4 sm:py-4 rounded-xl text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap relative ${
                     isActive
                       ? 'text-brand dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 font-semibold'
-                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800'
+                      : 'text-black dark:text-black hover:text-black dark:hover:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                   }`}
                 >
                   <span className="text-base sm:text-lg leading-none flex items-center justify-center"><item.icon /></span>

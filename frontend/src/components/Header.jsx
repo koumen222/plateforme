@@ -69,7 +69,7 @@ export default function Header() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/') && !isActive('/course') 
                     ? 'bg-brand text-white' 
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Accueil
@@ -79,7 +79,7 @@ export default function Header() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/cours') 
                     ? 'bg-brand text-white' 
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Cours
@@ -89,7 +89,7 @@ export default function Header() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/produits-gagnants') 
                     ? 'bg-brand text-white' 
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Produits Gagnants
@@ -99,7 +99,7 @@ export default function Header() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/generateur-pub') 
                     ? 'bg-brand text-white' 
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Générateur de Pub
@@ -109,7 +109,7 @@ export default function Header() {
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/communaute') 
                     ? 'bg-brand text-white' 
-                    : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                    : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                 }`}
               >
                 Communauté
@@ -128,11 +128,11 @@ export default function Header() {
                     <div className="w-8 h-8 rounded-full bg-brand text-white flex items-center justify-center font-semibold text-sm">
                       {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
-                    <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">
+                    <span className="hidden lg:inline text-sm font-medium text-black dark:text-black">
                       {user?.name || user?.email?.split('@')[0]}
                     </span>
                     <svg 
-                      className={`hidden lg:block w-4 h-4 text-gray-500 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
+                      className={`hidden lg:block w-4 h-4 text-black transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
                       fill="none" 
                       stroke="currentColor" 
                       viewBox="0 0 24 24"
@@ -144,12 +144,12 @@ export default function Header() {
                   {showProfileMenu && (
                     <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden z-50">
                       <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                        <div className="font-semibold text-gray-900 dark:text-white">{user?.name || 'Utilisateur'}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">{user?.email}</div>
+                        <div className="font-semibold text-black dark:text-black">{user?.name || 'Utilisateur'}</div>
+                        <div className="text-sm text-black dark:text-black mt-1">{user?.email}</div>
                         <div className={`inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium ${
                           user?.status === 'active' 
-                            ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' 
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                            ? 'bg-gray-100 dark:bg-gray-700 text-black dark:text-black' 
+                            : 'bg-gray-100 dark:bg-gray-700 text-black dark:text-black'
                         }`}>
                           {user?.status === 'active' ? 'Actif' : 'En attente'}
                         </div>
@@ -157,14 +157,14 @@ export default function Header() {
                       <div className="py-1">
                         <Link 
                           to="/profil" 
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="block px-4 py-2 text-sm text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           onClick={() => setShowProfileMenu(false)}
                         >
                           Mon profil
                         </Link>
                         <Link 
                           to="/commentaires" 
-                          className="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="block px-4 py-2 text-sm text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                           onClick={() => setShowProfileMenu(false)}
                         >
                           Mes commentaires
@@ -173,7 +173,7 @@ export default function Header() {
                       <div className="border-t border-gray-200 dark:border-gray-700">
                         <button 
                           onClick={handleLogout} 
-                          className="w-full text-left px-4 py-2 text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          className="w-full text-left px-4 py-2 text-sm bg-brand text-white rounded-lg hover:bg-brand-600 transition-colors font-medium"
                         >
                           Déconnexion
                         </button>

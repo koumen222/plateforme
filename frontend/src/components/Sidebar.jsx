@@ -174,7 +174,7 @@ export default function Sidebar() {
                       className={`flex items-center gap-3 px-3 py-2 rounded-xl text-sm transition-colors ${
                         isActive 
                           ? 'bg-brand text-white font-semibold' 
-                          : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                          : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                       }`}
                     >
                       <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-xs font-medium">
@@ -198,7 +198,7 @@ export default function Sidebar() {
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
                   location.pathname === '/commentaires' 
                     ? 'bg-brand text-white font-semibold' 
-                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                 }`}
               >
               <FiMessageSquare className="w-4 h-4" /> Commentaires
@@ -210,7 +210,7 @@ export default function Sidebar() {
                 className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm transition-colors ${
                   location.pathname === '/produits-gagnants' 
                     ? 'bg-brand text-white font-semibold' 
-                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                 }`}
               >
                 Produits Gagnants
@@ -274,7 +274,7 @@ export default function Sidebar() {
                 className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
                   location.pathname === '/profil' 
                     ? 'bg-brand text-white font-semibold' 
-                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                 }`}
               >
                 {user?.name?.trim() || user?.email || 'Mon Profil'}
@@ -285,7 +285,7 @@ export default function Sidebar() {
                   className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
                     location.pathname.startsWith('/admin') 
                       ? 'bg-brand text-white font-semibold' 
-                      : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                   }`}
                 >
                   Administration
@@ -293,7 +293,7 @@ export default function Sidebar() {
               )}
               <button
               onClick={logout}
-                className="w-full text-left px-3 py-2 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                className="w-full text-left px-3 py-2 rounded-xl text-sm bg-brand text-white hover:bg-brand-600 transition-colors font-medium"
               >
                 Se déconnecter
               </button>
@@ -305,14 +305,14 @@ export default function Sidebar() {
                 className={`block px-3 py-2 rounded-xl text-sm transition-colors ${
                   location.pathname === '/login' 
                     ? 'bg-brand text-white font-semibold' 
-                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                    : 'text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black'
                 }`}
               >
                 Se connecter
               </Link>
               <Link
                 to="/admin/login"
-                className="block px-3 py-2 rounded-xl text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+                className="block px-3 py-2 rounded-xl text-sm text-black dark:text-black hover:bg-bg-hover hover:text-black dark:hover:text-black transition-colors"
               >
                 Espace Admin
               </Link>

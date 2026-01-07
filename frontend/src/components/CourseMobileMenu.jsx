@@ -131,7 +131,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                             isActive 
                               ? 'bg-brand text-white font-semibold' 
-                              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+                              : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
                           }`}
                           onClick={handleLessonClick}
                         >
@@ -200,7 +200,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                 </div>
                 <Link
                   to="/commentaires"
-                  className="block px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  className="block px-3 py-2 rounded-lg text-sm text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                   onClick={onClose}
                 >
                   Voir les commentaires
@@ -215,7 +215,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                   {prevLesson && (
                     <Link
                       to={prevLesson.path || (prevLesson._id ? `/course/${courseSlug}/lesson/${prevLesson._id}` : '#')}
-                      className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 rounded-lg bg-gray-100 dark:bg-gray-800 text-black dark:text-black hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                       onClick={handleLessonClick}
                     >
                       <span className="text-sm font-medium">Leçon précédente</span>

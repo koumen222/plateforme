@@ -46,35 +46,35 @@ export default function MobileMenu({ isOpen, onClose }) {
             <nav className="p-4 space-y-2">
               <Link
                 to="/"
-                className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
                 Accueil
               </Link>
               <Link
                 to="/cours"
-                className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
                 Cours
               </Link>
               <Link
                 to="/produits-gagnants"
-                className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
                 Produits Gagnants
               </Link>
               <Link
                 to="/generateur-pub"
-                className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
                 Générateur de Pub
               </Link>
               <Link
                 to="/communaute"
-                className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
                 Communauté
@@ -90,8 +90,8 @@ export default function MobileMenu({ isOpen, onClose }) {
                       {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div>
-                      <div className="font-semibold text-gray-900 dark:text-white">{user?.name || 'Utilisateur'}</div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</div>
+                      <div className="font-semibold text-black dark:text-black">{user?.name || 'Utilisateur'}</div>
+                      <div className="text-sm text-black dark:text-black">{user?.email}</div>
                     </div>
                   </div>
                   <div
@@ -106,21 +106,21 @@ export default function MobileMenu({ isOpen, onClose }) {
                 </div>
                 <Link
                   to="/profil"
-                  className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                  className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                   onClick={onClose}
                 >
                   Mon profil
                 </Link>
                 <Link
                   to="/commentaires"
-                  className="block px-4 py-3 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                  className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                   onClick={onClose}
                 >
                   Mes commentaires
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-medium mt-2"
+                  className="w-full text-left px-4 py-3 rounded-lg bg-brand text-white hover:bg-brand-600 transition-colors font-medium mt-2"
                 >
                   Déconnexion
                 </button>
