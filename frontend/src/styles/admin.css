@@ -157,6 +157,9 @@
 }
 
 .admin-nav-icon {
+  display: flex;
+  align-items: center;
+  font-size: 1.1rem;
   font-size: 0.7940625rem;
 }
 

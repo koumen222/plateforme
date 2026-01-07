@@ -1151,6 +1151,9 @@ body {
     color: #0f172a;
     font-size: 1.694rem;
     cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     box-shadow: 
         0 10px 40px rgba(255, 193, 7, 0.6),
         0 0 0 0 rgba(255, 193, 7, 0.7),
