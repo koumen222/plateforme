@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { lessons } from '../data/lessons'
+import { FiBook, FiMessageSquare } from 'react-icons/fi'
 import '../styles/horizontal-nav.css'
 
 export default function HorizontalNav() {
@@ -11,7 +12,7 @@ export default function HorizontalNav() {
     {
       path: '/',
       label: 'Formation',
-      icon: '📚',
+      icon: FiBook,
       badge: null
     },
     ...(isAuthenticated && user?.status === 'active' 
@@ -19,7 +20,7 @@ export default function HorizontalNav() {
           {
             path: '/commentaires',
             label: 'Commentaires',
-            icon: '💬',
+            icon: FiMessageSquare,
             badge: null
           }
         ]
@@ -41,7 +42,7 @@ export default function HorizontalNav() {
                   to={item.path}
                   className={`horizontal-nav-link ${isActive ? 'active' : ''}`}
                 >
-                  <span className="nav-icon">{item.icon}</span>
+                  <span className="nav-icon"><item.icon /></span>
                   <span className="nav-label">{item.label}</span>
                   {item.badge && (
                     <span className="nav-badge">{item.badge}</span>

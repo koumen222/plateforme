@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import ThemeToggle from './ThemeToggle'
+import { FiMenu, FiX, FiMessageSquare } from 'react-icons/fi'
 import axios from 'axios'
 
 export default function Sidebar() {
@@ -225,7 +226,7 @@ export default function Sidebar() {
         aria-label="Menu"
         onClick={toggleMenu}
       >
-        Menu
+        <FiMenu />
       </button>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
@@ -242,7 +243,7 @@ export default function Sidebar() {
               }}
               aria-label="Fermer le menu"
             >
-              ×
+              <FiX />
             </button>
           </div>
         </div>
@@ -284,7 +285,7 @@ export default function Sidebar() {
                          className={`sidebar-auth-link ${location.pathname === '/commentaires' ? 'active' : ''}`}
                          onClick={() => setIsOpen(false)}
                        >
-                         Commentaires
+                         <FiMessageSquare /> Commentaires
                        </Link>
                      </div>
                      <div className="sidebar-comments-link">

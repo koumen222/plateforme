@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
 import Chatbot from '../Chatbot'
 import Footer from '../Footer'
+import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield } from 'react-icons/fi'
 import '../../styles/admin.css'
 
 export default function AdminLayout() {
@@ -33,11 +34,11 @@ export default function AdminLayout() {
   }
 
   const navItems = [
-    { path: '/admin', label: 'Tableau de bord', icon: '📊' },
-    { path: '/admin/courses', label: 'Cours', icon: '📚' },
-    { path: '/admin/users', label: 'Utilisateurs', icon: '👥' },
-    { path: '/admin/comments', label: 'Commentaires', icon: '💬' },
-    { path: '/admin/settings', label: 'Paramètres', icon: '⚙️' }
+    { path: '/admin', label: 'Tableau de bord', icon: FiBarChart2 },
+    { path: '/admin/courses', label: 'Cours', icon: FiBook },
+    { path: '/admin/users', label: 'Utilisateurs', icon: FiUsers },
+    { path: '/admin/comments', label: 'Commentaires', icon: FiMessageSquare },
+    { path: '/admin/settings', label: 'Paramètres', icon: FiSettings }
   ]
 
   return (
@@ -45,7 +46,7 @@ export default function AdminLayout() {
       <header className="admin-header">
         <div className="admin-header-content">
           <div className="admin-header-left">
-            <h1>🔐 Administration</h1>
+            <h1><FiShield /> Administration</h1>
             <span className="admin-role">
               Super Administrateur
             </span>
@@ -74,7 +75,7 @@ export default function AdminLayout() {
                 to={item.path}
                 className={`admin-nav-link ${location.pathname === item.path || (item.path === '/admin' && location.pathname === '/admin') ? 'active' : ''}`}
               >
-                <span className="admin-nav-icon">{item.icon}</span>
+                <span className="admin-nav-icon"><item.icon /></span>
                 {item.label}
               </Link>
             </li>

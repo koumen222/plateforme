@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
+import { FiMessageCircle, FiX, FiSend } from 'react-icons/fi'
 
 const SYSTEM_PROMPT = `Tu es un assistant expert spécialisé dans la formation Facebook Ads et la méthode Andromeda. Tu es là pour aider les étudiants à comprendre et appliquer la méthode Andromeda étape par étape.
 
@@ -247,7 +248,7 @@ export default function Chatbot() {
         aria-label="Ouvrir le chat"
         onClick={() => setIsOpen(!isOpen)}
       >
-        💬
+        <FiMessageCircle />
       </button>
       <div className={`chatbot-container ${isOpen ? 'open' : ''}`}>
         <div className="chatbot-header">
@@ -295,7 +296,7 @@ export default function Chatbot() {
             onClick={sendMessage}
             disabled={loading}
           >
-            Envoyer
+            <FiSend />
           </button>
         </div>
       </div>

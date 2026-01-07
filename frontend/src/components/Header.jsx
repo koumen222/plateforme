@@ -2,6 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from './ThemeToggle'
+import { FiShoppingBag } from 'react-icons/fi'
 import '../styles/header.css'
 
 export default function Header() {
@@ -39,6 +40,7 @@ export default function Header() {
     <header className="platform-header">
       <div className="header-container">
         <Link to="/" className="header-logo">
+          <FiShoppingBag className="logo-icon" />
           <span className="logo-text">Ecom Starter</span>
         </Link>
 

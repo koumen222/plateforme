@@ -149,7 +149,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               e.target.style.transform = 'translateY(0)'
             }}
           >
-            <span>Payer via WhatsApp</span>
+            <FaWhatsapp /> <span>Payer via WhatsApp</span>
           </a>
         </div>
 
@@ -216,7 +216,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               e.target.style.transform = 'translateY(0)'
             }}
           >
-            <span>Payer via WhatsApp</span>
+            <FaWhatsapp /> <span>Payer via WhatsApp</span>
           </a>
         </div>
       </div>
