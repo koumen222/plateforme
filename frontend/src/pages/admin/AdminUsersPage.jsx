@@ -57,6 +57,22 @@ export default function AdminUsersPage() {
   }
 
   const handleValidate = async (userId) => {
+    // Optimistic update - mise à jour immédiate de l'UI
+    const userIndex = users.findIndex(u => u._id === userId)
+    if (userIndex !== -1) {
+      const updatedUsers = [...users]
+      updatedUsers[userIndex] = { ...updatedUsers[userIndex], status: 'active' }
+      setUsers(updatedUsers)
+    }
+    
+    // Déclencher l'événement immédiatement pour une mise à jour instantanée
+    const event = new CustomEvent('userStatusChanged', { 
+      detail: { userId, newStatus: 'active' },
+      bubbles: true,
+      cancelable: true
+    })
+    window.dispatchEvent(event)
+    
     try {
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/validate/${userId}`, {
         method: 'POST',
@@ -67,21 +83,17 @@ export default function AdminUsersPage() {
 
       if (response.ok) {
         showNotification('Utilisateur validé avec succès')
+        // Rafraîchir pour s'assurer que tout est synchronisé
         fetchUsers()
-        
-        // Déclencher un événement pour notifier le changement de statut
-        const event = new CustomEvent('userStatusChanged', { 
-          detail: { userId, newStatus: 'active' },
-          bubbles: true,
-          cancelable: true
-        })
-        window.dispatchEvent(event)
-        console.log('📢 Événement userStatusChanged dispatché:', { userId, newStatus: 'active' })
       } else {
+        // Rollback en cas d'erreur
+        fetchUsers()
         const data = await response.json()
         showNotification(data.error || 'Erreur lors de la validation', 'error')
       }
     } catch (error) {
+      // Rollback en cas d'erreur
+      fetchUsers()
       showNotification('Erreur lors de la validation', 'error')
     }
   }

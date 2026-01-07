@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { CONFIG } from '../config/config'
 
 export default function Footer({ className = '' }) {
   const currentYear = new Date().getFullYear()
@@ -97,7 +98,7 @@ export default function Footer({ className = '' }) {
                 </Link>
               </li>
               <li>
-                <a href="https://wa.me/237XXXXXXXXX" target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
+                <a href={`https://wa.me/${CONFIG.MORGAN_PHONE}`} target="_blank" rel="noopener noreferrer" className="text-sm text-gray-600 dark:text-gray-400 hover:text-green-600 dark:hover:text-green-400 transition-colors">
                   Contact WhatsApp
                 </a>
               </li>

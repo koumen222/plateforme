@@ -9,7 +9,18 @@ export default defineConfig({
     open: true
   },
   build: {
-    outDir: 'dist'
+    outDir: 'dist',
+    sourcemap: false,
+    minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+          'ui-vendor': ['react-icons']
+        }
+      }
+    },
+    chunkSizeWarningLimit: 1000
   },
   publicDir: 'public'
 })

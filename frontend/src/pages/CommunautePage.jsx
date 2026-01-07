@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CONFIG } from '../config/config'
 
 export default function CommunautePage() {
   const [activeTab, setActiveTab] = useState('discussions')
@@ -120,7 +121,7 @@ export default function CommunautePage() {
               En attendant le forum, rejoignez notre groupe WhatsApp pour échanger avec la communauté !
             </p>
             <a
-              href="https://wa.me/237XXXXXXXXX"
+              href={`https://wa.me/${CONFIG.MORGAN_PHONE}`}
               target="_blank"
               rel="noopener noreferrer"
               className="btn-whatsapp inline-flex items-center justify-center gap-2"

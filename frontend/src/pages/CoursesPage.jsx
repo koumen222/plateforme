@@ -23,7 +23,10 @@ export default function CoursesPage() {
         setError('Erreur lors du chargement des cours')
       }
     } catch (err) {
-      console.error('Erreur chargement cours:', err)
+      // Erreur silencieuse en production, loggée en dev
+      if (import.meta.env.DEV) {
+        console.error('Erreur chargement cours:', err)
+      }
       setError('Erreur lors du chargement des cours')
     } finally {
       setLoading(false)

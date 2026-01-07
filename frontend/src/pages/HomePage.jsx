@@ -25,7 +25,10 @@ export default function HomePage() {
         setCourses(response.data.courses || [])
       }
     } catch (err) {
-      console.error('Erreur chargement cours:', err)
+      // Erreur silencieuse en production, loggée en dev
+      if (import.meta.env.DEV) {
+        console.error('Erreur chargement cours:', err)
+      }
     } finally {
       setLoading(false)
     }
@@ -62,6 +65,7 @@ export default function HomePage() {
               <Link 
                 to="/cours" 
                 className="btn-primary dark:bg-purple-600 dark:hover:bg-purple-700 dark:text-white w-full sm:w-auto px-8 py-4 text-base transform hover:scale-105 hover:shadow-xl transition-all duration-300"
+                aria-label="Commencer les formations"
               >
                 Commencer maintenant
               </Link>
@@ -73,6 +77,7 @@ export default function HomePage() {
                   }
                 }}
                 className="btn-secondary dark:bg-purple-800/50 dark:hover:bg-purple-700/50 dark:text-white dark:border-purple-600 w-full sm:w-auto px-8 py-4 text-base transform hover:scale-105 hover:shadow-lg transition-all duration-300"
+                aria-label="Aller à la section témoignages"
               >
                 Voir les témoignages
               </button>
@@ -406,7 +411,7 @@ export default function HomePage() {
               en e-commerce grâce à nos formations adaptées au marché africain.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/cours" className="btn-primary bg-white text-accent hover:bg-white/90 text-lg px-8 py-4 transform hover:scale-105 hover:shadow-2xl transition-all duration-300">
+              <Link to="/cours" className="btn-primary bg-white text-accent hover:bg-white/90 text-lg px-8 py-4 transform hover:scale-105 hover:shadow-2xl transition-all duration-300" aria-label="Commencer les formations">
                 Commencer maintenant
               </Link>
             </div>

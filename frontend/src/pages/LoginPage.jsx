@@ -19,6 +19,10 @@ export default function LoginPage() {
   const [selectedCountry, setSelectedCountry] = useState(countries.find(c => c.code === 'CM') || countries[0])
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [countrySearchTerm, setCountrySearchTerm] = useState('')
+  
+  // Validation en temps réel
+  const [fieldErrors, setFieldErrors] = useState({})
+  const [touchedFields, setTouchedFields] = useState({})
 
   useEffect(() => {
     if (location.state?.register) {
@@ -40,52 +44,139 @@ export default function LoginPage() {
     return () => document.removeEventListener('click', handleClickOutside)
   }, [showCountryDropdown])
 
+  // Validation en temps réel
+  const validateField = (fieldName, value) => {
+    const errors = { ...fieldErrors }
+    
+    if (!touchedFields[fieldName]) {
+      delete errors[fieldName]
+      setFieldErrors(errors)
+      return
+    }
+
+    switch (fieldName) {
+      case 'name':
+        if (!value || value.trim().length === 0) {
+          errors.name = 'Le nom est requis'
+        } else if (value.trim().length < 2) {
+          errors.name = 'Le nom doit contenir au moins 2 caractères'
+        } else {
+          delete errors.name
+        }
+        break
+      case 'email':
+        if (!value || value.trim().length === 0) {
+          errors.email = 'L\'email est requis'
+        } else {
+          const emailRegex = /^\S+@\S+\.\S+$/
+          if (!emailRegex.test(value)) {
+            errors.email = 'Veuillez entrer une adresse email valide'
+          } else {
+            delete errors.email
+          }
+        }
+        break
+      case 'phoneNumber':
+        if (!value || value.trim().length === 0) {
+          errors.phoneNumber = 'Le numéro de téléphone est requis'
+        } else if (value.trim().length < 5) {
+          errors.phoneNumber = 'Veuillez entrer un numéro de téléphone valide'
+        } else {
+          delete errors.phoneNumber
+        }
+        break
+      case 'password':
+        if (!value || value.length === 0) {
+          errors.password = 'Le mot de passe est requis'
+        } else if (value.length < 6) {
+          errors.password = 'Le mot de passe doit contenir au moins 6 caractères'
+        } else {
+          delete errors.password
+        }
+        break
+      case 'emailOrPhone':
+        if (!value || value.trim().length === 0) {
+          errors.emailOrPhone = 'L\'email ou le téléphone est requis'
+        } else {
+          delete errors.emailOrPhone
+        }
+        break
+      default:
+        break
+    }
+    
+    setFieldErrors(errors)
+  }
+
+  const handleFieldChange = (fieldName, value, setter) => {
+    setter(value)
+    if (!touchedFields[fieldName]) {
+      setTouchedFields({ ...touchedFields, [fieldName]: true })
+    }
+    // Délai pour éviter trop de validations pendant la saisie
+    setTimeout(() => validateField(fieldName, value), 300)
+  }
+
+  const handleFieldBlur = (fieldName, value) => {
+    setTouchedFields({ ...touchedFields, [fieldName]: true })
+    validateField(fieldName, value)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+    
+    // Marquer tous les champs comme touchés
+    const allFieldsTouched = isLogin 
+      ? { emailOrPhone: true, password: true }
+      : { name: true, email: true, phoneNumber: true, password: true }
+    setTouchedFields(allFieldsTouched)
+    
+    // Valider tous les champs
+    if (isLogin) {
+      validateField('emailOrPhone', emailOrPhone)
+      validateField('password', password)
+    } else {
+      validateField('name', name)
+      validateField('email', email)
+      validateField('phoneNumber', phoneNumber)
+      validateField('password', password)
+    }
+    
+    // Vérifier s'il y a des erreurs
+    const hasErrors = Object.keys(fieldErrors).length > 0
+    if (hasErrors) {
+      setError('⚠️ Veuillez corriger les erreurs dans le formulaire')
+      setLoading(false)
+      return
+    }
+    
+    // Vérification finale avant soumission
+    if (isLogin) {
+      if (!emailOrPhone || !password) {
+        setError('⚠️ Veuillez remplir tous les champs')
+        setLoading(false)
+        return
+      }
+    } else {
+      if (!name || !email || !phoneNumber || !password) {
+        setError('⚠️ Veuillez remplir tous les champs')
+        setLoading(false)
+        return
+      }
+    }
+    
     setLoading(true)
 
     try {
       let result
       if (isLogin) {
-        if (!emailOrPhone || !password) {
-          setError('⚠️ Veuillez remplir tous les champs : email/téléphone et mot de passe sont requis')
-          setLoading(false)
-          return
-        }
         result = await login(emailOrPhone, password)
       } else {
-        if (!name || !email || !phoneNumber || !password) {
-          setError('⚠️ Veuillez remplir tous les champs : nom, email, téléphone et mot de passe sont requis')
-          setLoading(false)
-          return
-        }
-        if (name.trim().length < 2) {
-          setError('⚠️ Le nom doit contenir au moins 2 caractères')
-          setLoading(false)
-          return
-        }
-        const emailRegex = /^\S+@\S+\.\S+$/
-        if (!emailRegex.test(email)) {
-          setError('⚠️ Veuillez entrer une adresse email valide (exemple : votre@email.com)')
-          setLoading(false)
-          return
-        }
-        if (phoneNumber.trim().length < 5) {
-          setError('⚠️ Veuillez entrer un numéro de téléphone valide')
-          setLoading(false)
-          return
-        }
-        if (password.length < 6) {
-          setError('⚠️ Le mot de passe doit contenir au moins 6 caractères')
-          setLoading(false)
-          return
-        }
         let finalPhoneNumber = phoneNumber.trim()
         if (!finalPhoneNumber.startsWith('+')) {
           finalPhoneNumber = `${selectedCountry.dialCode}${finalPhoneNumber}`
         }
-        
         result = await register(name, email, finalPhoneNumber, password)
       }
 
@@ -183,13 +274,17 @@ export default function LoginPage() {
                   type="text"
                   id="name"
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => handleFieldChange('name', e.target.value, setName)}
+                  onBlur={(e) => handleFieldBlur('name', e.target.value)}
                   required
                   placeholder="Votre nom complet"
                   disabled={loading}
                   minLength={2}
-                  className="input-startup"
+                  className={`input-startup ${fieldErrors.name ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
+                {fieldErrors.name && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.name}</p>
+                )}
               </div>
             )}
 
@@ -203,12 +298,16 @@ export default function LoginPage() {
                   type="text"
                   id="emailOrPhone"
                   value={emailOrPhone}
-                  onChange={(e) => setEmailOrPhone(e.target.value)}
+                  onChange={(e) => handleFieldChange('emailOrPhone', e.target.value, setEmailOrPhone)}
+                  onBlur={(e) => handleFieldBlur('emailOrPhone', e.target.value)}
                   required
                   placeholder="votre@email.com ou +237 6 76 77 83 77"
                   disabled={loading}
-                  className="input-startup"
+                  className={`input-startup ${fieldErrors.emailOrPhone ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
+                {fieldErrors.emailOrPhone && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.emailOrPhone}</p>
+                )}
               </div>
             ) : (
               <div>
@@ -220,12 +319,16 @@ export default function LoginPage() {
                   type="email"
                   id="email"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => handleFieldChange('email', e.target.value, setEmail)}
+                  onBlur={(e) => handleFieldBlur('email', e.target.value)}
                   required
                   placeholder="votre@email.com"
                   disabled={loading}
-                  className="input-startup"
+                  className={`input-startup ${fieldErrors.email ? 'border-red-500 focus:border-red-500' : ''}`}
                 />
+                {fieldErrors.email && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.email}</p>
+                )}
               </div>
             )}
 
@@ -302,12 +405,18 @@ export default function LoginPage() {
                     type="tel"
                     id="phoneNumber"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    onChange={(e) => handleFieldChange('phoneNumber', e.target.value, setPhoneNumber)}
+                    onBlur={(e) => handleFieldBlur('phoneNumber', e.target.value)}
                     required
                     placeholder="6 76 77 83 77"
                     disabled={loading}
-                    className="input-startup flex-1"
+                    className={`input-startup flex-1 ${fieldErrors.phoneNumber ? 'border-red-500 focus:border-red-500' : ''}`}
                   />
+                </div>
+                {fieldErrors.phoneNumber && (
+                  <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.phoneNumber}</p>
+                )}
+              </div>
                 </div>
               </div>
             )}
@@ -321,14 +430,17 @@ export default function LoginPage() {
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => handleFieldChange('password', e.target.value, setPassword)}
+                onBlur={(e) => handleFieldBlur('password', e.target.value)}
                 required
                 placeholder="••••••••"
                 minLength={6}
                 disabled={loading}
-                className="input-startup"
+                className={`input-startup ${fieldErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
               />
-              {!isLogin && (
+              {fieldErrors.password ? (
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.password}</p>
+              ) : !isLogin && (
                 <small className="mt-1 block text-xs text-secondary pl-6">
                   Minimum 6 caractères
                 </small>
@@ -337,7 +449,7 @@ export default function LoginPage() {
 
             <button 
               type="submit" 
-              disabled={loading}
+              disabled={loading || Object.keys(fieldErrors).length > 0}
               className="btn-primary w-full py-3 px-4 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
@@ -366,6 +478,8 @@ export default function LoginPage() {
                 setEmailOrPhone('')
                 setPhoneNumber('')
                 setPassword('')
+                setFieldErrors({})
+                setTouchedFields({})
               }}
               disabled={loading}
               className="text-sm text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"

@@ -47,12 +47,15 @@ export default function ProductsPage() {
         
         if (data.message) {
           if (data.fromCache) {
-            console.log('ℹ️', data.message)
+            if (import.meta.env.DEV) {
+              console.log('ℹ️', data.message)
+            }
           } else if (!data.products?.length) {
             setError(data.message)
           }
         }
       } catch (err) {
+        // Erreur toujours loggée
         console.error('Erreur Success Radar:', err)
         setError(err.message || 'Impossible de charger les produits')
       } finally {
@@ -86,6 +89,7 @@ export default function ProductsPage() {
         const data = await res.json()
         setProducts(data.products || [])
       } catch (err) {
+        // Erreur toujours loggée
         console.error('Erreur refresh:', err)
         setError(err.message)
       } finally {
@@ -220,6 +224,7 @@ export default function ProductsPage() {
                 onClick={handleRefresh}
                 disabled={refreshing || loading}
                 className="btn-primary flex items-center gap-2 px-4 py-2 text-sm"
+                aria-label="Rafraîchir les produits"
               >
                 <FiRefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
                 {refreshing ? 'Rafraîchissement...' : 'Rafraîchir'}
@@ -227,6 +232,8 @@ export default function ProductsPage() {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+                aria-label={showFilters ? 'Masquer les filtres' : 'Afficher les filtres'}
+                aria-expanded={showFilters}
               >
                 <FiFilter className="w-4 h-4" />
                 {showFilters ? 'Masquer filtres' : 'Filtres'}
@@ -411,6 +418,7 @@ export default function ProductsPage() {
                   setSortBy('trend')
                 }}
                 className="btn-secondary flex items-center gap-2 px-4 py-2 text-sm"
+                aria-label="Réinitialiser tous les filtres"
               >
                 <FiX className="w-4 h-4" />
                 Réinitialiser les filtres
@@ -432,7 +440,16 @@ export default function ProductsPage() {
               <div
                 key={`${product.name}-${index}`}
                 onClick={() => setSelectedProduct(product)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault()
+                    setSelectedProduct(product)
+                  }
+                }}
                 className="card-startup hover:shadow-lg hover:-translate-y-1 transition-all duration-300 cursor-pointer group"
+                role="button"
+                tabIndex={0}
+                aria-label={`Voir les détails de ${product.name}`}
               >
                 <div className="flex items-start gap-4">
                   {/* Badge de statut */}
@@ -526,6 +543,7 @@ export default function ProductsPage() {
                 setShowFilters(true)
               }}
               className="btn-primary px-6 py-3"
+              aria-label="Réinitialiser les filtres et afficher les options"
             >
               Réinitialiser les filtres
             </button>
@@ -555,6 +573,7 @@ export default function ProductsPage() {
               <button
                 onClick={() => setSelectedProduct(null)}
                 className="text-secondary hover:text-primary text-2xl font-bold transition-colors"
+                aria-label="Fermer les détails du produit"
               >
                 ×
               </button>

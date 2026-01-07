@@ -145,6 +145,8 @@ export default function Header() {
                       onClick={() => setShowProfileMenu(!showProfileMenu)}
                       className="hidden lg:flex items-center ml-1"
                       aria-label="Menu profil"
+                      aria-expanded={showProfileMenu}
+                      aria-haspopup="true"
                     >
                       <svg 
                         className={`w-4 h-4 text-primary transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
@@ -158,7 +160,11 @@ export default function Header() {
                   </div>
 
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-64 bg-card rounded-xl shadow-xl border border-theme overflow-hidden z-50">
+                    <div 
+                      className="absolute right-0 mt-2 w-64 bg-card rounded-xl shadow-xl border border-theme overflow-hidden z-50"
+                      role="menu"
+                      aria-label="Menu utilisateur"
+                    >
                       <div className="p-4 border-b border-theme">
                         <div className="font-semibold text-primary">{user?.name || 'Utilisateur'}</div>
                         <div className="text-sm text-primary mt-1">{user?.email}</div>
