@@ -41,63 +41,63 @@ export default function AdminLayout() {
   ]
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm sticky top-0 z-50">
+    <div className="min-h-screen bg-primary">
+      <header className="bg-card border-b border-theme shadow-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
-              <h1 className="text-xl font-bold text-black dark:text-black flex items-center gap-2">
-                <FiShield className="text-brand" />
+              <h1 className="text-xl font-bold text-primary flex items-center gap-2">
+                <FiShield className="text-accent" />
                 Administration
               </h1>
-              <span className="px-3 py-1 bg-brand-100 dark:bg-brand-900/30 text-black dark:text-black rounded-full text-xs font-semibold">
-              Super Administrateur
-            </span>
-          </div>
+              <span className="px-3 py-1 bg-accent/10 text-accent rounded-full text-xs font-semibold">
+                Super Administrateur
+              </span>
+            </div>
             <div className="flex items-center gap-4">
-            <ThemeToggle />
+              <ThemeToggle />
               <div className="text-right hidden md:block">
-                <div className="text-sm font-semibold text-black dark:text-black">
+                <div className="text-sm font-semibold text-primary">
                   {user.name?.trim() || user.email || 'Admin'}
                 </div>
-                <div className="text-xs text-black dark:text-black">{user.email}</div>
-              {user.phoneNumber && (
-                  <div className="text-xs text-black dark:text-black">{user.phoneNumber}</div>
-              )}
-            </div>
+                <div className="text-xs text-secondary">{user.email}</div>
+                {user.phoneNumber && (
+                  <div className="text-xs text-secondary">{user.phoneNumber}</div>
+                )}
+              </div>
               <button 
                 onClick={handleLogout} 
-                className="px-4 py-2 bg-brand text-white rounded-lg font-semibold hover:bg-brand-600 transition-colors text-sm"
+                className="admin-btn admin-btn-md"
               >
-              Se déconnecter
-            </button>
+                Se déconnecter
+              </button>
             </div>
           </div>
         </div>
       </header>
 
-      <nav className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+      <nav className="bg-card border-b border-theme">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ul className="flex gap-1 overflow-x-auto">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path || (item.path === '/admin' && location.pathname === '/admin')
               return (
-            <li key={item.path}>
-              <Link
-                to={item.path}
+                <li key={item.path}>
+                  <Link
+                    to={item.path}
                     className={`flex items-center gap-2 px-4 py-3 text-sm font-semibold transition-colors border-b-2 ${
                       isActive
-                        ? 'text-brand dark:text-brand-400 border-brand dark:border-brand-400'
-                        : 'text-black dark:text-black border-transparent hover:text-black dark:hover:text-black hover:border-gray-300 dark:hover:border-gray-600'
+                        ? 'text-accent border-accent'
+                        : 'text-secondary border-transparent hover:text-primary hover:border-theme'
                     }`}
-              >
+                  >
                     <item.icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            </li>
+                    {item.label}
+                  </Link>
+                </li>
               )
             })}
-        </ul>
+          </ul>
         </div>
       </nav>
 

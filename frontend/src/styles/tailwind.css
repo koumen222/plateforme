@@ -2,20 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Variables CSS personnalisées pour compatibilité avec le thème existant */
+/* ============================================
+   VARIABLES CSS - Thème clair/sombre
+   ============================================ */
 @layer base {
   :root {
     --bg-primary: #ffffff;
     --bg-secondary: #f9fafb;
     --bg-card: #ffffff;
     --bg-hover: #f3f4f6;
-    --text-primary:#8B5E3C;
+    --text-primary:rgb(58, 0, 58);
     --text-secondary: #4b5563;
-    --accent: #8B5E3C;
-    --accent-hover: #7a5234;
+    --accent:rgb(96, 60, 139);           /* Couleur principale */
+    --accent-hover:rgb(41, 120, 154);     /* Couleur au survol */
+    --accent-light: #a87c5c;     /* Version plus claire */
     --border: #e5e7eb;
     --shadow: rgba(0, 0, 0, 0.08);
     --shadow-lg: rgba(0, 0, 0, 0.12);
+    --accent-shadow: rgba(139, 94, 60, 0.25);
   }
 
   [data-theme="dark"] {
@@ -27,74 +31,95 @@
     --text-secondary: #cbd5e1;
     --accent: #8B5E3C;
     --accent-hover: #9d7356;
+    --accent-light: #b08968;
     --border: #334155;
     --shadow: rgba(0, 0, 0, 0.3);
     --shadow-lg: rgba(0, 0, 0, 0.5);
+    --accent-shadow: rgba(139, 94, 60, 0.4);
   }
+
+  /* Classes utilitaires de base */
+  .bg-primary { background-color: var(--bg-primary); }
+  .bg-secondary { background-color: var(--bg-secondary); }
+  .bg-card { background-color: var(--bg-card); }
+  .bg-accent { background-color: var(--accent); }
+  .text-primary { color: var(--text-primary); }
+  .text-secondary { color: var(--text-secondary); }
+  .text-accent { color: var(--accent); }
+  .border-theme { border-color: var(--border); }
+  .border-accent { border-color: var(--accent); }
 }
 
-/* Classes utilitaires personnalisées pour le design africain */
+/* ============================================
+   COMPOSANTS PERSONNALISÉS
+   ============================================ */
 @layer components {
+  /* Conteneur principal */
   .container-startup {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
-  /* Design moderne premium - Palette terre ocre */
+  /* ============================================
+     BOUTONS PRINCIPAUX - TOUS en couleur #8B5E3C
+     ============================================ */
+  
+  /* Bouton principal (solide) */
   .btn-primary {
     @apply px-6 py-3 text-white font-semibold rounded-2xl shadow-sm transition-all duration-200;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
 
   .btn-primary:hover:not(:disabled) {
-    background-color: #7a5234;
-    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-shadow);
   }
 
   .btn-primary:disabled {
     @apply opacity-50 cursor-not-allowed;
   }
 
+  /* Bouton secondaire (contour) */
   .btn-secondary {
-    @apply px-6 py-3 bg-white font-semibold rounded-2xl border-2 transition-all duration-200 shadow-sm;
-    color: #8B5E3C;
-    border-color: #8B5E3C;
+    @apply px-6 py-3 font-semibold rounded-2xl border-2 transition-all duration-200 shadow-sm;
+    background-color: transparent;
+    color: var(--accent);
+    border-color: var(--accent);
   }
 
   .btn-secondary:hover:not(:disabled) {
-    background-color: #8B5E3C;
+    background-color: var(--accent);
     color: white;
   }
 
-  [data-theme="dark"] .btn-secondary {
-    @apply bg-gray-800;
-    color: #8B5E3C;
-    border-color: #8B5E3C;
+  .btn-secondary:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 
-  [data-theme="dark"] .btn-secondary:hover:not(:disabled) {
-    background-color: #8B5E3C;
-    color: white;
+  /* Bouton tertiaire (léger) */
+  .btn-tertiary {
+    @apply px-6 py-3 font-semibold rounded-2xl transition-all duration-200;
+    background-color: rgba(139, 94, 60, 0.1);
+    color: var(--accent);
   }
 
+  .btn-tertiary:hover:not(:disabled) {
+    background-color: rgba(139, 94, 60, 0.2);
+  }
+
+  /* Bouton avec icône */
+  .btn-icon {
+    @apply inline-flex items-center justify-center gap-2;
+  }
+
+  /* ============================================
+     CARTES
+     ============================================ */
   .card-startup {
     @apply rounded-2xl shadow-sm p-6 border transition-all duration-300 hover:shadow-md;
     background-color: var(--bg-card);
     border-color: var(--border);
   }
 
-  .input-startup {
-    @apply w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all;
-    background-color: var(--bg-card);
-    border-color: var(--border);
-    color: var(--text-primary);
-  }
-
-  .input-startup:focus {
-    border-color: #8B5E3C;
-    --tw-ring-color: #8B5E3C;
-  }
-
-  /* Carte de cours style moderne */
   .course-card-african {
     @apply relative rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-md;
     background-color: var(--bg-card);
@@ -102,11 +127,28 @@
   }
 
   .course-card-african:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    border-color: #8B5E3C;
+    box-shadow: 0 4px 12px var(--shadow);
+    border-color: var(--accent);
   }
 
-  /* Chatbot style moderne */
+  /* ============================================
+     FORMULAIRES
+     ============================================ */
+  .input-startup {
+    @apply w-full px-4 py-3 border rounded-xl focus:ring-2 focus:outline-none transition-all;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .input-startup:focus {
+    border-color: var(--accent);
+    --tw-ring-color: var(--accent);
+  }
+
+  /* ============================================
+     CHATBOT
+     ============================================ */
   .chatbot-african {
     @apply border rounded-2xl shadow-lg;
     background-color: var(--bg-card);
@@ -115,51 +157,29 @@
 
   .chatbot-toggle-african {
     @apply fixed bottom-6 right-6 w-16 h-16 text-white rounded-full flex items-center justify-center text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
 
   .chatbot-toggle-african:hover {
-    background-color: #7a5234;
-    box-shadow: 0 8px 16px rgba(139, 94, 60, 0.3);
-  }
-
-  /* Classes pour compatibilité avec le thème existant */
-  .bg-primary {
-    background-color: var(--bg-primary);
-  }
-
-  .bg-secondary {
-    background-color: var(--bg-secondary);
-  }
-
-  .bg-card {
-    background-color: var(--bg-card);
-  }
-
-  .text-primary {
-    color: var(--text-primary);
-  }
-
-  .text-secondary {
-    color: var(--text-secondary);
-  }
-
-  .border-theme {
-    border-color: var(--border);
+    background-color: var(--accent-hover);
+    box-shadow: 0 8px 16px var(--accent-shadow);
   }
 
   /* ============================================
-     BOUTONS PROFILE - Classes réutilisables
+     PROFILE - Boutons (TOUS en #8B5E3C)
      ============================================ */
-  
+  .btn-profile {
+    @apply text-white border-none rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
+    background-color: var(--accent);
+  }
+
   .btn-profile-primary {
-    @apply px-5 py-2.5 text-white border-none rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
-    background-color: #8B5E3C;
+    @apply px-5 py-2.5 btn-profile;
   }
   
   .btn-profile-primary:hover:not(:disabled) {
-    background-color: #7a5234;
-    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-shadow);
   }
   
   .btn-profile-primary:disabled {
@@ -167,30 +187,44 @@
   }
 
   .btn-profile-secondary {
-    @apply px-6 py-3 text-white border-none rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
-    background-color: #8B5E3C;
+    @apply px-6 py-3 btn-profile;
   }
   
   .btn-profile-secondary:hover:not(:disabled) {
-    background-color: #7a5234;
-    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-shadow);
   }
   
   .btn-profile-secondary:disabled {
     @apply opacity-60 cursor-not-allowed;
   }
 
-  /* ============================================
-     FORMULAIRES PROFILE - Classes réutilisables
-     ============================================ */
+  /* Bouton profile avec contour */
+  .btn-profile-outline {
+    @apply px-5 py-2.5 border-2 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
+    background-color: transparent;
+    color: var(--accent);
+    border-color: var(--accent);
+  }
   
+  .btn-profile-outline:hover:not(:disabled) {
+    background-color: var(--accent);
+    color: white;
+  }
+
+  /* ============================================
+     PROFILE - Formulaires
+     ============================================ */
   .input-profile {
-    @apply w-full px-3 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 text-sm font-sans transition-all duration-200;
+    @apply w-full px-3 py-3 rounded-xl text-sm font-sans transition-all duration-200 border;
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
+    color: var(--text-primary);
   }
   
   .input-profile:focus {
     @apply outline-none;
-    border-color: #8B5E3C;
+    border-color: var(--accent);
     box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.1);
   }
   
@@ -199,7 +233,7 @@
   }
   
   .input-profile::placeholder {
-    @apply text-gray-500 dark:text-gray-400;
+    @apply opacity-60;
   }
 
   .field-profile {
@@ -211,11 +245,15 @@
   }
   
   .field-profile label {
-    @apply block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide;
+    @apply block text-xs font-medium uppercase tracking-wide mb-2;
+    color: var(--text-secondary);
   }
   
   .value-profile {
-    @apply text-sm text-gray-900 dark:text-gray-100 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600;
+    @apply text-sm px-4 py-3 rounded-2xl border;
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
+    color: var(--text-primary);
   }
   
   .value-profile.capitalize {
@@ -227,103 +265,108 @@
   }
 
   /* ============================================
-     CARTES PROFILE - Classes réutilisables
+     PROFILE - Cartes
      ============================================ */
-  
   .card-profile-stat {
-    @apply bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl p-6 text-center;
+    @apply rounded-2xl p-6 text-center border;
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
   }
   
   .card-profile-lesson {
-    @apply bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl p-6 flex items-start gap-4 no-underline text-gray-900 dark:text-gray-100 transition-all duration-200 relative;
+    @apply rounded-2xl p-6 flex items-start gap-4 no-underline transition-all duration-200 relative border-2;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
   }
   
   .card-profile-lesson:hover {
-    border-color: #8B5E3C;
+    border-color: var(--accent);
     @apply -translate-y-0.5;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 12px var(--shadow-lg);
   }
   
   .card-profile-lesson.completed {
     @apply border-green-300 dark:border-green-700;
-    background: rgba(34, 197, 94, 0.05);
+    background-color: rgba(34, 197, 94, 0.05);
   }
 
   /* ============================================
-     STATUTS PROFILE - Classes réutilisables
+     PROFILE - Statuts
      ============================================ */
-  
+  .status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold border;
+  }
+
   .status-active {
-    @apply text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800;
-    color: #86efac;
-    background: rgba(34, 197, 94, 0.1);
+    color: #22c55e;
+    background-color: rgba(34, 197, 94, 0.1);
     border-color: rgba(34, 197, 94, 0.3);
   }
   
   .status-pending {
-    @apply text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800;
-    color: #fbbf24;
-    background: rgba(245, 158, 11, 0.1);
+    color: #f59e0b;
+    background-color: rgba(245, 158, 11, 0.1);
     border-color: rgba(245, 158, 11, 0.3);
   }
   
+  .status-accent {
+    color: var(--accent);
+    background-color: rgba(139, 94, 60, 0.1);
+    border-color: rgba(139, 94, 60, 0.3);
+  }
+  
   .status-default {
-    @apply text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700;
+    color: var(--text-secondary);
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
   }
 
   /* ============================================
-     NOTICE PROFILE - Classes réutilisables
+     PROFILE - Notifications
      ============================================ */
-  
   .notice-profile {
-    @apply my-8 p-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl;
-  }
-  
-  .notice-profile-pending {
-    @apply flex gap-4 items-start;
-    background: rgba(245, 158, 11, 0.15);
-    border: 2px solid rgba(245, 158, 11, 0.4);
-  }
-  
-  .notice-profile-content {
-    @apply flex-1;
+    @apply my-8 p-6 rounded-2xl border;
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.4);
   }
   
   .notice-profile-content h3 {
-    @apply text-lg font-bold text-white mb-3 m-0;
+    @apply text-lg font-bold mb-3 m-0;
+    color: var(--text-primary);
   }
   
   .notice-profile-content p {
-    @apply text-white m-0 mb-4 leading-relaxed text-sm;
+    @apply m-0 mb-4 leading-relaxed text-sm;
+    color: var(--text-secondary);
     opacity: 0.95;
   }
 
   /* ============================================
-     BOUTON WHATSAPP - Classes réutilisables
+     BOUTON WHATSAPP (en #8B5E3C)
      ============================================ */
-  
   .btn-whatsapp {
     @apply px-6 py-3 text-white border-none rounded-lg text-base font-bold cursor-pointer no-underline flex items-center gap-2 transition-all duration-200 w-full justify-center;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   }
   
   .btn-whatsapp:hover {
-    background-color: #7a5234;
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 8px var(--accent-shadow);
   }
 
   /* ============================================
-     LESSON PAGE - Classes réutilisables
+     PAGE LEÇON (TOUS les boutons en #8B5E3C)
      ============================================ */
-  
   .page-header-lesson {
     @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-10 mb-4 sm:mb-8 shadow-md relative overflow-hidden;
-    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(254, 243, 199, 0.5) 100%);
     border-color: var(--border);
   }
 
   [data-theme="dark"] .page-header-lesson {
-    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(120, 53, 15, 0.5) 100%);
   }
   
   .page-header-lesson::before {
@@ -342,34 +385,36 @@
   
   .lesson-badge {
     @apply inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
     color: white;
   }
   
   .lesson-completed-badge {
     @apply inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold;
-    background: rgba(34, 197, 94, 0.1);
+    background-color: rgba(34, 197, 94, 0.1);
     border-color: rgba(34, 197, 94, 0.3);
     color: #22c55e;
   }
   
+  /* Bouton marquer comme complété */
   .mark-completed-btn {
     @apply inline-flex items-center gap-2 text-white border-none rounded-xl sm:rounded-2xl font-semibold cursor-pointer transition-all duration-200 shadow-md hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
 
   .mark-completed-btn:hover:not(:disabled) {
-    background-color: #7a5234;
+    background-color: var(--accent-hover);
+    box-shadow: 0 6px 16px var(--accent-shadow);
   }
   
   .summary-card-lesson {
     @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-10 mb-6 sm:mb-8 shadow-md transition-all duration-300 relative overflow-hidden;
-    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(254, 243, 199, 0.5) 100%);
     border-color: var(--border);
   }
 
   [data-theme="dark"] .summary-card-lesson {
-    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(120, 53, 15, 0.5) 100%);
   }
   
   .summary-card-lesson::before {
@@ -384,29 +429,21 @@
   
   .summary-card-lesson:hover {
     @apply shadow-lg -translate-y-0.5;
-    border-color: rgba(249, 115, 22, 0.5);
-  }
-
-  [data-theme="dark"] .summary-card-lesson:hover {
-    border-color: rgba(251, 146, 60, 0.5);
+    border-color: var(--accent);
   }
   
   .downloads-section-lesson {
     @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 shadow-sm transition-all duration-300 w-full hover:shadow-md;
-    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(254, 243, 199, 0.3) 100%);
     border-color: var(--border);
   }
 
   [data-theme="dark"] .downloads-section-lesson {
-    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(120, 53, 15, 0.3) 100%);
   }
 
   .downloads-section-lesson:hover {
-    border-color: rgba(249, 115, 22, 0.5);
-  }
-
-  [data-theme="dark"] .downloads-section-lesson:hover {
-    border-color: rgba(251, 146, 60, 0.5);
+    border-color: var(--accent);
   }
   
   .download-item-lesson {
@@ -417,21 +454,23 @@
 
   .download-item-lesson:hover {
     background-color: var(--bg-secondary);
-    border-color: rgba(249, 115, 22, 0.5);
+    border-color: var(--accent);
   }
   
   .download-icon-lesson {
     @apply flex items-center justify-center rounded-xl sm:rounded-2xl text-white;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
   
+  /* Bouton de téléchargement */
   .download-btn-lesson {
     @apply text-white border-none rounded-lg sm:rounded-xl font-semibold cursor-pointer transition-all duration-200 no-underline inline-flex items-center gap-2 flex-shrink-0 hover:-translate-y-0.5 hover:shadow-lg;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
 
   .download-btn-lesson:hover {
-    background-color: #7a5234;
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-shadow);
   }
   
   .lesson-navigation-lesson {
@@ -439,6 +478,7 @@
     border-color: var(--border);
   }
   
+  /* Bouton de navigation précédent */
   .lesson-nav-btn {
     @apply inline-flex items-center gap-2 sm:gap-3 border rounded-xl sm:rounded-2xl font-semibold cursor-pointer transition-all duration-200 no-underline hover:-translate-y-0.5 hover:shadow-md;
     background-color: var(--bg-card);
@@ -448,15 +488,18 @@
 
   .lesson-nav-btn:hover {
     background-color: var(--bg-hover);
+    border-color: var(--accent);
   }
   
+  /* Bouton de navigation suivant */
   .lesson-nav-next {
     @apply text-white border-none ml-auto hover:shadow-xl;
-    background-color: #8B5E3C;
+    background-color: var(--accent);
   }
 
   .lesson-nav-next:hover {
-    background-color: #7a5234;
+    background-color: var(--accent-hover);
+    box-shadow: 0 6px 20px var(--accent-shadow);
   }
   
   .lesson-nav-prev {
@@ -464,85 +507,592 @@
   }
 
   /* ============================================
-     ADMIN BOUTONS - Tous en couleur brand
+     ADMIN - Boutons (TOUS en #8B5E3C)
      ============================================ */
   
+  /* Bouton admin de base */
   .admin-btn {
-    @apply px-4 py-2 text-white font-semibold rounded-lg cursor-pointer transition-all duration-200 border-none;
-    background-color: #8B5E3C;
+    @apply text-white font-semibold rounded-lg cursor-pointer transition-all duration-200 border-none flex items-center justify-center gap-2;
+    background-color: var(--accent);
   }
 
   .admin-btn:hover:not(:disabled) {
-    background-color: #7a5234;
-    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+    background-color: var(--accent-hover);
+    box-shadow: 0 4px 12px var(--accent-shadow);
   }
 
   .admin-btn:disabled {
     @apply opacity-50 cursor-not-allowed;
   }
 
-  .admin-btn-primary {
-    background-color: #8B5E3C;
+  /* Variantes de taille */
+  .admin-btn-sm {
+    @apply px-3 py-1.5 text-sm;
   }
 
-  .admin-btn-primary:hover:not(:disabled) {
-    background-color: #7a5234;
+  .admin-btn-md {
+    @apply px-4 py-2;
+  }
+
+  .admin-btn-lg {
+    @apply px-6 py-3 text-lg;
+  }
+
+  /* Variantes de style */
+  .admin-btn-outline {
+    background-color: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
+  }
+
+  .admin-btn-outline:hover:not(:disabled) {
+    background-color: var(--accent);
+    color: white;
+  }
+
+  .admin-btn-light {
+    background-color: rgba(139, 94, 60, 0.1);
+    color: var(--accent);
+  }
+
+  .admin-btn-light:hover:not(:disabled) {
+    background-color: rgba(139, 94, 60, 0.2);
+  }
+
+  /* Boutons d'action spécifiques */
+  .admin-btn-save {
+    background-color: var(--accent);
+  }
+
+  .admin-btn-edit {
+    background-color: var(--accent);
+  }
+
+  .admin-btn-delete {
+    background-color: var(--accent);
+  }
+
+  .admin-btn-cancel {
+    background-color: var(--accent);
+  }
+
+  .admin-btn-confirm {
+    background-color: var(--accent);
+  }
+
+  /* Tous les boutons d'action utilisent la même couleur au survol */
+  .admin-btn-save:hover:not(:disabled),
+  .admin-btn-edit:hover:not(:disabled),
+  .admin-btn-delete:hover:not(:disabled),
+  .admin-btn-cancel:hover:not(:disabled),
+  .admin-btn-confirm:hover:not(:disabled) {
+    background-color: var(--accent-hover);
+  }
+
+  /* Variantes de couleur */
+  .admin-btn-primary {
+    background-color: var(--accent);
   }
 
   .admin-btn-secondary {
-    background-color: #8B5E3C;
+    background-color: transparent;
+    color: var(--accent);
+    border: 2px solid var(--accent);
   }
 
   .admin-btn-secondary:hover:not(:disabled) {
-    background-color: #7a5234;
+    background-color: var(--accent);
+    color: white;
   }
 
   .admin-btn-success {
-    background-color: #8B5E3C;
+    background-color: #22c55e;
   }
 
   .admin-btn-success:hover:not(:disabled) {
-    background-color: #7a5234;
-  }
-
-  .admin-btn-warning {
-    background-color: #8B5E3C;
-  }
-
-  .admin-btn-warning:hover:not(:disabled) {
-    background-color: #7a5234;
+    background-color: #16a34a;
   }
 
   .admin-btn-danger {
-    background-color: #8B5E3C;
+    background-color: #ef4444;
   }
 
   .admin-btn-danger:hover:not(:disabled) {
-    background-color: #7a5234;
+    background-color: #dc2626;
+  }
+
+  .admin-btn-warning {
+    background-color: #f59e0b;
+  }
+
+  .admin-btn-warning:hover:not(:disabled) {
+    background-color: #d97706;
   }
 
   .admin-btn-accent {
-    background-color: #8B5E3C;
-  }
-
-  .admin-btn-accent:hover:not(:disabled) {
-    background-color: #7a5234;
-  }
-
-  .admin-btn-sm {
-    @apply px-3 py-1.5 text-sm;
+    background-color: var(--accent);
   }
 
   .admin-btn-xs {
     @apply px-2 py-1 text-xs;
   }
 
-  .admin-btn-lg {
-    @apply px-6 py-3 text-lg;
+  /* ============================================
+     ADMIN - Pages & Layout
+     ============================================ */
+  .admin-page {
+    @apply min-h-screen;
+    background-color: var(--bg-primary);
+  }
+
+  .admin-page-header {
+    @apply mb-8 pb-6 border-b;
+    border-color: var(--border);
+  }
+
+  .admin-page-title-row {
+    @apply flex flex-col md:flex-row md:items-center md:justify-between gap-4;
+  }
+
+  .admin-page-title-row h1 {
+    @apply text-2xl md:text-3xl font-bold mb-2;
+    color: var(--text-primary);
+  }
+
+  .admin-page-subtitle {
+    @apply text-sm md:text-base;
+    color: var(--text-secondary);
+  }
+
+  .admin-header-actions {
+    @apply flex flex-wrap gap-3;
+  }
+
+  /* ============================================
+     ADMIN - Alertes & Notifications
+     ============================================ */
+  .admin-alert {
+    @apply p-4 rounded-lg mb-6 flex items-center gap-3;
+    border: 1px solid;
+  }
+
+  .admin-alert-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+  }
+
+  .admin-alert-success {
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #16a34a;
+  }
+
+  .admin-alert-icon {
+    @apply text-xl;
+  }
+
+  /* ============================================
+     ADMIN - Formulaires
+     ============================================ */
+  .admin-form-card {
+    @apply p-6 rounded-xl border mb-6;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .admin-form-title {
+    @apply text-xl font-bold mb-4;
+    color: var(--text-primary);
+  }
+
+  .admin-form {
+    @apply space-y-4;
+  }
+
+  .admin-form-row {
+    @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+  }
+
+  .admin-form-group {
+    @apply space-y-2;
+  }
+
+  .admin-form-group label {
+    @apply block text-sm font-semibold;
+    color: var(--text-primary);
+  }
+
+  .admin-input {
+    @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .admin-input:focus {
+    border-color: var(--accent);
+    --tw-ring-color: var(--accent);
+  }
+
+  .admin-input-sm {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .admin-input-number {
+    @apply text-right;
+  }
+
+  .admin-input-hint {
+    @apply text-xs;
+    color: var(--text-secondary);
+  }
+
+  .admin-textarea {
+    @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all resize-y;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+    min-height: 100px;
+  }
+
+  .admin-textarea:focus {
+    border-color: var(--accent);
+    --tw-ring-color: var(--accent);
+  }
+
+  .admin-select {
+    @apply w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-all;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .admin-select:focus {
+    border-color: var(--accent);
+    --tw-ring-color: var(--accent);
+  }
+
+  .admin-form-checkboxes {
+    @apply flex flex-col gap-3;
+  }
+
+  .admin-checkbox-label {
+    @apply flex items-center gap-2 cursor-pointer;
+    color: var(--text-primary);
+  }
+
+  .admin-checkbox {
+    @apply w-4 h-4 rounded border-2 cursor-pointer;
+    border-color: var(--border);
+    accent-color: var(--accent);
+  }
+
+  .admin-inline-form {
+    @apply flex flex-col sm:flex-row gap-2 items-end;
+  }
+
+  .admin-lesson-form {
+    @apply space-y-4 p-4 rounded-lg border;
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
+  }
+
+  /* ============================================
+     ADMIN - Cartes & Grilles
+     ============================================ */
+  .admin-courses-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .admin-course-card {
+    @apply rounded-xl border p-6 transition-all duration-200;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .admin-course-card:hover {
+    @apply shadow-md;
+    border-color: var(--accent);
+  }
+
+  .admin-course-card-header {
+    @apply flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4;
+  }
+
+  .admin-course-card-title {
+    @apply flex-1;
+  }
+
+  .admin-course-card-title h3 {
+    @apply text-lg font-bold mb-2;
+    color: var(--text-primary);
+  }
+
+  .admin-course-badges {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .admin-course-card-actions {
+    @apply flex flex-wrap gap-2;
+  }
+
+  .admin-course-description {
+    @apply text-sm mb-4 line-clamp-2;
+    color: var(--text-secondary);
+  }
+
+  .admin-course-meta {
+    @apply flex items-center gap-4 text-xs;
+    color: var(--text-secondary);
+  }
+
+  .admin-course-expanded {
+    @apply mt-6 pt-6 border-t;
+    border-color: var(--border);
+  }
+
+  /* ============================================
+     ADMIN - Badges
+     ============================================ */
+  .admin-badge {
+    @apply inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold;
+  }
+
+  .admin-badge-default {
+    background-color: rgba(139, 94, 60, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(139, 94, 60, 0.3);
+  }
+
+  .admin-badge-success {
+    background-color: rgba(34, 197, 94, 0.1);
+    color: #16a34a;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+
+  .admin-badge-inactive {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+  }
+
+  .admin-badge-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+  }
+
+  .admin-badge-accent {
+    background-color: rgba(139, 94, 60, 0.1);
+    color: var(--accent);
+    border: 1px solid rgba(139, 94, 60, 0.3);
+  }
+
+  .admin-badge-xs {
+    @apply px-1.5 py-0.5 text-xs rounded;
+    background-color: var(--bg-secondary);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  /* ============================================
+     ADMIN - Sections
+     ============================================ */
+  .admin-section {
+    @apply mb-6 pb-6 border-b last:border-b-0 last:pb-0;
+    border-color: var(--border);
+  }
+
+  .admin-section-title {
+    @apply text-lg font-bold mb-4;
+    color: var(--text-primary);
+  }
+
+  .admin-edit-notice {
+    @apply p-3 rounded-lg mb-4 text-sm;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #d97706;
+  }
+
+  /* ============================================
+     ADMIN - Modules & Leçons
+     ============================================ */
+  .admin-modules-list {
+    @apply space-y-4;
+  }
+
+  .admin-module-item {
+    @apply p-4 rounded-lg border;
+    background-color: var(--bg-secondary);
+    border-color: var(--border);
+  }
+
+  .admin-module-header {
+    @apply flex items-center justify-between mb-3;
+  }
+
+  .admin-module-header h5 {
+    @apply font-bold;
+    color: var(--text-primary);
+  }
+
+  .admin-lessons-list {
+    @apply space-y-2 mt-3;
+  }
+
+  .admin-lesson-item {
+    @apply flex items-center justify-between p-3 rounded-lg border;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .admin-lesson-title {
+    @apply flex-1 font-medium;
+    color: var(--text-primary);
+  }
+
+  .admin-lesson-badges {
+    @apply flex gap-2 mr-3;
+  }
+
+  .admin-lesson-actions {
+    @apply flex gap-2;
+  }
+
+  /* ============================================
+     ADMIN - États vides
+     ============================================ */
+  .admin-empty-state {
+    @apply text-center py-8 text-sm;
+    color: var(--text-secondary);
+  }
+
+  .admin-empty-state-sm {
+    @apply text-xs py-2;
+    color: var(--text-secondary);
+  }
+
+  .admin-empty-state-large {
+    @apply text-center py-16;
+  }
+
+  .admin-empty-icon {
+    @apply text-6xl mb-4;
+  }
+
+  /* ============================================
+     ADMIN - Loading & Spinners
+     ============================================ */
+  .admin-loading {
+    @apply flex items-center justify-center py-16;
+  }
+
+  .admin-loading-inline {
+    @apply flex items-center justify-center py-8;
+  }
+
+  .admin-spinner {
+    @apply w-8 h-8 border-4 rounded-full;
+    border-color: var(--border);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+  }
+
+  .admin-spinner-sm {
+    @apply w-4 h-4 border-2 rounded-full;
+    border-color: var(--border);
+    border-top-color: var(--accent);
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ============================================
+     ADMIN - Dashboard
+     ============================================ */
+  .admin-dashboard {
+    @apply space-y-6;
+  }
+
+  .admin-stats-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6;
+  }
+
+  .admin-stat-card {
+    @apply p-6 rounded-xl border transition-all duration-200 hover:shadow-md;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .admin-stat-card:hover {
+    border-color: var(--accent);
+  }
+
+  .admin-stat-icon {
+    @apply text-3xl mb-4;
+  }
+
+  .admin-stat-content {
+    @apply space-y-2;
+  }
+
+  .admin-stat-label {
+    @apply text-sm font-medium;
+    color: var(--text-secondary);
+  }
+
+  .admin-stat-value {
+    @apply text-2xl font-bold;
+    color: var(--text-primary);
+  }
+
+  .admin-stat-link {
+    @apply text-xs mt-2 inline-block;
+    color: var(--accent);
+  }
+
+  .admin-stat-link:hover {
+    color: var(--accent-hover);
+  }
+
+  /* ============================================
+     ADMIN - Tables
+     ============================================ */
+  .admin-table {
+    @apply w-full border-collapse;
+  }
+
+  .admin-table th,
+  .admin-table td {
+    @apply px-4 py-3 text-left border;
+    border-color: var(--border);
+  }
+
+  .admin-table th {
+    @apply font-semibold text-sm;
+    background-color: var(--bg-secondary);
+    color: var(--text-primary);
+  }
+
+  .admin-table td {
+    @apply text-sm;
+    color: var(--text-primary);
+  }
+
+  .admin-table tbody tr:hover {
+    background-color: var(--bg-secondary);
   }
 }
 
-/* Animation shimmer pour la barre de progression */
+/* ============================================
+   ANIMATIONS
+   ============================================ */
 @keyframes shimmer {
   0% {
     transform: translateX(-100%);
@@ -556,7 +1106,9 @@
   animation: shimmer 2s infinite;
 }
 
-/* Scrollbar personnalisée */
+/* ============================================
+   SCROLLBAR PERSONNALISÉE
+   ============================================ */
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
@@ -564,4 +1116,23 @@
 .scrollbar-none {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Scrollbar stylée avec la couleur du thème */
+.scrollbar-custom::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 4px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-hover);
 }
