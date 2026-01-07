@@ -100,8 +100,8 @@ export default function LoginPage() {
       }
 
       if (result.success) {
-        const from = location.state?.from?.pathname || '/'
-        navigate(from, { replace: true })
+        // Toujours rediriger vers la page d'accueil après inscription/connexion
+        navigate('/', { replace: true })
       } else {
         // Messages d'erreur plus clairs pour l'utilisateur
         const errorMessage = result.error || 'Une erreur est survenue'
