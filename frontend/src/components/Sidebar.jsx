@@ -115,15 +115,22 @@ export default function Sidebar() {
     // Écouter les changements de statut utilisateur
     const handleStatusChange = async () => {
       if (token && refreshUser) {
-        const result = await refreshUser()
-        if (result.success && result.statusChanged) {
-          // Si le statut devient actif, charger la progression
-          if (result.user.status === 'active' && token) {
-            fetchProgress()
-          } else {
-            // Si le statut n'est plus actif, vider la progression
-            setProgress(null)
+        try {
+          const result = await refreshUser()
+          if (result.success && result.statusChanged) {
+            // Si le statut devient actif, charger la progression
+            if (result.user.status === 'active' && token) {
+              fetchProgress()
+            } else {
+              // Si le statut n'est plus actif, vider la progression
+              setProgress(null)
+            }
           }
+          // Si refreshUser échoue mais qu'on a toujours un utilisateur, ne rien faire
+          // (l'utilisateur reste connecté avec les données en cache)
+        } catch (error) {
+          console.error('Erreur lors du refresh utilisateur:', error)
+          // Ne pas déconnecter l'utilisateur en cas d'erreur
         }
       }
     }

@@ -348,17 +348,27 @@ export function AuthProvider({ children }) {
       
       return { success: true, user: userData, statusChanged: oldStatus !== newStatus }
     } catch (error) {
-      // Si le token est invalide (401), nettoyer silencieusement
-      if (error.response?.status === 401) {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
-        setToken(null)
-        setUser(null)
-        return { success: false, error: 'Token invalide ou expiré' }
+      // Si le token est invalide (401), ne pas déconnecter si on a un utilisateur en cache
+      if (error.response?.status === 401 || (error.message && error.message.includes('401'))) {
+        // Vérifier si on a un utilisateur en cache
+        const cachedUser = localStorage.getItem('user')
+        if (cachedUser) {
+          console.log('⚠️ Erreur 401 lors du refresh, mais utilisateur en cache conservé')
+          // Ne pas déconnecter, garder l'utilisateur en cache
+          return { success: false, error: 'Token invalide ou expiré', user: user }
+        } else {
+          // Pas d'utilisateur en cache, nettoyer
+          console.log('⚠️ Erreur 401 et pas d\'utilisateur en cache, nettoyage')
+          localStorage.removeItem('token')
+          localStorage.removeItem('user')
+          setToken(null)
+          setUser(null)
+          return { success: false, error: 'Token invalide ou expiré' }
+        }
       }
-      // Pour les autres erreurs, logger
+      // Pour les autres erreurs, logger mais ne pas déconnecter
       console.error('Erreur refreshUser:', error)
-      return { success: false, error: error.message }
+      return { success: false, error: error.message, user: user }
     }
   }
 
