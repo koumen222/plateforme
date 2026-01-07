@@ -48,7 +48,7 @@ export default function Footer() {
               <li><Link to="/profil">Mon profil</Link></li>
               <li><Link to="/commentaires">Mes commentaires</Link></li>
               <li><a href="https://wa.me/237XXXXXXXXX" target="_blank" rel="noopener noreferrer">Contact WhatsApp</a></li>
-              <li><a href="mailto:support@safitech.shop">Email</a></li>
+              <li><a href="mailto:support@ecomstarter.com">Email</a></li>
             </ul>
           </div>
 

@@ -42,9 +42,9 @@ export default function HomePage() {
             Lancez votre <span className="home-hero-highlight">Business E-commerce</span> en Afrique
           </h1>
           <p className="home-hero-subtitle">
-            Formations complètes et pratiques pour réussir en e-commerce en Afrique. 
-            Maîtrisez Facebook Ads, TikTok Ads, la vente en ligne et tous les outils essentiels 
-            pour créer un business rentable et scalable.
+            Tout ce qu'il faut pour se lancer en e-commerce en Afrique sur cette plateforme. 
+            Formations complètes : Facebook Ads, TikTok Ads, Shopify, Créatives avec Sora 2, 
+            Achat sur Alibaba, Recherche produit, et tous les outils essentiels pour créer un business rentable.
           </p>
           <div className="home-hero-cta">
             <Link to="/cours" className="home-btn home-btn-primary">
@@ -99,11 +99,43 @@ export default function HomePage() {
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🛒</div>
-            <h3 className="home-feature-title">Stratégies de vente en ligne</h3>
+            <div className="home-feature-icon">🛍️</div>
+            <h3 className="home-feature-title">Formation Shopify</h3>
             <p className="home-feature-text">
-              Découvrez les meilleures pratiques pour vendre en ligne en Afrique : 
-              choix des produits, pricing, gestion des commandes et service client.
+              Apprenez à créer et gérer votre boutique Shopify de A à Z. Configuration, 
+              produits, paiements, livraison et optimisation pour le marché africain.
+            </p>
+          </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon">🎬</div>
+            <h3 className="home-feature-title">Créatives avec Sora 2</h3>
+            <p className="home-feature-text">
+              Maîtrisez la création de vidéos publicitaires avec Sora 2. Apprenez à créer 
+              des créatives percutantes qui génèrent des conversions et des ventes.
+            </p>
+          </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon">📦</div>
+            <h3 className="home-feature-title">Achat sur Alibaba</h3>
+            <p className="home-feature-text">
+              Découvrez comment acheter en gros sur Alibaba pour votre business e-commerce. 
+              Négociation, qualité, shipping et gestion des commandes depuis la Chine.
+            </p>
+          </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon">🔍</div>
+            <h3 className="home-feature-title">Recherche de produits</h3>
+            <p className="home-feature-text">
+              Outils et méthodes pour trouver les produits gagnants. Analyse de marché, 
+              tendances, validation de produits et identification des opportunités.
+            </p>
+          </div>
+          <div className="home-feature-card">
+            <div className="home-feature-icon">🤝</div>
+            <h3 className="home-feature-title">Contact fournisseurs</h3>
+            <p className="home-feature-text">
+              Apprenez à contacter et négocier avec les fournisseurs. Communication efficace, 
+              négociation des prix, gestion des relations et sourcing de qualité.
             </p>
           </div>
           <div className="home-feature-card">
@@ -128,14 +160,6 @@ export default function HomePage() {
             <p className="home-feature-text">
               Toutes nos formations sont adaptées aux réalités du marché africain : 
               moyens de paiement locaux, logistique, réglementations et habitudes d'achat.
-            </p>
-          </div>
-          <div className="home-feature-card">
-            <div className="home-feature-icon">🚀</div>
-            <h3 className="home-feature-title">Lancement rapide</h3>
-            <p className="home-feature-text">
-              Des formations pratiques et actionnables pour lancer votre business e-commerce 
-              rapidement. Pas de théorie, que du concret et des résultats.
             </p>
           </div>
         </div>
