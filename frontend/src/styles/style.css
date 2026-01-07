@@ -854,7 +854,89 @@ body {
 }
 
 /* ============================================
-   RESPONSIVE
+   STYLES OPTIMISÉS POUR PC (DESKTOP)
+   ============================================ */
+
+@media (min-width: 769px) {
+    /* Optimisations PC - Sidebar toujours visible */
+    .sidebar {
+        transform: translateX(0);
+        width: 280px;
+    }
+
+    .main-content {
+        margin-left: 280px;
+        padding: clamp(1.5rem, 4vw, 3rem);
+        max-width: calc(100vw - 280px);
+    }
+
+    /* Vidéo optimisée pour PC */
+    .video-container {
+        padding: clamp(1.5rem, 3vw, 2rem);
+        max-width: 100%;
+    }
+
+    .video-wrapper {
+        padding-bottom: 56.25%; /* 16:9 parfait pour PC */
+        min-height: 500px;
+    }
+
+    .video-wrapper iframe {
+        min-height: 500px;
+    }
+
+    /* Titre vidéo optimisé PC */
+    .video-container h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Contenu verrouillé optimisé PC */
+    .video-lock-content {
+        max-width: 500px;
+        padding: 2rem;
+    }
+
+    .video-lock-content h3 {
+        font-size: 1.5rem;
+    }
+
+    .video-lock-content p {
+        font-size: 1rem;
+    }
+
+    .video-lock-icon {
+        font-size: 4rem;
+    }
+
+    /* Navigation leçons optimisée PC */
+    .lesson-navigation {
+        gap: 1.5rem;
+    }
+
+    .lesson-nav-btn {
+        padding: 1rem 2rem;
+        font-size: 1rem;
+    }
+
+    /* Summary card optimisée PC */
+    .summary-card {
+        padding: 2rem;
+    }
+
+    .summary-card h3 {
+        font-size: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    /* Downloads section optimisée PC */
+    .downloads-section {
+        padding: 2rem;
+    }
+}
+
+/* ============================================
+   STYLES OPTIMISÉS POUR MOBILE
    ============================================ */
 
 @media (max-width: 768px) {
@@ -1419,21 +1501,7 @@ body {
     }
 }
 
-@media (max-width: 480px) {
-    .video-wrapper.video-locked {
-        padding-bottom: 85%; /* Encore plus haut pour très petits écrans */
-        min-height: 450px; /* Hauteur minimale augmentée */
-    }
-
-    .video-wrapper.video-unlocked {
-        padding-bottom: 56.25%;
-        min-height: 180px;
-        max-height: 60vh;
-    }
-
-    .video-wrapper.video-unlocked iframe {
-        min-height: 180px;
-    }
+    /* Styles déjà définis ci-dessus pour mobile très petit */
 
     .video-lock-overlay {
         min-height: 450px;
