@@ -154,8 +154,8 @@ export default function HomePage() {
               </div>
               <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">Achat sur Alibaba</h3>
               <p className="text-gray-600 dark:text-gray-300 leading-relaxed">
-              Découvrez comment acheter en gros sur Alibaba pour votre business e-commerce. 
-              Négociation, qualité, shipping et gestion des commandes depuis la Chine.
+                Découvrez comment acheter en gros sur Alibaba pour votre business e-commerce. 
+                Négociation, qualité, shipping et gestion des commandes depuis la Chine.
               </p>
             </div>
             <div className="card-startup group">
