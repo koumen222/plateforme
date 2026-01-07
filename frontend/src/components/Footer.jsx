@@ -35,7 +35,8 @@ export default function Footer() {
           <div className="footer-column">
             <h4 className="footer-column-title">Navigation</h4>
             <ul className="footer-links">
-              <li><Link to="/">Cours</Link></li>
+              <li><Link to="/">Accueil</Link></li>
+              <li><Link to="/cours">Cours</Link></li>
               <li><Link to="/produits-gagnants">Produits Gagnants</Link></li>
               <li><Link to="/generateur-pub">Générateur de Pub</Link></li>
               <li><Link to="/communaute">Communauté</Link></li>

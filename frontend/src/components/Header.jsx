@@ -44,8 +44,11 @@ export default function Header() {
         </Link>
 
         <nav className="header-nav">
-          <Link to="/cours" className={`nav-link ${isActive('/cours') ? 'active' : ''}`}>
+          <Link to="/" className={`nav-link ${isActive('/') && !isActive('/course') ? 'active' : ''}`}>
             Accueil
+          </Link>
+          <Link to="/cours" className={`nav-link ${isActive('/cours') ? 'active' : ''}`}>
+            Cours
           </Link>
           <Link to="/produits-gagnants" className={`nav-link ${isActive('/produits-gagnants') ? 'active' : ''}`}>
             Produits Gagnants
