@@ -149,7 +149,13 @@ export default function ProductsPage() {
               <div className="product-ad-spend">
                 <span className="product-ad-spend-label">Budget pub recommandé:</span>
                 <span className="product-ad-spend-value">
-                  {convertToFCFA(product.adSpend.split('-')[0])} - {convertToFCFA(product.adSpend.split('-')[1] || product.adSpend.split('-')[0])}
+                  {(() => {
+                    const adSpendParts = product.adSpend.split('-')
+                    if (adSpendParts.length > 1) {
+                      return `${convertToFCFA(adSpendParts[0])} - ${convertToFCFA(adSpendParts[1])}`
+                    }
+                    return convertToFCFA(product.adSpend)
+                  })()}
                 </span>
               </div>
             </div>
