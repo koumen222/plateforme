@@ -50,9 +50,15 @@ export default function HomePage() {
             <Link to="/cours" className="home-btn home-btn-primary">
               Commencer maintenant
             </Link>
-            <Link to="#temoignages" className="home-btn home-btn-secondary">
+            <a href="#temoignages" className="home-btn home-btn-secondary" onClick={(e) => {
+              e.preventDefault()
+              const element = document.getElementById('temoignages')
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+              }
+            }}>
               Voir les témoignages
-            </Link>
+            </a>
           </div>
         </div>
       </section>
