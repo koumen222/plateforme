@@ -94,14 +94,15 @@ export default function VideoPlayer({ video, title }) {
                 maxWidth: '400px'
               }}>
                 {lockInfo.showPayment && user && (
-                  <SubscriptionButton
-                    onSuccess={() => {
-                      console.log('Paiement abonnement initié avec succès')
-                    }}
-                    onError={(error) => {
-                      console.error('Erreur paiement abonnement:', error)
-                    }}
-                  />
+                  <>
+                    <SubscriptionButton
+                      onSuccess={() => {
+                        console.log('Paiement abonnement initié avec succès')
+                      }}
+                      onError={(error) => {
+                        console.error('Erreur paiement abonnement:', error)
+                      }}
+                    />
                     <div style={{ 
                       fontSize: '0.9rem', 
                       color: 'var(--text-secondary)',
