@@ -185,73 +185,79 @@ export default function Sidebar() {
     <>
       {/* Menu compact mobile - affiché sous le header */}
       {location.pathname.startsWith('/course/') && (
-        <div className="mobile-course-menu">
-          <div className="mobile-course-menu-content">
-            <div className="mobile-course-info">
-              <h3 className="mobile-course-title">
-                {course?.title || (loadingCourse ? 'Chargement...' : 'Formation')}
-              </h3>
-              {isAuthenticated && user?.status === 'active' && progress && (
-                <div className="mobile-course-progress">
-                  <span className="mobile-progress-text">
-                    {progress.progressPercentage || 0}% complété
-                  </span>
-                  <div className="mobile-progress-bar">
-                    <div 
-                      className="mobile-progress-bar-fill" 
-                      style={{ width: `${progress.progressPercentage || 0}%` }}
-                    ></div>
+        <div className="lg:hidden sticky top-16 z-30 bg-bg-secondary border-b border-border">
+          <div className="container-startup py-3">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-text-primary truncate mb-1">
+                  {course?.title || (loadingCourse ? 'Chargement...' : 'Formation')}
+                </h3>
+                {isAuthenticated && user?.status === 'active' && progress && (
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-text-secondary">
+                        {progress.progressPercentage || 0}% complété
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-bg-hover rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-accent to-primary-400 rounded-full transition-all duration-300"
+                        style={{ width: `${progress.progressPercentage || 0}%` }}
+                      ></div>
+                    </div>
                   </div>
-                </div>
-              )}
-              {activeLessonIndex >= 0 && lessons.length > 0 && (
-                <div className="mobile-current-lesson">
-                  Leçon {activeLessonIndex + 1} / {lessons.length}
-                </div>
-              )}
+                )}
+                {activeLessonIndex >= 0 && lessons.length > 0 && (
+                  <div className="text-xs text-text-secondary mt-1">
+                    Leçon {activeLessonIndex + 1} / {lessons.length}
+                  </div>
+                )}
+              </div>
+              <button 
+                className="px-4 py-2 bg-accent text-white text-sm font-semibold rounded-lg hover:bg-accent-hover transition-colors whitespace-nowrap"
+                onClick={toggleMenu}
+                aria-label="Voir les leçons"
+              >
+                Voir les leçons
+              </button>
             </div>
-            <button 
-              className="mobile-view-lessons-btn"
-              onClick={toggleMenu}
-              aria-label="Voir les leçons"
-            >
-              <span>Voir les leçons</span>
-            </button>
           </div>
         </div>
       )}
 
       <button 
-        className="mobile-menu-toggle" 
+        className="lg:hidden fixed top-16 left-4 z-50 p-2 bg-bg-secondary rounded-lg border border-border text-text-primary hover:bg-bg-hover transition-colors"
         aria-label="Menu"
         onClick={toggleMenu}
       >
-        <FiMenu />
+        <FiMenu className="w-6 h-6" />
       </button>
-      <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-            <div>
-              <h1>{course?.title || 'Formation'}</h1>
-              <p>{course?.description || 'Chargement...'}</p>
+      <aside className={`fixed lg:static top-16 left-0 w-72 h-[calc(100vh-4rem)] bg-bg-secondary border-r border-border overflow-y-auto z-40 transform transition-transform duration-300 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
+        <div className="p-6 border-b border-border">
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1">
+              <h1 className="text-lg font-bold text-text-primary mb-2">{course?.title || 'Formation'}</h1>
+              <p className="text-sm text-text-secondary">{course?.description || 'Chargement...'}</p>
             </div>
             <button 
-              className="sidebar-close-btn"
+              className="lg:hidden p-2 text-text-primary hover:bg-bg-hover rounded-lg transition-colors"
               onClick={() => {
                 setIsOpen(false)
                 document.body.style.overflow = ''
               }}
               aria-label="Fermer le menu"
             >
-              <FiX />
+              <FiX className="w-5 h-5" />
             </button>
           </div>
         </div>
-        <nav>
+        <nav className="p-4">
           {loadingCourse ? (
-            <div style={{ padding: '1rem', textAlign: 'center' }}>Chargement...</div>
+            <div className="p-4 text-center text-text-secondary">Chargement...</div>
           ) : (
-            <ul className="sidebar-nav">
+            <ul className="space-y-1">
               {lessons.map((lesson, index) => {
                 const courseSlug = course?.slug || 'facebook-ads'
                 const lessonPath = `/course/${courseSlug}/lesson/${lesson._id}`
@@ -261,14 +267,20 @@ export default function Sidebar() {
                   <li key={lesson._id}>
                     <Link
                       to={lessonPath}
-                      className={isActive ? 'active' : ''}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        isActive 
+                          ? 'bg-accent text-white font-semibold' 
+                          : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                      }`}
                       onClick={() => {
                         setIsOpen(false)
                         document.body.style.overflow = ''
                       }}
                     >
-                      <span className="lesson-number">{index + 1}</span>
-                      {lesson.title}
+                      <span className="flex-shrink-0 w-6 h-6 flex items-center justify-center text-xs font-medium">
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 truncate">{lesson.title}</span>
                     </Link>
                   </li>
                 )
@@ -277,73 +289,81 @@ export default function Sidebar() {
           )}
         </nav>
 
-                 {isAuthenticated && user?.status === 'active' && (
-                   <>
-                     <div className="sidebar-comments-link">
-                       <Link
-                         to="/commentaires"
-                         className={`sidebar-auth-link ${location.pathname === '/commentaires' ? 'active' : ''}`}
-                         onClick={() => setIsOpen(false)}
-                       >
-                         <FiMessageSquare /> Commentaires
-                       </Link>
-                     </div>
-                     <div className="sidebar-comments-link">
-                       <Link
-                         to="/produits-gagnants"
-                         className={`sidebar-auth-link ${location.pathname === '/produits-gagnants' ? 'active' : ''}`}
-                         onClick={() => setIsOpen(false)}
-                       >
-                         🏆 Produits Gagnants
-                       </Link>
-                     </div>
-                     <div className="sidebar-comments-link">
-                       <a
-                         href="/meta-sandbox/index.html"
-                         target="_blank"
-                         rel="noopener noreferrer"
-                         className="sidebar-auth-link"
-                         onClick={() => setIsOpen(false)}
-                       >
-                         📊 Simulateur Ads
-                       </a>
-                     </div>
-                   </>
-                 )}
+        {isAuthenticated && user?.status === 'active' && (
+          <>
+            <div className="px-4 py-2">
+              <Link
+                to="/commentaires"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  location.pathname === '/commentaires' 
+                    ? 'bg-accent text-white font-semibold' 
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                <FiMessageSquare /> Commentaires
+              </Link>
+            </div>
+            <div className="px-4 py-2">
+              <Link
+                to="/produits-gagnants"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  location.pathname === '/produits-gagnants' 
+                    ? 'bg-accent text-white font-semibold' 
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                Produits Gagnants
+              </Link>
+            </div>
+            <div className="px-4 py-2">
+              <a
+                href="/meta-sandbox/index.html"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Simulateur Ads
+              </a>
+            </div>
+          </>
+        )}
         
         {isAuthenticated && user?.status === 'active' && (
-          <div className="sidebar-progress">
+          <div className="p-4 border-t border-border">
             {progressLoading ? (
-              <div className="sidebar-progress-loading">Chargement...</div>
+              <div className="text-center text-text-secondary text-sm py-2">Chargement...</div>
             ) : progress ? (
               <>
-                <div className="sidebar-progress-header">
-                  <span className="sidebar-progress-label">📊 Ma Progression</span>
-                  <span className="sidebar-progress-percentage">{progress.progressPercentage || 0}%</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-text-primary">Ma Progression</span>
+                  <span className="text-sm font-semibold text-accent">{progress.progressPercentage || 0}%</span>
                 </div>
-                <div className="sidebar-progress-bar-container">
+                <div className="h-2 bg-bg-hover rounded-full overflow-hidden mb-2">
                   <div 
-                    className="sidebar-progress-bar-fill" 
+                    className="h-full bg-gradient-to-r from-accent to-primary-400 rounded-full transition-all duration-300 shadow-sm"
                     style={{ width: `${progress.progressPercentage || 0}%` }}
                   ></div>
                 </div>
-                <div className="sidebar-progress-info">
+                <div className="text-xs text-text-secondary text-center">
                   {progress.completedLessons || progress.completedCourses || 0} / {progress.totalLessons || 8} leçons complétées
                 </div>
               </>
             ) : (
               <>
-                <div className="sidebar-progress-header">
-                  <span className="sidebar-progress-label">📊 Ma Progression</span>
-                  <span className="sidebar-progress-percentage">0%</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-semibold text-text-primary">Ma Progression</span>
+                  <span className="text-sm font-semibold text-accent">0%</span>
                 </div>
-                <div className="sidebar-progress-bar-container">
+                <div className="h-2 bg-bg-hover rounded-full overflow-hidden mb-2">
                   <div 
-                    className="sidebar-progress-bar-fill" 
+                    className="h-full bg-gradient-to-r from-accent to-primary-400 rounded-full transition-all duration-300"
                     style={{ width: '0%' }}
                   ></div>
                 </div>
-                <div className="sidebar-progress-info">
+                <div className="text-xs text-text-secondary text-center">
                   0 / 8 leçons complétées
                 </div>
               </>
@@ -351,25 +371,35 @@ export default function Sidebar() {
           </div>
         )}
 
-        <ThemeToggle />
+        <div className="p-4 border-t border-border">
+          <ThemeToggle />
+        </div>
 
-        <div className="sidebar-auth">
+        <div className="p-4 border-t border-border space-y-2">
           {isAuthenticated ? (
             <>
-                     <Link
-                       to="/profil"
-                       className={`sidebar-auth-link ${location.pathname === '/profil' ? 'active' : ''}`}
-                       onClick={() => setIsOpen(false)}
-                     >
-                       👤 {user?.name?.trim() || user?.email || 'Mon Profil'}
-                     </Link>
+              <Link
+                to="/profil"
+                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                  location.pathname === '/profil' 
+                    ? 'bg-accent text-white font-semibold' 
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                }`}
+                onClick={() => setIsOpen(false)}
+              >
+                {user?.name?.trim() || user?.email || 'Mon Profil'}
+              </Link>
               {user?.role === 'superadmin' && (
                 <Link
                   to="/admin"
-                  className={`sidebar-auth-link ${location.pathname.startsWith('/admin') ? 'active' : ''}`}
+                  className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                    location.pathname.startsWith('/admin') 
+                      ? 'bg-accent text-white font-semibold' 
+                      : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                  }`}
                   onClick={() => setIsOpen(false)}
                 >
-                  🔐 Administration
+                  Administration
                 </Link>
               )}
               <button
@@ -377,7 +407,7 @@ export default function Sidebar() {
                   logout()
                   setIsOpen(false)
                 }}
-                className="sidebar-logout-btn"
+                className="w-full text-left px-3 py-2 rounded-lg text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
               >
                 Se déconnecter
               </button>
@@ -386,17 +416,21 @@ export default function Sidebar() {
             <>
               <Link
                 to="/login"
-                className={`sidebar-auth-link ${location.pathname === '/login' ? 'active' : ''}`}
+                className={`block px-3 py-2 rounded-lg text-sm transition-colors ${
+                  location.pathname === '/login' 
+                    ? 'bg-accent text-white font-semibold' 
+                    : 'text-text-secondary hover:bg-bg-hover hover:text-text-primary'
+                }`}
                 onClick={() => setIsOpen(false)}
               >
-                🔐 Se connecter
+                Se connecter
               </Link>
               <Link
                 to="/admin/login"
-                className="sidebar-auth-link sidebar-admin-link"
+                className="block px-3 py-2 rounded-lg text-sm text-text-secondary hover:bg-bg-hover hover:text-text-primary transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                🔐 Espace Admin
+                Espace Admin
               </Link>
             </>
           )}
