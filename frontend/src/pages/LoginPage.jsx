@@ -417,8 +417,6 @@ export default function LoginPage() {
                   <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.phoneNumber}</p>
                 )}
               </div>
-                </div>
-              </div>
             )}
 
             <div>

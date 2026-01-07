@@ -61,6 +61,8 @@ const allowedOrigins = [
   'http://127.0.0.1:5173',  // Alternative localhost
   'https://www.safitech.shop', // Frontend en production
   'https://safitech.shop', // Frontend en production (sans www)
+  'https://safitech.shop/', // Frontend en production (avec slash)
+  'https://plateforme.pages.dev', // Frontend Cloudflare Pages
   process.env.FRONTEND_URL // Variable d'environnement
 ].filter(Boolean); // Enlever les valeurs undefined
 
@@ -640,6 +642,7 @@ const startServer = async () => {
       console.log(`   PUT  /api/profile - Mise à jour profil`);
       console.log(`   POST /api/admin/register - Inscription admin`);
       console.log(`   GET  /api/admin/check - Vérifier admin`);
+      console.log(`   GET  /api/success-radar - Success Radar (protégé)`);
       console.log(`\n✅ Serveur prêt à recevoir des requêtes!\n`);
     });
   } catch (error) {
