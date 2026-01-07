@@ -8,7 +8,7 @@ export default function CommunautePage() {
     <div className="communaute-page">
       <div className="communaute-container">
         <div className="communaute-header">
-          <h1>👥 Communauté Safitech</h1>
+          <h1>👥 Communauté Ecom Starter</h1>
           <p>Échangez avec d'autres entrepreneurs et partagez vos succès</p>
         </div>
 
@@ -60,7 +60,7 @@ export default function CommunautePage() {
             <div className="coming-soon-card">
               <div className="coming-soon-icon">🏆</div>
               <h2>Success Stories</h2>
-              <p>Découvrez les témoignages inspirants des membres de la communauté qui ont réussi grâce aux formations Safitech.</p>
+              <p>Découvrez les témoignages inspirants des membres de la communauté qui ont réussi grâce aux formations Ecom Starter.</p>
               <div className="coming-soon-features">
                 <div className="feature-item">
                   <span className="feature-icon">✓</span>

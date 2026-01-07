@@ -9,7 +9,7 @@ export default function Footer() {
       <div className="footer-container">
         <div className="footer-grid">
           <div className="footer-column">
-            <h3 className="footer-title">Safitech Academy</h3>
+            <h3 className="footer-title">Ecom Starter</h3>
             <p className="footer-description">
               Plateforme de formation en ligne pour maîtriser Facebook Ads, TikTok Ads et le e-commerce.
             </p>
@@ -64,7 +64,7 @@ export default function Footer() {
 
         <div className="footer-bottom">
           <p className="footer-copyright">
-            © {currentYear} Safitech Academy. Tous droits réservés.
+            © {currentYear} Ecom Starter. Tous droits réservés.
           </p>
           <p className="footer-made-with">
             Plateforme de formation professionnelle

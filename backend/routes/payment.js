@@ -77,7 +77,7 @@ router.post('/init', async (req, res) => {
     // Préparer le body pour LYGOS avec les champs de base
     const lygosBody = {
       amount: amount,
-      shop_name: "Safitech Academy",
+      shop_name: "Ecom Starter",
       message: "Paiement formation",
       order_id: order_id,
       success_url: successUrl,
