@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { winningProducts } from '../data/products'
+import { convertToFCFA, getProductImageUrl } from '../utils/productUtils'
 import '../styles/products.css'
 
 export default function ProductsPage() {
@@ -94,6 +95,20 @@ export default function ProductsPage() {
         <div className="products-grid">
           {filteredProducts.map(product => (
             <div key={product.id} className="product-card">
+              {/* Image du produit */}
+              <div className="product-image-container">
+                <img
+                  src={getProductImageUrl(product.name)}
+                  alt={product.name}
+                  className="product-image"
+                  onError={(e) => {
+                    // Fallback vers une image placeholder si l'image ne charge pas
+                    e.target.src = '/img/fbads.svg'
+                  }}
+                  loading="lazy"
+                />
+              </div>
+              
               <div className="product-header">
                 <div className="product-rank">#{product.id}</div>
                 <div className="product-category">{product.category}</div>
@@ -111,7 +126,10 @@ export default function ProductsPage() {
                 <div className="product-stat">
                   <div className="product-stat-label">Prix</div>
                   <div className="product-stat-value">
-                    {product.currency}{product.price}
+                    {convertToFCFA(product.price)}
+                  </div>
+                  <div className="product-stat-original">
+                    ({product.currency}{product.price})
                   </div>
                 </div>
                 <div className="product-stat">
@@ -131,7 +149,7 @@ export default function ProductsPage() {
               <div className="product-ad-spend">
                 <span className="product-ad-spend-label">Budget pub recommandé:</span>
                 <span className="product-ad-spend-value">
-                  {product.currency}{product.adSpend}
+                  {convertToFCFA(product.adSpend.split('-')[0])} - {convertToFCFA(product.adSpend.split('-')[1] || product.adSpend.split('-')[0])}
                 </span>
               </div>
             </div>
