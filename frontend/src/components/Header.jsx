@@ -39,13 +39,13 @@ export default function Header() {
     <header className="platform-header">
       <div className="header-container">
         <Link to="/" className="header-logo">
-          <span className="logo-icon">🎓</span>
-          <span className="logo-text">Safitech Academy</span>
+          <span className="logo-icon">🛒</span>
+          <span className="logo-text">Ecom Starter</span>
         </Link>
 
         <nav className="header-nav">
-          <Link to="/" className={`nav-link ${isActive('/') && !isActive('/course') ? 'active' : ''}`}>
-            Cours
+          <Link to="/cours" className={`nav-link ${isActive('/cours') ? 'active' : ''}`}>
+            Accueil
           </Link>
           <Link to="/produits-gagnants" className={`nav-link ${isActive('/produits-gagnants') ? 'active' : ''}`}>
             Produits Gagnants
