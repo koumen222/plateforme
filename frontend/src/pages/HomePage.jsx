@@ -32,7 +32,7 @@ export default function HomePage() {
     }
   }
 
-  return (
+    return (
     <div className="home-page">
       {/* Hero Section */}
       <section className="home-hero">
@@ -50,8 +50,8 @@ export default function HomePage() {
             <Link to="/cours" className="home-btn home-btn-primary">
               Commencer maintenant
             </Link>
-            <Link to="/produits-gagnants" className="home-btn home-btn-secondary">
-              Voir les produits gagnants
+            <Link to="#temoignages" className="home-btn home-btn-secondary">
+              Voir les témoignages
             </Link>
           </div>
         </div>
@@ -161,8 +161,68 @@ export default function HomePage() {
               Toutes nos formations sont adaptées aux réalités du marché africain : 
               moyens de paiement locaux, logistique, réglementations et habitudes d'achat.
             </p>
-          </div>
+              </div>
+            </div>
+      </section>
+
+      {/* Testimonials Section */}
+      <section id="temoignages" className="home-testimonials">
+        <div className="home-section-header">
+          <h2 className="home-section-title">🎬 Témoignages vidéo</h2>
+          <p className="home-section-subtitle">
+            Découvrez les succès de nos étudiants qui ont lancé leur business e-commerce en Afrique
+          </p>
         </div>
+        <div className="testimonials-grid">
+          <div className="testimonial-video-card">
+            <div className="testimonial-video-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/YLfDVtHyXU8"
+                title="Témoignage étudiant 1"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="testimonial-video"
+              ></iframe>
+            </div>
+          </div>
+          <div className="testimonial-video-card">
+            <div className="testimonial-video-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/ziJ-Ap95rh8"
+                title="Témoignage étudiant 2"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="testimonial-video"
+              ></iframe>
+            </div>
+          </div>
+          <div className="testimonial-video-card">
+            <div className="testimonial-video-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/8hozirNxVKk"
+                title="Témoignage étudiant 3"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="testimonial-video"
+              ></iframe>
+            </div>
+          </div>
+          <div className="testimonial-video-card">
+            <div className="testimonial-video-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/DoraVMrGvUw"
+                title="Témoignage étudiant 4"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="testimonial-video"
+              ></iframe>
+        </div>
+      </div>
+      </div>
       </section>
 
       {/* Featured Courses Section */}
@@ -172,45 +232,45 @@ export default function HomePage() {
           <p className="home-section-subtitle">
             Découvrez nos formations complètes et pratiques
           </p>
-        </div>
+      </div>
         {courses.length > 0 ? (
           <>
-            <div className="courses-grid">
+      <div className="courses-grid">
               {courses.slice(0, 3).map((course) => (
-                <Link
-                  key={course._id}
-                  to={`/course/${course.slug}`}
-                  className="course-card"
-                >
-                  <div className="course-card-image">
-                    <img
+          <Link
+            key={course._id}
+            to={`/course/${course.slug}`}
+            className="course-card"
+          >
+            <div className="course-card-image">
+              <img
                       src={getImageUrl(course.coverImage)}
-                      alt={course.title}
-                      onError={(e) => {
+                alt={course.title}
+                onError={(e) => {
                         const defaultImg = '/img/fbads.svg'
                         if (e.target.src !== defaultImg && !e.target.src.includes(defaultImg)) {
                           e.target.src = defaultImg
                         }
-                      }}
-                    />
-                    {course.isDefault && (
+                }}
+              />
+              {course.isDefault && (
                       <div className="course-badge">⭐ Populaire</div>
                     )}
                     <div className="course-card-overlay">
                       <span className="course-card-action">Voir la formation →</span>
-                    </div>
-                  </div>
-                  <div className="course-card-content">
-                    <h3>{course.title}</h3>
+                </div>
+            </div>
+            <div className="course-card-content">
+              <h3>{course.title}</h3>
                     <p>{course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}</p>
                     <div className="course-card-footer">
                       <span className="course-card-meta">📹 Vidéos HD</span>
                       <span className="course-card-meta">📚 Ressources</span>
                     </div>
-                  </div>
-                </Link>
-              ))}
             </div>
+          </Link>
+        ))}
+      </div>
             {courses.length > 3 && (
               <div className="home-courses-cta">
                 <Link to="/cours" className="home-btn home-btn-secondary">
