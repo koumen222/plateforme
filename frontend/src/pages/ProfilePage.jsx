@@ -477,7 +477,7 @@ export default function ProfilePage() {
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <button 
             onClick={handleLogout}
-            className="px-7 py-3.5 bg-red-50 dark:bg-red-900/20 text-red-400 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-2xl text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+            className="px-7 py-3.5 bg-brand text-white rounded-2xl text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-brand-600 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={loading}
           >
             Se déconnecter

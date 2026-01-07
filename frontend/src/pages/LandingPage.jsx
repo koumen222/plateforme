@@ -75,7 +75,7 @@ export default function LandingPage() {
               Accédez à notre liste exclusive de 50 produits testés et performants sur Facebook Ads. 
               Ces produits ont généré des résultats exceptionnels avec la méthode Andromeda.
             </p>
-            <Link to="/produits-gagnants" className="btn-primary bg-gray-900 text-white hover:bg-gray-800">
+            <Link to="/produits-gagnants" className="btn-primary">
               Voir les 50 produits gagnants
             </Link>
           </div>

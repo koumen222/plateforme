@@ -147,7 +147,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
           <button
             onClick={() => handlePayment('yearly')}
             disabled={loading && selectedPlan === 'yearly'}
-            className="w-full px-8 py-4 text-base font-bold border-none rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 hover:-translate-y-0.5 hover:shadow-xl"
+            className="w-full px-8 py-4 text-base font-bold border-none rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 text-white bg-brand shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-xl"
           >
             {loading && selectedPlan === 'yearly' ? (
               <>Chargement...</>

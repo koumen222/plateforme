@@ -82,41 +82,14 @@ export default function PayButton({ amount, orderId, onSuccess, onError }) {
   return (
     <div>
       {error && (
-        <div style={{
-          padding: '1rem',
-          marginBottom: '1rem',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '4px',
-          fontSize: '0.9rem'
-        }}>
+        <div className="p-4 mb-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 rounded-lg text-sm">
           ❌ {error}
         </div>
       )}
       <button
         onClick={handlePayment}
         disabled={loading}
-        style={{
-          padding: '0.75rem 1.5rem',
-          fontSize: '1rem',
-          fontWeight: 'bold',
-          color: '#fff',
-          backgroundColor: loading ? '#999' : '#25D366',
-          border: 'none',
-          borderRadius: '8px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          transition: 'background-color 0.2s',
-          boxShadow: loading ? 'none' : '0 2px 4px rgba(0,0,0,0.1)'
-        }}
-        onMouseOver={(e) => {
-          if (!loading) e.target.style.backgroundColor = '#20BA5A'
-        }}
-        onMouseOut={(e) => {
-          if (!loading) e.target.style.backgroundColor = '#25D366'
-        }}
+        className="btn-primary flex items-center gap-2"
       >
         {loading ? (
           <>
