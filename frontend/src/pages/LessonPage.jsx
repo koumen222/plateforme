@@ -5,7 +5,7 @@ import ProtectedVideo from '../components/ProtectedVideo'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import axios from 'axios'
-import PayButton from '../components/PayButton'
+import SubscriptionButton from '../components/SubscriptionButton'
 import '../styles/comments.css'
 import '../styles/profile.css'
 
@@ -469,14 +469,12 @@ export default function LessonPage({ lesson }) {
               marginLeft: 'auto',
               marginRight: 'auto'
             }}>
-              <PayButton
-                amount={CONFIG.FORMATION_AMOUNT}
-                orderId={`PAY-${user?._id || user?.id || 'USER'}-${Date.now()}`}
+              <SubscriptionButton
                 onSuccess={() => {
-                  console.log('Paiement initié avec succès')
+                  console.log('Paiement abonnement initié avec succès')
                 }}
                 onError={(error) => {
-                  console.error('Erreur paiement:', error)
+                  console.error('Erreur paiement abonnement:', error)
                 }}
               />
               <div style={{ 

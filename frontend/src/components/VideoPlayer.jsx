@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
-import PayButton from './PayButton'
+import SubscriptionButton from './SubscriptionButton'
 
 export default function VideoPlayer({ video, title }) {
   const { isAuthenticated, user } = useAuth()
