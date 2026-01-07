@@ -54,6 +54,12 @@ export default function Header() {
 
   return (
     <>
+      {/* Bannière d'alerte */}
+      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 text-center text-sm font-medium">
+        <p>
+          Le couteau suisse de l'e-commerce en Afrique
+        </p>
+      </div>
       <header className="sticky top-0 z-[100] bg-primary border-b border-theme backdrop-blur-lg bg-opacity-95">
         <div className="container-startup">
           {/* Desktop Header */}
