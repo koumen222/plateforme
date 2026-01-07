@@ -337,7 +337,14 @@ export default function HomePage() {
                                   : (course.slug?.toLowerCase().includes('alibaba') || 
                                      course.title?.toLowerCase().includes('alibaba'))
                                     ? '/img/alibaba-2026.png'
-                                    : getImageUrl(course.coverImage)
+                                    : (course.slug?.toLowerCase().includes('produit') || 
+                                       course.slug?.toLowerCase().includes('recherche') ||
+                                       course.title?.toLowerCase().includes('produit') ||
+                                       course.title?.toLowerCase().includes('recherche'))
+                                      ? '/img/cours-2026.png'
+                                      : course.coverImage 
+                                        ? getImageUrl(course.coverImage)
+                                        : '/img/cours-2026.png'
                         }
                         alt={course.title}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
