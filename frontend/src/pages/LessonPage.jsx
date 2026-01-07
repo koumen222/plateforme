@@ -582,13 +582,14 @@ export default function LessonPage({ lesson }) {
           const pathParts = window.location.pathname.split('/')
           const courseSlug = pathParts[2] || 'facebook-ads'
           return (
-          <Link 
-            to={prevLesson.path || (prevLesson._id ? `/course/${courseSlug}/lesson/${prevLesson._id}` : '#')} 
-            className="lesson-nav-btn lesson-nav-prev"
-          >
-            ← Leçon précédente
-          </Link>
-        )}
+            <Link 
+              to={prevLesson.path || (prevLesson._id ? `/course/${courseSlug}/lesson/${prevLesson._id}` : '#')} 
+              className="lesson-nav-btn lesson-nav-prev"
+            >
+              ← Leçon précédente
+            </Link>
+          )
+        })()}
         {nextLesson && (
           <button
             onClick={handleNextLesson}
