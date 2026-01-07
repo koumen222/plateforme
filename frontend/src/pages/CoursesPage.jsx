@@ -59,7 +59,6 @@ export default function CoursesPage() {
   if (error && courses.length === 0) {
     return (
       <div className="home-error">
-        <div className="home-error-icon">❌</div>
         <p className="home-error-message">{error}</p>
         <button onClick={fetchCourses} className="home-error-btn">
           Réessayer
@@ -71,7 +70,7 @@ export default function CoursesPage() {
   return (
     <div className="home-page">
       <div className="home-section-header">
-        <h1 className="home-section-title">📚 Nos cours</h1>
+        <h1 className="home-section-title">Nos cours</h1>
         <p className="home-section-subtitle">
           Choisissez une formation pour lancer votre business e-commerce en Afrique
         </p>
@@ -97,7 +96,7 @@ export default function CoursesPage() {
                   }}
                 />
                 {course.isDefault && (
-                  <div className="course-badge">⭐ Populaire</div>
+                  <div className="course-badge">Populaire</div>
                 )}
                 <div className="course-card-overlay">
                   <span className="course-card-action">Voir la formation →</span>
@@ -108,7 +107,7 @@ export default function CoursesPage() {
                 <p>{course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}</p>
                 <div className="course-card-footer">
                   <span className="course-card-meta">📹 Vidéos HD</span>
-                  <span className="course-card-meta">📚 Ressources</span>
+                  <span className="course-card-meta">Ressources</span>
                 </div>
               </div>
             </Link>
@@ -116,7 +115,6 @@ export default function CoursesPage() {
         </div>
       ) : (
         <div className="home-empty-state">
-          <div className="home-empty-icon">📚</div>
           <p className="home-empty-text">Aucun cours disponible pour le moment</p>
         </div>
       )}

@@ -17,7 +17,7 @@ export default function CommunautePage() {
             className={`tab-btn ${activeTab === 'discussions' ? 'active' : ''}`}
             onClick={() => setActiveTab('discussions')}
           >
-            💬 Discussions
+            Discussions
           </button>
           <button
             className={`tab-btn ${activeTab === 'success' ? 'active' : ''}`}
@@ -29,27 +29,23 @@ export default function CommunautePage() {
             className={`tab-btn ${activeTab === 'resources' ? 'active' : ''}`}
             onClick={() => setActiveTab('resources')}
           >
-            📚 Ressources
+            Ressources
           </button>
         </div>
 
         <div className="communaute-content">
           {activeTab === 'discussions' && (
             <div className="coming-soon-card">
-              <div className="coming-soon-icon">💬</div>
               <h2>Forum de discussion</h2>
               <p>Bientôt disponible ! Vous pourrez échanger avec la communauté, poser vos questions et partager vos expériences.</p>
               <div className="coming-soon-features">
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Discussions par catégorie</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Système de votes</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Notifications en temps réel</span>
                 </div>
               </div>
@@ -63,15 +59,12 @@ export default function CommunautePage() {
               <p>Découvrez les témoignages inspirants des membres de la communauté qui ont réussi grâce aux formations Ecom Starter.</p>
               <div className="coming-soon-features">
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Témoignages vidéo</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Résultats chiffrés</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Stratégies gagnantes</span>
                 </div>
               </div>
@@ -80,20 +73,16 @@ export default function CommunautePage() {
 
           {activeTab === 'resources' && (
             <div className="coming-soon-card">
-              <div className="coming-soon-icon">📚</div>
               <h2>Bibliothèque de ressources</h2>
               <p>Accédez à une collection de templates, guides et outils partagés par la communauté.</p>
               <div className="coming-soon-features">
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Templates de publicités</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Guides PDF téléchargeables</span>
                 </div>
                 <div className="feature-item">
-                  <span className="feature-icon">✓</span>
                   <span>Outils recommandés</span>
                 </div>
               </div>
@@ -101,7 +90,7 @@ export default function CommunautePage() {
           )}
 
           <div className="contact-card">
-            <h3>💬 Rejoignez-nous sur WhatsApp</h3>
+            <h3>Rejoignez-nous sur WhatsApp</h3>
             <p>En attendant le forum, rejoignez notre groupe WhatsApp pour échanger avec la communauté !</p>
             <a
               href="https://wa.me/237XXXXXXXXX"

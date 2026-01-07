@@ -19,7 +19,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     // Log pour déboguer
-    console.log('👤 ProfilePage - Données utilisateur:', user);
+    console.log('ProfilePage - Données utilisateur:', user);
     if (user) {
       console.log(`   Nom: "${user.name || 'MANQUANT'}"`);
       console.log(`   Email: "${user.email || 'MANQUANT'}"`);
@@ -165,7 +165,7 @@ export default function ProfilePage() {
     return (
       <div className="profile-container">
         <div className="profile-header">
-          <h1>👤 Mon Profil</h1>
+          <h1>Mon Profil</h1>
           <p>Chargement de vos informations...</p>
         </div>
         <div className="profile-card">
@@ -177,7 +177,6 @@ export default function ProfilePage() {
             padding: '3rem',
             textAlign: 'center'
           }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
             <p style={{ color: 'var(--text-secondary)' }}>Chargement de votre profil...</p>
             <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
               Si cette page ne se charge pas, veuillez vous reconnecter.
@@ -351,7 +350,6 @@ export default function ProfilePage() {
 
         {(!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
           <div className="profile-notice profile-notice-pending">
-            <div className="profile-notice-icon">⏳</div>
             <div className="profile-notice-content">
               <h3>Abonnez-vous pour accéder à toutes les vidéos</h3>
               <p>
@@ -409,7 +407,6 @@ export default function ProfilePage() {
                     e.target.style.backgroundColor = '#25D366'
                   }}
                 >
-                  <span>💬</span>
                   <span>Contacter sur WhatsApp</span>
                 </a>
               </div>
@@ -455,7 +452,7 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="progress-lessons">
-                  <h3>📚 Leçons de la formation</h3>
+                  <h3>Leçons de la formation</h3>
                   <div className="lessons-grid">
                     {progress.courses && progress.courses.length > 0 ? (
                       progress.courses.map((course, index) => {
@@ -471,7 +468,7 @@ export default function ProfilePage() {
                             className={`lesson-progress-card ${isCompleted ? 'completed' : ''}`}
                           >
                             <div className="lesson-progress-icon">
-                              {isCompleted ? '✅' : '📚'}
+                              {isCompleted ? 'Complété' : ''}
                             </div>
                             <div className="lesson-progress-content">
                               <h4>{lesson.badge}</h4>
@@ -495,7 +492,7 @@ export default function ProfilePage() {
                             className={`lesson-progress-card ${isCompleted ? 'completed' : ''}`}
                           >
                             <div className="lesson-progress-icon">
-                              {isCompleted ? '✅' : '📚'}
+                              {isCompleted ? 'Complété' : ''}
                             </div>
                             <div className="lesson-progress-content">
                               <h4>{lesson.badge}</h4>

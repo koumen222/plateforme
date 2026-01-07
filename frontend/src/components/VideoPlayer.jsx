@@ -90,13 +90,6 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
               color: '#fff',
               position: 'relative'
             }}>
-              <div style={{
-                fontSize: '4rem',
-                marginBottom: '1rem',
-                opacity: 0.7
-              }}>
-                🔒
-              </div>
               <h3 style={{
                 fontSize: '1.75rem',
                 fontWeight: 'bold',
@@ -137,7 +130,7 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
                   e.target.style.transform = 'translateY(0)'
                 }}
               >
-                💳 S'abonner
+                S'abonner
               </button>
             </div>
           </div>
@@ -158,10 +151,10 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
               display: 'block'
             }}
             onLoad={() => {
-              console.log('✅ Vidéo chargée avec succès:', url)
+              console.log('Vidéo chargée avec succès:', url)
             }}
             onError={(e) => {
-              console.error('❌ Erreur chargement vidéo:', url)
+              console.error('Erreur chargement vidéo:', url)
             }}
             playsInline
             webkit-playsinline="true"

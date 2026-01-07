@@ -39,7 +39,6 @@ export default function Header() {
     <header className="platform-header">
       <div className="header-container">
         <Link to="/" className="header-logo">
-          <span className="logo-icon">🛒</span>
           <span className="logo-text">Ecom Starter</span>
         </Link>
 

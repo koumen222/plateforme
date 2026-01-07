@@ -19,7 +19,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
       const amount = planType === 'monthly' ? CONFIG.SUBSCRIPTION_MONTHLY : CONFIG.SUBSCRIPTION_YEARLY
       const orderId = `SUB-${user?._id || user?.id || 'USER'}-${planType}-${Date.now()}`
 
-      console.log('💳 Initialisation du paiement abonnement...')
+      console.log('Initialisation du paiement abonnement...')
       console.log('   - Plan:', planType)
       console.log('   - Amount:', amount)
       console.log('   - Order ID:', orderId)
@@ -35,7 +35,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
 
       if (response.data && response.data.link) {
         const paymentLink = response.data.link
-        console.log('✅ Lien de paiement reçu:', paymentLink)
+        console.log('Lien de paiement reçu:', paymentLink)
         
         // Vérifier que le lien est valide
         if (!paymentLink.startsWith('http://') && !paymentLink.startsWith('https://')) {
@@ -53,7 +53,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
         throw new Error('Lien de paiement non reçu dans la réponse')
       }
     } catch (err) {
-      console.error('❌ Erreur initialisation paiement:', err)
+      console.error('Erreur initialisation paiement:', err)
       
       let errorMessage = 'Erreur lors de l\'initialisation du paiement'
       
@@ -86,14 +86,14 @@ export default function SubscriptionButton({ onSuccess, onError }) {
           borderRadius: '8px',
           fontSize: '0.9rem'
         }}>
-          ❌ {error}
+          {error}
         </div>
       )}
 
       <div className="subscription-plans">
         <div className="subscription-plan-card">
           <div className="plan-header">
-            <h3 className="plan-title">📅 Mensuel</h3>
+            <h3 className="plan-title">Mensuel</h3>
             <div className="plan-price">
               <span className="plan-amount">{CONFIG.SUBSCRIPTION_MONTHLY.toLocaleString('fr-FR')}</span>
               <span className="plan-currency">FCFA</span>
@@ -101,10 +101,10 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             <p className="plan-period">par mois</p>
           </div>
           <ul className="plan-features">
-            <li>✅ Accès à toutes les vidéos</li>
-            <li>✅ Toutes les formations</li>
-            <li>✅ Ressources téléchargeables</li>
-            <li>✅ Support communautaire</li>
+            <li>Accès à toutes les vidéos</li>
+            <li>Toutes les formations</li>
+            <li>Ressources téléchargeables</li>
+            <li>Support communautaire</li>
           </ul>
           <button
             onClick={() => handlePayment('monthly')}
@@ -112,9 +112,9 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             className="subscription-btn subscription-btn-monthly"
           >
             {loading && selectedPlan === 'monthly' ? (
-              <>⏳ Chargement...</>
+              <>Chargement...</>
             ) : (
-              <>💳 S'abonner mensuel</>
+              <>S'abonner mensuel</>
             )}
           </button>
           <a
@@ -149,15 +149,14 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               e.target.style.transform = 'translateY(0)'
             }}
           >
-            <span>💬</span>
             <span>Payer via WhatsApp</span>
           </a>
         </div>
 
         <div className="subscription-plan-card subscription-plan-featured">
-          <div className="plan-badge">⭐ Meilleure valeur</div>
+          <div className="plan-badge">Meilleure valeur</div>
           <div className="plan-header">
-            <h3 className="plan-title">📆 Annuel</h3>
+            <h3 className="plan-title">Annuel</h3>
             <div className="plan-price">
               <span className="plan-amount">{CONFIG.SUBSCRIPTION_YEARLY.toLocaleString('fr-FR')}</span>
               <span className="plan-currency">FCFA</span>
@@ -168,11 +167,11 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             </div>
           </div>
           <ul className="plan-features">
-            <li>✅ Accès à toutes les vidéos</li>
-            <li>✅ Toutes les formations</li>
-            <li>✅ Ressources téléchargeables</li>
-            <li>✅ Support communautaire</li>
-            <li>✅ Économie de 35 000 FCFA</li>
+            <li>Accès à toutes les vidéos</li>
+            <li>Toutes les formations</li>
+            <li>Ressources téléchargeables</li>
+            <li>Support communautaire</li>
+            <li>Économie de 35 000 FCFA</li>
           </ul>
           <button
             onClick={() => handlePayment('yearly')}
@@ -180,9 +179,9 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             className="subscription-btn subscription-btn-yearly"
           >
             {loading && selectedPlan === 'yearly' ? (
-              <>⏳ Chargement...</>
+              <>Chargement...</>
             ) : (
-              <>💳 S'abonner annuel</>
+              <>S'abonner annuel</>
             )}
           </button>
           <a
@@ -217,7 +216,6 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               e.target.style.transform = 'translateY(0)'
             }}
           >
-            <span>💬</span>
             <span>Payer via WhatsApp</span>
           </a>
         </div>

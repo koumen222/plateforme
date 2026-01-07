@@ -20,7 +20,6 @@ export default function ProtectedVideo({ video, title, isFirstVideo = false }) {
         gap: '1rem',
         padding: '2rem'
       }}>
-        <div style={{ fontSize: '2rem' }}>⏳</div>
         <p>Chargement...</p>
       </div>
     )
@@ -42,7 +41,6 @@ export default function ProtectedVideo({ video, title, isFirstVideo = false }) {
         borderRadius: '12px',
         margin: '2rem 0'
       }}>
-        <div style={{ fontSize: '4rem' }}>🔒</div>
         <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#333' }}>
           Accès réservé aux membres
         </h2>

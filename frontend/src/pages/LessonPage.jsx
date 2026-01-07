@@ -167,11 +167,11 @@ export default function LessonPage({ lesson }) {
           if (courseProgress) {
             const completed = courseProgress.completed === true
             setIsCompleted(completed)
-            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}): ${completed ? '✅ Complétée' : '❌ Non complétée'}`)
+            console.log(`Leçon ${lessonIndex + 1} (${lesson.title}): ${completed ? 'Complétée' : 'Non complétée'}`)
           } else {
             // Si pas trouvé, le cours n'est pas complété
             setIsCompleted(false)
-            console.log(`📚 Leçon ${lessonIndex + 1} (${lesson.title}): ❌ Non complétée (pas de progression trouvée)`)
+            console.log(`Leçon ${lessonIndex + 1} (${lesson.title}): Non complétée (pas de progression trouvée)`)
           }
         } else {
           // Fallback: vérifier par numéro de leçon si pas de cours correspondant
@@ -179,7 +179,7 @@ export default function LessonPage({ lesson }) {
           const completedLessons = progressData.progress.completedLessons || progressData.progress.completedCourses || 0
           const isCompletedByNumber = lessonNumber <= completedLessons
           setIsCompleted(isCompletedByNumber)
-          console.log(`📚 Leçon ${lessonNumber}: ${isCompletedByNumber ? '✅ Complétée' : '❌ Non complétée'} (fallback)`)
+          console.log(`Leçon ${lessonNumber}: ${isCompletedByNumber ? 'Complétée' : 'Non complétée'} (fallback)`)
         }
       }
     } catch (error) {
@@ -227,7 +227,7 @@ export default function LessonPage({ lesson }) {
 
           if (response.ok) {
             const result = await response.json()
-            console.log('✅ Progression sauvegardée:', result)
+            console.log('Progression sauvegardée:', result)
             
             // Attendre un peu pour que la DB soit à jour, puis rafraîchir
             setTimeout(() => {
@@ -241,7 +241,7 @@ export default function LessonPage({ lesson }) {
             window.dispatchEvent(new CustomEvent('progressUpdated'))
           } else {
             const errorData = await response.json().catch(() => ({}))
-            console.error('❌ Erreur sauvegarde progression:', errorData)
+            console.error('Erreur sauvegarde progression:', errorData)
           }
         } else {
           // Si pas de cours correspondant, on peut juste mettre à jour la progression locale
@@ -284,7 +284,7 @@ export default function LessonPage({ lesson }) {
 
     setLoadingComments(true)
     try {
-      console.log(`📚 Récupération commentaires pour la leçon ${lesson.id}`)
+      console.log(`Récupération commentaires pour la leçon ${lesson.id}`)
       
       // Récupérer tous les commentaires approuvés pour cette leçon
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/comments/lesson/${lesson.id}`, {
@@ -297,14 +297,14 @@ export default function LessonPage({ lesson }) {
 
       if (response.ok) {
         const data = await response.json()
-        console.log(`✅ ${data.comments?.length || 0} commentaires récupérés`)
+        console.log(`${data.comments?.length || 0} commentaires récupérés`)
         setComments(data.comments || [])
       } else {
         const errorData = await response.json().catch(() => ({}))
-        console.error('❌ Erreur API commentaires:', response.status, errorData)
+        console.error('Erreur API commentaires:', response.status, errorData)
       }
     } catch (error) {
-      console.error('❌ Erreur lors du chargement des commentaires:', error)
+      console.error('Erreur lors du chargement des commentaires:', error)
     } finally {
       setLoadingComments(false)
     }
@@ -340,14 +340,14 @@ export default function LessonPage({ lesson }) {
       const data = await response.json()
 
       if (response.ok) {
-        console.log('✅ Commentaire créé avec succès:', data.comment)
+        console.log('Commentaire créé avec succès:', data.comment)
         setNewComment('')
         // Rafraîchir les commentaires après un court délai pour laisser la DB se mettre à jour
         setTimeout(() => {
           fetchComments()
         }, 500)
       } else {
-        console.error('❌ Erreur lors de l\'envoi du commentaire:', data.error)
+        console.error('Erreur lors de l\'envoi du commentaire:', data.error)
         alert(`Erreur: ${data.error || 'Impossible d\'envoyer le commentaire'}`)
       }
     } catch (error) {
@@ -384,14 +384,14 @@ export default function LessonPage({ lesson }) {
       const data = await response.json()
 
       if (response.ok) {
-        console.log('✅ Réponse envoyée avec succès:', data.comment)
+        console.log('Réponse envoyée avec succès:', data.comment)
         setReplyText('')
         setReplyingTo(null)
         setTimeout(() => {
           fetchComments()
         }, 500)
       } else {
-        console.error('❌ Erreur lors de l\'envoi de la réponse:', data.error)
+        console.error('Erreur lors de l\'envoi de la réponse:', data.error)
         alert(`Erreur: ${data.error || 'Impossible d\'envoyer la réponse'}`)
       }
     } catch (error) {
@@ -425,14 +425,14 @@ export default function LessonPage({ lesson }) {
           {isAuthenticated && user?.status === 'active' && (
             <div className="lesson-progress-indicator">
               {isCompleted ? (
-                <span className="lesson-completed-badge">✅ Complété</span>
+                <span className="lesson-completed-badge">Complété</span>
               ) : (
                 <button
                   onClick={markAsCompleted}
                   disabled={isMarking}
                   className="mark-completed-btn"
                 >
-                  {isMarking ? '⏳' : '✓'} Marquer comme complété
+                  {isMarking ? 'Chargement...' : ''} Marquer comme complété
                 </button>
               )}
             </div>
@@ -521,7 +521,7 @@ export default function LessonPage({ lesson }) {
       {/* Section Commentaires */}
       {isAuthenticated && user?.status === 'active' && (
         <div className="lesson-comments-section">
-          <h2 className="lesson-comments-title">💬 Commentaires sur cette leçon</h2>
+          <h2 className="lesson-comments-title">Commentaires sur cette leçon</h2>
           
           {/* Formulaire de commentaire */}
           <form onSubmit={handleSubmitComment} className="lesson-comment-form">
@@ -641,7 +641,7 @@ export default function LessonPage({ lesson }) {
                                 onClick={() => setReplyingTo(comment._id)}
                                 className="lesson-comment-reply-btn"
                               >
-                                💬 Répondre
+                                Répondre
                               </button>
                             )}
                           </div>

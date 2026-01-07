@@ -188,7 +188,7 @@ export default function Sidebar() {
           <div className="mobile-course-menu-content">
             <div className="mobile-course-info">
               <h3 className="mobile-course-title">
-                📚 {course?.title || (loadingCourse ? 'Chargement...' : 'Formation')}
+                {course?.title || (loadingCourse ? 'Chargement...' : 'Formation')}
               </h3>
               {isAuthenticated && user?.status === 'active' && progress && (
                 <div className="mobile-course-progress">
@@ -214,7 +214,6 @@ export default function Sidebar() {
               onClick={toggleMenu}
               aria-label="Voir les leçons"
             >
-              <span>📖</span>
               <span>Voir les leçons</span>
             </button>
           </div>
@@ -226,13 +225,13 @@ export default function Sidebar() {
         aria-label="Menu"
         onClick={toggleMenu}
       >
-        ☰
+        Menu
       </button>
       <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
         <div className="sidebar-header">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
             <div>
-              <h1>📚 {course?.title || 'Formation'}</h1>
+              <h1>{course?.title || 'Formation'}</h1>
               <p>{course?.description || 'Chargement...'}</p>
             </div>
             <button 
@@ -243,7 +242,7 @@ export default function Sidebar() {
               }}
               aria-label="Fermer le menu"
             >
-              ✕
+              ×
             </button>
           </div>
         </div>
@@ -285,7 +284,7 @@ export default function Sidebar() {
                          className={`sidebar-auth-link ${location.pathname === '/commentaires' ? 'active' : ''}`}
                          onClick={() => setIsOpen(false)}
                        >
-                         💬 Commentaires
+                         Commentaires
                        </Link>
                      </div>
                      <div className="sidebar-comments-link">

@@ -536,7 +536,6 @@ body {
 }
 
 .summary-card h3::before {
-    content: "📝";
     font-size: 1.05875rem;
 }
 
@@ -602,7 +601,6 @@ body {
 }
 
 .downloads-section h3::before {
-    content: "📥";
     font-size: 1.05875rem;
 }
 

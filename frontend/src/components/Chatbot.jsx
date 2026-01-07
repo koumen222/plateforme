@@ -251,7 +251,7 @@ export default function Chatbot() {
       </button>
       <div className={`chatbot-container ${isOpen ? 'open' : ''}`}>
         <div className="chatbot-header">
-          <h3>💬 Support Formation</h3>
+          <h3>Support Formation</h3>
           <button 
             className="chatbot-close" 
             aria-label="Fermer le chat"
@@ -261,20 +261,20 @@ export default function Chatbot() {
           </button>
         </div>
         <div className="chatbot-notification">
-          <strong>💡 Astuce :</strong> Pour des questions personnalisées, contactez directement Morgan !
+          <strong>Astuce :</strong> Pour des questions personnalisées, contactez directement Morgan !
         </div>
         <div className="chatbot-messages">
           {messages.map((msg, idx) => (
             <div key={idx} className={`chatbot-message ${msg.role}`}>
               <div className="chatbot-avatar">
-                {msg.role === 'bot' ? '🤖' : '👤'}
+                {msg.role === 'bot' ? 'Bot' : 'User'}
               </div>
               <div className="chatbot-content">{msg.content}</div>
             </div>
           ))}
           {loading && (
             <div className="chatbot-message bot">
-              <div className="chatbot-avatar">🤖</div>
+              <div className="chatbot-avatar">Bot</div>
               <div className="chatbot-content">En train de réfléchir...</div>
             </div>
           )}

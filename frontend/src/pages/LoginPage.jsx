@@ -109,23 +109,23 @@ export default function LoginPage() {
         
         // Traduire les erreurs techniques en messages compréhensibles
         if (errorMessage.includes('Email/téléphone ou mot de passe incorrect')) {
-          userFriendlyError = '❌ Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.'
+          userFriendlyError = 'Email/téléphone ou mot de passe incorrect. Vérifiez vos identifiants et réessayez.'
         } else if (errorMessage.includes('Compte en attente')) {
-          userFriendlyError = '⏳ Votre compte est en attente de validation. Contactez l\'administrateur pour activer votre compte.'
+          userFriendlyError = 'Votre compte est en attente de validation. Contactez l\'administrateur pour activer votre compte.'
         } else if (errorMessage.includes('déjà utilisé')) {
           if (errorMessage.includes('email')) {
-            userFriendlyError = '❌ Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous avec ce compte.'
+            userFriendlyError = 'Cet email est déjà utilisé. Utilisez un autre email ou connectez-vous avec ce compte.'
           } else if (errorMessage.includes('téléphone')) {
-            userFriendlyError = '❌ Ce numéro de téléphone est déjà utilisé. Utilisez un autre numéro ou connectez-vous avec ce compte.'
+            userFriendlyError = 'Ce numéro de téléphone est déjà utilisé. Utilisez un autre numéro ou connectez-vous avec ce compte.'
           }
         } else if (errorMessage.includes('champs sont requis')) {
           userFriendlyError = '⚠️ ' + errorMessage
         } else if (errorMessage.includes('caractères')) {
           userFriendlyError = '⚠️ ' + errorMessage
         } else if (errorMessage.includes('Erreur serveur')) {
-          userFriendlyError = '❌ Erreur de connexion au serveur. Veuillez réessayer dans quelques instants.'
+          userFriendlyError = 'Erreur de connexion au serveur. Veuillez réessayer dans quelques instants.'
         } else if (errorMessage.includes('Erreur')) {
-          userFriendlyError = '❌ ' + errorMessage
+          userFriendlyError = errorMessage
         }
         
         setError(userFriendlyError)
@@ -135,11 +135,11 @@ export default function LoginPage() {
       let errorMessage = 'Une erreur est survenue'
       if (err.message) {
         if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-          errorMessage = '❌ Problème de connexion. Vérifiez votre connexion internet et réessayez.'
+          errorMessage = 'Problème de connexion. Vérifiez votre connexion internet et réessayez.'
         } else if (err.message.includes('JSON')) {
-          errorMessage = '❌ Erreur de communication avec le serveur. Veuillez réessayer.'
+          errorMessage = 'Erreur de communication avec le serveur. Veuillez réessayer.'
         } else {
-          errorMessage = '❌ ' + err.message
+          errorMessage = err.message
         }
       }
       setError(errorMessage)

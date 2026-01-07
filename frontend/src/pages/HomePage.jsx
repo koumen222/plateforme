@@ -37,7 +37,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="home-hero">
         <div className="home-hero-content">
-          <div className="home-hero-badge">🚀 Ecom Starter - Votre Partenaire E-commerce en Afrique</div>
+          <div className="home-hero-badge"> Ecom Starter - Votre Partenaire E-commerce en Afrique</div>
           <h1 className="home-hero-title">
             Lancez votre <span className="home-hero-highlight">Business E-commerce</span> en Afrique
           </h1>
@@ -66,12 +66,10 @@ export default function HomePage() {
       {/* Stats Section */}
       <section className="home-stats">
         <div className="home-stat-card">
-          <div className="home-stat-icon">📚</div>
           <div className="home-stat-number">3+</div>
           <div className="home-stat-label">Formations disponibles</div>
         </div>
         <div className="home-stat-card">
-          <div className="home-stat-icon">🎯</div>
           <div className="home-stat-number">100%</div>
           <div className="home-stat-label">Pratique & Actionnable</div>
         </div>
@@ -161,7 +159,7 @@ export default function HomePage() {
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🌍</div>
+            <div className="home-feature-icon"></div>
             <h3 className="home-feature-title">Spécifique marché africain</h3>
             <p className="home-feature-text">
               Toutes nos formations sont adaptées aux réalités du marché africain : 
@@ -260,7 +258,7 @@ export default function HomePage() {
                 }}
               />
               {course.isDefault && (
-                      <div className="course-badge">⭐ Populaire</div>
+                      <div className="course-badge">Populaire</div>
                     )}
                     <div className="course-card-overlay">
                       <span className="course-card-action">Voir la formation →</span>
@@ -270,8 +268,8 @@ export default function HomePage() {
               <h3>{course.title}</h3>
                     <p>{course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}</p>
                     <div className="course-card-footer">
-                      <span className="course-card-meta">📹 Vidéos HD</span>
-                      <span className="course-card-meta">📚 Ressources</span>
+                      <span className="course-card-meta">Vidéos HD</span>
+                      <span className="course-card-meta">Ressources</span>
                     </div>
             </div>
           </Link>
@@ -287,7 +285,6 @@ export default function HomePage() {
           </>
         ) : (
           <div className="home-empty-state">
-            <div className="home-empty-icon">📚</div>
             <p className="home-empty-text">Aucun cours disponible pour le moment</p>
           </div>
         )}
