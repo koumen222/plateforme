@@ -159,26 +159,6 @@ export default function VideoPlayer({ video, title }) {
               zIndex: 20
             }}
           >
-            <div style={{
-              textAlign: 'center',
-              marginBottom: '1rem'
-            }}>
-              <h3 style={{ 
-                fontSize: '1.1rem', 
-                marginBottom: '0.5rem',
-                color: 'white',
-                fontWeight: '600'
-              }}>
-                {lockInfo.title}
-              </h3>
-              <p style={{ 
-                color: 'rgba(255, 255, 255, 0.9)',
-                fontSize: '0.9rem'
-              }}>
-                {lockInfo.message}
-              </p>
-            </div>
-            
             {lockInfo.showPayment && user ? (
               <>
                 <SubscriptionButton
