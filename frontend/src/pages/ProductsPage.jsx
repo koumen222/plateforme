@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { winningProducts } from '../data/products'
-import { convertToFCFA, getProductImageUrl } from '../utils/productUtils'
+import { convertToFCFA } from '../utils/productUtils'
 import '../styles/products.css'
 
 export default function ProductsPage() {
@@ -95,20 +95,6 @@ export default function ProductsPage() {
         <div className="products-grid">
           {filteredProducts.map(product => (
             <div key={product.id} className="product-card">
-              {/* Image du produit */}
-              <div className="product-image-container">
-                <img
-                  src={getProductImageUrl(product.name)}
-                  alt={product.name}
-                  className="product-image"
-                  onError={(e) => {
-                    // Fallback vers une image placeholder si l'image ne charge pas
-                    e.target.src = '/img/fbads.svg'
-                  }}
-                  loading="lazy"
-                />
-              </div>
-              
               <div className="product-header">
                 <div className="product-rank">#{product.id}</div>
                 <div className="product-category">{product.category}</div>
