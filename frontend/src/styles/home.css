@@ -723,6 +723,21 @@
     width: 100%;
     max-width: 300px;
   }
+
+  .home-testimonials {
+    padding: 3rem 1.5rem;
+  }
+
+  .testimonials-grid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .testimonials-grid {
+    gap: 1rem;
+  }
 }
 
 @media (max-width: 480px) {
