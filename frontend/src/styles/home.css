@@ -436,6 +436,13 @@
   flex-wrap: wrap;
 }
 
+.home-courses-cta {
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--border-color);
+}
+
 /* ============================================
    LOADING & ERROR STATES
    ============================================ */

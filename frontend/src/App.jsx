@@ -23,6 +23,7 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentFailedPage from './pages/PaymentFailedPage'
 import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
+import CoursesPage from './pages/CoursesPage'
 import CourseRouter from './pages/CourseRouter'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
@@ -70,6 +71,7 @@ function App() {
           {/* Routes avec PlatformLayout (Header + Footer) */}
           <Route path="/" element={<PlatformLayout><HomePage /></PlatformLayout>} />
           <Route path="/home" element={<PlatformLayout><HomePage /></PlatformLayout>} />
+          <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />

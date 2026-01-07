@@ -9,65 +9,27 @@ import '../styles/home.css'
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
   const [courses, setCourses] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    fetchCourses()
+    // Charger seulement les 3 premiers cours pour la page d'accueil
+    fetchFeaturedCourses()
   }, [])
 
-  const fetchCourses = async () => {
+  const fetchFeaturedCourses = async () => {
     try {
       setLoading(true)
       const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses`)
       
       if (response.data.success) {
-        setCourses(response.data.courses || [])
-      } else {
-        setError('Erreur lors du chargement des cours')
+        // Prendre seulement les 3 premiers cours pour l'affichage
+        setCourses((response.data.courses || []).slice(0, 3))
       }
     } catch (err) {
       console.error('Erreur chargement cours:', err)
-      setError('Erreur lors du chargement des cours')
     } finally {
       setLoading(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="home-loading">
-        <div className="home-loading-card">
-          <div className="home-spinner" aria-label="Chargement" />
-          <div className="home-loading-title">Chargement des cours…</div>
-          <div className="home-loading-subtitle">Veuillez patienter quelques secondes.</div>
-        </div>
-        <div className="courses-grid home-skeleton-grid" aria-hidden="true">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="course-card home-skeleton-card">
-              <div className="course-card-image home-skeleton-block" />
-              <div className="course-card-content">
-                <div className="home-skeleton-line home-skeleton-line-lg" />
-                <div className="home-skeleton-line" />
-                <div className="home-skeleton-line home-skeleton-line-sm" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )
-  }
-
-  if (error && courses.length === 0) {
-    return (
-      <div className="home-error">
-        <div className="home-error-icon">❌</div>
-        <p className="home-error-message">{error}</p>
-        <button onClick={fetchCourses} className="home-error-btn">
-          Réessayer
-        </button>
-      </div>
-    )
   }
 
   return (
@@ -89,7 +51,7 @@ export default function HomePage() {
                 Commencer maintenant
               </Link>
             ) : (
-              <Link to="/profil" className="home-btn home-btn-primary">
+              <Link to="/cours" className="home-btn home-btn-primary">
                 Accéder à mes cours
               </Link>
             )}
@@ -104,7 +66,7 @@ export default function HomePage() {
       <section className="home-stats">
         <div className="home-stat-card">
           <div className="home-stat-icon">📚</div>
-          <div className="home-stat-number">{courses.length}+</div>
+          <div className="home-stat-number">3+</div>
           <div className="home-stat-label">Formations disponibles</div>
         </div>
         <div className="home-stat-card">
@@ -184,51 +146,60 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Courses Section */}
+      {/* Featured Courses Section */}
       <section className="home-courses">
         <div className="home-section-header">
           <h2 className="home-section-title">Nos formations</h2>
           <p className="home-section-subtitle">
-            Choisissez la formation qui correspond à vos objectifs
+            Découvrez nos formations complètes et pratiques
           </p>
         </div>
         {courses.length > 0 ? (
-          <div className="courses-grid">
-            {courses.map((course) => (
-              <Link
-                key={course._id}
-                to={`/course/${course.slug}`}
-                className="course-card"
-              >
-                <div className="course-card-image">
-                  <img
-                    src={getImageUrl(course.coverImage)}
-                    alt={course.title}
-                    onError={(e) => {
-                      const defaultImg = '/img/fbads.svg'
-                      if (e.target.src !== defaultImg && !e.target.src.includes(defaultImg)) {
-                        e.target.src = defaultImg
-                      }
-                    }}
-                  />
-                  {course.isDefault && (
-                    <div className="course-badge">⭐ Populaire</div>
-                  )}
-                  <div className="course-card-overlay">
-                    <span className="course-card-action">Voir la formation →</span>
+          <>
+            <div className="courses-grid">
+              {courses.slice(0, 3).map((course) => (
+                <Link
+                  key={course._id}
+                  to={`/course/${course.slug}`}
+                  className="course-card"
+                >
+                  <div className="course-card-image">
+                    <img
+                      src={getImageUrl(course.coverImage)}
+                      alt={course.title}
+                      onError={(e) => {
+                        const defaultImg = '/img/fbads.svg'
+                        if (e.target.src !== defaultImg && !e.target.src.includes(defaultImg)) {
+                          e.target.src = defaultImg
+                        }
+                      }}
+                    />
+                    {course.isDefault && (
+                      <div className="course-badge">⭐ Populaire</div>
+                    )}
+                    <div className="course-card-overlay">
+                      <span className="course-card-action">Voir la formation →</span>
+                    </div>
                   </div>
-                </div>
-                <div className="course-card-content">
-                  <h3>{course.title}</h3>
-                  <p>{course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}</p>
-                  <div className="course-card-footer">
-                    <span className="course-card-meta">📹 Vidéos HD</span>
-                    <span className="course-card-meta">📚 Ressources</span>
+                  <div className="course-card-content">
+                    <h3>{course.title}</h3>
+                    <p>{course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}</p>
+                    <div className="course-card-footer">
+                      <span className="course-card-meta">📹 Vidéos HD</span>
+                      <span className="course-card-meta">📚 Ressources</span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+            {courses.length > 3 && (
+              <div className="home-courses-cta">
+                <Link to="/cours" className="home-btn home-btn-secondary">
+                  Voir tous les cours ({courses.length})
+                </Link>
+              </div>
+            )}
+          </>
         ) : (
           <div className="home-empty-state">
             <div className="home-empty-icon">📚</div>
@@ -251,7 +222,7 @@ export default function HomePage() {
                 Commencer maintenant
               </Link>
             ) : (
-              <Link to="/profil" className="home-btn home-btn-primary home-btn-large">
+              <Link to="/cours" className="home-btn home-btn-primary home-btn-large">
                 Accéder à mes cours
               </Link>
             )}
