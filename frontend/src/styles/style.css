@@ -1083,6 +1083,24 @@ body {
 }
 
 /* ============================================
+   ANIMATION PULSE POUR OVERLAY ABONNEMENT
+   ============================================ */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.subscription-overlay {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* ============================================
    SCROLLBAR PERSONNALISÉE
    ============================================ */
 

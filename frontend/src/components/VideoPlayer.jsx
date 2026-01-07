@@ -79,13 +79,28 @@ export default function VideoPlayer({ video, title }) {
         </h3>
       )}
       <div className={`video-wrapper ${!canWatchVideo ? 'video-locked' : 'video-unlocked'}`} style={{ position: 'relative' }}>
-        <div style={{ 
-          position: 'relative', 
-          width: '100%', 
-          height: '100%',
-          filter: !canWatchVideo ? 'blur(8px)' : 'none',
-          pointerEvents: !canWatchVideo ? 'none' : 'auto'
-        }}>
+        <div 
+          style={{ 
+            position: 'relative', 
+            width: '100%', 
+            height: '100%',
+            filter: !canWatchVideo ? 'blur(8px)' : 'none',
+            pointerEvents: !canWatchVideo ? 'auto' : 'auto',
+            cursor: !canWatchVideo ? 'pointer' : 'default'
+          }}
+          onClick={!canWatchVideo ? () => {
+            // Scroll vers les éléments d'abonnement en bas
+            const subscriptionOverlay = document.querySelector('.subscription-overlay')
+            if (subscriptionOverlay) {
+              subscriptionOverlay.scrollIntoView({ behavior: 'smooth', block: 'center' })
+              // Mettre en évidence l'overlay
+              subscriptionOverlay.style.animation = 'pulse 0.5s ease-in-out'
+              setTimeout(() => {
+                subscriptionOverlay.style.animation = ''
+              }, 500)
+            }
+          } : undefined}
+        >
           <iframe
             src={url}
             frameBorder="0"
@@ -97,7 +112,8 @@ export default function VideoPlayer({ video, title }) {
               height: '100%',
               minHeight: '200px',
               border: 'none',
-              display: 'block'
+              display: 'block',
+              pointerEvents: !canWatchVideo ? 'none' : 'auto'
             }}
             onLoad={() => {
               console.log('✅ Vidéo chargée avec succès:', url)
@@ -117,27 +133,31 @@ export default function VideoPlayer({ video, title }) {
               textAlign: 'center',
               color: 'white',
               zIndex: 10,
-              pointerEvents: 'none'
+              pointerEvents: 'none',
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Vidéo en attente de validation</h3>
-              <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Abonnez-vous pour débloquer cette vidéo</p>
+              <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Cliquez pour voir les options d'abonnement</p>
             </div>
           )}
         </div>
         
         {/* Éléments d'abonnement en position absolue (overlay en bas) */}
         {!canWatchVideo && (
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: '1.5rem',
-            background: 'linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%)',
-            borderRadius: '0 0 16px 16px',
-            zIndex: 20
-          }}>
+          <div 
+            className="subscription-overlay"
+            style={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              right: 0,
+              padding: '1.5rem',
+              background: 'linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.7) 70%, transparent 100%)',
+              borderRadius: '0 0 16px 16px',
+              zIndex: 20
+            }}
+          >
             <div style={{
               textAlign: 'center',
               marginBottom: '1rem'
