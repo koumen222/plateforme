@@ -9,13 +9,13 @@
     --bg-secondary: #f9fafb;
     --bg-card: #ffffff;
     --bg-hover: #f3f4f6;
-    --text-primary: #111827;
+    --text-primary:#8B5E3C;
     --text-secondary: #4b5563;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
+    --accent: #8B5E3C;
+    --accent-hover: #7a5234;
     --border: #e5e7eb;
-    --shadow: rgba(0, 0, 0, 0.1);
-    --shadow-lg: rgba(0, 0, 0, 0.15);
+    --shadow: rgba(0, 0, 0, 0.08);
+    --shadow-lg: rgba(0, 0, 0, 0.12);
   }
 
   [data-theme="dark"] {
@@ -25,34 +25,88 @@
     --bg-hover: #334155;
     --text-primary: #f1f5f9;
     --text-secondary: #cbd5e1;
-    --accent: #3b82f6;
-    --accent-hover: #2563eb;
+    --accent: #8B5E3C;
+    --accent-hover: #9d7356;
     --border: #334155;
     --shadow: rgba(0, 0, 0, 0.3);
     --shadow-lg: rgba(0, 0, 0, 0.5);
   }
 }
 
-/* Classes utilitaires personnalisées pour le design startup */
+/* Classes utilitaires personnalisées pour le design africain */
 @layer components {
   .container-startup {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
+  /* Design moderne premium - Palette terre ocre */
   .btn-primary {
-    @apply px-6 py-3 bg-accent text-white font-semibold rounded-lg shadow-lg hover:bg-accent-hover transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply px-6 py-3 text-white font-semibold rounded-2xl shadow-sm transition-all duration-200;
+    background-color: #8B5E3C;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background-color: #7a5234;
+    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+  }
+
+  .btn-primary:disabled {
+    @apply opacity-50 cursor-not-allowed;
   }
 
   .btn-secondary {
-    @apply px-6 py-3 bg-bg-hover text-text-primary font-semibold rounded-lg hover:bg-bg-secondary transition-all duration-200;
+    @apply px-6 py-3 bg-white text-gray-600 font-semibold rounded-2xl border border-gray-200 hover:bg-gray-50 transition-all duration-200 shadow-sm;
+  }
+
+  [data-theme="dark"] .btn-secondary {
+    @apply bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700;
   }
 
   .card-startup {
-    @apply bg-bg-card rounded-xl shadow-lg p-6 border border-border transition-all duration-300 hover:shadow-xl;
+    @apply rounded-2xl shadow-sm p-6 border transition-all duration-300 hover:shadow-md;
+    background-color: var(--bg-card);
+    border-color: var(--border);
   }
 
   .input-startup {
-    @apply w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent bg-bg-card text-text-primary transition-all;
+    @apply w-full px-4 py-3 border rounded-xl focus:ring-2 transition-all;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .input-startup:focus {
+    border-color: #8B5E3C;
+    --tw-ring-color: #8B5E3C;
+  }
+
+  /* Carte de cours style moderne */
+  .course-card-african {
+    @apply relative rounded-2xl overflow-hidden shadow-sm border transition-all duration-300 hover:shadow-md;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .course-card-african:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #8B5E3C;
+  }
+
+  /* Chatbot style moderne */
+  .chatbot-african {
+    @apply border rounded-2xl shadow-lg;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .chatbot-toggle-african {
+    @apply fixed bottom-6 right-6 w-16 h-16 text-white rounded-full flex items-center justify-center text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg;
+    background-color: #8B5E3C;
+  }
+
+  .chatbot-toggle-african:hover {
+    background-color: #7a5234;
+    box-shadow: 0 8px 16px rgba(139, 94, 60, 0.3);
   }
 
   /* Classes pour compatibilité avec le thème existant */
@@ -79,5 +133,340 @@
   .border-theme {
     border-color: var(--border);
   }
+
+  /* ============================================
+     BOUTONS PROFILE - Classes réutilisables
+     ============================================ */
+  
+  .btn-profile-primary {
+    @apply px-5 py-2.5 text-white border-none rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
+    background-color: #8B5E3C;
+  }
+  
+  .btn-profile-primary:hover:not(:disabled) {
+    background-color: #7a5234;
+    box-shadow: 0 4px 12px rgba(139, 94, 60, 0.25);
+  }
+  
+  .btn-profile-primary:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  .btn-profile-secondary {
+    @apply px-6 py-3 bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-600 rounded-xl text-sm font-semibold cursor-pointer transition-all duration-200;
+  }
+  
+  .btn-profile-secondary:hover:not(:disabled) {
+    @apply bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-500;
+  }
+  
+  .btn-profile-secondary:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+
+  /* ============================================
+     FORMULAIRES PROFILE - Classes réutilisables
+     ============================================ */
+  
+  .input-profile {
+    @apply w-full px-3 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-gray-100 text-sm font-sans transition-all duration-200;
+  }
+  
+  .input-profile:focus {
+    @apply outline-none;
+    border-color: #8B5E3C;
+    box-shadow: 0 0 0 3px rgba(139, 94, 60, 0.1);
+  }
+  
+  .input-profile:disabled {
+    @apply opacity-60 cursor-not-allowed;
+  }
+  
+  .input-profile::placeholder {
+    @apply text-gray-500 dark:text-gray-400;
+  }
+
+  .field-profile {
+    @apply mb-3.5;
+  }
+  
+  .field-profile:last-child {
+    @apply mb-0;
+  }
+  
+  .field-profile label {
+    @apply block text-xs font-medium text-gray-600 dark:text-gray-400 mb-2 uppercase tracking-wide;
+  }
+  
+  .value-profile {
+    @apply text-sm text-gray-900 dark:text-gray-100 px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600;
+  }
+  
+  .value-profile.capitalize {
+    text-transform: capitalize;
+  }
+
+  .actions-profile-edit {
+    @apply mt-6 flex gap-3 justify-end;
+  }
+
+  /* ============================================
+     CARTES PROFILE - Classes réutilisables
+     ============================================ */
+  
+  .card-profile-stat {
+    @apply bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl p-6 text-center;
+  }
+  
+  .card-profile-lesson {
+    @apply bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-600 rounded-2xl p-6 flex items-start gap-4 no-underline text-gray-900 dark:text-gray-100 transition-all duration-200 relative;
+  }
+  
+  .card-profile-lesson:hover {
+    border-color: #8B5E3C;
+    @apply -translate-y-0.5;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  
+  .card-profile-lesson.completed {
+    @apply border-green-300 dark:border-green-700;
+    background: rgba(34, 197, 94, 0.05);
+  }
+
+  /* ============================================
+     STATUTS PROFILE - Classes réutilisables
+     ============================================ */
+  
+  .status-active {
+    @apply text-green-400 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800;
+    color: #86efac;
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+  }
+  
+  .status-pending {
+    @apply text-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  
+  .status-default {
+    @apply text-gray-400 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700;
+  }
+
+  /* ============================================
+     NOTICE PROFILE - Classes réutilisables
+     ============================================ */
+  
+  .notice-profile {
+    @apply my-8 p-6 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-2xl;
+  }
+  
+  .notice-profile-pending {
+    @apply flex gap-4 items-start;
+    background: rgba(245, 158, 11, 0.15);
+    border: 2px solid rgba(245, 158, 11, 0.4);
+  }
+  
+  .notice-profile-content {
+    @apply flex-1;
+  }
+  
+  .notice-profile-content h3 {
+    @apply text-lg font-bold text-white mb-3 m-0;
+  }
+  
+  .notice-profile-content p {
+    @apply text-white m-0 mb-4 leading-relaxed text-sm;
+    opacity: 0.95;
+  }
+
+  /* ============================================
+     BOUTON WHATSAPP - Classes réutilisables
+     ============================================ */
+  
+  .btn-whatsapp {
+    @apply px-6 py-3 bg-[#25D366] text-white border-none rounded-lg text-base font-bold cursor-pointer no-underline flex items-center gap-2 transition-all duration-200 w-full justify-center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .btn-whatsapp:hover {
+    @apply bg-[#20BA5A];
+  }
+
+  /* ============================================
+     LESSON PAGE - Classes réutilisables
+     ============================================ */
+  
+  .page-header-lesson {
+    @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-10 mb-4 sm:mb-8 shadow-md relative overflow-hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    border-color: var(--border);
+  }
+
+  [data-theme="dark"] .page-header-lesson {
+    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+  }
+  
+  .page-header-lesson::before {
+    @apply absolute top-0 left-0 right-0 h-1;
+    content: '';
+    background: linear-gradient(90deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+  
+  .lesson-header-top {
+    @apply flex justify-between items-start gap-4 sm:gap-6;
+  }
+  
+  .lesson-meta {
+    @apply flex items-center gap-2 sm:gap-4 mt-2;
+  }
+  
+  .lesson-badge {
+    @apply inline-block px-2 sm:px-3 py-1 rounded-full text-xs font-semibold;
+    background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+    color: white;
+  }
+  
+  .lesson-completed-badge {
+    @apply inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 border rounded-xl sm:rounded-2xl text-xs sm:text-sm font-semibold;
+    background: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.3);
+    color: #22c55e;
+  }
+  
+  .mark-completed-btn {
+    @apply inline-flex items-center gap-2 text-white border-none rounded-xl sm:rounded-2xl font-semibold cursor-pointer transition-all duration-200 shadow-md hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+
+  .mark-completed-btn:hover:not(:disabled) {
+    background: linear-gradient(135deg, #ea580c 0%, #b91c1c 50%, #ca8a04 100%);
+  }
+  
+  .summary-card-lesson {
+    @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-10 mb-6 sm:mb-8 shadow-md transition-all duration-300 relative overflow-hidden;
+    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    border-color: var(--border);
+  }
+
+  [data-theme="dark"] .summary-card-lesson {
+    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+  }
+  
+  .summary-card-lesson::before {
+    @apply absolute top-0 left-0 right-0 h-1 scale-x-0 transition-transform duration-300;
+    content: '';
+    background: linear-gradient(90deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+  
+  .summary-card-lesson:hover::before {
+    @apply scale-x-100;
+  }
+  
+  .summary-card-lesson:hover {
+    @apply shadow-lg -translate-y-0.5;
+    border-color: rgba(249, 115, 22, 0.5);
+  }
+
+  [data-theme="dark"] .summary-card-lesson:hover {
+    border-color: rgba(251, 146, 60, 0.5);
+  }
+  
+  .downloads-section-lesson {
+    @apply border rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 mb-6 sm:mb-8 shadow-sm transition-all duration-300 w-full hover:shadow-md;
+    background: linear-gradient(135deg, #ffffff 0%, #fef3c7 100%);
+    border-color: var(--border);
+  }
+
+  [data-theme="dark"] .downloads-section-lesson {
+    background: linear-gradient(135deg, #0E0F10 0%, #78350f 100%);
+  }
+
+  .downloads-section-lesson:hover {
+    border-color: rgba(249, 115, 22, 0.5);
+  }
+
+  [data-theme="dark"] .downloads-section-lesson:hover {
+    border-color: rgba(251, 146, 60, 0.5);
+  }
+  
+  .download-item-lesson {
+    @apply flex items-center justify-between p-3 sm:p-4 rounded-xl sm:rounded-2xl border transition-all duration-300 gap-3 sm:gap-4 hover:-translate-y-0.5 hover:shadow-md;
+    background-color: var(--bg-hover);
+    border-color: var(--border);
+  }
+
+  .download-item-lesson:hover {
+    background-color: var(--bg-secondary);
+    border-color: rgba(249, 115, 22, 0.5);
+  }
+  
+  .download-icon-lesson {
+    @apply flex items-center justify-center rounded-xl sm:rounded-2xl text-white;
+    background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+  
+  .download-btn-lesson {
+    @apply text-white border-none rounded-lg sm:rounded-xl font-semibold cursor-pointer transition-all duration-200 no-underline inline-flex items-center gap-2 flex-shrink-0 hover:-translate-y-0.5 hover:shadow-lg;
+    background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+
+  .download-btn-lesson:hover {
+    background: linear-gradient(135deg, #ea580c 0%, #b91c1c 50%, #ca8a04 100%);
+  }
+  
+  .lesson-navigation-lesson {
+    @apply flex justify-between items-center gap-3 sm:gap-4 mt-6 sm:mt-8 pt-6 sm:pt-8 border-t;
+    border-color: var(--border);
+  }
+  
+  .lesson-nav-btn {
+    @apply inline-flex items-center gap-2 sm:gap-3 border rounded-xl sm:rounded-2xl font-semibold cursor-pointer transition-all duration-200 no-underline hover:-translate-y-0.5 hover:shadow-md;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .lesson-nav-btn:hover {
+    background-color: var(--bg-hover);
+  }
+  
+  .lesson-nav-next {
+    @apply text-white border-none ml-auto hover:shadow-xl;
+    background: linear-gradient(135deg, #f97316 0%, #dc2626 50%, #eab308 100%);
+  }
+
+  .lesson-nav-next:hover {
+    background: linear-gradient(135deg, #ea580c 0%, #b91c1c 50%, #ca8a04 100%);
+  }
+  
+  .lesson-nav-prev {
+    @apply mr-auto;
+  }
 }
 
+/* Animation shimmer pour la barre de progression */
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+}
+
+/* Scrollbar personnalisée */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

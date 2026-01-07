@@ -51,129 +51,86 @@ export default function CoursePage() {
 
   if (loading) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: '1rem'
-      }}>
-        <div style={{ fontSize: '3rem' }}>⏳</div>
-        <p>Chargement du cours...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-brand border-t-transparent mb-4"></div>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Chargement du cours...</p>
+        </div>
       </div>
     )
   }
 
   if (error || !course) {
     return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '60vh',
-        gap: '1rem'
-      }}>
-        <div style={{ fontSize: '3rem', color: '#dc3545' }}>❌</div>
-        <p style={{ color: '#dc3545' }}>{error || 'Cours non trouvé'}</p>
-        <button
-          onClick={() => navigate('/')}
-          style={{
-            padding: '0.75rem 1.5rem',
-            backgroundColor: 'var(--primary-color)',
-            color: '#fff',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer'
-          }}
-        >
-          Retour à l'accueil
-        </button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+        <div className="text-center max-w-md">
+          <div className="text-6xl mb-4">❌</div>
+          <p className="text-xl font-semibold text-red-600 dark:text-red-400 mb-6">{error || 'Cours non trouvé'}</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-600 transition-colors"
+          >
+            Retour à l'accueil
+          </button>
+        </div>
       </div>
     )
   }
 
   return (
-    <div style={{ display: 'flex', gap: '2rem', padding: '2rem', maxWidth: '1400px', margin: '0 auto' }}>
-      {/* Sidebar avec modules et leçons */}
-      <div style={{
-        width: '300px',
-        backgroundColor: 'var(--bg-secondary)',
-        borderRadius: '12px',
-        padding: '1.5rem',
-        height: 'fit-content',
-        position: 'sticky',
-        top: '2rem'
-      }}>
-        <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-primary)' }}>{course.title}</h2>
-        
-        {course.modules && course.modules.map((module) => (
-          <div key={module._id} style={{ marginBottom: '2rem' }}>
-            <h3 style={{
-              fontSize: '1rem',
-              fontWeight: 'bold',
-              marginBottom: '0.75rem',
-              color: 'var(--text-primary)'
-            }}>
-              {module.title}
-            </h3>
-            <div style={{ paddingLeft: '1rem' }}>
-              {module.lessons && module.lessons.map((lesson, index) => (
-                <div
-                  key={lesson._id}
-                  onClick={() => handleLessonClick(lesson)}
-                  style={{
-                    padding: '0.75rem',
-                    marginBottom: '0.5rem',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    backgroundColor: selectedLesson?._id === lesson._id ? 'var(--primary-color)' : 'transparent',
-                    color: selectedLesson?._id === lesson._id ? '#fff' : 'var(--text-primary)',
-                    transition: 'background-color 0.2s'
-                  }}
-                  onMouseOver={(e) => {
-                    if (selectedLesson?._id !== lesson._id) {
-                      e.currentTarget.style.backgroundColor = 'var(--bg-primary)'
-                    }
-                  }}
-                  onMouseOut={(e) => {
-                    if (selectedLesson?._id !== lesson._id) {
-                      e.currentTarget.style.backgroundColor = 'transparent'
-                    }
-                  }}
-                >
-                  {index + 1}. {lesson.title}
-                </div>
-              ))}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto max-w-7xl">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+          {/* Sidebar avec modules et leçons */}
+          <div className="w-full lg:w-80 flex-shrink-0">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 sticky top-8">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">{course.title}</h2>
+              
+              <div className="space-y-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+                {course.modules && course.modules.map((module) => (
+                  <div key={module._id}>
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white mb-3">
+                      {module.title}
+                    </h3>
+                    <div className="space-y-2 pl-4">
+                      {module.lessons && module.lessons.map((lesson, index) => (
+                        <button
+                          key={lesson._id}
+                          onClick={() => handleLessonClick(lesson)}
+                          className={`w-full text-left px-4 py-3 rounded-lg transition-all duration-200 ${
+                            selectedLesson?._id === lesson._id
+                              ? 'bg-brand text-white shadow-md'
+                              : 'bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600'
+                          }`}
+                        >
+                          <span className="font-medium">{index + 1}. {lesson.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        ))}
-      </div>
 
-      {/* Contenu principal avec la vidéo */}
-      <div style={{ flex: 1 }}>
-        {selectedLesson ? (
-          <ProtectedVideo
-            video={{
-              type: 'vimeo',
-              url: `https://player.vimeo.com/video/${selectedLesson.videoId}?title=0&byline=0&portrait=0`
-            }}
-            title={selectedLesson.title}
-          />
-        ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minHeight: '400px',
-            gap: '1rem'
-          }}>
-            <div style={{ fontSize: '3rem' }}>📚</div>
-            <p>Sélectionnez une leçon pour commencer</p>
+          {/* Contenu principal avec la vidéo */}
+          <div className="flex-1 min-w-0">
+            {selectedLesson ? (
+              <ProtectedVideo
+                video={{
+                  type: 'vimeo',
+                  url: `https://player.vimeo.com/video/${selectedLesson.videoId}?title=0&byline=0&portrait=0`
+                }}
+                title={selectedLesson.title}
+              />
+            ) : (
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-12 flex flex-col items-center justify-center min-h-[400px] text-center">
+                <div className="text-6xl mb-4">📚</div>
+                <p className="text-lg text-gray-600 dark:text-gray-400">Sélectionnez une leçon pour commencer</p>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   )

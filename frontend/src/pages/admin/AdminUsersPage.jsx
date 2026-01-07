@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
-import '../../styles/admin.css'
-import '../../styles/admin-users.css'
 
 export default function AdminUsersPage() {
   const { token } = useAuth()

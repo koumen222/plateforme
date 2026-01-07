@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { lessons } from '../data/lessons'
-import '../styles/profile.css'
 import SubscriptionButton from '../components/SubscriptionButton'
 
 export default function ProfilePage() {
@@ -163,37 +162,18 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="profile-container">
-        <div className="profile-header">
-          <h1>Mon Profil</h1>
-          <p>Chargement de vos informations...</p>
-        </div>
-        <div className="profile-card">
-          <div style={{ 
-            display: 'flex', 
-            flexDirection: 'column', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            padding: '3rem',
-            textAlign: 'center'
-          }}>
-            <p style={{ color: 'var(--text-secondary)' }}>Chargement de votre profil...</p>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto max-w-4xl">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-12 text-center">
+            <div className="text-6xl mb-4">👤</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Mon Profil</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">Chargement de votre profil...</p>
+            <p className="text-sm text-gray-500 dark:text-gray-500 mb-6">
               Si cette page ne se charge pas, veuillez vous reconnecter.
             </p>
             <button
               onClick={() => navigate('/login')}
-              style={{
-                marginTop: '1.5rem',
-                padding: '0.75rem 1.5rem',
-                backgroundColor: 'var(--primary-color)',
-                color: '#fff',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '1rem',
-                fontWeight: 'bold'
-              }}
+              className="px-6 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-600 transition-colors"
             >
               Se connecter
             </button>
@@ -217,26 +197,34 @@ export default function ProfilePage() {
   const status = getStatusLabel(user.status)
 
   return (
-    <div className="profile-container">
-      <div className="profile-header">
-        <h1>👤 Mon Profil</h1>
-        <p>Gérez vos informations personnelles</p>
-      </div>
-
-      {message.text && (
-        <div className={`message ${message.type}`}>
-          {message.text}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto max-w-4xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl sm:text-5xl font-bold text-gray-900 dark:text-white mb-3">👤 Mon Profil</h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400">Gérez vos informations personnelles</p>
         </div>
-      )}
 
-      <div className="profile-card">
-        <div className="profile-section">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2>Informations du compte</h2>
+        {/* Message */}
+        {message.text && (
+          <div className={`mb-6 p-4 rounded-lg ${
+            message.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400'
+              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
+          }`}>
+            {message.text}
+          </div>
+        )}
+
+        {/* Profile Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 lg:p-8 mb-6">
+          <div className="mb-5">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-0">Informations du compte</h2>
             {!isEditing && (
               <button 
                 onClick={handleEdit}
-                className="edit-profile-btn"
+                className="btn-profile-primary"
                 disabled={loading}
               >
                 ✏️ Modifier
@@ -246,36 +234,36 @@ export default function ProfilePage() {
           
           {isEditing ? (
             <form onSubmit={handleSaveProfile}>
-              <div className="profile-field">
+              <div className="field-profile">
                 <label htmlFor="editName">Nom complet</label>
                 <input
                   type="text"
                   id="editName"
                   value={editName}
                   onChange={(e) => setEditName(e.target.value)}
-                  className="profile-input"
+                  className="input-profile"
                   required
                   minLength={2}
                   disabled={loading}
                 />
               </div>
 
-              <div className="profile-field">
-                <label>Email</label>
-                <div className="profile-value">{user.email || 'Non renseigné'}</div>
-                <small style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              <div className="field-profile">
+                <label >Email</label>
+                <div className="value-profile">{user.email || 'Non renseigné'}</div>
+                <small className="text-gray-500 dark:text-gray-400 text-xs">
                   L'email ne peut pas être modifié
                 </small>
               </div>
 
-              <div className="profile-field">
+              <div className="field-profile">
                 <label htmlFor="editPhoneNumber">Numéro de téléphone</label>
                 <input
                   type="tel"
                   id="editPhoneNumber"
                   value={editPhoneNumber}
                   onChange={(e) => setEditPhoneNumber(e.target.value)}
-                  className="profile-input"
+                  className="input-profile"
                   required
                   minLength={5}
                   disabled={loading}
@@ -283,10 +271,10 @@ export default function ProfilePage() {
                 />
               </div>
 
-              <div className="profile-edit-actions">
+              <div className="actions-profile-edit">
                 <button 
                   type="submit"
-                  className="save-profile-btn"
+                  className="btn-profile-primary"
                   disabled={loading}
                 >
                   {loading ? 'Enregistrement...' : '💾 Enregistrer'}
@@ -294,7 +282,7 @@ export default function ProfilePage() {
                 <button 
                   type="button"
                   onClick={handleCancelEdit}
-                  className="cancel-profile-btn"
+                  className="btn-profile-secondary"
                   disabled={loading}
                 >
                   Annuler
@@ -303,41 +291,41 @@ export default function ProfilePage() {
             </form>
           ) : (
             <>
-              <div className="profile-field">
+              <div className="field-profile">
                 <label>Nom complet</label>
-                <div className="profile-value">{user.name?.trim() || user.name || 'Non renseigné'}</div>
+                <div className="value-profile">{user.name?.trim() || user.name || 'Non renseigné'}</div>
               </div>
 
-              <div className="profile-field">
-                <label>Email</label>
-                <div className="profile-value">{user.email || 'Non renseigné'}</div>
+              <div className="field-profile">
+                <label >Email</label>
+                <div className="value-profile">{user.email || 'Non renseigné'}</div>
               </div>
 
-              <div className="profile-field">
+              <div className="field-profile">
                 <label>Numéro de téléphone</label>
-                <div className="profile-value">{user.phoneNumber?.trim() || user.phoneNumber || 'Non renseigné'}</div>
+                <div className="value-profile">{user.phoneNumber?.trim() || user.phoneNumber || 'Non renseigné'}</div>
               </div>
             </>
           )}
 
-          <div className="profile-field">
+          <div className="field-profile">
             <label>Statut</label>
-            <div className={`profile-value ${status.class}`}>
+            <div className={`value-profile ${status.class}`}>
               {status.text}
             </div>
           </div>
 
-          <div className="profile-field">
+          <div className="field-profile">
             <label>Rôle</label>
-            <div className="profile-value capitalize">
+            <div className="value-profile capitalize">
               {user.role === 'superadmin' ? 'Super Administrateur' : 'Étudiant'}
             </div>
           </div>
 
           {user.createdAt && (
-            <div className="profile-field">
+            <div className="field-profile">
               <label>Date d'inscription</label>
-              <div className="profile-value">
+              <div className="value-profile">
                 {new Date(user.createdAt).toLocaleDateString('fr-FR', {
                   year: 'numeric',
                   month: 'long',
@@ -349,20 +337,14 @@ export default function ProfilePage() {
         </div>
 
         {(!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
-          <div className="profile-notice profile-notice-pending">
-            <div className="profile-notice-content">
+          <div className="notice-profile notice-profile-pending">
+            <div className="notice-profile-content">
               <h3>Abonnez-vous pour accéder à toutes les vidéos</h3>
               <p>
                 Pour débloquer toutes les vidéos de formation, choisissez votre abonnement. 
                 Accès illimité à tous les cours et ressources.
               </p>
-              <div style={{ 
-                marginTop: '1.5rem', 
-                width: '100%',
-                maxWidth: '800px',
-                marginLeft: 'auto',
-                marginRight: 'auto'
-              }}>
+              <div className="mt-6 w-full max-w-2xl mx-auto">
                 <SubscriptionButton
                   onSuccess={() => {
                     console.log('Paiement abonnement initié avec succès')
@@ -371,41 +353,14 @@ export default function ProfilePage() {
                     console.error('Erreur paiement abonnement:', error)
                   }}
                 />
-                <div style={{ 
-                  fontSize: '0.9rem', 
-                  color: 'var(--text-secondary)',
-                  margin: '0.5rem 0'
-                }}>
+                <div className="text-sm text-gray-600 dark:text-gray-400 my-2 text-center">
                   ou
                 </div>
                 <a
                   href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  style={{
-                    padding: '0.75rem 1.5rem',
-                    fontSize: '1rem',
-                    fontWeight: 'bold',
-                    color: '#fff',
-                    backgroundColor: '#25D366',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    textDecoration: 'none',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    transition: 'background-color 0.2s',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                    width: '100%',
-                    justifyContent: 'center'
-                  }}
-                  onMouseOver={(e) => {
-                    e.target.style.backgroundColor = '#20BA5A'
-                  }}
-                  onMouseOut={(e) => {
-                    e.target.style.backgroundColor = '#25D366'
-                  }}
+                  className="btn-whatsapp"
                 >
                   <span>Contacter sur WhatsApp</span>
                 </a>
@@ -415,45 +370,47 @@ export default function ProfilePage() {
         )}
 
         {user.status === 'active' && (
-          <div className="profile-section">
-            <h2>📊 Ma Progression</h2>
+          <div className="mb-5">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">📊 Ma Progression</h2>
             
             {progressLoading ? (
-              <div className="progress-loading">Chargement de votre progression depuis la base de données...</div>
+              <div className="text-center py-5 text-gray-500 dark:text-gray-400 italic">Chargement de votre progression depuis la base de données...</div>
             ) : progress ? (
               <>
-                <div className="progress-stats">
-                  <div className="progress-stat-card">
-                    <div className="progress-stat-value">{progress.progressPercentage || 0}%</div>
-                    <div className="progress-stat-label">Progression globale</div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+                  <div className="card-profile-stat">
+                    <div className="text-2xl font-bold text-brand dark:text-brand-400 mb-2">{progress.progressPercentage || 0}%</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Progression globale</div>
                   </div>
-                  <div className="progress-stat-card">
-                    <div className="progress-stat-value">
+                  <div className="card-profile-stat">
+                    <div className="text-2xl font-bold text-brand dark:text-brand-400 mb-2">
                       {progress.completedLessons || progress.completedCourses || 0}/{progress.totalLessons || lessons.length}
                     </div>
-                    <div className="progress-stat-label">Leçons complétées</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Leçons complétées</div>
                   </div>
-                  <div className="progress-stat-card">
-                    <div className="progress-stat-value">
+                  <div className="card-profile-stat">
+                    <div className="text-2xl font-bold text-brand dark:text-brand-400 mb-2">
                       {(progress.totalLessons || lessons.length) - (progress.completedLessons || progress.completedCourses || 0)}
                     </div>
-                    <div className="progress-stat-label">Leçons restantes</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Leçons restantes</div>
                   </div>
                 </div>
 
-                <div className="progress-bar-container">
+                <div className="w-full h-4 bg-gray-200 dark:bg-gray-700 rounded-2xl overflow-hidden mb-2 border-2 border-gray-300 dark:border-gray-600 relative shadow-inner">
                   <div 
-                    className="progress-bar-fill" 
+                    className="h-full bg-brand rounded transition-all duration-500 relative overflow-hidden"
                     style={{ width: `${progress.progressPercentage || 0}%` }}
-                  ></div>
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer"></div>
+                  </div>
                 </div>
-                <div className="progress-bar-info">
+                <div className="text-center text-xs text-gray-600 dark:text-gray-400 mb-6 font-medium">
                   <span>{progress.progressPercentage || 0}% complété</span>
                 </div>
 
-                <div className="progress-lessons">
-                  <h3>Leçons de la formation</h3>
-                  <div className="lessons-grid">
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Leçons de la formation</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {progress.courses && progress.courses.length > 0 ? (
                       progress.courses.map((course, index) => {
                         // Trouver la leçon correspondante
@@ -465,17 +422,17 @@ export default function ProfilePage() {
                           <Link 
                             key={lesson.id} 
                             to={lesson.path} 
-                            className={`lesson-progress-card ${isCompleted ? 'completed' : ''}`}
+                            className={`card-profile-lesson ${isCompleted ? 'completed' : ''}`}
                           >
-                            <div className="lesson-progress-icon">
-                              {isCompleted ? 'Complété' : ''}
+                            <div className="text-2xl flex-shrink-0">
+                              {isCompleted ? '✅' : ''}
                             </div>
-                            <div className="lesson-progress-content">
-                              <h4>{lesson.badge}</h4>
-                              <p>{lesson.title}</p>
+                            <div className="flex-1">
+                              <h4 className="text-xs font-semibold text-brand dark:text-brand-400 mb-1 uppercase tracking-wide">{lesson.badge}</h4>
+                              <p className="text-sm text-gray-900 dark:text-gray-100 m-0 leading-snug">{lesson.title}</p>
                             </div>
                             {isCompleted && (
-                              <div className="lesson-progress-badge">Complété</div>
+                              <div className="absolute top-4 right-4 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 px-3 py-1 rounded-2xl text-xs font-semibold uppercase">Complété</div>
                             )}
                           </Link>
                         )
@@ -489,17 +446,17 @@ export default function ProfilePage() {
                           <Link 
                             key={lesson.id} 
                             to={lesson.path} 
-                            className={`lesson-progress-card ${isCompleted ? 'completed' : ''}`}
+                            className={`card-profile-lesson ${isCompleted ? 'completed' : ''}`}
                           >
-                            <div className="lesson-progress-icon">
-                              {isCompleted ? 'Complété' : ''}
+                            <div className="text-2xl flex-shrink-0">
+                              {isCompleted ? '✅' : ''}
                             </div>
-                            <div className="lesson-progress-content">
-                              <h4>{lesson.badge}</h4>
-                              <p>{lesson.title}</p>
+                            <div className="flex-1">
+                              <h4 className="text-xs font-semibold text-brand dark:text-brand-400 mb-1 uppercase tracking-wide">{lesson.badge}</h4>
+                              <p className="text-sm text-gray-900 dark:text-gray-100 m-0 leading-snug">{lesson.title}</p>
                             </div>
                             {isCompleted && (
-                              <div className="lesson-progress-badge">Complété</div>
+                              <div className="absolute top-4 right-4 bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200 px-3 py-1 rounded-2xl text-xs font-semibold uppercase">Complété</div>
                             )}
                           </Link>
                         )
@@ -509,22 +466,23 @@ export default function ProfilePage() {
                 </div>
               </>
             ) : (
-              <div className="progress-empty">
+              <div className="text-center py-5 text-gray-500 dark:text-gray-400 italic">
                 <p>Aucune progression disponible pour le moment.</p>
-                <p className="progress-empty-hint">Commencez votre première leçon pour démarrer votre progression !</p>
+                <p className="text-xs opacity-80 mt-2">Commencez votre première leçon pour démarrer votre progression !</p>
               </div>
             )}
           </div>
         )}
 
-        <div className="profile-actions">
+        <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-700">
           <button 
             onClick={handleLogout}
-            className="logout-btn"
+            className="px-7 py-3.5 bg-red-50 dark:bg-red-900/20 text-red-400 dark:text-red-300 border border-red-200 dark:border-red-800 rounded-2xl text-sm font-semibold cursor-pointer transition-all duration-200 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-300 dark:hover:border-red-700 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={loading}
           >
             Se déconnecter
           </button>
+        </div>
         </div>
       </div>
     </div>

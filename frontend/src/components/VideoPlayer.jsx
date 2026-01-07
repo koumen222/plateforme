@@ -11,126 +11,61 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
   const { type, url } = video
 
   const handleSubscribeClick = () => {
-    // Faire défiler vers la section d'abonnement
     const subscriptionSection = document.querySelector('.subscription-section')
     if (subscriptionSection) {
       subscriptionSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      // Mettre en évidence la section
       subscriptionSection.style.transition = 'box-shadow 0.3s ease'
-      subscriptionSection.style.boxShadow = '0 0 20px rgba(244, 162, 97, 0.5)'
+      subscriptionSection.style.boxShadow = '0 0 20px rgba(249, 115, 22, 0.5)'
       setTimeout(() => {
         subscriptionSection.style.boxShadow = ''
       }, 2000)
     }
   }
 
-  // Vérifier si l'utilisateur a un statut actif
   const isActive = () => {
     if (!isAuthenticated || !user) return false
     
-    // Vérifier si l'utilisateur a un abonnement valide
     if (user.subscriptionExpiry) {
       const expiryDate = new Date(user.subscriptionExpiry)
       const now = new Date()
       return expiryDate > now
     }
     
-    // Vérifier le statut 'active' pour compatibilité
     return user.status === 'active'
   }
   
-  // La première vidéo est toujours accessible, même sans abonnement actif
   const isInactive = !isFirstVideo && !isActive()
 
   return (
-    <div className="video-container">
+    <div className="w-full mb-6 sm:mb-8">
       {title && (
-        <h3 style={{ 
-          marginBottom: '1rem', 
-          fontSize: 'clamp(1rem, 4vw, 1.25rem)', 
-          color: 'var(--text-primary)',
-          lineHeight: '1.4',
-          wordBreak: 'break-word'
-        }}>
+        <h3 className="text-base sm:text-display-xxs-bold mb-3 sm:mb-4 leading-tight px-1" style={{ color: 'var(--text-primary)' }}>
           {title}
         </h3>
       )}
-      <div 
-        className={`video-wrapper ${isInactive ? 'video-locked' : 'video-unlocked'}`} 
-        style={{ 
-          position: 'relative'
-        }}
-      >
+      <div className="relative w-full aspect-video rounded-xl sm:rounded-2xl overflow-hidden bg-neutral-900">
         {isInactive ? (
-          <div style={{ 
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #1a1a1a 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '16px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)',
-              opacity: 0.3
+          <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 flex items-center justify-center">
+            <div className="absolute inset-0 opacity-30" style={{
+              background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)'
             }}></div>
-            <div style={{
-              textAlign: 'center',
-              zIndex: 1,
-              color: '#fff',
-              position: 'relative'
-            }}>
-              <h3 style={{
-                fontSize: '1.75rem',
-                fontWeight: 'bold',
-                marginBottom: '0.5rem',
-                color: '#fff'
-              }}>
+            <div className="relative z-10 text-center px-4 sm:px-6">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 bg-neutral-700 rounded-full flex items-center justify-center">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
+              <h3 className="text-lg sm:text-display-xxs-bold text-white mb-2 sm:mb-3">
                 Vidéo bloquée
               </h3>
-              <p style={{
-                fontSize: '1rem',
-                opacity: 0.8,
-                color: '#ccc',
-                marginBottom: '2rem'
-              }}>
-                Abonnez-vous pour accéder à cette vidéo
+              <p className="text-sm sm:text-lg text-neutral-300 mb-6 sm:mb-8 max-w-md mx-auto">
+                Abonnez-vous pour accéder à cette vidéo et à toutes les formations
               </p>
               <button
                 onClick={handleSubscribeClick}
-                style={{
-                  padding: '0.875rem 2rem',
-                  fontSize: '1rem',
-                  fontWeight: 'bold',
-                  backgroundColor: '#f4a261',
-                  color: '#fff',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s, transform 0.2s',
-                  boxShadow: '0 4px 12px rgba(244, 162, 97, 0.4)',
-                  marginTop: '1rem'
-                }}
-                onMouseOver={(e) => {
-                  e.target.style.backgroundColor = '#fb8500'
-                  e.target.style.transform = 'translateY(-2px)'
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.backgroundColor = '#f4a261'
-                  e.target.style.transform = 'translateY(0)'
-                }}
+                className="btn-primary text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3"
               >
-                S'abonner
+                S'abonner maintenant
               </button>
             </div>
           </div>
@@ -141,15 +76,7 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
             allowFullScreen
             title={title || 'Video player'}
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              display: 'block'
-            }}
+            className="absolute inset-0 w-full h-full border-none"
             onLoad={() => {
               console.log('Vidéo chargée avec succès:', url)
             }}
@@ -158,39 +85,21 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
             }}
             playsInline
             webkit-playsinline="true"
-          ></iframe>
+          />
         )}
       </div>
       
-      {/* Bouton "S'abonner" avec les abonnements en bas (sous la vidéo) si statut inactif */}
       {isInactive && (
-        <div 
-          className="subscription-section"
-          style={{
-            marginTop: '2rem',
-            padding: '2rem',
-            borderRadius: '16px',
-            background: 'var(--bg-secondary, #f5f5f5)'
-          }}
-        >
-          <div style={{
-            textAlign: 'center',
-            marginBottom: '2rem'
-          }}>
-            <h3 style={{
-              fontSize: '1.75rem',
-              fontWeight: 'bold',
-              color: 'var(--text-primary)',
-              marginBottom: '0.5rem'
-            }}>
-              S'abonner
+        <div className="subscription-section mt-6 sm:mt-8 rounded-2xl p-4 sm:p-8 border shadow-sm" style={{ 
+          backgroundColor: 'var(--bg-card)',
+          borderColor: 'var(--border)'
+        }}>
+          <div className="text-center mb-6 sm:mb-8">
+            <h3 className="text-lg sm:text-display-xxs-bold mb-2 sm:mb-3" style={{ color: 'var(--text-primary)' }}>
+              S'abonner pour accéder à toutes les formations
             </h3>
-            <p style={{
-              fontSize: '1rem',
-              color: 'var(--text-secondary)',
-              margin: 0
-            }}>
-              Abonnez-vous pour accéder à toutes les vidéos
+            <p className="text-sm sm:text-lg" style={{ color: 'var(--text-secondary)' }}>
+              Débloquez l'accès à toutes les vidéos et ressources de la plateforme
             </p>
           </div>
           <SubscriptionButton
@@ -206,4 +115,3 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
     </div>
   )
 }
-

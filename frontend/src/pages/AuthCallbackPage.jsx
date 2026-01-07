@@ -58,10 +58,15 @@ export default function AuthCallbackPage() {
           // 6. Nettoyer l'URL (supprimer le token de l'URL pour sécurité)
           console.log('🧹 Nettoyage de l\'URL - suppression du token')
           
-          // 7. Rediriger vers la page d'accueil
-          console.log('✅ Redirection vers la page d\'accueil')
+          // 7. Rediriger vers la page d'origine sauvegardée ou la page d'accueil
+          const savedFrom = localStorage.getItem('redirectAfterLogin')
+          const redirectTo = savedFrom || '/'
+          if (savedFrom) {
+            localStorage.removeItem('redirectAfterLogin')
+          }
+          console.log('✅ Redirection vers:', redirectTo)
           console.log('🔐 ========== FIN AUTH CALLBACK ==========')
-          navigate('/', { replace: true })
+          navigate(redirectTo, { replace: true })
         } else {
           console.error('❌ Pas d\'utilisateur dans la réponse:', res.data)
           // Nettoyer et rediriger vers login

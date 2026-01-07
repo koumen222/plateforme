@@ -3,8 +3,6 @@ import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { getImageUrl } from '../../utils/imageUtils'
 import axios from 'axios'
-import '../../styles/admin.css'
-import '../../styles/admin-courses.css'
 
 export default function AdminCoursesPage() {
   const { token } = useAuth()

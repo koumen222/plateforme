@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { lessons } from '../data/lessons'
 import ProtectedVideo from '../components/ProtectedVideo'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import axios from 'axios'
 import SubscriptionButton from '../components/SubscriptionButton'
-import '../styles/comments.css'
-import '../styles/profile.css'
+import CourseMobileMenu from '../components/CourseMobileMenu'
+import { FiBook } from 'react-icons/fi'
 
 export default function LessonPage({ lesson }) {
   const { user, token, isAuthenticated } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [isCompleted, setIsCompleted] = useState(false)
   const [isMarking, setIsMarking] = useState(false)
   const [progress, setProgress] = useState(null)
@@ -22,8 +23,28 @@ export default function LessonPage({ lesson }) {
   const [replyingTo, setReplyingTo] = useState(null)
   const [replyText, setReplyText] = useState('')
   const [submittingReply, setSubmittingReply] = useState(false)
+  const [isCourseMenuOpen, setIsCourseMenuOpen] = useState(false)
+  const [course, setCourse] = useState(null)
 
   const [courseLessons, setCourseLessons] = useState([])
+
+  // Écouter l'événement pour ouvrir le menu cours
+  useEffect(() => {
+    const handleOpenCourseMenu = () => {
+      setIsCourseMenuOpen(true)
+      document.body.style.overflow = 'hidden'
+    }
+
+    window.addEventListener('openCourseMenu', handleOpenCourseMenu)
+    return () => {
+      window.removeEventListener('openCourseMenu', handleOpenCourseMenu)
+    }
+  }, [])
+
+  const closeCourseMenu = () => {
+    setIsCourseMenuOpen(false)
+    document.body.style.overflow = ''
+  }
 
   if (!lesson) return null
 
@@ -36,11 +57,14 @@ export default function LessonPage({ lesson }) {
           const pathParts = window.location.pathname.split('/')
           const courseSlug = pathParts[2] || 'facebook-ads'
           const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/${courseSlug}`)
-          if (response.data.success && response.data.course.modules) {
-            const allLessons = []
-            response.data.course.modules.forEach((module) => {
-              if (module.lessons) {
-                module.lessons.forEach((l) => {
+          if (response.data.success && response.data.course) {
+            setCourse(response.data.course)
+            
+            if (response.data.course.modules) {
+              const allLessons = []
+              response.data.course.modules.forEach((module) => {
+                if (module.lessons) {
+                  module.lessons.forEach((l) => {
                   const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
                   const videoType = isYouTube ? 'youtube' : 'vimeo'
                   // Amélioration de la détection et construction de l'URL vidéo
@@ -81,10 +105,11 @@ export default function LessonPage({ lesson }) {
                     resources: l.resources || [],
                     isCoaching: l.isCoaching || false
                   })
-                })
-              }
-            })
-            setCourseLessons(allLessons)
+                  })
+                }
+              })
+              setCourseLessons(allLessons)
+            }
           }
         } catch (error) {
           console.error('Erreur chargement cours:', error)
@@ -93,6 +118,7 @@ export default function LessonPage({ lesson }) {
       loadCourse()
     }
   }, [lesson._id])
+  
 
   // Navigation : utiliser courseLessons si disponible, sinon lessons legacy
   const allLessons = courseLessons.length > 0 ? courseLessons : lessons
@@ -189,7 +215,7 @@ export default function LessonPage({ lesson }) {
 
   const markAsCompleted = async () => {
     if (!token || !isAuthenticated || user?.status !== 'active') {
-      navigate('/login')
+      navigate('/login', { state: { from: location } })
       return
     }
 
@@ -412,27 +438,30 @@ export default function LessonPage({ lesson }) {
   }
 
   return (
-    <>
-      <header className="page-header">
-        <div className="lesson-header-top">
-          <div>
-            <h2>{lesson.title}</h2>
-            <div className="lesson-meta">
-              <span className="lesson-badge">{lesson.badge}</span>
-              <span>{lesson.meta}</span>
+    <div className="w-full">
+        {/* Header - Design Africain Premium */}
+        <header className="page-header-lesson mb-4 sm:mb-6">
+          <div className="lesson-header-top flex-col sm:flex-row">
+            <div className="flex-1 w-full sm:w-auto">
+              <h2 className="text-lg sm:text-display-xs-bold lg:text-display-sm-bold mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
+                {lesson.title}
+              </h2>
+              <div className="lesson-meta flex-wrap gap-2 sm:gap-4">
+                <span className="lesson-badge text-xs">{lesson.badge}</span>
+                <span className="text-xs sm:text-md ml-0 sm:ml-4" style={{ color: 'var(--text-secondary)' }}>{lesson.meta}</span>
             </div>
           </div>
           {isAuthenticated && user?.status === 'active' && (
-            <div className="lesson-progress-indicator">
+              <div className="flex-shrink-0 mt-4 sm:mt-0 w-full sm:w-auto">
               {isCompleted ? (
-                <span className="lesson-completed-badge">Complété</span>
+                <span className="lesson-completed-badge text-xs sm:text-sm block sm:inline-block text-center sm:text-left">✅ Complété</span>
               ) : (
                 <button
                   onClick={markAsCompleted}
                   disabled={isMarking}
-                  className="mark-completed-btn"
+                  className="mark-completed-btn text-xs sm:text-sm px-3 sm:px-4 py-2 sm:py-2 w-full sm:w-auto"
                 >
-                  {isMarking ? 'Chargement...' : ''} Marquer comme complété
+                  {isMarking ? '⏳ Chargement...' : '✓ Marquer comme complété'}
                 </button>
               )}
             </div>
@@ -440,7 +469,37 @@ export default function LessonPage({ lesson }) {
         </div>
       </header>
 
-      {/* Videos - Protégées par authentification */}
+      {/* Bouton "Voir les cours" mobile - en haut de la vidéo */}
+      <div className="md:hidden mb-4">
+        <button
+          onClick={() => {
+            setIsCourseMenuOpen(true)
+            document.body.style.overflow = 'hidden'
+          }}
+          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand text-white text-sm font-semibold rounded-xl hover:bg-brand-600 transition-colors shadow-sm"
+          aria-label="Voir les cours"
+        >
+          <FiBook className="w-5 h-5" />
+          <span>Voir les chapitres</span>
+        </button>
+      </div>
+
+      {/* Description du cours - Visible sur mobile */}
+      {course && (
+        <div className="md:hidden mb-4 p-4 rounded-lg border" style={{ 
+          backgroundColor: 'var(--bg-card)',
+          borderColor: 'var(--border)'
+        }}>
+          <h3 className="text-base font-semibold mb-2" style={{ color: 'var(--text-primary)' }}>
+            {course.title || 'Formation'}
+          </h3>
+          <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+            {course.description || 'Formation complète avec vidéos, ressources et accompagnement.'}
+          </p>
+        </div>
+      )}
+
+        {/* Videos - Protégées par authentification - Juste en dessous du header */}
       {/* La première vidéo est toujours accessible */}
       {lesson.video && (
         <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} />
@@ -449,41 +508,53 @@ export default function LessonPage({ lesson }) {
         <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} />
       ))}
 
-      {/* Summary */}
+        {/* Summary - Visible sur mobile */}
       {lesson.summary && (
-        <div className="summary-card">
-          <h3>Résumé de la leçon</h3>
-          <p>{lesson.summary.text}</p>
+          <div className="summary-card-lesson mb-4 sm:mb-8">
+            <h3 className="text-base sm:text-display-xxs-bold mb-3 sm:mb-4" style={{ color: 'var(--text-primary)' }}>
+              Résumé de la leçon
+            </h3>
+            <p className="text-sm sm:text-lg mb-3 sm:mb-4 leading-relaxed" style={{ color: 'var(--text-primary)' }}>
+              {lesson.summary.text}
+            </p>
           {lesson.summary.points && (
-            <ul>
+              <ul className="space-y-2 list-disc list-inside text-sm sm:text-lg pl-4" style={{ color: 'var(--text-primary)' }}>
               {lesson.summary.points.map((point, idx) => (
-                <li key={idx}>{point}</li>
+                  <li key={idx} className="ml-4">{point}</li>
               ))}
             </ul>
           )}
         </div>
       )}
 
-      {/* Resources */}
+        {/* Resources - Visible sur mobile */}
       {lesson.resources && lesson.resources.length > 0 && (
-        <div className="downloads-section">
-          <h3>Ressources à télécharger</h3>
-          <div className="download-list">
+          <div className="downloads-section-lesson mb-4 sm:mb-8">
+            <h3 className="text-base sm:text-display-xxs-bold mb-4 sm:mb-6" style={{ color: 'var(--text-primary)' }}>
+              Ressources à télécharger
+            </h3>
+            <div className="space-y-3 sm:space-y-4">
             {lesson.resources.map((resource, idx) => (
-              <div key={idx} className="download-item">
-                <div className="download-item-info">
-                  <div className="download-icon">{resource.icon}</div>
-                  <div className="download-item-details">
-                    <h4>{resource.title}</h4>
-                    <p>{resource.type}</p>
+                <div key={idx} className="download-item-lesson flex-col sm:flex-row">
+                  <div className="flex items-center gap-3 sm:gap-4 flex-1 w-full sm:w-auto mb-3 sm:mb-0">
+                    <div className="download-icon-lesson w-8 h-8 sm:w-10 sm:h-10 text-sm sm:text-lg">
+                      {resource.icon || 'F'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm sm:text-lg-bold mb-1 truncate" style={{ color: 'var(--text-primary)' }}>
+                        {resource.title}
+                      </h4>
+                      <p className="text-xs sm:text-md truncate" style={{ color: 'var(--text-secondary)' }}>
+                        {resource.type}
+                      </p>
                   </div>
                 </div>
                 {resource.download ? (
-                  <a href={resource.link} className="download-btn" download>
+                    <a href={resource.link} className="download-btn-lesson text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 w-full sm:w-auto text-center" download>
                     Télécharger
                   </a>
                 ) : (
-                  <a href={resource.link} className="download-btn" target="_blank" rel="noopener noreferrer">
+                    <a href={resource.link} className="download-btn-lesson text-xs sm:text-sm px-3 sm:px-5 py-2 sm:py-2.5 w-full sm:w-auto text-center" target="_blank" rel="noopener noreferrer">
                     Accéder
                   </a>
                 )}
@@ -493,55 +564,59 @@ export default function LessonPage({ lesson }) {
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="lesson-navigation">
+        {/* Navigation - Visible sur mobile */}
+        <div className="lesson-navigation-lesson flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-0">
         {prevLesson && (() => {
-          // Déterminer le slug du cours depuis le pathname
           const pathParts = window.location.pathname.split('/')
           const courseSlug = pathParts[2] || 'facebook-ads'
           return (
             <Link 
               to={prevLesson.path || (prevLesson._id ? `/course/${courseSlug}/lesson/${prevLesson._id}` : '#')} 
-              className="lesson-nav-btn lesson-nav-prev"
+                className="lesson-nav-btn lesson-nav-prev text-xs sm:text-sm px-4 sm:px-6 py-2.5 sm:py-3 w-full sm:w-auto text-center sm:text-left"
             >
-              ← Leçon précédente
+                Leçon précédente
             </Link>
           )
         })()}
         {nextLesson && (
           <button
             onClick={handleNextLesson}
-            className="lesson-nav-btn lesson-nav-next"
+              className="lesson-nav-btn lesson-nav-next text-xs sm:text-sm px-4 sm:px-6 py-2.5 sm:py-3 w-full sm:w-auto"
           >
-            Leçon suivante →
+              Leçon suivante
           </button>
         )}
       </div>
 
-      {/* Section Commentaires */}
+        {/* Section Commentaires - Visible sur mobile */}
       {isAuthenticated && user?.status === 'active' && (
-        <div className="lesson-comments-section">
-          <h2 className="lesson-comments-title">Commentaires sur cette leçon</h2>
+          <div className="mt-6 sm:mt-12 rounded-xl sm:rounded-2xl p-4 sm:p-8 shadow-md border" style={{ 
+            backgroundColor: 'var(--bg-card)',
+            borderColor: 'var(--border)'
+          }}>
+            <h2 className="text-lg sm:text-display-xxs-bold mb-4 sm:mb-6" style={{ color: 'var(--text-primary)' }}>
+              Commentaires sur cette leçon
+            </h2>
           
           {/* Formulaire de commentaire */}
-          <form onSubmit={handleSubmitComment} className="lesson-comment-form">
+            <form onSubmit={handleSubmitComment} className="mb-6 sm:mb-8">
             <textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Laissez un commentaire, une question ou un retour sur cette leçon..."
-              className="lesson-comment-textarea"
+                className="input-startup mb-3 sm:mb-4 text-sm sm:text-base"
               rows={4}
               maxLength={2000}
               required
             />
-            <div className="lesson-comment-form-footer">
-              <div className="lesson-comment-char-count">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                 {newComment.length} / 2000 caractères
               </div>
               <button
                 type="submit"
                 disabled={submitting || !newComment.trim()}
-                className="lesson-comment-submit-btn"
+                  className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto"
               >
                 {submitting ? 'Envoi...' : 'Envoyer le commentaire'}
               </button>
@@ -549,28 +624,45 @@ export default function LessonPage({ lesson }) {
           </form>
 
           {/* Liste des commentaires */}
-          <div className="lesson-comments-list">
+            <div className="space-y-4">
             {loadingComments ? (
-              <div className="lesson-comments-loading">Chargement des commentaires...</div>
+                <div className="text-center py-12" style={{ color: 'var(--text-secondary)' }}>
+                  <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  Chargement des commentaires...
+                </div>
             ) : comments.length === 0 ? (
-              <div className="lesson-comments-empty">
-                <p>Aucun commentaire pour cette leçon. Soyez le premier à commenter !</p>
+                <div className="text-center py-12">
+                  <p className="text-lg" style={{ color: 'var(--text-secondary)' }}>
+                    Aucun commentaire pour cette leçon. Soyez le premier à commenter !
+                  </p>
               </div>
             ) : (
               comments.map(comment => {
                 const statusBadge = getStatusBadge(comment.status)
+                  const getStatusStyles = (status) => {
+                    const styles = {
+                      pending: { bg: 'rgba(245, 158, 11, 0.1)', border: 'rgba(245, 158, 11, 0.3)', text: '#f59e0b' },
+                      approved: { bg: 'rgba(34, 197, 94, 0.1)', border: 'rgba(34, 197, 94, 0.3)', text: '#22c55e' },
+                      rejected: { bg: 'rgba(239, 68, 68, 0.1)', border: 'rgba(239, 68, 68, 0.3)', text: '#ef4444' }
+                    }
+                    return styles[status] || styles.pending
+                  }
+                  const statusStyle = getStatusStyles(comment.status)
                 return (
-                  <div key={comment._id} className={`lesson-comment-card lesson-comment-${comment.status}`}>
-                    <div className="lesson-comment-header">
-                      <div className="lesson-comment-user-info">
-                        <div className="lesson-comment-avatar">
+                    <div key={comment._id} className="rounded-2xl p-6 border" style={{
+                      backgroundColor: 'var(--bg-hover)',
+                      borderColor: statusStyle.border
+                    }}>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-bold text-lg flex-shrink-0">
                           {comment.userEmail ? comment.userEmail.charAt(0).toUpperCase() : 'U'}
                         </div>
-                        <div>
-                          <div className="lesson-comment-user">
+                          <div className="flex-1">
+                            <div className="font-semibold mb-1" style={{ color: 'var(--text-primary)' }}>
                             {comment.userEmail || 'Utilisateur'}
                           </div>
-                          <span className="lesson-comment-date">
+                            <div className="text-sm" style={{ color: 'var(--text-secondary)' }}>
                             {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
                               year: 'numeric',
                               month: 'long',
@@ -578,49 +670,55 @@ export default function LessonPage({ lesson }) {
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
-                          </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <span className={`lesson-comment-status ${statusBadge.class}`}>
+                        <span className="px-2 sm:px-3 py-1 rounded-md text-xs font-semibold border self-start" style={{
+                          backgroundColor: statusStyle.bg,
+                          borderColor: statusStyle.border,
+                          color: statusStyle.text
+                        }}>
                         {statusBadge.label}
                       </span>
                     </div>
-                    <div className="lesson-comment-content">
+                      <div className="text-sm sm:text-lg mb-3 sm:mb-4 whitespace-pre-wrap break-words" style={{ color: 'var(--text-primary)' }}>
                       {comment.content}
                     </div>
                     {comment.adminResponse && (
-                      <div className="lesson-comment-response">
-                        <div className="lesson-comment-response-header">
-                          <strong>Réponse de l'administrateur :</strong>
+                        <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                          <div className="font-semibold mb-2 text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                            Réponse de l'administrateur :
                         </div>
-                        <div className="lesson-comment-response-content">
+                          <div className="text-sm sm:text-lg rounded-lg sm:rounded-xl p-3 sm:p-4 mb-3 sm:mb-4" style={{ 
+                            color: 'var(--text-primary)',
+                            backgroundColor: 'rgba(139, 94, 60, 0.1)'
+                          }}>
                           {comment.adminResponse}
                         </div>
                         {comment.userId === user?._id && !comment.userResponse && (
-                          <div className="lesson-comment-reply-section">
+                            <div className="mt-3 sm:mt-4">
                             {replyingTo === comment._id ? (
-                              <div className="lesson-comment-reply-form">
+                                <div>
                                 <textarea
                                   value={replyText}
                                   onChange={(e) => setReplyText(e.target.value)}
                                   placeholder="Répondre à l'administrateur..."
-                                  className="lesson-comment-textarea"
+                                    className="input-startup mb-3 sm:mb-4 text-sm sm:text-base"
                                   rows={3}
                                   maxLength={2000}
                                 />
-                                <div className="lesson-comment-form-footer">
-                                  <div className="lesson-comment-char-count">
+                                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                                    <div className="text-xs sm:text-sm" style={{ color: 'var(--text-secondary)' }}>
                                     {replyText.length} / 2000 caractères
                                   </div>
-                                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                    <div className="flex gap-2 w-full sm:w-auto">
                                     <button
                                       type="button"
                                       onClick={() => {
                                         setReplyingTo(null)
                                         setReplyText('')
                                       }}
-                                      className="lesson-comment-submit-btn"
-                                      style={{ background: 'var(--bg-tertiary)' }}
+                                        className="btn-secondary text-sm sm:text-base px-3 sm:px-6 py-2 sm:py-3 flex-1 sm:flex-none"
                                     >
                                       Annuler
                                     </button>
@@ -628,7 +726,7 @@ export default function LessonPage({ lesson }) {
                                       type="button"
                                       onClick={() => handleSubmitReply(comment._id)}
                                       disabled={submittingReply || !replyText.trim()}
-                                      className="lesson-comment-submit-btn"
+                                        className="btn-primary disabled:opacity-50 text-sm sm:text-base px-3 sm:px-6 py-2 sm:py-3 flex-1 sm:flex-none"
                                     >
                                       {submittingReply ? 'Envoi...' : 'Envoyer'}
                                     </button>
@@ -639,7 +737,8 @@ export default function LessonPage({ lesson }) {
                               <button
                                 type="button"
                                 onClick={() => setReplyingTo(comment._id)}
-                                className="lesson-comment-reply-btn"
+                                  className="text-xs sm:text-sm hover:underline font-semibold"
+                                  style={{ color: '#f97316' }}
                               >
                                 Répondre
                               </button>
@@ -647,11 +746,14 @@ export default function LessonPage({ lesson }) {
                           </div>
                         )}
                         {comment.userResponse && (
-                          <div className="lesson-comment-user-response">
-                            <div className="lesson-comment-response-header">
-                              <strong>Votre réponse :</strong>
+                            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+                              <div className="font-semibold mb-2 text-sm sm:text-base" style={{ color: 'var(--text-primary)' }}>
+                                Votre réponse :
                             </div>
-                            <div className="lesson-comment-response-content">
+                              <div className="text-sm sm:text-lg rounded-lg sm:rounded-xl p-3 sm:p-4" style={{ 
+                                color: 'var(--text-primary)',
+                                backgroundColor: 'rgba(34, 197, 94, 0.1)'
+                              }}>
                               {comment.userResponse}
                             </div>
                           </div>
@@ -665,7 +767,17 @@ export default function LessonPage({ lesson }) {
           </div>
         </div>
       )}
-    </>
+
+      {/* Menu mobile cours */}
+      <CourseMobileMenu
+        isOpen={isCourseMenuOpen}
+        onClose={closeCourseMenu}
+        lesson={lesson}
+        nextLesson={nextLesson}
+        prevLesson={prevLesson}
+        onNextLesson={handleNextLesson}
+      />
+    </div>
   )
 }
 

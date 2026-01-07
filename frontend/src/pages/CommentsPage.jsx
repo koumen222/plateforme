@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { lessons } from '../data/lessons'
-import '../styles/comments.css'
 
 export default function CommentsPage() {
   const { user, token, isAuthenticated } = useAuth()
@@ -127,97 +126,128 @@ export default function CommentsPage() {
 
   if (!isAuthenticated || user?.status !== 'active') {
     return (
-      <div className="comments-container">
-        <div className="comments-message">
-          <p>Vous devez être connecté et avoir un compte actif pour laisser un commentaire.</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-6 text-center">
+            <p className="text-yellow-800 dark:text-yellow-300">
+              Vous devez être connecté et avoir un compte actif pour laisser un commentaire.
+            </p>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="comments-container">
-      <div className="comments-header">
-        <h1>💬 Espace Commentaires</h1>
-        <p>Partagez vos questions, retours ou suggestions</p>
-      </div>
-
-      {message.text && (
-        <div className={`comments-message ${message.type}`}>
-          {message.text}
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 px-4">
+      <div className="max-w-4xl mx-auto space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-white mb-4">
+            💬 Espace Commentaires
+          </h1>
+          <p className="text-lg text-gray-600 dark:text-gray-300">
+            Partagez vos questions, retours ou suggestions
+          </p>
         </div>
-      )}
 
-      <div className="comments-form-section">
-        <h2>Laisser un commentaire</h2>
-        <form onSubmit={handleSubmit} className="comments-form">
-          <div className="comments-form-group">
-            <label htmlFor="lesson">Leçon concernée (optionnel)</label>
-            <select
-              id="lesson"
-              value={selectedLesson}
-              onChange={(e) => setSelectedLesson(e.target.value)}
-              className="comments-select"
-            >
-              <option value="">Aucune leçon spécifique</option>
-              {lessons.filter(l => !l.isCoaching).map(lesson => (
-                <option key={lesson.id} value={lesson.id}>
-                  {lesson.badge} - {lesson.title}
-                </option>
-              ))}
-            </select>
+        {/* Message */}
+        {message.text && (
+          <div className={`rounded-xl p-4 ${
+            message.type === 'success' 
+              ? 'bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-800 dark:text-green-300'
+              : 'bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+          }`}>
+            {message.text}
           </div>
+        )}
 
-          <div className="comments-form-group">
-            <label htmlFor="comment">Votre commentaire *</label>
-            <textarea
-              id="comment"
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder="Écrivez votre commentaire ici..."
-              className="comments-textarea"
-              rows={6}
-              maxLength={2000}
-              required
-            />
-            <div className="comments-char-count">
-              {newComment.length} / 2000 caractères
+        {/* Form Section */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Laisser un commentaire</h2>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
+              <label htmlFor="lesson" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Leçon concernée (optionnel)
+              </label>
+              <select
+                id="lesson"
+                value={selectedLesson}
+                onChange={(e) => setSelectedLesson(e.target.value)}
+                className="input-startup"
+              >
+                <option value="">Aucune leçon spécifique</option>
+                {lessons.filter(l => !l.isCoaching).map(lesson => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.badge} - {lesson.title}
+                  </option>
+                ))}
+              </select>
             </div>
-          </div>
 
-          <button
-            type="submit"
-            disabled={submitting || !newComment.trim()}
-            className="comments-submit-btn"
-          >
-            {submitting ? 'Envoi...' : 'Envoyer le commentaire'}
-          </button>
-        </form>
-      </div>
+            <div>
+              <label htmlFor="comment" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Votre commentaire *
+              </label>
+              <textarea
+                id="comment"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Écrivez votre commentaire ici..."
+                className="input-startup resize-none"
+                rows={6}
+                maxLength={2000}
+                required
+              />
+              <div className="text-sm text-gray-500 dark:text-gray-400 mt-2 text-right">
+                {newComment.length} / 2000 caractères
+              </div>
+            </div>
 
-      <div className="comments-list-section">
-        <h2>Mes commentaires</h2>
-        {loading ? (
-          <div className="comments-loading">Chargement...</div>
-        ) : comments.length === 0 ? (
-          <div className="comments-empty">
-            <p>Vous n'avez pas encore laissé de commentaire.</p>
-          </div>
-        ) : (
-          <div className="comments-list">
-            {comments.map(comment => {
-              const statusBadge = getStatusBadge(comment.status)
-              return (
-                <div key={comment._id} className={`comment-card comment-${comment.status}`}>
-                  <div className="comment-header">
-                    <div className="comment-meta">
-                      <div className="comment-user-info">
-                        <div className="comment-avatar">
+            <button
+              type="submit"
+              disabled={submitting || !newComment.trim()}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? 'Envoi...' : 'Envoyer le commentaire'}
+            </button>
+          </form>
+        </div>
+
+        {/* Comments List */}
+        <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-lg border border-gray-200 dark:border-gray-700">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">Mes commentaires</h2>
+          {loading ? (
+            <div className="text-center py-12 text-gray-600 dark:text-gray-400">Chargement...</div>
+          ) : comments.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-gray-600 dark:text-gray-400">Vous n'avez pas encore laissé de commentaire.</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {comments.map(comment => {
+                const statusBadge = getStatusBadge(comment.status)
+                const statusColors = {
+                  pending: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300',
+                  approved: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300',
+                  rejected: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }
+                return (
+                  <div key={comment._id} className={`bg-gray-50 dark:bg-gray-700/50 rounded-xl p-6 border ${
+                    comment.status === 'approved' ? 'border-green-200 dark:border-green-800' :
+                    comment.status === 'rejected' ? 'border-red-200 dark:border-red-800' :
+                    'border-gray-200 dark:border-gray-600'
+                  }`}>
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-start gap-4 flex-1">
+                        <div className="w-12 h-12 rounded-full bg-brand text-white flex items-center justify-center font-bold text-lg">
                           {comment.userEmail ? comment.userEmail.charAt(0).toUpperCase() : 'U'}
                         </div>
-                        <div className="comment-user-details">
-                          <div className="comment-user-name">{comment.userEmail || 'Utilisateur'}</div>
-                          <span className="comment-date">
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 dark:text-white mb-1">
+                            {comment.userEmail || 'Utilisateur'}
+                          </div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
                             {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
                               year: 'numeric',
                               month: 'long',
@@ -225,37 +255,37 @@ export default function CommentsPage() {
                               hour: '2-digit',
                               minute: '2-digit'
                             })}
-                          </span>
+                          </div>
+                          {comment.lessonTitle && (
+                            <span className="inline-block px-3 py-1 bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 rounded-lg text-sm font-medium">
+                              📚 {comment.lessonTitle}
+                            </span>
+                          )}
                         </div>
                       </div>
-                      {comment.lessonTitle && (
-                        <span className="comment-lesson">
-                          📚 {comment.lessonTitle}
-                        </span>
-                      )}
+                      <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${statusColors[comment.status] || statusColors.pending}`}>
+                        {statusBadge.label}
+                      </span>
                     </div>
-                    <span className={`comment-status ${statusBadge.class}`}>
-                      {statusBadge.label}
-                    </span>
-                  </div>
-                  <div className="comment-content">
-                    {comment.content}
-                  </div>
-                  {comment.adminResponse && (
-                    <div className="comment-response">
-                      <div className="comment-response-header">
-                        <strong>Réponse de l'administrateur :</strong>
-                      </div>
-                      <div className="comment-response-content">
-                        {comment.adminResponse}
-                      </div>
+                    <div className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                      {comment.content}
                     </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-        )}
+                    {comment.adminResponse && (
+                      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600">
+                        <div className="font-semibold text-gray-900 dark:text-white mb-2">
+                          Réponse de l'administrateur :
+                        </div>
+                        <div className="text-gray-700 dark:text-gray-300 bg-brand-50 dark:bg-brand-900/20 rounded-lg p-4">
+                          {comment.adminResponse}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )

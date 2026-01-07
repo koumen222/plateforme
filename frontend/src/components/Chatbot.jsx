@@ -131,7 +131,7 @@ Quand un étudiant pose une question :
 
 Réponds toujours en français, de manière claire et encourageante.`
 
-export default function Chatbot() {
+export default function Chatbot({ className = '' }) {
   const { token, isAuthenticated, user } = useAuth()
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState([
@@ -242,65 +242,106 @@ export default function Chatbot() {
   }
 
   return (
-    <>
+    <div className={className}>
+      {/* Bouton flottant style africain premium */}
       <button 
-        className="chatbot-toggle" 
+        className="chatbot-toggle-african"
         aria-label="Ouvrir le chat"
         onClick={() => setIsOpen(!isOpen)}
       >
         <FiMessageCircle />
       </button>
-      <div className={`chatbot-container ${isOpen ? 'open' : ''}`}>
-        <div className="chatbot-header">
-          <h3>Support Formation</h3>
+
+      {/* Container du chatbot style africain premium */}
+      <div className={`fixed bottom-24 right-6 w-96 h-[600px] chatbot-african flex flex-col transform transition-all duration-300 z-50 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+        {/* Header */}
+        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-yellow-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
+              <FiMessageCircle className="w-5 h-5" />
+            </div>
+            <h3 className="font-bold text-lg-bold">Support Formation</h3>
+          </div>
           <button 
-            className="chatbot-close" 
+            className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-xl font-bold transition-colors"
             aria-label="Fermer le chat"
             onClick={() => setIsOpen(false)}
           >
-            ×
+            <FiX className="w-5 h-5" />
           </button>
         </div>
-        <div className="chatbot-notification">
-          <strong>Astuce :</strong> Pour des questions personnalisées, contactez directement Morgan !
+
+        {/* Notification */}
+        <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-b border-orange-300 dark:border-orange-700 p-3 text-md">
+          <strong className="text-orange-800 dark:text-orange-300 font-semibold">Astuce :</strong>
+          <span className="text-orange-700 dark:text-orange-400 ml-1">Pour des questions personnalisées, contactez directement Morgan !</span>
         </div>
-        <div className="chatbot-messages">
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-neutral-900 dark:to-orange-950">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`chatbot-message ${msg.role}`}>
-              <div className="chatbot-avatar">
-                {msg.role === 'bot' ? 'Bot' : 'User'}
+            <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {msg.role === 'bot' && (
+                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                  <FiMessageCircle className="w-5 h-5" />
+                </div>
+              )}
+              <div className={`max-w-[75%] rounded-2xl p-4 ${
+                msg.role === 'user' 
+                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md' 
+                  : 'bg-white dark:bg-neutral-900 text-neutral-900 dark:text-white border border-neutral-200 dark:border-neutral-700 shadow-sm'
+              }`}>
+                <div className="whitespace-pre-wrap text-md leading-relaxed">{msg.content}</div>
               </div>
-              <div className="chatbot-content">{msg.content}</div>
+              {msg.role === 'user' && (
+                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+              )}
             </div>
           ))}
           {loading && (
-            <div className="chatbot-message bot">
-              <div className="chatbot-avatar">Bot</div>
-              <div className="chatbot-content">En train de réfléchir...</div>
+            <div className="flex gap-3 justify-start">
+              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                <FiMessageCircle className="w-5 h-5" />
+              </div>
+              <div className="bg-white dark:bg-neutral-900 rounded-2xl p-4 border border-neutral-200 dark:border-neutral-700 shadow-sm">
+                <div className="flex gap-2">
+                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </div>
-        <div className="chatbot-input-container">
-          <input
-            type="text"
-            className="chatbot-input"
-            placeholder="Tapez votre question..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={loading}
-          />
-          <button 
-            className="chatbot-send" 
-            onClick={sendMessage}
-            disabled={loading}
-          >
-            <FiSend />
-          </button>
+
+        {/* Input */}
+        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 rounded-b-2xl">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="flex-1 px-4 py-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-[#8B5E3C] focus:border-[#8B5E3C] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-500 text-md"
+              placeholder="Tapez votre question..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              disabled={loading}
+            />
+            <button 
+              className="w-12 h-12 text-white rounded-xl flex items-center justify-center hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed shadow-sm bg-brand hover:bg-brand-600"
+              onClick={sendMessage}
+              disabled={loading}
+            >
+              <FiSend />
+            </button>
+          </div>
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

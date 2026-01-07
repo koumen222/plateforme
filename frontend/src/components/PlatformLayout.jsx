@@ -1,17 +1,16 @@
 import Header from './Header'
 import Footer from './Footer'
 import Chatbot from './Chatbot'
-import '../styles/platform-layout.css'
 
 export default function PlatformLayout({ children }) {
   return (
-    <div className="platform-layout">
+    <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       <Header />
-      <main className="platform-main">
+      <main className="flex-1 w-full">
         {children}
       </main>
-      <Footer />
-      <Chatbot />
+      <Footer className="hidden md:block" />
+      <Chatbot className="hidden md:block" />
     </div>
   )
 }

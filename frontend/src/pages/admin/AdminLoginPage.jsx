@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { CONFIG } from '../../config/config'
-import '../../styles/admin.css'
 
 export default function AdminLoginPage() {
   const [name, setName] = useState('')
@@ -117,12 +116,12 @@ export default function AdminLoginPage() {
 
   if (checkingAdmin) {
     return (
-      <div className="admin-login-container">
-        <div className="admin-login-card">
-          <div className="admin-login-header">
-            <div className="admin-logo">🔐</div>
-            <h1>Espace Administrateur</h1>
-            <p>Vérification...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full">
+          <div className="text-center">
+            <div className="text-6xl mb-4">🔐</div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Espace Administrateur</h1>
+            <p className="text-gray-600 dark:text-gray-400">Vérification...</p>
           </div>
         </div>
       </div>
@@ -130,12 +129,12 @@ export default function AdminLoginPage() {
   }
 
   return (
-    <div className="admin-login-container">
-      <div className="admin-login-card">
-        <div className="admin-login-header">
-          <div className="admin-logo">🔐</div>
-          <h1>Espace Administrateur</h1>
-          <p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center px-4 py-12">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 max-w-md w-full">
+        <div className="text-center mb-8">
+          <div className="text-6xl mb-4">🔐</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Espace Administrateur</h1>
+          <p className="text-gray-600 dark:text-gray-400">
             {isRegisterMode 
               ? 'Créez le compte administrateur (première connexion uniquement)'
               : "Connectez-vous pour accéder au panneau d'administration"}
@@ -143,15 +142,17 @@ export default function AdminLoginPage() {
         </div>
 
         {error && (
-          <div className="error-message">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-800 dark:text-red-300 text-sm">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="admin-login-form">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {isRegisterMode && (
-            <div className="form-group">
-              <label htmlFor="name">Nom complet</label>
+            <div>
+              <label htmlFor="name" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Nom complet
+              </label>
               <input
                 type="text"
                 id="name"
@@ -161,14 +162,17 @@ export default function AdminLoginPage() {
                 placeholder="Votre nom complet"
                 disabled={loading}
                 minLength={2}
+                className="input-startup"
               />
             </div>
           )}
 
           {isRegisterMode ? (
             <>
-              <div className="form-group">
-                <label htmlFor="email">Email administrateur</label>
+              <div>
+                <label htmlFor="email" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Email administrateur
+                </label>
                 <input
                   type="email"
                   id="email"
@@ -177,11 +181,14 @@ export default function AdminLoginPage() {
                   required
                   placeholder="admin@example.com"
                   disabled={loading}
+                  className="input-startup"
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="phoneNumber">Numéro de téléphone</label>
+              <div>
+                <label htmlFor="phoneNumber" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                  Numéro de téléphone
+                </label>
                 <input
                   type="tel"
                   id="phoneNumber"
@@ -190,12 +197,15 @@ export default function AdminLoginPage() {
                   required
                   placeholder="+237 6 76 77 83 77"
                   disabled={loading}
+                  className="input-startup"
                 />
               </div>
             </>
           ) : (
-            <div className="form-group">
-              <label htmlFor="emailOrPhone">Email ou numéro de téléphone</label>
+            <div>
+              <label htmlFor="emailOrPhone" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+                Email ou numéro de téléphone
+              </label>
               <input
                 type="text"
                 id="emailOrPhone"
@@ -204,15 +214,18 @@ export default function AdminLoginPage() {
                 required
                 placeholder="admin@example.com ou +237 6 76 77 83 77"
                 disabled={loading}
+                className="input-startup"
               />
-              <small className="form-help">
+              <small className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">
                 Vous pouvez vous connecter avec votre email ou votre numéro de téléphone
               </small>
             </div>
           )}
 
-          <div className="form-group">
-            <label htmlFor="password">Mot de passe</label>
+          <div>
+            <label htmlFor="password" className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
+              Mot de passe
+            </label>
             <input
               type="password"
               id="password"
@@ -221,12 +234,13 @@ export default function AdminLoginPage() {
               required
               placeholder="••••••••"
               disabled={loading}
+              className="input-startup"
             />
           </div>
 
           <button 
             type="submit" 
-            className="admin-login-btn"
+            className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={loading}
           >
             {loading 
@@ -235,8 +249,8 @@ export default function AdminLoginPage() {
           </button>
         </form>
 
-        <div className="admin-login-footer">
-          <a href="/" className="back-link">
+        <div className="mt-6 text-center">
+          <a href="/" className="text-sm text-brand dark:text-brand-400 hover:underline">
             ← Retour à la plateforme
           </a>
         </div>

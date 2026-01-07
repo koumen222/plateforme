@@ -1,5 +1,4 @@
 import { Link, useLocation } from 'react-router-dom'
-import '../../styles/admin.css'
 
 export default function AdminNav() {
   const location = useLocation()

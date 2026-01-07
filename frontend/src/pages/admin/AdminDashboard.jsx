@@ -1,4 +1,3 @@
-import '../../styles/admin.css'
 
 // Données statiques pour le dashboard
 const stats = {

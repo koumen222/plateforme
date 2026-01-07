@@ -1,72 +1,81 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import '../styles/landing.css'
 
 export default function LandingPage() {
   const { isAuthenticated } = useAuth()
 
   return (
-    <div className="landing-page">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Hero Section */}
-      <section className="landing-hero">
-        <div className="landing-hero-content">
-          <div className="landing-badge">🚀 Formation Premium</div>
-          <h1 className="landing-title">
-            Maîtrisez Facebook Ads avec la <span className="landing-highlight">Méthode Andromeda</span>
+      <section className="relative bg-brand text-white py-20 lg:py-32 overflow-hidden">
+        <div className="absolute inset-0 bg-grid-pattern opacity-10"></div>
+        <div className="container-startup relative z-10">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div>
+              <div className="inline-block px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-sm font-semibold mb-6">
+                🚀 Formation Premium
+              </div>
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+                Maîtrisez Facebook Ads avec la{' '}
+                <span className="text-yellow-300">Méthode Andromeda</span>
           </h1>
-          <p className="landing-subtitle">
+              <p className="text-xl text-white/90 mb-8 leading-relaxed">
             Créez des campagnes qui génèrent des ventes de manière prévisible et scalable. 
             Une méthode révolutionnaire adaptée au marché africain.
           </p>
-          <div className="landing-cta-group">
+              <div className="flex flex-wrap gap-4 mb-12">
             {isAuthenticated ? (
-              <Link to="/" className="landing-btn landing-btn-primary">
+                  <Link to="/" className="btn-primary bg-white text-brand hover:bg-gray-50">
                 Accéder à la formation
               </Link>
             ) : (
               <>
-                <Link to="/login" className="landing-btn landing-btn-primary">
+                    <Link to="/login" className="btn-primary bg-white text-brand hover:bg-gray-50">
                   Commencer maintenant
                 </Link>
-                <Link to="/login" className="landing-btn landing-btn-secondary">
+                    <Link to="/login" className="btn-secondary bg-white/10 text-white border-white/30 hover:bg-white/20">
                   Voir la première leçon
                 </Link>
               </>
             )}
           </div>
-          <div className="landing-stats">
-            <div className="landing-stat">
-              <div className="landing-stat-number">8</div>
-              <div className="landing-stat-label">Jours de formation</div>
+              <div className="grid grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2">8</div>
+                  <div className="text-sm text-white/80">Jours de formation</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2">100%</div>
+                  <div className="text-sm text-white/80">Pratique</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold mb-2">24/7</div>
+                  <div className="text-sm text-white/80">Accès illimité</div>
+                </div>
+              </div>
             </div>
-            <div className="landing-stat">
-              <div className="landing-stat-number">100%</div>
-              <div className="landing-stat-label">Pratique</div>
+            <div className="hidden lg:block">
+              <div className="bg-white/10 backdrop-blur-lg rounded-3xl p-8 border border-white/20 shadow-2xl">
+                <div className="text-6xl mb-4 text-center">📊</div>
+                <div className="text-center text-xl font-semibold">Campagnes performantes</div>
             </div>
-            <div className="landing-stat">
-              <div className="landing-stat-number">24/7</div>
-              <div className="landing-stat-label">Accès illimité</div>
             </div>
-          </div>
-        </div>
-        <div className="landing-hero-visual">
-          <div className="landing-visual-card">
-            <div className="landing-visual-icon">📊</div>
-            <div className="landing-visual-text">Campagnes performantes</div>
           </div>
         </div>
       </section>
 
       {/* Products Section */}
-      <section className="landing-products-section">
-        <div className="landing-container">
-          <div className="landing-products-card">
-            <h2 className="landing-products-title">🏆 50 Produits Gagnants</h2>
-            <p className="landing-products-text">
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container-startup">
+          <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-8 md:p-12 text-center shadow-xl">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              🏆 50 Produits Gagnants
+            </h2>
+            <p className="text-lg text-gray-800 mb-6 max-w-2xl mx-auto">
               Accédez à notre liste exclusive de 50 produits testés et performants sur Facebook Ads. 
               Ces produits ont généré des résultats exceptionnels avec la méthode Andromeda.
             </p>
-            <Link to="/produits-gagnants" className="landing-btn landing-btn-secondary">
+            <Link to="/produits-gagnants" className="btn-primary bg-gray-900 text-white hover:bg-gray-800">
               Voir les 50 produits gagnants
             </Link>
           </div>
@@ -74,136 +83,88 @@ export default function LandingPage() {
       </section>
 
       {/* Features Section */}
-      <section className="landing-features">
-        <div className="landing-container">
-          <h2 className="landing-section-title">Ce que vous allez apprendre</h2>
-          <div className="landing-features-grid">
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">🎯</div>
-              <h3 className="landing-feature-title">Structure de campagne</h3>
-              <p className="landing-feature-text">
-                Découvrez la structure complète d'une campagne Andromeda qui convertit et génère des ventes.
+      <section className="py-16 bg-gray-50 dark:bg-gray-900">
+        <div className="container-startup">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white mb-12">
+            Ce que vous allez apprendre
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { icon: '🎯', title: 'Structure de campagne', text: 'Découvrez la structure complète d\'une campagne Andromeda qui convertit et génère des ventes.' },
+              { icon: '🎬', title: 'Création de vidéos', text: 'Apprenez à créer des créatives verticales captivantes qui maximisent l\'engagement et les conversions.' },
+              { icon: '⚙️', title: 'Configuration optimale', text: 'Paramétrez correctement votre compte publicitaire pour un tracking précis et des résultats mesurables.' },
+              { icon: '🚀', title: 'Lancement & Scaling', text: 'Lancez vos campagnes efficacement et apprenez à les optimiser progressivement pour maximiser vos résultats.' },
+              { icon: '📈', title: 'Analyse & Optimisation', text: 'Maîtrisez l\'analyse des métriques et les techniques d\'optimisation pour améliorer continuellement vos performances.' },
+              { icon: '💬', title: 'Support personnalisé', text: 'Bénéficiez d\'un accompagnement personnalisé avec des sessions de coaching pour affiner votre stratégie.' }
+            ].map((feature, index) => (
+              <div key={index} className="card-startup">
+                <div className="text-4xl mb-4">{feature.icon}</div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
+                  {feature.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-300">
+                  {feature.text}
               </p>
             </div>
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">🎬</div>
-              <h3 className="landing-feature-title">Création de vidéos</h3>
-              <p className="landing-feature-text">
-                Apprenez à créer des créatives verticales captivantes qui maximisent l'engagement et les conversions.
-              </p>
-            </div>
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">⚙️</div>
-              <h3 className="landing-feature-title">Configuration optimale</h3>
-              <p className="landing-feature-text">
-                Paramétrez correctement votre compte publicitaire pour un tracking précis et des résultats mesurables.
-              </p>
-            </div>
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">🚀</div>
-              <h3 className="landing-feature-title">Lancement & Scaling</h3>
-              <p className="landing-feature-text">
-                Lancez vos campagnes efficacement et apprenez à les optimiser progressivement pour maximiser vos résultats.
-              </p>
-            </div>
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">📈</div>
-              <h3 className="landing-feature-title">Analyse & Optimisation</h3>
-              <p className="landing-feature-text">
-                Maîtrisez l'analyse des métriques et les techniques d'optimisation pour améliorer continuellement vos performances.
-              </p>
-            </div>
-            <div className="landing-feature-card">
-              <div className="landing-feature-icon">💬</div>
-              <h3 className="landing-feature-title">Support personnalisé</h3>
-              <p className="landing-feature-text">
-                Bénéficiez d'un accompagnement personnalisé avec des sessions de coaching pour affiner votre stratégie.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Program Section */}
-      <section className="landing-program">
-        <div className="landing-container">
-          <h2 className="landing-section-title">Programme de formation</h2>
-          <div className="landing-program-list">
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 1</div>
-              <div className="landing-program-content">
-                <h3>Introduction</h3>
-                <p>Découvrez les fondamentaux de la méthode Andromeda</p>
+      <section className="py-16 bg-white dark:bg-gray-800">
+        <div className="container-startup">
+          <h2 className="text-3xl md:text-4xl font-bold text-center text-gray-900 dark:text-white mb-12">
+            Programme de formation
+          </h2>
+          <div className="space-y-4 max-w-3xl mx-auto">
+            {[
+              { day: 'JOUR 1', title: 'Introduction', text: 'Découvrez les fondamentaux de la méthode Andromeda' },
+              { day: 'JOUR 2', title: 'Structure de campagne', text: 'La structure complète d\'une campagne qui nourrit Andromeda' },
+              { day: 'JOUR 3', title: 'Créez la créative', text: 'Créez la créative Andromeda qui convertit' },
+              { day: 'JOUR 4', title: 'Paramétrage du compte', text: 'Configurez correctement votre compte publicitaire' },
+              { day: 'JOUR 5', title: 'Lancement', text: 'Activez votre première campagne Andromeda' },
+              { day: 'JOUR 6', title: 'Analyse', text: 'Analysez les premiers résultats sans intervenir' },
+              { day: 'JOUR 7', title: 'Mini Scaling', text: 'Première optimisation et augmentation progressive du budget' },
+              { day: 'JOUR 8', title: 'Coaching', text: 'Réservation de sessions de coaching personnalisées' }
+            ].map((item, index) => (
+              <div key={index} className="flex gap-6 items-start bg-gray-50 dark:bg-gray-700 rounded-xl p-6 border border-gray-200 dark:border-gray-600 hover:shadow-lg transition-all">
+                <div className="flex-shrink-0 w-24 text-center">
+                  <div className="bg-brand text-white rounded-xl px-4 py-2 font-bold text-sm">
+                    {item.day}
               </div>
             </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 2</div>
-              <div className="landing-program-content">
-                <h3>Structure de campagne</h3>
-                <p>La structure complète d'une campagne qui nourrit Andromeda</p>
-              </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
+                    {item.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-300">
+                    {item.text}
+                  </p>
             </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 3</div>
-              <div className="landing-program-content">
-                <h3>Création de la créative</h3>
-                <p>Créez la créative Andromeda qui convertit</p>
               </div>
-            </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 4</div>
-              <div className="landing-program-content">
-                <h3>Paramétrage du compte</h3>
-                <p>Configurez correctement votre compte publicitaire</p>
-              </div>
-            </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 5</div>
-              <div className="landing-program-content">
-                <h3>Lancement</h3>
-                <p>Activez votre première campagne Andromeda</p>
-              </div>
-            </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 6</div>
-              <div className="landing-program-content">
-                <h3>Analyse</h3>
-                <p>Analysez les premiers résultats sans intervenir</p>
-              </div>
-            </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 7</div>
-              <div className="landing-program-content">
-                <h3>Mini Scaling</h3>
-                <p>Première optimisation et augmentation progressive du budget</p>
-              </div>
-            </div>
-            <div className="landing-program-item">
-              <div className="landing-program-day">JOUR 8</div>
-              <div className="landing-program-content">
-                <h3>Coaching</h3>
-                <p>Réservation de sessions de coaching personnalisées</p>
-              </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="landing-cta-section">
-        <div className="landing-container">
-          <div className="landing-cta-card">
-            <h2 className="landing-cta-title">Prêt à transformer votre business ?</h2>
-            <p className="landing-cta-text">
+      <section className="py-16 bg-brand text-white">
+        <div className="container-startup">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              Prêt à transformer votre business ?
+            </h2>
+            <p className="text-xl text-white/90 mb-8">
               Rejoignez des centaines d'entrepreneurs qui utilisent déjà la méthode Andromeda 
               pour générer des ventes avec Facebook Ads.
             </p>
             {isAuthenticated ? (
-              <Link to="/" className="landing-btn landing-btn-primary landing-btn-large">
+              <Link to="/" className="btn-primary bg-white text-brand hover:bg-gray-50 text-lg px-8 py-4">
                 Accéder à ma formation
               </Link>
             ) : (
-              <Link to="/login" className="landing-btn landing-btn-primary landing-btn-large">
+              <Link to="/login" className="btn-primary bg-white text-brand hover:bg-gray-50 text-lg px-8 py-4">
                 Commencer ma formation maintenant
               </Link>
             )}
@@ -213,4 +174,3 @@ export default function LandingPage() {
     </div>
   )
 }
-

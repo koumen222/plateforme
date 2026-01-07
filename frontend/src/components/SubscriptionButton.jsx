@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import axios from 'axios'
-import '../styles/subscription.css'
+import { FaWhatsapp } from 'react-icons/fa'
 
 export default function SubscriptionButton({ onSuccess, onError }) {
   const { user } = useAuth()
@@ -76,40 +76,34 @@ export default function SubscriptionButton({ onSuccess, onError }) {
   }
 
   return (
-    <div className="subscription-container">
+    <div className="w-full max-w-5xl mx-auto">
       {error && (
-        <div style={{
-          padding: '1rem',
-          marginBottom: '1rem',
-          backgroundColor: '#fee',
-          color: '#c33',
-          borderRadius: '8px',
-          fontSize: '0.9rem'
-        }}>
+        <div className="p-4 mb-4 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 rounded-lg text-sm">
           {error}
         </div>
       )}
 
-      <div className="subscription-plans">
-        <div className="subscription-plan-card">
-          <div className="plan-header">
-            <h3 className="plan-title">Mensuel</h3>
-            <div className="plan-price">
-              <span className="plan-amount">{CONFIG.SUBSCRIPTION_MONTHLY.toLocaleString('fr-FR')}</span>
-              <span className="plan-currency">FCFA</span>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-6">
+        {/* Plan Mensuel */}
+        <div className="bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-brand dark:hover:border-brand flex flex-col relative">
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Mensuel</h3>
+            <div className="flex items-baseline justify-center gap-2 mb-2">
+              <span className="text-4xl font-extrabold text-brand dark:text-brand-400">{CONFIG.SUBSCRIPTION_MONTHLY.toLocaleString('fr-FR')}</span>
+              <span className="text-xl font-semibold text-gray-600 dark:text-gray-400">FCFA</span>
             </div>
-            <p className="plan-period">par mois</p>
+            <p className="text-base text-gray-600 dark:text-gray-400 mb-2">par mois</p>
           </div>
-          <ul className="plan-features">
-            <li>Accès à toutes les vidéos</li>
-            <li>Toutes les formations</li>
-            <li>Ressources téléchargeables</li>
-            <li>Support communautaire</li>
+          <ul className="list-none p-0 m-0 mb-8 flex-1 space-y-3">
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Accès à toutes les vidéos</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Toutes les formations</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Ressources téléchargeables</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Support communautaire</li>
           </ul>
           <button
             onClick={() => handlePayment('monthly')}
             disabled={loading && selectedPlan === 'monthly'}
-            className="subscription-btn subscription-btn-monthly"
+            className="w-full px-8 py-4 text-base font-bold border-none rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 text-white bg-brand shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:bg-brand-600 hover:-translate-y-0.5 hover:shadow-xl"
           >
             {loading && selectedPlan === 'monthly' ? (
               <>Chargement...</>
@@ -121,62 +115,39 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(`Bonjour, je souhaite payer pour l'abonnement mensuel de ${CONFIG.SUBSCRIPTION_MONTHLY.toLocaleString('fr-FR')} FCFA.`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              fontSize: '0.95rem',
-              fontWeight: '600',
-              color: '#fff',
-              backgroundColor: '#25D366',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s, transform 0.2s',
-              boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)',
-              marginTop: '0.75rem',
-              width: '100%'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#20BA5A'
-              e.target.style.transform = 'translateY(-2px)'
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#25D366'
-              e.target.style.transform = 'translateY(0)'
-            }}
+            className="btn-whatsapp mt-3"
           >
             <FaWhatsapp /> <span>Payer via WhatsApp</span>
           </a>
         </div>
 
-        <div className="subscription-plan-card subscription-plan-featured">
-          <div className="plan-badge">Meilleure valeur</div>
-          <div className="plan-header">
-            <h3 className="plan-title">Annuel</h3>
-            <div className="plan-price">
-              <span className="plan-amount">{CONFIG.SUBSCRIPTION_YEARLY.toLocaleString('fr-FR')}</span>
-              <span className="plan-currency">FCFA</span>
+        {/* Plan Annuel - Featured */}
+        <div className="bg-white dark:bg-gray-800 border-3 border-brand dark:border-brand rounded-2xl p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl flex flex-col relative bg-gray-50/30 dark:bg-gray-800">
+          <div className="absolute -top-3 right-6 bg-brand text-white px-4 py-1.5 rounded-full text-xs font-bold shadow-lg">
+            Meilleure valeur
+          </div>
+          <div className="text-center mb-6">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Annuel</h3>
+            <div className="flex items-baseline justify-center gap-2 mb-2">
+              <span className="text-4xl font-extrabold text-brand dark:text-brand-400">{CONFIG.SUBSCRIPTION_YEARLY.toLocaleString('fr-FR')}</span>
+              <span className="text-xl font-semibold text-gray-600 dark:text-gray-400">FCFA</span>
             </div>
-            <p className="plan-period">par an</p>
-            <div className="plan-savings">
+            <p className="text-base text-gray-600 dark:text-gray-400 mb-2">par an</p>
+            <div className="text-sm text-brand dark:text-brand-400 font-semibold mt-2">
               Économisez {((CONFIG.SUBSCRIPTION_MONTHLY * 12) - CONFIG.SUBSCRIPTION_YEARLY).toLocaleString('fr-FR')} FCFA
             </div>
           </div>
-          <ul className="plan-features">
-            <li>Accès à toutes les vidéos</li>
-            <li>Toutes les formations</li>
-            <li>Ressources téléchargeables</li>
-            <li>Support communautaire</li>
-            <li>Économie de 35 000 FCFA</li>
+          <ul className="list-none p-0 m-0 mb-8 flex-1 space-y-3">
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Accès à toutes les vidéos</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Toutes les formations</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Ressources téléchargeables</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Support communautaire</li>
+            <li className="py-3 text-gray-900 dark:text-white text-sm border-b border-gray-200 dark:border-gray-700 last:border-0">Économie de 35 000 FCFA</li>
           </ul>
           <button
             onClick={() => handlePayment('yearly')}
             disabled={loading && selectedPlan === 'yearly'}
-            className="subscription-btn subscription-btn-yearly"
+            className="w-full px-8 py-4 text-base font-bold border-none rounded-xl cursor-pointer transition-all duration-300 flex items-center justify-center gap-2 text-white bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg disabled:opacity-60 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 hover:-translate-y-0.5 hover:shadow-xl"
           >
             {loading && selectedPlan === 'yearly' ? (
               <>Chargement...</>
@@ -188,33 +159,7 @@ export default function SubscriptionButton({ onSuccess, onError }) {
             href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(`Bonjour, je souhaite payer pour l'abonnement annuel de ${CONFIG.SUBSCRIPTION_YEARLY.toLocaleString('fr-FR')} FCFA.`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem',
-              padding: '0.75rem 1.5rem',
-              fontSize: '0.95rem',
-              fontWeight: '600',
-              color: '#fff',
-              backgroundColor: '#25D366',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'background-color 0.2s, transform 0.2s',
-              boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)',
-              marginTop: '0.75rem',
-              width: '100%'
-            }}
-            onMouseOver={(e) => {
-              e.target.style.backgroundColor = '#20BA5A'
-              e.target.style.transform = 'translateY(-2px)'
-            }}
-            onMouseOut={(e) => {
-              e.target.style.backgroundColor = '#25D366'
-              e.target.style.transform = 'translateY(0)'
-            }}
+            className="btn-whatsapp mt-3"
           >
             <FaWhatsapp /> <span>Payer via WhatsApp</span>
           </a>
