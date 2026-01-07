@@ -1501,6 +1501,7 @@ body {
     }
 }
 
+@media (max-width: 480px) {
     /* Overlay verrouillé optimisé mobile très petit */
     .video-lock-overlay {
         min-height: 450px;
