@@ -9,7 +9,7 @@ export default function Footer({ className = '' }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12 mb-8">
           {/* Brand Column */}
           <div className="space-y-4">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Ecom Starter</h3>
+            <img src="/img/logo.svg" alt="Ecom Starter" className="h-8 w-auto" />
             <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
               Plateforme de formation en ligne pour maîtriser Facebook Ads, TikTok Ads et le e-commerce.
             </p>

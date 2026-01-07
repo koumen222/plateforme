@@ -10,7 +10,7 @@ export default function PlatformLayout({ children }) {
         {children}
       </main>
       <Footer className="hidden md:block" />
-      <Chatbot className="hidden md:block" />
+      <Chatbot />
     </div>
   )
 }

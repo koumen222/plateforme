@@ -34,3 +34,4 @@ moduleSchema.index({ courseId: 1, order: 1 });
 
 export default mongoose.model('Module', moduleSchema);
 
+

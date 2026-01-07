@@ -10,6 +10,18 @@ export default function SubscriptionButton({ onSuccess, onError }) {
   const [error, setError] = useState('')
   const [selectedPlan, setSelectedPlan] = useState('monthly') // 'monthly' ou 'yearly'
 
+  // Ne pas afficher le composant si l'utilisateur est déjà actif
+  if (user?.status === 'active') {
+    return (
+      <div className="w-full max-w-5xl mx-auto">
+        <div className="p-6 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 rounded-lg text-center">
+          <p className="text-lg font-semibold mb-2">✅ Votre compte est déjà actif</p>
+          <p className="text-sm">Vous avez accès à toutes les formations et ressources.</p>
+        </div>
+      </div>
+    )
+  }
+
   const handlePayment = async (planType) => {
     try {
       setLoading(true)

@@ -336,7 +336,7 @@ export default function ProfilePage() {
           )}
         </div>
 
-        {(!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
+        {user.status !== 'active' && (!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
           <div className="notice-profile notice-profile-pending">
             <div className="notice-profile-content">
               <h3>Abonnez-vous pour accéder à toutes les vidéos</h3>

@@ -245,7 +245,7 @@ export default function Chatbot({ className = '' }) {
     <div className={className}>
       {/* Bouton flottant style africain premium */}
       <button 
-        className="chatbot-toggle-african"
+        className="fixed bottom-4 md:bottom-6 right-4 md:right-6 w-14 h-14 md:w-16 md:h-16 text-white rounded-full flex items-center justify-center text-xl md:text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg chatbot-toggle-african"
         aria-label="Ouvrir le chat"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -253,49 +253,49 @@ export default function Chatbot({ className = '' }) {
       </button>
 
       {/* Container du chatbot style africain premium */}
-      <div className={`fixed bottom-24 right-6 w-96 h-[600px] chatbot-african flex flex-col transform transition-all duration-300 z-50 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+      <div className={`fixed bottom-20 md:bottom-24 right-2 md:right-6 w-[calc(100vw-1rem)] md:w-96 h-[calc(100vh-8rem)] md:h-[600px] max-h-[600px] chatbot-african flex flex-col transform transition-all duration-300 z-50 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-yellow-500 text-white p-4 rounded-t-2xl flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
-              <FiMessageCircle className="w-5 h-5" />
+        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-yellow-500 text-white p-3 md:p-4 rounded-t-2xl flex justify-between items-center">
+          <div className="flex items-center gap-2 md:gap-3">
+            <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
+              <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
             </div>
-            <h3 className="font-bold text-lg-bold text-white">Support Formation</h3>
+            <h3 className="font-bold text-base md:text-lg text-white">Support Formation</h3>
           </div>
           <button 
-            className="w-8 h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-xl font-bold transition-colors"
+            className="w-7 h-7 md:w-8 md:h-8 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center transition-colors"
             aria-label="Fermer le chat"
             onClick={() => setIsOpen(false)}
           >
-            <FiX className="w-5 h-5 text-white" />
+            <FiX className="w-4 h-4 md:w-5 md:h-5 text-white" />
           </button>
         </div>
 
         {/* Notification */}
-        <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-b border-orange-300 dark:border-orange-700 p-3 text-md">
+        <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-b border-orange-300 dark:border-orange-700 p-2 md:p-3 text-xs md:text-md">
           <strong className="text-orange-800 dark:text-orange-300 font-semibold">Astuce :</strong>
           <span className="text-orange-700 dark:text-orange-400 ml-1">Pour des questions personnalisées, contactez directement Morgan !</span>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-neutral-900 dark:to-orange-950">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-neutral-900 dark:to-orange-950">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={idx} className={`flex gap-2 md:gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'bot' && (
-                <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
-                  <FiMessageCircle className="w-5 h-5" />
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                  <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
               )}
-              <div className={`max-w-[75%] rounded-2xl p-4 ${
+              <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-3 md:p-4 ${
                 msg.role === 'user' 
                   ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md' 
                   : 'bg-card text-primary border border-theme shadow-sm'
               }`}>
-                <div className="whitespace-pre-wrap text-md leading-relaxed">{msg.content}</div>
+                <div className="whitespace-pre-wrap text-sm md:text-md leading-relaxed">{msg.content}</div>
               </div>
               {msg.role === 'user' && (
-                <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                  <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -303,11 +303,11 @@ export default function Chatbot({ className = '' }) {
             </div>
           ))}
           {loading && (
-            <div className="flex gap-3 justify-start">
-              <div className="w-10 h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
-                <FiMessageCircle className="w-5 h-5" />
+            <div className="flex gap-2 md:gap-3 justify-start">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
               </div>
-              <div className="bg-card rounded-2xl p-4 border border-theme shadow-sm">
+              <div className="bg-card rounded-2xl p-3 md:p-4 border border-theme shadow-sm">
                 <div className="flex gap-2">
                   <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
@@ -320,11 +320,11 @@ export default function Chatbot({ className = '' }) {
         </div>
 
         {/* Input */}
-        <div className="p-4 bg-secondary border-t border-theme rounded-b-2xl">
+        <div className="p-3 md:p-4 bg-secondary border-t border-theme rounded-b-2xl">
           <div className="flex gap-2">
             <input
               type="text"
-              className="input-startup flex-1 text-md placeholder:text-secondary/60"
+              className="input-startup flex-1 text-sm md:text-md placeholder:text-secondary/60"
               placeholder="Tapez votre question..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -333,15 +333,15 @@ export default function Chatbot({ className = '' }) {
             />
            <button
   type="button"
-  className="btn-primary px-4 h-12 rounded-xl flex items-center justify-center gap-2
+  className="btn-primary px-3 md:px-4 h-10 md:h-12 rounded-xl flex items-center justify-center gap-1 md:gap-2
              hover:scale-105 transition-transform
-             disabled:opacity-50 disabled:cursor-not-allowed"
+             disabled:opacity-50 disabled:cursor-not-allowed text-xs md:text-sm"
   onClick={sendMessage}
   disabled={loading}
   aria-label="Envoyer le message"
 >
-  <FiSend className="w-5 h-5" />
-  Envoyer
+  <FiSend className="w-4 h-4 md:w-5 md:h-5" />
+  <span className="hidden sm:inline">Envoyer</span>
 </button>
 
 

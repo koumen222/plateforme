@@ -29,13 +29,13 @@
     --bg-hover: #334155;
     --text-primary: #f1f5f9;
     --text-secondary: #cbd5e1;
-    --accent: #8B5E3C;
-    --accent-hover: #9d7356;
-    --accent-light: #b08968;
+    --accent: #9333ea;
+    --accent-hover: #a855f7;
+    --accent-light: #c084fc;
     --border: #334155;
     --shadow: rgba(0, 0, 0, 0.3);
     --shadow-lg: rgba(0, 0, 0, 0.5);
-    --accent-shadow: rgba(139, 94, 60, 0.4);
+    --accent-shadow: rgba(147, 51, 234, 0.4);
   }
 
   /* Classes utilitaires de base */
@@ -106,6 +106,14 @@
     background-color: rgba(139, 94, 60, 0.2);
   }
 
+  [data-theme="dark"] .btn-tertiary {
+    background-color: rgba(147, 51, 234, 0.1);
+  }
+
+  [data-theme="dark"] .btn-tertiary:hover:not(:disabled) {
+    background-color: rgba(147, 51, 234, 0.2);
+  }
+
   /* Bouton avec icône */
   .btn-icon {
     @apply inline-flex items-center justify-center gap-2;
@@ -156,7 +164,7 @@
   }
 
   .chatbot-toggle-african {
-    @apply fixed bottom-6 right-6 w-16 h-16 text-white rounded-full flex items-center justify-center text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg;
+    @apply fixed bottom-4 md:bottom-6 right-4 md:right-6 w-14 h-14 md:w-16 md:h-16 text-white rounded-full flex items-center justify-center text-xl md:text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg;
     background-color: var(--accent);
   }
 
@@ -557,6 +565,14 @@
 
   .admin-btn-light:hover:not(:disabled) {
     background-color: rgba(139, 94, 60, 0.2);
+  }
+
+  [data-theme="dark"] .admin-btn-light {
+    background-color: rgba(147, 51, 234, 0.1);
+  }
+
+  [data-theme="dark"] .admin-btn-light:hover:not(:disabled) {
+    background-color: rgba(147, 51, 234, 0.2);
   }
 
   /* Boutons d'action spécifiques */

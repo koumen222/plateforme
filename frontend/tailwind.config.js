@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Couleur principale brand (terre ocre moderne)
+        // Couleur principale brand (terre ocre moderne en clair, violet en sombre)
         brand: {
           DEFAULT: '#8B5E3C',
           50: '#f5f1ed',
@@ -21,6 +21,12 @@ export default {
           700: '#65432b',
           800: '#523625',
           900: '#432d1f',
+        },
+        // Couleurs violet pour mode sombre
+        purple: {
+          dark: '#9333ea',
+          'dark-hover': '#a855f7',
+          'dark-light': '#c084fc',
         },
         // Couleurs du thème existant
         bg: {

@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
-import { FiShoppingBag, FiMenu, FiUser } from 'react-icons/fi'
+import { FiMenu, FiUser } from 'react-icons/fi'
 
 export default function Header() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -58,9 +58,8 @@ export default function Header() {
         <div className="container-startup">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center justify-between h-16 lg:h-20">
-            <Link to="/" className="flex items-center gap-2 text-primary font-semibold text-lg lg:text-xl hover:opacity-80 transition-opacity">
-              <FiShoppingBag className="w-6 h-6 lg:w-7 lg:h-7" />
-              <span>Ecom Starter</span>
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              <img src="/img/logo.svg" alt="Ecom Starter" className="h-8 lg:h-10 w-auto" />
             </Link>
 
             <nav className="flex items-center gap-1 xl:gap-2">
@@ -121,25 +120,36 @@ export default function Header() {
               
               {isAuthenticated ? (
                 <div className="relative" ref={profileMenuRef}>
-                  <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-secondary transition-colors"
-                  >
-                    <div className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
-                      {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-                    </div>
-                    <span className="hidden lg:inline text-sm font-medium text-primary">
-                      {user?.name || user?.email?.split('@')[0]}
-                    </span>
-                    <svg 
-                      className={`hidden lg:block w-4 h-4 text-primary transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-secondary transition-colors">
+                    <Link 
+                      to="/profil"
+                      className="w-8 h-8 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm hover:opacity-80 transition-opacity"
+                      onClick={() => setShowProfileMenu(false)}
                     >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
+                      {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </Link>
+                    <Link
+                      to="/profil"
+                      className="hidden lg:inline text-sm font-medium text-primary hover:opacity-80 transition-opacity"
+                      onClick={() => setShowProfileMenu(false)}
+                    >
+                      {user?.name || user?.email?.split('@')[0]}
+                    </Link>
+                    <button
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="hidden lg:flex items-center ml-1"
+                      aria-label="Menu profil"
+                    >
+                      <svg 
+                        className={`w-4 h-4 text-primary transition-transform ${showProfileMenu ? 'rotate-180' : ''}`}
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    </button>
+                  </div>
 
                   {showProfileMenu && (
                     <div className="absolute right-0 mt-2 w-64 bg-card rounded-xl shadow-xl border border-theme overflow-hidden z-50">
@@ -206,17 +216,20 @@ export default function Header() {
             {/* Logo centré absolu */}
             <Link 
               to="/" 
-              className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2 text-primary font-semibold text-base hover:opacity-80 transition-opacity"
+              className="absolute left-1/2 transform -translate-x-1/2 flex items-center hover:opacity-80 transition-opacity"
             >
-              <FiShoppingBag className="w-5 h-5" />
-              <span>Ecom Starter</span>
+              <img src="/img/logo.svg" alt="Ecom Starter" className="h-7 w-auto" />
             </Link>
 
             {/* Icône compte à droite */}
             {isAuthenticated ? (
-              <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
+              <Link
+                to="/profil"
+                className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm hover:opacity-80 transition-opacity"
+                aria-label="Mon profil"
+              >
                 {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-              </div>
+              </Link>
             ) : (
               <Link
                 to="/login"

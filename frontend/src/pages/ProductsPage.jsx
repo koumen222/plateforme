@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { CONFIG } from '../config/config'
 import { useAuth } from '../contexts/AuthContext'
-import { FiFilter, FiSearch, FiX, FiTrendingUp, FiTrendingDown, FiDollarSign, FiGlobe, FiRefreshCw, FiExternalLink, FiLock, FiStar } from 'react-icons/fi'
+import { FiFilter, FiSearch, FiX, FiTrendingUp, FiTrendingDown, FiGlobe, FiRefreshCw, FiExternalLink, FiLock, FiStar } from 'react-icons/fi'
 
 export default function ProductsPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth()
@@ -134,9 +134,9 @@ export default function ProductsPage() {
 
   const statusBadge = (status) => {
     const map = {
-      hot: 'bg-gradient-to-r from-red-500 to-orange-500 text-white',
-      warm: 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white',
-      dead: 'bg-gradient-to-r from-gray-500 to-gray-600 text-white',
+      hot: 'bg-accent text-white',
+      warm: 'bg-accent/80 text-white',
+      dead: 'bg-secondary text-secondary border border-theme',
     }
     return map[status] || map.warm
   }
@@ -149,9 +149,9 @@ export default function ProductsPage() {
 
   const statusOptions = [
     { value: 'all', label: 'Tous les statuts', color: 'text-secondary' },
-    { value: 'hot', label: '🔥 Hot', color: 'text-red-500' },
-    { value: 'warm', label: 'Warm', color: 'text-amber-500' },
-    { value: 'dead', label: 'Dead', color: 'text-gray-500' },
+    { value: 'hot', label: '🔥 Hot', color: 'text-accent' },
+    { value: 'warm', label: 'Warm', color: 'text-accent' },
+    { value: 'dead', label: 'Dead', color: 'text-secondary' },
   ]
 
   const formatPrice = (priceRange) => {
@@ -202,8 +202,8 @@ export default function ProductsPage() {
   const canAccess = isAuthenticated && user?.status === 'active';
   
   return (
-    <div className="min-h-screen bg-primary py-8 px-4 sm:px-6 lg:px-8">
-      <div className="container mx-auto max-w-7xl">
+    <div className="min-h-screen bg-primary">
+      <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8 pt-8">
         {/* Header avec stats */}
         <div className="mb-8">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -243,13 +243,13 @@ export default function ProductsPage() {
               <div className="text-sm text-secondary">Produits trouvés</div>
             </div>
             <div className="card-startup p-4 text-center">
-              <div className="text-2xl font-bold text-red-500 mb-1">
+              <div className="text-2xl font-bold text-accent mb-1">
                 {products.filter(p => p.status === 'hot').length}
               </div>
               <div className="text-sm text-secondary">🔥 Hot</div>
             </div>
             <div className="card-startup p-4 text-center">
-              <div className="text-2xl font-bold text-amber-500 mb-1">
+              <div className="text-2xl font-bold text-accent mb-1">
                 {products.filter(p => p.status === 'warm').length}
               </div>
               <div className="text-sm text-secondary">Warm</div>
@@ -380,13 +380,7 @@ export default function ProductsPage() {
                       onClick={() => setStatusFilter(option.value)}
                       className={`flex items-center justify-between px-4 py-3 rounded-xl text-left transition-all ${
                         statusFilter === option.value
-                          ? option.value === 'hot' 
-                            ? 'bg-gradient-to-r from-red-500 to-orange-500 text-white'
-                            : option.value === 'warm'
-                            ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-white'
-                            : option.value === 'dead'
-                            ? 'bg-gradient-to-r from-gray-500 to-gray-600 text-white'
-                            : 'bg-accent text-white'
+                          ? 'bg-accent text-white'
                           : 'bg-secondary text-primary hover:bg-hover'
                       }`}
                     >
@@ -470,7 +464,6 @@ export default function ProductsPage() {
 
                     {/* Prix */}
                     <div className="flex items-center gap-2 mb-4">
-                      <FiDollarSign className="w-5 h-5 text-accent" />
                       <span className="text-lg font-bold text-accent">
                         {formatPrice(product.priceRange)}
                       </span>
@@ -478,26 +471,26 @@ export default function ProductsPage() {
 
                     {/* Métriques */}
                     <div className="grid grid-cols-3 gap-3 mb-4">
-                      <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/10 rounded-xl p-3 text-center">
-                        <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">Demande</div>
-                        <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                      <div className="bg-secondary rounded-xl p-3 text-center border border-theme">
+                        <div className="text-xs text-secondary mb-1">Demande</div>
+                        <div className="text-2xl font-bold text-accent">
                           {product.demandScore ?? '—'}
                         </div>
-                        <div className="text-xs text-emerald-600 dark:text-emerald-300 opacity-70">/100</div>
+                        <div className="text-xs text-secondary opacity-70">/100</div>
                       </div>
-                      <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 rounded-xl p-3 text-center">
-                        <div className="text-xs text-blue-700 dark:text-blue-300 mb-1">Tendance</div>
-                        <div className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                      <div className="bg-secondary rounded-xl p-3 text-center border border-theme">
+                        <div className="text-xs text-secondary mb-1">Tendance</div>
+                        <div className="text-2xl font-bold text-accent">
                           {product.trendScore ?? '—'}
                         </div>
-                        <div className="text-xs text-blue-600 dark:text-blue-300 opacity-70">/100</div>
+                        <div className="text-xs text-secondary opacity-70">/100</div>
                       </div>
-                      <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/10 rounded-xl p-3 text-center">
-                        <div className="text-xs text-amber-700 dark:text-amber-300 mb-1">Saturation</div>
-                        <div className="text-2xl font-bold text-amber-600 dark:text-amber-300">
+                      <div className="bg-secondary rounded-xl p-3 text-center border border-theme">
+                        <div className="text-xs text-secondary mb-1">Saturation</div>
+                        <div className="text-2xl font-bold text-accent">
                           {product.saturation ?? '—'}
                         </div>
-                        <div className="text-xs text-amber-600 dark:text-amber-300 opacity-70">%</div>
+                        <div className="text-xs text-secondary opacity-70">%</div>
                       </div>
                     </div>
 
@@ -507,7 +500,7 @@ export default function ProductsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                       onClick={(e) => e.stopPropagation()}
-                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all duration-200 mt-4"
+                      className="flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-accent hover:bg-accent-hover text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all duration-200 mt-4"
                     >
                       <FiExternalLink className="w-4 h-4" />
                       <span>Rechercher sur Alibaba</span>
@@ -591,43 +584,43 @@ export default function ProductsPage() {
 
               {/* Grille de métriques */}
               <div className="grid grid-cols-3 gap-4 mb-8">
-                <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/20 dark:to-emerald-900/10 rounded-xl p-5 text-center border border-emerald-200 dark:border-emerald-800">
-                  <div className="text-sm font-semibold text-emerald-700 dark:text-emerald-300 mb-2">Score de Demande</div>
-                  <div className="text-4xl font-bold text-emerald-600 dark:text-emerald-400 mb-1">
+                <div className="bg-secondary rounded-xl p-5 text-center border border-theme">
+                  <div className="text-sm font-semibold text-secondary mb-2">Score de Demande</div>
+                  <div className="text-4xl font-bold text-accent mb-1">
                     {selectedProduct.demandScore ?? '—'}
                   </div>
-                  <div className="text-xs text-emerald-600 dark:text-emerald-300">/ 100</div>
-                  <div className="mt-3 h-2 bg-emerald-200 dark:bg-emerald-800 rounded-full overflow-hidden">
+                  <div className="text-xs text-secondary">/ 100</div>
+                  <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden border border-theme">
                     <div 
-                      className="h-full bg-emerald-500 dark:bg-emerald-400"
+                      className="h-full bg-accent"
                       style={{ width: `${selectedProduct.demandScore || 0}%` }}
                     ></div>
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-900/10 rounded-xl p-5 text-center border border-blue-200 dark:border-blue-800">
-                  <div className="text-sm font-semibold text-blue-700 dark:text-blue-300 mb-2">Score de Tendance</div>
-                  <div className="text-4xl font-bold text-blue-600 dark:text-blue-300 mb-1">
+                <div className="bg-secondary rounded-xl p-5 text-center border border-theme">
+                  <div className="text-sm font-semibold text-secondary mb-2">Score de Tendance</div>
+                  <div className="text-4xl font-bold text-accent mb-1">
                     {selectedProduct.trendScore ?? '—'}
                   </div>
-                  <div className="text-xs text-blue-600 dark:text-blue-300">/ 100</div>
-                  <div className="mt-3 h-2 bg-blue-200 dark:bg-blue-800 rounded-full overflow-hidden">
+                  <div className="text-xs text-secondary">/ 100</div>
+                  <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden border border-theme">
                     <div 
-                      className="h-full bg-blue-500 dark:bg-blue-400"
+                      className="h-full bg-accent"
                       style={{ width: `${selectedProduct.trendScore || 0}%` }}
                     ></div>
                   </div>
                 </div>
                 
-                <div className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/20 dark:to-amber-900/10 rounded-xl p-5 text-center border border-amber-200 dark:border-amber-800">
-                  <div className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-2">Saturation Marché</div>
-                  <div className="text-4xl font-bold text-amber-600 dark:text-amber-300 mb-1">
+                <div className="bg-secondary rounded-xl p-5 text-center border border-theme">
+                  <div className="text-sm font-semibold text-secondary mb-2">Saturation Marché</div>
+                  <div className="text-4xl font-bold text-accent mb-1">
                     {selectedProduct.saturation ?? '—'}
                   </div>
-                  <div className="text-xs text-amber-600 dark:text-amber-300">%</div>
-                  <div className="mt-3 h-2 bg-amber-200 dark:bg-amber-800 rounded-full overflow-hidden">
+                  <div className="text-xs text-secondary">%</div>
+                  <div className="mt-3 h-2 bg-secondary rounded-full overflow-hidden border border-theme">
                     <div 
-                      className="h-full bg-amber-500 dark:bg-amber-400"
+                      className="h-full bg-accent"
                       style={{ width: `${selectedProduct.saturation || 0}%` }}
                     ></div>
                   </div>
@@ -638,7 +631,6 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-6 mb-8">
                 <div className="bg-secondary rounded-xl p-5">
                   <div className="flex items-center gap-3 mb-3">
-                    <FiDollarSign className="w-6 h-6 text-accent" />
                     <div>
                       <div className="text-sm font-semibold text-secondary mb-1">Prix de vente</div>
                       <div className="text-xl font-bold text-accent">
@@ -677,7 +669,7 @@ export default function ProductsPage() {
                     {selectedProduct.countries.map((country, idx) => (
                       <span
                         key={idx}
-                        className="px-4 py-2.5 bg-gradient-to-r from-accent to-accent/80 text-white rounded-xl text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
+                        className="px-4 py-2.5 bg-accent text-white rounded-xl text-sm font-medium shadow-sm hover:shadow-md transition-shadow"
                       >
                         {country}
                       </span>
@@ -692,7 +684,7 @@ export default function ProductsPage() {
                   href={selectedProduct.alibabaLink || `https://www.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${encodeURIComponent(selectedProduct.name)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+                  className="flex items-center justify-center gap-3 w-full px-6 py-4 bg-accent hover:bg-accent-hover text-white rounded-xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
                 >
                   <FiExternalLink className="w-5 h-5" />
                   <span>Rechercher sur Alibaba</span>
@@ -735,7 +727,7 @@ export default function ProductsPage() {
       {!canAccess && !authLoading && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
           <div className="bg-card rounded-2xl shadow-2xl p-8 max-w-md w-full">
-            <div className="w-20 h-20 bg-gradient-to-br from-accent to-accent/80 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <div className="w-20 h-20 bg-accent rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
               <FiLock className="w-10 h-10 text-white" />
             </div>
             <h2 className="text-2xl font-bold text-primary mb-4 text-center">
