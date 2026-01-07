@@ -71,9 +71,9 @@ export default function CoursesPage() {
   return (
     <div className="home-page">
       <div className="home-section-header">
-        <h1 className="home-section-title">📚 Tous les cours</h1>
+        <h1 className="home-section-title">🏠 Accueil</h1>
         <p className="home-section-subtitle">
-          Choisissez un cours pour commencer votre formation
+          Choisissez une formation pour lancer votre business e-commerce en Afrique
         </p>
       </div>
 

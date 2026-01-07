@@ -37,13 +37,14 @@ export default function HomePage() {
       {/* Hero Section */}
       <section className="home-hero">
         <div className="home-hero-content">
-          <div className="home-hero-badge">🚀 Plateforme de Formation Premium</div>
+          <div className="home-hero-badge">🚀 Ecom Starter - Votre Partenaire E-commerce en Afrique</div>
           <h1 className="home-hero-title">
-            Transformez votre <span className="home-hero-highlight">Expertise Digitale</span>
+            Lancez votre <span className="home-hero-highlight">Business E-commerce</span> en Afrique
           </h1>
           <p className="home-hero-subtitle">
-            Accédez à des formations complètes et pratiques pour maîtriser Facebook Ads, 
-            TikTok Ads et le e-commerce. Apprenez à votre rythme avec un accès illimité.
+            Formations complètes et pratiques pour réussir en e-commerce en Afrique. 
+            Maîtrisez Facebook Ads, TikTok Ads, la vente en ligne et tous les outils essentiels 
+            pour créer un business rentable et scalable.
           </p>
           <div className="home-hero-cta">
             <Link to="/cours" className="home-btn home-btn-primary">
@@ -83,58 +84,58 @@ export default function HomePage() {
       {/* Features Section */}
       <section className="home-features">
         <div className="home-section-header">
-          <h2 className="home-section-title">Pourquoi choisir notre plateforme ?</h2>
+          <h2 className="home-section-title">Tout ce qu'il faut pour réussir en e-commerce en Afrique</h2>
           <p className="home-section-subtitle">
-            Une expérience d'apprentissage complète et adaptée à vos besoins
+            Des formations adaptées au marché africain avec des stratégies qui fonctionnent réellement
           </p>
         </div>
         <div className="home-features-grid">
           <div className="home-feature-card">
-            <div className="home-feature-icon">🎓</div>
-            <h3 className="home-feature-title">Formations complètes</h3>
+            <div className="home-feature-icon">🎯</div>
+            <h3 className="home-feature-title">Publicité Facebook & TikTok</h3>
             <p className="home-feature-text">
-              Des cours structurés avec vidéos, ressources téléchargeables et exercices pratiques 
-              pour une maîtrise complète des sujets.
+              Maîtrisez les campagnes publicitaires sur Facebook et TikTok adaptées au marché africain. 
+              Apprenez à créer des annonces qui convertissent et génèrent des ventes.
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">💡</div>
-            <h3 className="home-feature-title">Méthodes éprouvées</h3>
+            <div className="home-feature-icon">🛒</div>
+            <h3 className="home-feature-title">Stratégies de vente en ligne</h3>
             <p className="home-feature-text">
-              Apprenez des stratégies testées et validées sur le marché africain, 
-              avec des résultats concrets et mesurables.
+              Découvrez les meilleures pratiques pour vendre en ligne en Afrique : 
+              choix des produits, pricing, gestion des commandes et service client.
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🔄</div>
-            <h3 className="home-feature-title">Mises à jour régulières</h3>
+            <div className="home-feature-icon">📦</div>
+            <h3 className="home-feature-title">Produits gagnants testés</h3>
             <p className="home-feature-text">
-              Accédez aux dernières tendances et mises à jour des plateformes publicitaires 
-              pour rester à jour avec les meilleures pratiques.
+              Accédez à notre liste exclusive de 50 produits gagnants testés et validés 
+              sur le marché africain. Des produits qui génèrent réellement des ventes.
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🤝</div>
-            <h3 className="home-feature-title">Support communautaire</h3>
+            <div className="home-feature-icon">💰</div>
+            <h3 className="home-feature-title">Monétisation & Scaling</h3>
             <p className="home-feature-text">
-              Rejoignez une communauté active d'apprenants et bénéficiez d'un support 
-              pour progresser ensemble.
+              Apprenez à optimiser vos marges, scaler vos campagnes et maximiser vos profits. 
+              Des méthodes concrètes pour faire croître votre business.
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">📱</div>
-            <h3 className="home-feature-title">Accessible partout</h3>
+            <div className="home-feature-icon">🌍</div>
+            <h3 className="home-feature-title">Spécifique marché africain</h3>
             <p className="home-feature-text">
-              Apprenez depuis votre ordinateur, tablette ou smartphone, 
-              où que vous soyez et quand vous le souhaitez.
+              Toutes nos formations sont adaptées aux réalités du marché africain : 
+              moyens de paiement locaux, logistique, réglementations et habitudes d'achat.
             </p>
           </div>
           <div className="home-feature-card">
-            <div className="home-feature-icon">🏆</div>
-            <h3 className="home-feature-title">Certification</h3>
+            <div className="home-feature-icon">🚀</div>
+            <h3 className="home-feature-title">Lancement rapide</h3>
             <p className="home-feature-text">
-              Obtenez une certification à la fin de chaque formation pour valoriser 
-              vos compétences sur le marché.
+              Des formations pratiques et actionnables pour lancer votre business e-commerce 
+              rapidement. Pas de théorie, que du concret et des résultats.
             </p>
           </div>
         </div>
@@ -205,10 +206,10 @@ export default function HomePage() {
       {/* CTA Section */}
       <section className="home-cta">
         <div className="home-cta-content">
-          <h2 className="home-cta-title">Prêt à transformer vos compétences ?</h2>
+          <h2 className="home-cta-title">Prêt à lancer votre business e-commerce en Afrique ?</h2>
           <p className="home-cta-text">
-            Rejoignez des centaines d'étudiants qui ont déjà transformé leur expertise digitale 
-            avec nos formations.
+            Rejoignez des centaines d'entrepreneurs qui ont déjà créé des business rentables 
+            en e-commerce grâce à nos formations adaptées au marché africain.
           </p>
           <div className="home-cta-buttons">
             <Link to="/cours" className="home-btn home-btn-primary home-btn-large">
