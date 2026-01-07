@@ -219,6 +219,7 @@ export default function HomePage() {
               </p>
             </div>
           </div>
+        </div>
       </section>
 
       {/* Testimonials Section */}
