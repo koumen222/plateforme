@@ -46,15 +46,9 @@ export default function HomePage() {
             TikTok Ads et le e-commerce. Apprenez à votre rythme avec un accès illimité.
           </p>
           <div className="home-hero-cta">
-            {!isAuthenticated ? (
-              <Link to="/login" className="home-btn home-btn-primary">
-                Commencer maintenant
-              </Link>
-            ) : (
-              <Link to="/cours" className="home-btn home-btn-primary">
-                Accéder à mes cours
-              </Link>
-            )}
+            <Link to="/cours" className="home-btn home-btn-primary">
+              Commencer maintenant
+            </Link>
             <Link to="/produits-gagnants" className="home-btn home-btn-secondary">
               Voir les produits gagnants
             </Link>
@@ -217,15 +211,9 @@ export default function HomePage() {
             avec nos formations.
           </p>
           <div className="home-cta-buttons">
-            {!isAuthenticated ? (
-              <Link to="/login" className="home-btn home-btn-primary home-btn-large">
-                Commencer maintenant
-              </Link>
-            ) : (
-              <Link to="/cours" className="home-btn home-btn-primary home-btn-large">
-                Accéder à mes cours
-              </Link>
-            )}
+            <Link to="/cours" className="home-btn home-btn-primary home-btn-large">
+              Commencer maintenant
+            </Link>
           </div>
         </div>
       </section>
