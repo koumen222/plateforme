@@ -79,81 +79,13 @@ export default function VideoPlayer({ video, title }) {
         </h3>
       )}
       <div className={`video-wrapper ${!canWatchVideo ? 'video-locked' : 'video-unlocked'}`}>
-        {!canWatchVideo ? (
-          <div className="video-lock-overlay">
-            <div className="video-lock-content">
-              <div className="video-lock-icon">🔒</div>
-              <h3>{lockInfo.title}</h3>
-              <p>{lockInfo.message}</p>
-              <div className="video-lock-actions" style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1rem',
-                alignItems: 'center',
-                width: '100%',
-                maxWidth: '400px'
-              }}>
-                {lockInfo.showPayment && user && (
-                  <>
-                    <SubscriptionButton
-                      onSuccess={() => {
-                        console.log('Paiement abonnement initié avec succès')
-                      }}
-                      onError={(error) => {
-                        console.error('Erreur paiement abonnement:', error)
-                      }}
-                    />
-                    <div style={{ 
-                      fontSize: '0.9rem', 
-                      color: 'var(--text-secondary)',
-                      margin: '0.5rem 0'
-                    }}>
-                      ou
-                    </div>
-                    <a
-                      href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        padding: '0.75rem 1.5rem',
-                        fontSize: '1rem',
-                        fontWeight: 'bold',
-                        color: '#fff',
-                        backgroundColor: '#25D366',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        textDecoration: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        transition: 'background-color 0.2s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                        width: '100%',
-                        justifyContent: 'center'
-                      }}
-                      onMouseOver={(e) => {
-                        e.target.style.backgroundColor = '#20BA5A'
-                      }}
-                      onMouseOut={(e) => {
-                        e.target.style.backgroundColor = '#25D366'
-                      }}
-                    >
-                      <span>💬</span>
-                      <span>Contacter sur WhatsApp</span>
-                    </a>
-                  </>
-                )}
-                {!lockInfo.showPayment && (
-                  <button onClick={handleUnlockClick} className="video-unlock-btn">
-                    {lockInfo.button}
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        ) : (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div style={{ 
+          position: 'relative', 
+          width: '100%', 
+          height: '100%',
+          filter: !canWatchVideo ? 'blur(8px)' : 'none',
+          pointerEvents: !canWatchVideo ? 'none' : 'auto'
+        }}>
           <iframe
             src={url}
             frameBorder="0"
@@ -176,9 +108,129 @@ export default function VideoPlayer({ video, title }) {
             playsInline
             webkit-playsinline="true"
           ></iframe>
+          {!canWatchVideo && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              color: 'white',
+              zIndex: 10,
+              pointerEvents: 'none'
+            }}>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
+              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Vidéo en attente de validation</h3>
+              <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Abonnez-vous pour débloquer cette vidéo</p>
+            </div>
+          )}
         </div>
-        )}
       </div>
+      
+      {/* Éléments d'abonnement en bas */}
+      {!canWatchVideo && (
+        <div style={{
+          marginTop: '2rem',
+          padding: '1.5rem',
+          background: 'var(--bg-card)',
+          borderRadius: '12px',
+          border: '1px solid var(--border)'
+        }}>
+          <div style={{
+            textAlign: 'center',
+            marginBottom: '1.5rem'
+          }}>
+            <h3 style={{ 
+              fontSize: '1.25rem', 
+              marginBottom: '0.5rem',
+              color: 'var(--text-primary)'
+            }}>
+              {lockInfo.title}
+            </h3>
+            <p style={{ 
+              color: 'var(--text-secondary)',
+              fontSize: '0.95rem'
+            }}>
+              {lockInfo.message}
+            </p>
+          </div>
+          
+          {lockInfo.showPayment && user ? (
+            <>
+              <SubscriptionButton
+                onSuccess={() => {
+                  console.log('Paiement abonnement initié avec succès')
+                }}
+                onError={(error) => {
+                  console.error('Erreur paiement abonnement:', error)
+                }}
+              />
+              <div style={{ 
+                fontSize: '0.9rem', 
+                color: 'var(--text-secondary)',
+                margin: '1rem 0',
+                textAlign: 'center'
+              }}>
+                ou
+              </div>
+              <a
+                href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(CONFIG.WHATSAPP_MESSAGE)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  padding: '0.75rem 1.5rem',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  color: '#fff',
+                  backgroundColor: '#25D366',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem',
+                  transition: 'background-color 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                  width: '100%',
+                  maxWidth: '400px',
+                  margin: '0 auto'
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.backgroundColor = '#20BA5A'
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.backgroundColor = '#25D366'
+                }}
+              >
+                <span>💬</span>
+                <span>Contacter sur WhatsApp</span>
+              </a>
+            </>
+          ) : !lockInfo.showPayment ? (
+            <div style={{ textAlign: 'center' }}>
+              <button 
+                onClick={handleUnlockClick} 
+                className="video-unlock-btn"
+                style={{
+                  padding: '0.75rem 2rem',
+                  fontSize: '1rem',
+                  fontWeight: 'bold',
+                  backgroundColor: 'var(--accent)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s'
+                }}
+              >
+                {lockInfo.button}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }
