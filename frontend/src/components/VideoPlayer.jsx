@@ -134,11 +134,12 @@ export default function VideoPlayer({ video, title }) {
               color: 'white',
               zIndex: 10,
               pointerEvents: 'none',
-              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)'
+              textShadow: '0 2px 8px rgba(0, 0, 0, 0.8)',
+              padding: '1rem'
             }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⏳</div>
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Vidéo en attente de validation</h3>
-              <p style={{ fontSize: '0.9rem', opacity: 0.9 }}>Cliquez pour voir les options d'abonnement</p>
+              <h3 style={{ fontSize: '1.5rem', marginBottom: '0.5rem', fontWeight: '600' }}>Vidéo en attente de validation</h3>
+              <p style={{ fontSize: '1rem', opacity: 0.95 }}>Abonnez-vous pour débloquer cette vidéo</p>
             </div>
           )}
         </div>
