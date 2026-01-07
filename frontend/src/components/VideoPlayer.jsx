@@ -55,7 +55,13 @@ export default function VideoPlayer({ video, title }) {
   return (
     <div className="video-container">
       {title && (
-        <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)' }}>
+        <h3 style={{ 
+          marginBottom: '1rem', 
+          fontSize: 'clamp(1rem, 4vw, 1.25rem)', 
+          color: 'var(--text-primary)',
+          lineHeight: '1.4',
+          wordBreak: 'break-word'
+        }}>
           {title}
         </h3>
       )}
@@ -136,24 +142,30 @@ export default function VideoPlayer({ video, title }) {
             </div>
           </div>
         ) : (
-        <iframe
-          src={url}
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          title={title || 'Video player'}
-          style={{
-            width: '100%',
-            height: '100%',
-            minHeight: '400px'
-          }}
-          onLoad={() => {
-            console.log('✅ Vidéo chargée avec succès:', url)
-          }}
-          onError={(e) => {
-            console.error('❌ Erreur chargement vidéo:', url)
-          }}
-        ></iframe>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+          <iframe
+            src={url}
+            frameBorder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            title={title || 'Video player'}
+            style={{
+              width: '100%',
+              height: '100%',
+              minHeight: '200px',
+              border: 'none',
+              display: 'block'
+            }}
+            onLoad={() => {
+              console.log('✅ Vidéo chargée avec succès:', url)
+            }}
+            onError={(e) => {
+              console.error('❌ Erreur chargement vidéo:', url)
+            }}
+            playsInline
+            webkit-playsinline="true"
+          ></iframe>
+        </div>
         )}
       </div>
     </div>
