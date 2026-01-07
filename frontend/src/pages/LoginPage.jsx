@@ -26,8 +26,8 @@ export default function LoginPage() {
       setIsLogin(false)
     }
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/'
-      navigate(from, { replace: true })
+      // Toujours rediriger vers la page d'accueil après connexion
+      navigate('/', { replace: true })
     }
   }, [isAuthenticated, navigate, location])
 
