@@ -260,12 +260,18 @@ export default function LessonPage({ lesson }) {
       // Marquer comme complété avant de passer à la suivante
       markAsCompleted().then(() => {
         if (nextLesson) {
-          const nextPath = nextLesson.path || (nextLesson._id ? `/course/facebook-ads/lesson/${nextLesson._id}` : '')
+          // Déterminer le slug du cours depuis le pathname
+          const pathParts = window.location.pathname.split('/')
+          const courseSlug = pathParts[2] || 'facebook-ads'
+          const nextPath = nextLesson.path || (nextLesson._id ? `/course/${courseSlug}/lesson/${nextLesson._id}` : '')
           if (nextPath) navigate(nextPath)
         }
       })
     } else if (nextLesson) {
-      const nextPath = nextLesson.path || (nextLesson._id ? `/course/facebook-ads/lesson/${nextLesson._id}` : '')
+      // Déterminer le slug du cours depuis le pathname
+      const pathParts = window.location.pathname.split('/')
+      const courseSlug = pathParts[2] || 'facebook-ads'
+      const nextPath = nextLesson.path || (nextLesson._id ? `/course/${courseSlug}/lesson/${nextLesson._id}` : '')
       if (nextPath) navigate(nextPath)
     }
   }
@@ -571,9 +577,13 @@ export default function LessonPage({ lesson }) {
 
       {/* Navigation */}
       <div className="lesson-navigation">
-        {prevLesson && (
+        {prevLesson && (() => {
+          // Déterminer le slug du cours depuis le pathname
+          const pathParts = window.location.pathname.split('/')
+          const courseSlug = pathParts[2] || 'facebook-ads'
+          return (
           <Link 
-            to={prevLesson.path || (prevLesson._id ? `/course/facebook-ads/lesson/${prevLesson._id}` : '#')} 
+            to={prevLesson.path || (prevLesson._id ? `/course/${courseSlug}/lesson/${prevLesson._id}` : '#')} 
             className="lesson-nav-btn lesson-nav-prev"
           >
             ← Leçon précédente
