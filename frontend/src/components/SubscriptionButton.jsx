@@ -117,6 +117,41 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               <>💳 S'abonner mensuel</>
             )}
           </button>
+          <a
+            href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(`Bonjour, je souhaite payer pour l'abonnement mensuel de ${CONFIG.SUBSCRIPTION_MONTHLY.toLocaleString('fr-FR')} FCFA.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              color: '#fff',
+              backgroundColor: '#25D366',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'background-color 0.2s, transform 0.2s',
+              boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)',
+              marginTop: '0.75rem',
+              width: '100%'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#20BA5A'
+              e.target.style.transform = 'translateY(-2px)'
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#25D366'
+              e.target.style.transform = 'translateY(0)'
+            }}
+          >
+            <span>💬</span>
+            <span>Payer via WhatsApp</span>
+          </a>
         </div>
 
         <div className="subscription-plan-card subscription-plan-featured">
@@ -150,6 +185,41 @@ export default function SubscriptionButton({ onSuccess, onError }) {
               <>💳 S'abonner annuel</>
             )}
           </button>
+          <a
+            href={`https://wa.me/${CONFIG.MORGAN_PHONE}?text=${encodeURIComponent(`Bonjour, je souhaite payer pour l'abonnement annuel de ${CONFIG.SUBSCRIPTION_YEARLY.toLocaleString('fr-FR')} FCFA.`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              fontSize: '0.95rem',
+              fontWeight: '600',
+              color: '#fff',
+              backgroundColor: '#25D366',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'background-color 0.2s, transform 0.2s',
+              boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)',
+              marginTop: '0.75rem',
+              width: '100%'
+            }}
+            onMouseOver={(e) => {
+              e.target.style.backgroundColor = '#20BA5A'
+              e.target.style.transform = 'translateY(-2px)'
+            }}
+            onMouseOut={(e) => {
+              e.target.style.backgroundColor = '#25D366'
+              e.target.style.transform = 'translateY(0)'
+            }}
+          >
+            <span>💬</span>
+            <span>Payer via WhatsApp</span>
+          </a>
         </div>
       </div>
     </div>

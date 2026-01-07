@@ -441,11 +441,12 @@ export default function LessonPage({ lesson }) {
       </header>
 
       {/* Videos - Protégées par authentification */}
+      {/* La première vidéo est toujours accessible */}
       {lesson.video && (
-        <ProtectedVideo video={lesson.video} />
+        <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} />
       )}
       {lesson.videos && lesson.videos.map((video, idx) => (
-        <ProtectedVideo key={idx} video={video} title={video.title} />
+        <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} />
       ))}
 
       {/* Summary */}

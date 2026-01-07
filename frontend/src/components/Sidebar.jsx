@@ -25,7 +25,34 @@ export default function Sidebar() {
   const [loadingCourse, setLoadingCourse] = useState(true)
   const lastLoadedSlug = useRef(null)
 
-  const toggleMenu = () => setIsOpen(!isOpen)
+  const toggleMenu = () => {
+    const newState = !isOpen
+    setIsOpen(newState)
+    if (newState) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+  }
+
+  // Fermer le menu au clic en dehors
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (isOpen && window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar')
+        const toggleBtn = document.querySelector('.mobile-menu-toggle')
+        if (sidebar && !sidebar.contains(event.target) && toggleBtn && !toggleBtn.contains(event.target)) {
+          setIsOpen(false)
+          document.body.style.overflow = ''
+        }
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
 
   const fetchProgress = useCallback(async () => {
     if (!token || user?.status !== 'active') {
@@ -210,7 +237,10 @@ export default function Sidebar() {
             </div>
             <button 
               className="sidebar-close-btn"
-              onClick={() => setIsOpen(false)}
+              onClick={() => {
+                setIsOpen(false)
+                document.body.style.overflow = ''
+              }}
               aria-label="Fermer le menu"
             >
               ✕
@@ -232,7 +262,10 @@ export default function Sidebar() {
                     <Link
                       to={lessonPath}
                       className={isActive ? 'active' : ''}
-                      onClick={() => setIsOpen(false)}
+                      onClick={() => {
+                        setIsOpen(false)
+                        document.body.style.overflow = ''
+                      }}
                     >
                       <span className="lesson-number">{index + 1}</span>
                       {lesson.title}

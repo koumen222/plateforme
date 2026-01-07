@@ -4,7 +4,7 @@ import VideoPlayer from './VideoPlayer'
 import SubscriptionButton from './SubscriptionButton'
 import { CONFIG } from '../config/config'
 
-export default function ProtectedVideo({ video, title }) {
+export default function ProtectedVideo({ video, title, isFirstVideo = false }) {
   const { isAuthenticated, user, loading } = useAuth()
   const navigate = useNavigate()
 
@@ -26,8 +26,8 @@ export default function ProtectedVideo({ video, title }) {
     )
   }
 
-  // Si pas authentifié, afficher un message avec bouton pour s'inscrire
-  if (!isAuthenticated || !user) {
+  // Si pas authentifié et pas première vidéo, afficher un message avec bouton pour s'inscrire
+  if (!isFirstVideo && (!isAuthenticated || !user)) {
     return (
       <div style={{
         display: 'flex',
@@ -95,6 +95,7 @@ export default function ProtectedVideo({ video, title }) {
   }
 
   // Toujours afficher la vidéo (VideoPlayer gère l'affichage flouté et les éléments d'abonnement)
-  return <VideoPlayer video={video} title={title} />
+  // La première vidéo est toujours accessible
+  return <VideoPlayer video={video} title={title} isFirstVideo={isFirstVideo} />
 }
 

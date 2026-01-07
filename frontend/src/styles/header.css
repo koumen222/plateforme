@@ -282,6 +282,27 @@
   transition: all 0.2s;
 }
 
+/* Mobile Menu Overlay */
+.mobile-menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
 /* Mobile Menu */
 .mobile-menu {
   display: none;
@@ -289,6 +310,8 @@
   padding: 1rem;
   border-top: 1px solid var(--border);
   background: var(--bg-secondary);
+  position: relative;
+  z-index: 999;
 }
 
 .mobile-menu-item {

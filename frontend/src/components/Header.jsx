@@ -116,7 +116,15 @@ export default function Header() {
 
           <button
             className="mobile-menu-toggle"
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            onClick={() => {
+              setShowMobileMenu(!showMobileMenu)
+              if (!showMobileMenu) {
+                document.body.style.overflow = 'hidden'
+              } else {
+                document.body.style.overflow = ''
+              }
+            }}
+            aria-label="Menu mobile"
           >
             <span></span>
             <span></span>
@@ -126,32 +134,65 @@ export default function Header() {
       </div>
 
       {showMobileMenu && (
-        <div className="mobile-menu">
-          <Link to="/" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+        <>
+          <div 
+            className="mobile-menu-overlay"
+            onClick={() => {
+              setShowMobileMenu(false)
+              document.body.style.overflow = ''
+            }}
+          />
+          <div className="mobile-menu">
+          <Link to="/" className="mobile-menu-item" onClick={() => {
+            setShowMobileMenu(false)
+            document.body.style.overflow = ''
+          }}>
+            Accueil
+          </Link>
+          <Link to="/cours" className="mobile-menu-item" onClick={() => {
+            setShowMobileMenu(false)
+            document.body.style.overflow = ''
+          }}>
             Cours
           </Link>
-          <Link to="/produits-gagnants" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+          <Link to="/produits-gagnants" className="mobile-menu-item" onClick={() => {
+            setShowMobileMenu(false)
+            document.body.style.overflow = ''
+          }}>
             Produits Gagnants
           </Link>
-          <Link to="/generateur-pub" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+          <Link to="/generateur-pub" className="mobile-menu-item" onClick={() => {
+            setShowMobileMenu(false)
+            document.body.style.overflow = ''
+          }}>
             Générateur de Pub
           </Link>
-          <Link to="/communaute" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+          <Link to="/communaute" className="mobile-menu-item" onClick={() => {
+            setShowMobileMenu(false)
+            document.body.style.overflow = ''
+          }}>
             Communauté
           </Link>
           {isAuthenticated && (
             <>
               <div className="mobile-menu-divider" />
-              <Link to="/profil" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+              <Link to="/profil" className="mobile-menu-item" onClick={() => {
+                setShowMobileMenu(false)
+                document.body.style.overflow = ''
+              }}>
                 Mon profil
               </Link>
-              <Link to="/commentaires" className="mobile-menu-item" onClick={() => setShowMobileMenu(false)}>
+              <Link to="/commentaires" className="mobile-menu-item" onClick={() => {
+                setShowMobileMenu(false)
+                document.body.style.overflow = ''
+              }}>
                 Mes commentaires
               </Link>
               <button 
                 onClick={() => {
-                  handleLogout()
                   setShowMobileMenu(false)
+                  document.body.style.overflow = ''
+                  handleLogout()
                 }}
                 className="mobile-menu-item logout"
               >
@@ -160,6 +201,7 @@ export default function Header() {
             </>
           )}
         </div>
+        </>
       )}
     </header>
   )
