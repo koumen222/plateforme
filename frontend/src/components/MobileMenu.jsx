@@ -59,6 +59,13 @@ export default function MobileMenu({ isOpen, onClose }) {
                 Cours
               </Link>
               <Link
+                to="/ressources-pdf"
+                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
+                onClick={onClose}
+              >
+                Ressources PDF
+              </Link>
+              <Link
                 to="/produits-gagnants"
                 className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}

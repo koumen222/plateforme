@@ -14,6 +14,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
+import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
@@ -24,6 +25,7 @@ import PaymentFailedPage from './pages/PaymentFailedPage'
 import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
 import CoursesPage from './pages/CoursesPage'
+import RessourcesPdfPage from './pages/RessourcesPdfPage'
 import CourseRouter from './pages/CourseRouter'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
@@ -72,6 +74,7 @@ function App() {
           <Route path="/" element={<PlatformLayout><HomePage /></PlatformLayout>} />
           <Route path="/home" element={<PlatformLayout><HomePage /></PlatformLayout>} />
           <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
+          <Route path="/ressources-pdf" element={<PlatformLayout><RessourcesPdfPage /></PlatformLayout>} />
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
@@ -105,6 +108,7 @@ function App() {
           <Route path="/admin/*" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
+            <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
             <Route path="settings" element={<div className="admin-page-header"><h1>Paramètres</h1><p>Page de paramètres à venir</p></div>} />

@@ -4,15 +4,19 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { getImageUrl } from '../utils/imageUtils'
 import axios from 'axios'
+import { FiBook, FiDownload } from 'react-icons/fi'
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
   const [courses, setCourses] = useState([])
+  const [ressourcesPdf, setRessourcesPdf] = useState([])
   const [loading, setLoading] = useState(false)
+  const [ressourcesPdfLoading, setRessourcesPdfLoading] = useState(false)
 
   useEffect(() => {
     // Charger toutes les formations pour la page d'accueil
     fetchFeaturedCourses()
+    fetchFeaturedRessourcesPdf()
   }, [])
 
   const fetchFeaturedCourses = async () => {
@@ -53,6 +57,23 @@ export default function HomePage() {
       }
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchFeaturedRessourcesPdf = async () => {
+    try {
+      setRessourcesPdfLoading(true)
+      const response = await axios.get(`${CONFIG.BACKEND_URL}/api/ressources-pdf`)
+      
+      if (response.data.success) {
+        // Limiter à 3 ressources PDF pour la page d'accueil
+        const ressourcesPdfData = (response.data.ressourcesPdf || []).slice(0, 3)
+        setRessourcesPdf(ressourcesPdfData)
+      }
+    } catch (err) {
+      console.error('❌ Erreur chargement ressources PDF:', err)
+    } finally {
+      setRessourcesPdfLoading(false)
     }
   }
 
@@ -417,6 +438,102 @@ export default function HomePage() {
           )}
         </div>
       </section>
+
+      {/* Featured Ressources PDF Section */}
+      {ressourcesPdf.length > 0 && (
+        <section className="py-8 sm:py-12 md:py-16 bg-secondary w-full overflow-x-hidden">
+          <div className="container-startup w-full max-w-full">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-accent/20 to-accent/10 mb-4">
+                <FiBook className="w-8 h-8 text-accent" />
+              </div>
+              <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
+                Ressources PDF
+              </h2>
+              <p className="text-lg text-secondary max-w-2xl mx-auto">
+                Téléchargez nos guides pratiques et ressources pour approfondir vos connaissances
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 px-2 sm:px-0">
+              {ressourcesPdf.map((ressourcePdf) => (
+                <div
+                  key={ressourcePdf._id}
+                  className="bg-card border border-theme rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group"
+                >
+                  {/* Image de couverture */}
+                  <div className="relative h-48 sm:h-52 md:h-56 overflow-hidden bg-gradient-to-br from-accent/10 to-accent/5">
+                    {ressourcePdf.coverImage ? (
+                      <img
+                        src={ressourcePdf.coverImage}
+                        alt={ressourcePdf.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = '/img/ressource-pdf-default.png'
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <FiBook className="w-16 h-16 text-accent/30" />
+                      </div>
+                    )}
+                    {ressourcePdf.isFree && (
+                      <div className="absolute top-3 right-3 bg-accent text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                        Gratuit
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Contenu */}
+                  <div className="p-4 sm:p-5 md:p-6">
+                    {ressourcePdf.category && (
+                      <div className="mb-2">
+                        <span className="text-xs font-medium text-accent uppercase tracking-wider">
+                          {ressourcePdf.category}
+                        </span>
+                      </div>
+                    )}
+                    <h3 className="text-base sm:text-lg md:text-xl font-bold text-primary mb-2 sm:mb-3 group-hover:text-accent transition-colors duration-300 line-clamp-2">
+                      {ressourcePdf.title}
+                    </h3>
+                    {ressourcePdf.description && (
+                      <p className="text-sm sm:text-base text-secondary mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed">
+                        {ressourcePdf.description}
+                      </p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      {!ressourcePdf.isFree && ressourcePdf.price > 0 ? (
+                        <span className="text-lg font-bold text-accent">
+                          {ressourcePdf.price.toLocaleString('fr-FR')} FCFA
+                        </span>
+                      ) : (
+                        <span className="text-sm text-secondary">
+                          {ressourcePdf.pages > 0 && `${ressourcePdf.pages} pages`}
+                        </span>
+                      )}
+                      <Link
+                        to="/ressources-pdf"
+                        className="btn-primary inline-flex items-center gap-2 text-sm px-4 py-2"
+                      >
+                        <FiDownload className="w-4 h-4" />
+                        Voir
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="text-center mt-8">
+              <Link
+                to="/ressources-pdf"
+                className="btn-secondary inline-flex items-center gap-2"
+              >
+                <FiBook className="w-5 h-5" />
+                Voir toutes les ressources PDF
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* CTA Section */}
       <section className="py-16 bg-accent text-white relative overflow-hidden w-full">

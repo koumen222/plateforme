@@ -2,12 +2,13 @@ import express from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
-import { uploadCourseImage, getImagePublicPath } from '../middleware/upload.js';
+import { uploadCourseImage, getImagePublicPath, uploadPdf, getPdfPublicPath } from '../middleware/upload.js';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
 import Module from '../models/Module.js';
 import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
+import RessourcePdf from '../models/RessourcePdf.js';
 
 const router = express.Router();
 
@@ -818,6 +819,196 @@ router.delete('/comments/:id', async (req, res) => {
   } catch (error) {
     console.error('Erreur suppression commentaire:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression du commentaire' });
+  }
+});
+
+// ============================================
+// Routes pour les Ressources PDF
+// ============================================
+
+// IMPORTANT: Les routes GET doivent être définies AVANT les routes POST avec upload
+// GET /api/admin/ressources-pdf - Récupérer toutes les ressources PDF
+router.get('/ressources-pdf', async (req, res) => {
+  try {
+    console.log('📥 GET /api/admin/ressources-pdf appelé');
+    const ressourcesPdf = await RessourcePdf.find().sort({ createdAt: -1 });
+    console.log(`✅ ${ressourcesPdf.length} ressources PDF trouvées`);
+    res.json({
+      success: true,
+      ressourcesPdf
+    });
+  } catch (error) {
+    console.error('Erreur récupération ressources PDF:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des ressources PDF' });
+  }
+});
+
+// POST /api/admin/upload/pdf - Upload d'un fichier PDF
+// IMPORTANT: Cette route doit être définie AVANT les routes avec paramètres dynamiques comme /:id
+router.post('/upload/pdf', (req, res, next) => {
+  uploadPdf.single('pdf')(req, res, (err) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ error: 'Le fichier est trop volumineux (max 50MB)' });
+        }
+        return res.status(400).json({ error: `Erreur upload: ${err.message}` });
+      }
+      return res.status(400).json({ error: err.message || 'Erreur lors de l\'upload' });
+    }
+    
+    try {
+      console.log('📤 Route upload PDF appelée - /upload/pdf');
+      console.log('   Method:', req.method);
+      console.log('   Original URL:', req.originalUrl);
+      console.log('   Content-Type:', req.headers['content-type']);
+      
+      if (!req.file) {
+        return res.status(400).json({ error: 'Aucun fichier PDF uploadé' });
+      }
+
+      const pdfPath = getPdfPublicPath(req.file.filename);
+      
+      console.log('✅ PDF uploadé avec succès');
+      console.log('   - Nom du fichier:', req.file.filename);
+      console.log('   - Chemin complet sur le serveur:', req.file.path);
+      console.log('   - Taille:', (req.file.size / 1024 / 1024).toFixed(2), 'MB');
+      console.log('   - Type MIME:', req.file.mimetype);
+      console.log('   - Chemin public (URL):', pdfPath);
+      
+      res.json({
+        success: true,
+        message: 'PDF uploadé avec succès',
+        pdfPath: pdfPath,
+        filename: req.file.filename,
+        filePath: req.file.path,
+        size: req.file.size,
+        mimetype: req.file.mimetype
+      });
+    } catch (error) {
+      console.error('Erreur upload PDF:', error);
+      res.status(500).json({ error: 'Erreur lors de l\'upload du PDF' });
+    }
+  });
+});
+
+// POST /api/admin/ressources-pdf - Créer une nouvelle ressource PDF
+router.post('/ressources-pdf', async (req, res) => {
+  try {
+    const {
+      title,
+      description,
+      coverImage,
+      pdfUrl,
+      slug,
+      category,
+      author,
+      pages,
+      price,
+      isFree,
+      isPublished
+    } = req.body;
+
+    // Validation
+    if (!title) {
+      return res.status(400).json({ error: 'Titre de la ressource PDF requis' });
+    }
+
+    if (!slug) {
+      return res.status(400).json({ error: 'Slug de la ressource PDF requis' });
+    }
+
+    if (!pdfUrl) {
+      return res.status(400).json({ error: 'URL du PDF requise' });
+    }
+
+    // Vérifier que le slug est unique
+    const existingRessourcePdf = await RessourcePdf.findOne({ slug: slug.toLowerCase() });
+    if (existingRessourcePdf) {
+      return res.status(400).json({ error: 'Ce slug est déjà utilisé' });
+    }
+
+    const ressourcePdf = new RessourcePdf({
+      title: title.trim(),
+      description: description?.trim() || '',
+      coverImage: coverImage?.trim() || '/img/ressource-pdf-default.png',
+      pdfUrl: pdfUrl.trim(),
+      slug: slug.toLowerCase().trim(),
+      category: category?.trim() || 'Général',
+      author: author?.trim() || 'Ecom Starter',
+      pages: pages || 0,
+      price: price || 0,
+      isFree: isFree !== undefined ? isFree : (price === 0 || !price),
+      isPublished: isPublished !== undefined ? isPublished : false
+    });
+
+    await ressourcePdf.save();
+
+    res.json({
+      success: true,
+      message: 'Ressource PDF créée avec succès',
+      ressourcePdf
+    });
+  } catch (error) {
+    console.error('Erreur création ressource PDF:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de la ressource PDF', details: error.message });
+  }
+});
+
+// PUT /api/admin/ressources-pdf/:id - Mettre à jour une ressource PDF
+router.put('/ressources-pdf/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    const ressourcePdf = await RessourcePdf.findById(id);
+    if (!ressourcePdf) {
+      return res.status(404).json({ error: 'Ressource PDF non trouvée' });
+    }
+
+    // Mettre à jour les champs fournis
+    Object.keys(updateData).forEach(key => {
+      if (updateData[key] !== undefined) {
+        if (key === 'slug') {
+          ressourcePdf[key] = updateData[key].toLowerCase().trim();
+        } else if (key === 'title' || key === 'description' || key === 'category' || key === 'author') {
+          ressourcePdf[key] = updateData[key].trim();
+        } else {
+          ressourcePdf[key] = updateData[key];
+        }
+      }
+    });
+
+    await ressourcePdf.save();
+
+    res.json({
+      success: true,
+      message: 'Ressource PDF mise à jour avec succès',
+      ressourcePdf
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour ressource PDF:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la ressource PDF', details: error.message });
+  }
+});
+
+// DELETE /api/admin/ressources-pdf/:id - Supprimer une ressource PDF
+router.delete('/ressources-pdf/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const ressourcePdf = await RessourcePdf.findByIdAndDelete(id);
+    if (!ressourcePdf) {
+      return res.status(404).json({ error: 'Ressource PDF non trouvée' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Ressource PDF supprimée avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur suppression ressource PDF:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la ressource PDF' });
   }
 });
 

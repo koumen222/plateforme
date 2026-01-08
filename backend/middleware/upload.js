@@ -55,3 +55,54 @@ export const getImagePublicPath = (filename) => {
   return `/uploads/courses/${filename}`;
 };
 
+// Créer le dossier uploads/pdf s'il n'existe pas
+const pdfUploadsDir = path.join(__dirname, '..', 'uploads', 'pdf');
+if (!fs.existsSync(pdfUploadsDir)) {
+  fs.mkdirSync(pdfUploadsDir, { recursive: true });
+  console.log('📁 Dossier uploads/pdf créé:', pdfUploadsDir);
+} else {
+  console.log('📁 Dossier uploads/pdf existe déjà:', pdfUploadsDir);
+}
+
+// Configuration du stockage pour les PDF
+const pdfStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, pdfUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    // Générer un nom de fichier unique avec timestamp
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    // Nettoyer le nom du fichier (supprimer les espaces et caractères spéciaux)
+    const cleanName = file.originalname.replace(/[^a-zA-Z0-9.-]/g, '_');
+    cb(null, `pdf-${uniqueSuffix}-${cleanName}`);
+  }
+});
+
+// Filtre pour n'accepter que les PDF
+const pdfFileFilter = (req, file, cb) => {
+  const allowedTypes = /pdf/;
+  const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+  const mimetype = file.mimetype === 'application/pdf';
+
+  if (mimetype && extname) {
+    return cb(null, true);
+  } else {
+    cb(new Error('Seuls les fichiers PDF sont autorisés'));
+  }
+};
+
+// Configuration multer pour les PDF
+export const uploadPdf = multer({
+  storage: pdfStorage,
+  limits: {
+    fileSize: 50 * 1024 * 1024 // 50MB max pour les PDF
+  },
+  fileFilter: pdfFileFilter
+});
+
+// Fonction pour obtenir le chemin public du PDF
+export const getPdfPublicPath = (filename) => {
+  return `/uploads/pdf/${filename}`;
+};
+

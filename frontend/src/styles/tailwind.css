@@ -902,6 +902,72 @@
     color: var(--text-secondary);
   }
 
+  /* ============================================
+     ADMIN - Ressources PDF
+     ============================================ */
+  .admin-ressources-pdf-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6;
+  }
+
+  .admin-ressource-pdf-card {
+    @apply rounded-xl border p-6 transition-all duration-200;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+  }
+
+  .admin-ressource-pdf-card:hover {
+    @apply shadow-md;
+    border-color: var(--accent);
+  }
+
+  .admin-ressource-pdf-card-header {
+    @apply flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4;
+  }
+
+  .admin-ressource-pdf-card-title {
+    @apply flex-1;
+  }
+
+  .admin-ressource-pdf-card-title h3 {
+    @apply text-lg font-bold mb-2;
+    color: var(--text-primary);
+  }
+
+  .admin-ressource-pdf-card-content {
+    @apply space-y-4;
+  }
+
+  .admin-ressource-pdf-cover {
+    @apply w-full h-48 object-cover rounded-lg;
+    border: 1px solid var(--border);
+  }
+
+  .admin-ressource-pdf-info {
+    @apply space-y-2;
+  }
+
+  .admin-ressource-pdf-meta {
+    @apply flex flex-col gap-1 text-sm;
+    color: var(--text-secondary);
+  }
+
+  .admin-ressource-pdf-meta span {
+    @apply flex items-center gap-2;
+  }
+
+  .admin-file-input {
+    @apply w-full px-4 py-2 border rounded-lg;
+    background-color: var(--bg-card);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .admin-file-input:focus {
+    @apply outline-none ring-2;
+    ring-color: var(--accent);
+    border-color: var(--accent);
+  }
+
   .admin-course-meta {
     @apply flex items-center gap-4 text-xs;
     color: var(--text-secondary);

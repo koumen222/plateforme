@@ -90,6 +90,16 @@ export default function Header() {
                 Cours
               </Link>
               <Link 
+                to="/ressources-pdf" 
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  isActive('/ressources-pdf') 
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
+                }`}
+              >
+                Ressources PDF
+              </Link>
+              <Link 
                 to="/produits-gagnants" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/produits-gagnants') 

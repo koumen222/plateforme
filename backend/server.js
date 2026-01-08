@@ -30,6 +30,7 @@ import authRoutes from "./routes/auth.js";
 import videoRoutes from "./routes/videos.js";
 import adminRoutes from "./routes/admin.js";
 import coursesRoutes from "./routes/courses.js";
+import ressourcesPdfRoutes from "./routes/ressources-pdf.js";
 import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
 import paymentRoutes from "./routes/payment.js";
@@ -65,9 +66,10 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-// Servir les fichiers statiques (images uploadées)
+// Servir les fichiers statiques (images uploadées et PDF)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 console.log('📁 Dossier uploads configuré: /uploads');
+console.log('📁 Dossier uploads/pdf configuré: /uploads/pdf');
 
 // Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
 app.set("trust proxy", 1);
@@ -206,6 +208,12 @@ app.use("/api", videoRoutes);
 // Routes cours (publiques et protégées)
 app.use("/api/courses", coursesRoutes);
 
+// Routes ressources PDF (publiques)
+app.use("/api/ressources-pdf", ressourcesPdfRoutes);
+console.log('✅ Routes ressources PDF chargées:');
+console.log('   - GET /api/ressources-pdf');
+console.log('   - GET /api/ressources-pdf/:slug');
+
 // Routes progression (protégées)
 app.use("/api/progress", progressRoutes);
 
@@ -221,6 +229,11 @@ console.log('   - GET /api/success-radar');
 app.use("/api/admin", adminRoutes);
 console.log('✅ Routes admin chargées:');
 console.log('   - POST /api/admin/upload/course-image');
+console.log('   - POST /api/admin/upload/pdf');
+console.log('   - GET /api/admin/ressources-pdf');
+console.log('   - POST /api/admin/ressources-pdf');
+console.log('   - PUT /api/admin/ressources-pdf/:id');
+console.log('   - DELETE /api/admin/ressources-pdf/:id');
 
 // Routes paiement (publiques)
 app.use("/api/payment", paymentRoutes);
