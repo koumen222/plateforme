@@ -40,15 +40,43 @@ export default function AdminRessourcesPdfPage() {
   const fetchRessourcesPdf = async () => {
     try {
       setLoading(true)
+      setError('')
+      
+      if (!token) {
+        setError('Token manquant. Veuillez vous reconnecter.')
+        console.error('❌ Token manquant dans AdminRessourcesPdfPage')
+        return
+      }
+      
+      console.log('📥 Appel API /api/admin/ressources-pdf')
+      console.log('   - Backend URL:', CONFIG.BACKEND_URL)
+      console.log('   - Token présent:', !!token)
+      console.log('   - Token length:', token?.length)
+      
       const response = await axios.get(`${CONFIG.BACKEND_URL}/api/admin/ressources-pdf`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        withCredentials: true
       })
+      
       if (response.data.success) {
         setRessourcesPdf(response.data.ressourcesPdf || [])
+        console.log('✅ Ressources PDF chargées:', response.data.ressourcesPdf?.length || 0)
       }
     } catch (err) {
-      console.error('Erreur chargement ressources PDF:', err)
-      setError('Erreur lors du chargement des ressources PDF')
+      console.error('❌ Erreur chargement ressources PDF:', err)
+      console.error('   - Status:', err.response?.status)
+      console.error('   - Message:', err.response?.data?.error || err.message)
+      
+      if (err.response?.status === 401) {
+        setError('Token invalide ou expiré. Veuillez vous reconnecter.')
+        // Optionnel : rediriger vers la page de login
+        // window.location.href = '/admin/login'
+      } else {
+        setError(err.response?.data?.error || 'Erreur lors du chargement des ressources PDF')
+      }
     } finally {
       setLoading(false)
     }

@@ -12,15 +12,22 @@ export const authenticate = async (req, res, next) => {
     // 1. Essayer de récupérer le token depuis le cookie
     if (req.cookies && req.cookies.safitech_token) {
       token = req.cookies.safitech_token;
+      console.log('🔐 Token récupéré depuis cookie');
     }
     // 2. Sinon, essayer depuis le header Authorization (pour compatibilité)
     else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
       token = req.headers.authorization.substring(7);
+      console.log('🔐 Token récupéré depuis header Authorization');
     }
 
     if (!token) {
+      console.log('❌ Aucun token trouvé dans la requête');
+      console.log('   - Cookies:', req.cookies);
+      console.log('   - Authorization header:', req.headers.authorization);
       return res.status(401).json({ error: 'Token manquant ou invalide' });
     }
+    
+    console.log('🔐 Token trouvé, longueur:', token.length);
 
     // Vérifier le token
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
