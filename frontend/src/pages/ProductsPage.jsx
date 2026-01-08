@@ -105,9 +105,18 @@ export default function ProductsPage() {
     [products]
   )
 
+  // Séparer les produits Saint-Valentin des autres produits
+  const valentineProducts = useMemo(() => {
+    return products.filter(p => p.specialEvent === 'saint-valentin')
+  }, [products])
+
+  const regularProducts = useMemo(() => {
+    return products.filter(p => !p.specialEvent || p.specialEvent !== 'saint-valentin')
+  }, [products])
+
   const filteredProducts = useMemo(() => {
     const search = searchTerm.toLowerCase()
-    return products
+    return regularProducts
       .filter((product) => {
         const matchesSearch =
           product.name?.toLowerCase().includes(search) ||
@@ -134,7 +143,22 @@ export default function ProductsPage() {
         }
         return 0
       })
-  }, [products, searchTerm, categoryFilter, statusFilter, sortBy])
+  }, [regularProducts, searchTerm, categoryFilter, statusFilter, sortBy])
+
+  const filteredValentineProducts = useMemo(() => {
+    return valentineProducts.sort((a, b) => {
+      if (sortBy === 'trend') {
+        return (b.trendScore || 0) - (a.trendScore || 0)
+      }
+      if (sortBy === 'demand') {
+        return (b.demandScore || 0) - (a.demandScore || 0)
+      }
+      if (sortBy === 'saturation') {
+        return (a.saturation || 0) - (b.saturation || 0)
+      }
+      return 0
+    })
+  }, [valentineProducts, sortBy])
 
   const statusBadge = (status) => {
     const map = {
@@ -217,6 +241,11 @@ export default function ProductsPage() {
               </h1>
               <p className="text-lg text-secondary">
                 Produits gagnants pour l'Afrique francophone • Mise à jour toutes les 6h
+                {valentineProducts.length > 0 && (
+                  <span className="block mt-2 text-pink-600 dark:text-pink-400 font-semibold">
+                    💝 {valentineProducts.length} produit{valentineProducts.length > 1 ? 's' : ''} spécial{valentineProducts.length > 1 ? 'aux' : ''} Saint-Valentin disponible{valentineProducts.length > 1 ? 's' : ''}
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -423,6 +452,113 @@ export default function ProductsPage() {
                 <FiX className="w-4 h-4" />
                 Réinitialiser les filtres
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Section spéciale Saint-Valentin */}
+        {!loading && valentineProducts.length > 0 && canAccess && (
+          <div className="mb-12 relative overflow-hidden rounded-2xl border-2" style={{
+            background: 'linear-gradient(135deg, #ff6b9d 0%, #c44569 50%, #f8b500 100%)',
+            borderColor: '#ff6b9d'
+          }}>
+            <div className="absolute inset-0 opacity-10">
+              <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full blur-3xl"></div>
+              <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl"></div>
+            </div>
+            <div className="relative p-6 sm:p-8">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="text-4xl">💝</div>
+                <div>
+                  <h2 className="text-2xl sm:text-3xl font-bold text-white mb-1">
+                    Winners Saint-Valentin
+                  </h2>
+                  <p className="text-white/90 text-sm sm:text-base">
+                    Produits gagnants spécialement sélectionnés pour la Saint-Valentin
+                  </p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {filteredValentineProducts.map((product, index) => (
+                  <div
+                    key={`valentine-${product.name}-${index}`}
+                    onClick={() => setSelectedProduct(product)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        setSelectedProduct(product)
+                      }
+                    }}
+                    className="bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm rounded-xl p-5 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group border-2 border-white/50"
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Voir les détails de ${product.name}`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <div className={`${statusBadge(product.status)} px-4 py-2 rounded-xl font-bold text-sm flex-shrink-0`}>
+                        {product.status === 'hot' ? '🔥 HOT' : product.status === 'dead' ? 'DEAD' : 'WARM'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start mb-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white group-hover:text-pink-600 dark:group-hover:text-pink-400 transition-colors mb-2 line-clamp-2">
+                              {product.name}
+                            </h3>
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              <span className="px-3 py-1 bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 rounded-lg text-xs font-medium">
+                                {product.category || '—'}
+                              </span>
+                              <span className="flex items-center gap-1 text-sm text-gray-600 dark:text-gray-300">
+                                <FiGlobe className="w-4 h-4" />
+                                {product.countries?.slice(0, 2).join(', ')}
+                                {product.countries?.length > 2 && ` +${product.countries.length - 2}`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-2xl text-pink-500 group-hover:text-pink-600 transition-colors flex-shrink-0">
+                            →
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 mb-4">
+                          <span className="text-lg font-bold text-pink-600 dark:text-pink-400">
+                            {formatPrice(product.priceRange)}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 text-center border border-pink-200 dark:border-pink-800">
+                            <div className="text-xs text-pink-700 dark:text-pink-300 mb-1">Demande</div>
+                            <div className="text-xl font-bold text-pink-600 dark:text-pink-400">
+                              {product.demandScore ?? '—'}
+                            </div>
+                          </div>
+                          <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 text-center border border-pink-200 dark:border-pink-800">
+                            <div className="text-xs text-pink-700 dark:text-pink-300 mb-1">Tendance</div>
+                            <div className="text-xl font-bold text-pink-600 dark:text-pink-400">
+                              {product.trendScore ?? '—'}
+                            </div>
+                          </div>
+                          <div className="bg-pink-50 dark:bg-pink-900/20 rounded-lg p-2 text-center border border-pink-200 dark:border-pink-800">
+                            <div className="text-xs text-pink-700 dark:text-pink-300 mb-1">Saturation</div>
+                            <div className="text-xl font-bold text-pink-600 dark:text-pink-400">
+                              {product.saturation ?? '—'}
+                            </div>
+                          </div>
+                        </div>
+                        <a
+                          href={product.alibabaLink || `https://www.alibaba.com/trade/search?fsb=y&IndexArea=product_en&SearchText=${encodeURIComponent(product.name)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex items-center justify-center gap-2 w-full px-4 py-2 bg-gradient-to-r from-pink-500 to-pink-600 hover:from-pink-600 hover:to-pink-700 text-white rounded-lg font-medium text-sm shadow-md hover:shadow-lg transition-all duration-200"
+                        >
+                          <FiExternalLink className="w-4 h-4" />
+                          <span>Rechercher sur Alibaba</span>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}

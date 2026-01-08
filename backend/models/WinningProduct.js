@@ -85,6 +85,12 @@ const winningProductSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  specialEvent: {
+    type: String,
+    trim: true,
+    default: '',
+    enum: ['', 'saint-valentin', 'noel', 'black-friday', 'autre']
   }
 }, {
   timestamps: true
@@ -92,6 +98,7 @@ const winningProductSchema = new mongoose.Schema({
 
 winningProductSchema.index({ status: 1 });
 winningProductSchema.index({ lastUpdated: -1 });
+winningProductSchema.index({ specialEvent: 1 });
 
 export default mongoose.model('WinningProduct', winningProductSchema);
 
