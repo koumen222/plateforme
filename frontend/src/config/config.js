@@ -2,9 +2,15 @@ import { logger } from '../utils/logger'
 
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
-  // En mode développement (localhost), utiliser le backend local
-  if (import.meta.env.DEV || import.meta.env.MODE === 'development') {
-    const localBackendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'
+  // Détection du mode développement : vérifier si on est sur localhost
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || 
+     window.location.hostname === '127.0.0.1' ||
+     window.location.hostname === '')
+  
+  // En mode développement (localhost), TOUJOURS utiliser le backend local
+  if (import.meta.env.DEV || import.meta.env.MODE === 'development' || isLocalhost) {
+    const localBackendUrl = 'http://localhost:3000'
     logger.log('🌐 MODE DÉVELOPPEMENT - BACKEND_URL local:', localBackendUrl)
     return localBackendUrl
   }
@@ -13,13 +19,6 @@ const getBackendUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     logger.log('🌐 MODE PRODUCTION - BACKEND_URL depuis VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
     return import.meta.env.VITE_API_BASE_URL
-  }
-  
-  // Fallback : essayer de détecter automatiquement
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    const localBackendUrl = 'http://localhost:3000'
-    logger.log('🌐 Détection automatique - BACKEND_URL local:', localBackendUrl)
-    return localBackendUrl
   }
   
   // ⚠️ ERREUR : VITE_API_BASE_URL n'est pas défini en production
