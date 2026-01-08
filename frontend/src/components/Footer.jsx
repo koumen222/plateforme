@@ -19,7 +19,7 @@ export default function Footer({ className = '' }) {
                 href="https://facebook.com" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-brand hover:text-white dark:hover:bg-brand transition-all duration-200"
+                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-accent hover:text-white transition-all duration-200"
                 aria-label="Facebook"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -41,7 +41,7 @@ export default function Footer({ className = '' }) {
                 href="https://twitter.com" 
                 target="_blank" 
                 rel="noopener noreferrer" 
-                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-brand hover:text-white dark:hover:bg-brand transition-all duration-200"
+                className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-gray-600 dark:text-gray-400 hover:bg-accent hover:text-white transition-all duration-200"
                 aria-label="Twitter"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -56,7 +56,7 @@ export default function Footer({ className = '' }) {
             <h4 className="text-base font-semibold text-gray-900 dark:text-white">Navigation</h4>
             <ul className="space-y-3">
               <li>
-                <Link to="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-brand dark:hover:text-brand-400 transition-colors">
+                <Link to="/" className="text-sm text-gray-600 dark:text-gray-400 hover:text-accent transition-colors">
                   Accueil
                 </Link>
               </li>

@@ -130,8 +130,8 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                           to={lessonPath}
                           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                             isActive 
-                              ? 'bg-brand text-white font-semibold' 
-                              : 'text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                              ? 'bg-accent text-white font-semibold' 
+                              : 'text-primary hover:bg-hover'
                           }`}
                           onClick={handleLessonClick}
                         >
@@ -169,7 +169,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                         <a
                           href={resource.link}
                           download
-                          className="ml-2 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-lg hover:bg-brand-600 transition-colors"
+                          className="ml-2 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Télécharger
@@ -179,7 +179,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                           href={resource.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="ml-2 px-3 py-1.5 text-xs font-medium bg-brand text-white rounded-lg hover:bg-brand-600 transition-colors"
+                          className="ml-2 px-3 py-1.5 text-xs font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                           onClick={(e) => e.stopPropagation()}
                         >
                           Accéder
@@ -225,7 +225,7 @@ export default function CourseMobileMenu({ isOpen, onClose, lesson, nextLesson, 
                   {nextLesson && (
                     <button
                       onClick={handleNextClick}
-                      className="flex items-center justify-between px-4 py-3 rounded-lg bg-brand text-white hover:bg-brand-600 transition-colors"
+                      className="flex items-center justify-between px-4 py-3 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors font-medium"
                     >
                       <span className="text-sm font-medium">Leçon suivante</span>
                       <FiChevronRight className="w-4 h-4" />

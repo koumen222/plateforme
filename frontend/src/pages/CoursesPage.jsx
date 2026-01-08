@@ -98,8 +98,8 @@ export default function CoursesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary py-6 md:py-8 lg:py-12 px-4 md:px-0">
-      <div className="container-startup">
+    <div className="min-h-screen bg-primary py-6 md:py-8 lg:py-12 px-4 md:px-0 overflow-x-hidden">
+      <div className="container-startup w-full max-w-full">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12 lg:mb-16">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-primary mb-3 md:mb-4 px-2">
@@ -112,18 +112,16 @@ export default function CoursesPage() {
 
         {/* Courses Grid */}
         {courses.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 w-full max-w-full">
             {courses.map((course) => (
               <Link
                 key={course._id}
                 to={`/course/${course.slug}`}
-                className="course-card-african group hover:shadow-lg transition-all duration-300"
+                className="course-card-african group hover:shadow-lg transition-all duration-300 w-full max-w-full overflow-hidden"
               >
-                <div className="relative overflow-hidden h-48 sm:h-52 md:h-56 rounded-t-2xl">
+                <div className="relative overflow-hidden h-48 sm:h-52 md:h-56 rounded-t-2xl w-full">
                   <img
-
                     src={
-                      
                       course.slug?.toLowerCase().includes('tiktok') || 
                       course.title?.toLowerCase().includes('tiktok')
                         ? '/img/tiktok-ads-2026.png'
@@ -153,26 +151,26 @@ export default function CoursesPage() {
                       }
                     }}
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4 md:pb-6">
-                    <span className="text-white font-bold text-sm md:text-base px-3 md:px-4 py-1.5 md:py-2 bg-accent rounded-xl">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3 sm:pb-4 md:pb-6">
+                    <span className="text-white font-bold text-xs sm:text-sm md:text-base px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 bg-accent rounded-lg sm:rounded-xl whitespace-nowrap">
                       Voir la formation
                     </span>
                   </div>
                   {course.isDefault && (
-                    <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-accent text-white px-2 md:px-3 py-0.5 md:py-1 rounded-lg text-xs font-bold">
+                    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 bg-accent text-white px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 rounded-lg text-xs font-bold whitespace-nowrap">
                       Populaire
                     </div>
                   )}
                 </div>
-                <div className="p-4 sm:p-5 md:p-6">
-                  <h3 className="text-lg sm:text-xl font-bold text-primary mb-2 md:mb-3 group-hover:text-accent transition-colors">
+                <div className="p-4 sm:p-5 md:p-6 overflow-hidden">
+                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-primary mb-2 sm:mb-2.5 md:mb-3 group-hover:text-accent transition-colors line-clamp-2">
                     {course.title}
                   </h3>
-                  <p className="text-sm sm:text-base text-secondary mb-3 md:mb-4 line-clamp-3 leading-relaxed">
+                  <p className="text-xs sm:text-sm md:text-base text-secondary mb-3 sm:mb-3.5 md:mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                     {course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}
                   </p>
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 md:px-3 py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs md:text-sm">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="px-2 py-0.5 sm:px-2.5 sm:py-1 md:px-3 md:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-xs md:text-sm whitespace-nowrap">
                       {course.lessonsCount || 0} leçons
                     </span>
                   </div>

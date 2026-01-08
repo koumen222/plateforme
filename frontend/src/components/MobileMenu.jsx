@@ -86,7 +86,7 @@ export default function MobileMenu({ isOpen, onClose }) {
               <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                 <div className="px-4 mb-4">
                   <div className="flex items-center gap-3 mb-2">
-                    <div className="w-10 h-10 rounded-full bg-brand text-white flex items-center justify-center font-semibold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm">
                       {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </div>
                     <div>
@@ -120,7 +120,7 @@ export default function MobileMenu({ isOpen, onClose }) {
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="w-full text-left px-4 py-3 rounded-lg bg-brand text-white hover:bg-brand-600 transition-colors font-medium mt-2"
+                  className="w-full text-left px-4 py-3 rounded-lg bg-accent text-white hover:bg-accent-hover transition-colors font-medium mt-2"
                 >
                   Déconnexion
                 </button>
@@ -129,7 +129,7 @@ export default function MobileMenu({ isOpen, onClose }) {
               <div className="p-4 border-t border-gray-200 dark:border-gray-800">
                 <Link
                   to="/login"
-                  className="block w-full text-center px-4 py-3 bg-brand text-white font-semibold rounded-xl hover:bg-brand-600 transition-colors"
+                  className="block w-full text-center px-4 py-3 bg-accent text-white font-semibold rounded-xl hover:bg-accent-hover transition-colors"
                   onClick={onClose}
                 >
                   Se connecter

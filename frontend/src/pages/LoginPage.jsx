@@ -242,7 +242,7 @@ export default function LoginPage() {
         <div className="card-startup p-8 sm:p-10 shadow-2xl border-accent/20">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-gradient-to-r from-accent to-accent/70 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
               <FiLock className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3">

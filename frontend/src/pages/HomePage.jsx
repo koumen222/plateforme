@@ -57,17 +57,17 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-primary">
+    <div className="min-h-screen bg-primary overflow-x-hidden">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-white via-purple-100 to-purple-200 dark:from-purple-900 dark:via-purple-950 dark:to-black py-12 sm:py-16 lg:py-20 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-5">
+      <section className="bg-gradient-to-br from-white via-purple-100 to-purple-200 dark:from-purple-900 dark:via-purple-950 dark:to-black py-12 sm:py-16 lg:py-20 relative overflow-hidden w-full">
+        <div className="absolute inset-0 opacity-5 overflow-hidden">
           <div className="absolute top-20 left-10 w-72 h-72 bg-accent rounded-full blur-3xl"></div>
           <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent rounded-full blur-3xl"></div>
         </div>
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-10 overflow-hidden">
           <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[600px] h-[600px] bg-purple-300 dark:bg-purple-400 rounded-full blur-3xl"></div>
         </div>
-        <div className="container-startup relative z-10">
+        <div className="container-startup relative z-10 w-full max-w-full">
           <div className="max-w-4xl mx-auto text-center">
             <div className="inline-flex items-center px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-white text-sm font-medium mb-6 animate-fade-in hover:scale-105 transition-transform duration-300 shadow-sm border border-purple-200 dark:border-purple-700">
               Ecom Starter - Votre Partenaire E-commerce en Afrique
@@ -109,8 +109,8 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-secondary border-y border-theme">
-        <div className="container-startup">
+      <section className="py-12 bg-secondary border-y border-theme w-full overflow-x-hidden">
+        <div className="container-startup w-full max-w-full">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8">
             <div className="card-startup text-center p-6 transform hover:scale-105 hover:shadow-lg transition-all duration-300 group">
               <div className="text-3xl lg:text-4xl font-bold text-accent mb-2 group-hover:scale-110 transition-transform duration-300">3+</div>
@@ -133,8 +133,8 @@ export default function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-16 bg-primary">
-        <div className="container-startup">
+      <section className="py-16 bg-primary w-full overflow-x-hidden">
+        <div className="container-startup w-full max-w-full">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               Tout ce qu'il faut pour réussir en e-commerce en Afrique
@@ -260,8 +260,8 @@ export default function HomePage() {
       </section>
 
       {/* Testimonials Section */}
-      <section id="temoignages" className="py-16 bg-secondary">
-        <div className="container-startup">
+      <section id="temoignages" className="py-16 bg-secondary w-full overflow-x-hidden">
+        <div className="container-startup w-full max-w-full">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               Témoignages vidéo
@@ -324,8 +324,8 @@ export default function HomePage() {
       </section>
 
       {/* Featured Courses Section */}
-      <section className="py-16 bg-primary">
-        <div className="container-startup">
+      <section className="py-8 sm:py-12 md:py-16 bg-primary w-full overflow-x-hidden">
+        <div className="container-startup w-full max-w-full">
           <div className="text-center mb-12">
             <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-4">
               Nos Formations
@@ -336,14 +336,14 @@ export default function HomePage() {
           </div>
           {courses.length > 0 ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8 px-2 sm:px-0">
                 {courses.map((course) => (
                   <Link
                     key={course._id}
                     to={`/course/${course.slug}`}
-                    className="course-card-african group hover:shadow-xl transform hover:-translate-y-2 transition-all duration-300"
+                    className="course-card-african group hover:shadow-xl transform hover:-translate-y-1 md:hover:-translate-y-2 transition-all duration-300 w-full max-w-full overflow-hidden"
                   >
-                    <div className="relative overflow-hidden h-56">
+                    <div className="relative overflow-hidden h-48 sm:h-52 md:h-56 w-full">
                       <img
                         src={
                           course.slug?.toLowerCase().includes('tiktok') || 
@@ -374,7 +374,7 @@ export default function HomePage() {
                                         : '/img/cours-2026.png'
                         }
                         alt={course.title}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
                           const defaultImg = '/img/fbads.svg'
                           if (e.target.src !== defaultImg && !e.target.src.includes(defaultImg)) {
@@ -384,23 +384,23 @@ export default function HomePage() {
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       {course.isDefault && (
-                        <div className="absolute top-4 right-4 bg-accent text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg transform group-hover:scale-110 transition-transform duration-300">
+                        <div className="absolute top-2 right-2 sm:top-3 sm:right-3 md:top-4 md:right-4 bg-accent text-white px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-xs font-bold shadow-lg">
                           Populaire
                         </div>
                       )}
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-primary mb-3 group-hover:text-accent transition-colors duration-300">
+                    <div className="p-4 sm:p-5 md:p-6 overflow-hidden">
+                      <h3 className="text-base sm:text-lg md:text-xl font-bold text-primary mb-2 sm:mb-3 group-hover:text-accent transition-colors duration-300 line-clamp-2">
                         {course.title}
                       </h3>
-                      <p className="text-secondary mb-4 line-clamp-3 leading-relaxed">
+                      <p className="text-sm sm:text-base text-secondary mb-3 sm:mb-4 line-clamp-2 sm:line-clamp-3 leading-relaxed">
                         {course.description || 'Formation complète et pratique pour maîtriser les concepts essentiels.'}
                       </p>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="px-3 py-1 bg-accent/10 text-accent rounded-lg font-medium group-hover:bg-accent group-hover:text-white transition-all duration-300">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap">
                           Vidéos HD
                         </span>
-                        <span className="px-3 py-1 bg-accent/10 text-accent rounded-lg font-medium group-hover:bg-accent group-hover:text-white transition-all duration-300">
+                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap">
                           Ressources
                         </span>
                       </div>
@@ -419,12 +419,12 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-16 bg-accent text-white relative overflow-hidden">
+      <section className="py-16 bg-accent text-white relative overflow-hidden w-full">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/20 to-transparent"></div>
         </div>
-        <div className="container-startup relative z-10">
-          <div className="max-w-3xl mx-auto text-center">
+        <div className="container-startup relative z-10 w-full max-w-full">
+          <div className="max-w-3xl mx-auto text-center w-full">
             <h2 className="text-3xl lg:text-4xl font-bold mb-6 transform hover:scale-105 transition-transform duration-300">
               Prêt à lancer votre business e-commerce en Afrique ?
             </h2>

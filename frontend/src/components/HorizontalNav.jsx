@@ -41,8 +41,8 @@ export default function HorizontalNav() {
                   to={item.path}
                   className={`flex items-center gap-2 px-3 py-3 sm:px-4 sm:py-4 rounded-xl text-sm sm:text-base font-medium transition-all duration-200 whitespace-nowrap relative ${
                     isActive
-                      ? 'text-brand dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 font-semibold'
-                      : 'text-black dark:text-black hover:text-black dark:hover:text-black hover:bg-gray-100 dark:hover:bg-gray-800'
+                      ? 'text-accent bg-accent/10 font-semibold'
+                      : 'text-primary hover:text-accent hover:bg-hover'
                   }`}
                 >
                   <span className="text-base sm:text-lg leading-none flex items-center justify-center"><item.icon /></span>
@@ -51,7 +51,7 @@ export default function HorizontalNav() {
                     <span className="ml-1 text-sm animate-pulse">{item.badge}</span>
                   )}
                   {isActive && (
-                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/5 h-0.5 bg-brand dark:bg-brand-400 rounded-t-full"></span>
+                    <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/5 h-0.5 bg-accent rounded-t-full"></span>
                   )}
                 </Link>
               </li>
