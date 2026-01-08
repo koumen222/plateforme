@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { CONFIG } from '../config/config'
 import { useAuth } from '../contexts/AuthContext'
 import { FiFilter, FiSearch, FiX, FiTrendingUp, FiTrendingDown, FiGlobe, FiRefreshCw, FiExternalLink, FiLock, FiStar } from 'react-icons/fi'
@@ -7,6 +7,7 @@ import { FiFilter, FiSearch, FiX, FiTrendingUp, FiTrendingDown, FiGlobe, FiRefre
 export default function ProductsPage() {
   const { token, user, isAuthenticated, loading: authLoading } = useAuth()
   const location = useLocation()
+  const navigate = useNavigate()
   const [products, setProducts] = useState([])
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
@@ -31,7 +32,8 @@ export default function ProductsPage() {
         setLoading(true)
         setError(null)
 
-        const res = await fetch(`${CONFIG.BACKEND_URL}/api/success-radar`, {
+        // Toujours ignorer le cache pour avoir les produits les plus récents
+        const res = await fetch(`${CONFIG.BACKEND_URL}/api/success-radar?cache=false`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -75,6 +77,7 @@ export default function ProductsPage() {
     const fetchProducts = async () => {
       try {
         setError(null)
+        // Supprimer le cache en utilisant cache=false
         const res = await fetch(`${CONFIG.BACKEND_URL}/api/success-radar?cache=false&force=true`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -108,7 +111,11 @@ export default function ProductsPage() {
 
   // Séparer les produits Saint-Valentin des autres produits
   const valentineProducts = useMemo(() => {
-    return products.filter(p => p.specialEvent === 'saint-valentin')
+    const filtered = products.filter(p => p.specialEvent === 'saint-valentin')
+    if (import.meta.env.DEV) {
+      console.log('💝 Produits St Valentin trouvés:', filtered.length, filtered)
+    }
+    return filtered
   }, [products])
 
   const regularProducts = useMemo(() => {
@@ -243,7 +250,7 @@ export default function ProductsPage() {
                 🏆 Success Radar
               </h1>
               <p className="text-lg text-secondary">
-                Produits gagnants pour l'Afrique francophone • Mise à jour toutes les 6h
+                Produits gagnants pour l'Afrique francophone • Mise à jour toutes les heures
                 {valentineProducts.length > 0 && (
                   <span className="block mt-2 text-pink-600 dark:text-pink-400 font-semibold">
                     💝 {valentineProducts.length} produit{valentineProducts.length > 1 ? 's' : ''} spécial{valentineProducts.length > 1 ? 'aux' : ''} Saint-Valentin disponible{valentineProducts.length > 1 ? 's' : ''}
@@ -271,6 +278,14 @@ export default function ProductsPage() {
                   <span>{showValentineOnly ? 'Tous les produits' : `Winners Saint-Valentin (${valentineProducts.length})`}</span>
                 </button>
               )}
+              <button
+                onClick={() => navigate('/winners-st-valentin')}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg hover:from-purple-600 hover:to-purple-700"
+                aria-label="Voir les winners Saint-Valentin"
+              >
+                <span className="text-lg">💝</span>
+                <span>Voir les winners St Valentin</span>
+              </button>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing || loading}
@@ -981,6 +996,7 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+
     </div>
   )
 }

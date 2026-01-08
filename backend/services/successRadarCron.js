@@ -2,19 +2,21 @@ import cron from 'node-cron';
 import OpenAI from 'openai';
 import WinningProduct from '../models/WinningProduct.js';
 
-const SCHEDULE = '0 */6 * * *'; // every 6 hours
+const SCHEDULE = '0 * * * *'; // every 1 hour
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const buildPrompt = () => `Rôle :
+const buildValentinePrompt = () => `Rôle :
 Tu es un expert e-commerce senior spécialisé dans les marchés africains (Afrique de l'Ouest, Centrale et du Nord), avec une expertise avancée en product research, data Meta Ads, Minea, Alibaba et AliExpress.
 
 Objectif :
-Identifier EXACTEMENT 50 produits WINNERS (gadgets) qui ont déjà prouvé leur rentabilité en Afrique, adaptés au dropshipping, à la vente en ligne et au cash on delivery (COD).
+Identifier EXACTEMENT 50 produits WINNERS RÉELS spécialement adaptés pour la SAINT-VALENTIN en Afrique francophone. Ces produits doivent être des cadeaux romantiques RÉELS qui ont VRAIMENT été vendus avec succès pendant la période St Valentin.
 
-IMPORTANT : Tu DOIS générer exactement 50 produits, pas moins.
+IMPORTANT : Tu DOIS générer exactement 50 produits St Valentin RÉELS, pas moins.
+IMPORTANT : Tous les produits DOIVENT avoir le champ "specialEvent" défini à "saint-valentin" dans le JSON.
+IMPORTANT : Tous les produits doivent être RÉELS avec des PRIX CONCRETS en FCFA et des PREUVES de vente.
 
 Sources d'analyse obligatoires :
 - Meta Ads Library (publicités actives + récurrentes en Afrique)
@@ -22,60 +24,161 @@ Sources d'analyse obligatoires :
 - Alibaba & AliExpress (volume de commandes, fournisseurs fiables)
 - Tendances locales africaines (problèmes quotidiens, habitudes de consommation, pouvoir d'achat)
 
-Critères STRICTS de sélection des produits :
-- Déjà vendus avec succès en Afrique (preuve publicitaire ou volume)
-- Gadget à effet "WOW", solution à un problème réel
-- Prix fournisseur idéal : 2$ à 15$
-- Prix de vente potentiel Afrique : x3 à x6 minimum
-- Facile à expliquer en vidéo (UGC / démonstration)
-- Pas fragile, pas électronique complexe, pas interdit
-- Compatible livraison locale & COD
+Critères STRICTS de sélection des produits ST VALENTIN RÉELS :
+- PRODUITS RÉELS : Fleurs artificielles LED, bijoux romantiques, bougies parfumées, gadgets LED cœur, etc.
+- PREUVES DE VENTE : Doivent avoir été VRAIMENT vendus pendant St Valentin (publicités Meta actives, ventes sur Minea, commandes Alibaba/AliExpress)
+- PRIX RÉELS : Fournir des prix CONCRETS en FCFA (ex: 15 000 FCFA, 25 000 FCFA, 35 000 FCFA)
+- PRIX FOURNISSEUR : 2$ à 20$ USD (convertis en FCFA dans le prix de vente)
+- PRIX DE VENTE : x3 à x6 du prix fournisseur, en FCFA CONCRET (ex: fournisseur 8$ = vente 30 000 - 40 000 FCFA)
+- PRODUITS CONCRETS : Fleur artificielle LED rose, Powerbank cœur LED, Bougie parfumée romantique, Bijou cœur, etc.
+- FACILE À EXPLIQUER : Produits qui se vendent bien en vidéo UGC romantique
+- COMPATIBLE COD : Livraison locale et paiement à la livraison
+- THÈMES RÉELS : Bijoux cœur, fleurs LED, bougies parfumées, gadgets LED romantiques, boîtes cadeau personnalisées, etc.
 
 IMPORTANT - Format de réponse JSON :
 Réponds UNIQUEMENT avec un objet JSON valide de la forme {"products":[...]} sans texte avant ou après.
 Le JSON doit être complet et valide.
 
-Pour chaque produit, fournis OBLIGATOIREMENT dans le JSON :
-- name : Nom précis du produit (marque + modèle si applicable)
-- category : Maison, Auto, Beauté, Santé, Cuisine, Sécurité, etc.
-- problemSolved : Problème précis résolu (contexte africain)
-- whyItWorks : Pourquoi le produit marche en Afrique (culture, climat, habitudes, besoin local)
-- proofIndicator : Indicateur de preuve (Meta Ads actives, Minea, volume Alibaba/AliExpress)
-- supplierPrice : Prix fournisseur estimé en USD (2$ à 15$)
-- sellingPrice : Prix de vente recommandé en FCFA (x3 à x6 du prix fournisseur)
-- priceRange : Plage de prix en FCFA (format "X 000 - Y 000 FCFA")
-- countries : Pays africains les PLUS adaptés (array de 2-5 pays : Sénégal, Côte d'Ivoire, Maroc, Cameroun, etc.)
-- marketingAngle : Angle marketing principal (peur, gain, confort, économie, statut)
-- scalingPotential : Potentiel de scaling (Faible / Moyen / Élevé)
-- demandScore : 0-100 (basé sur la preuve de traction)
-- trendScore : 0-100 (basé sur les tendances actuelles)
-- saturation : 0-100 (saturation du marché, plus bas = mieux)
-- status : "hot" si demandScore >= 75 ET trendScore >= 75, "dead" si les deux <= 30, sinon "warm"
+Pour chaque produit ST VALENTIN RÉEL, fournis OBLIGATOIREMENT dans le JSON :
+- name : Nom PRÉCIS et RÉEL du produit romantique (ex: "Fleur artificielle LED rose avec message", "Powerbank cœur LED romantique", "Bougie parfumée cœur")
+- category : Cadeaux romantiques, Bijoux, Beauté, Maison, Parfums, Décorations, etc.
+- specialEvent : TOUJOURS "saint-valentin" (OBLIGATOIRE)
+- problemSolved : Besoin romantique RÉEL résolu (ex: "Besoin de cadeau romantique durable pour St Valentin")
+- whyItWorks : Pourquoi ce produit RÉEL marche VRAIMENT pendant St Valentin en Afrique (preuves concrètes)
+- proofIndicator : PREUVE RÉELLE de vente (ex: "Meta Ads actives au Maroc depuis février", "3000+ ventes sur AliExpress en février", "Scaling actif sur Minea")
+- supplierPrice : Prix fournisseur RÉEL en USD (2$ à 20$)
+- sellingPrice : Prix de vente RÉEL en FCFA (ex: 25000, 35000, 45000 - prix CONCRET)
+- priceRange : Plage de prix RÉELLE en FCFA (format "25 000 - 30 000 FCFA" avec prix CONCRETS)
+- countries : Pays africains où le produit est VRAIMENT vendu pendant St Valentin (array de 2-5 pays)
+- marketingAngle : Angle marketing RÉEL utilisé (romance, émotion, statut, confort, gain)
+- scalingPotential : Potentiel RÉEL basé sur ventes actuelles (Faible / Moyen / Élevé)
+- demandScore : 0-100 (basé sur PREUVES RÉELLES de traction pendant St Valentin)
+- trendScore : 0-100 (basé sur tendances RÉELLES St Valentin actuelles)
+- saturation : 0-100 (saturation RÉELLE du marché St Valentin)
+- status : "hot" si demandScore >= 75 ET trendScore >= 75 ET preuves réelles, "dead" si les deux <= 30, sinon "warm"
 
-Contraintes :
-- Aucun produit "théorique"
-- Aucun produit sans preuve de traction
-- Focus EXCLUSIF sur des produits déjà validés sur le marché africain
-- Classer les 50 produits du plus fort potentiel au plus faible
+Contraintes STRICTES ST VALENTIN :
+- AUCUN produit théorique ou inventé
+- TOUS les produits doivent être RÉELS et EXISTER vraiment
+- TOUS doivent avoir des PREUVES RÉELLES de vente pendant St Valentin
+- PRIX RÉELS en FCFA (ex: 25 000 FCFA, 35 000 FCFA - pas de plages vagues)
+- Focus EXCLUSIF sur produits romantiques VRAIMENT vendus pendant St Valentin en Afrique
+- Classer les 50 produits du plus fort potentiel RÉEL au plus faible
+- Exemples de produits RÉELS acceptés : Fleur artificielle LED, Powerbank cœur, Bougie parfumée, Bijou cœur, etc.
 
-Exemple de format JSON attendu :
+Exemple de format JSON attendu pour ST VALENTIN :
 {
   "products": [
     {
-      "name": "Lampe LED rechargeable solaire portable",
-      "category": "Maison",
-      "problemSolved": "Coupures d'électricité fréquentes en Afrique",
-      "whyItWorks": "Autonomie énergétique, pas besoin de réseau électrique, adapté aux zones rurales",
-      "proofIndicator": "Meta Ads actives au Sénégal et Côte d'Ivoire, volume élevé sur AliExpress",
-      "supplierPrice": 5,
+      "name": "Bouquet de roses artificielles LED avec message personnalisé",
+      "category": "Cadeaux romantiques",
+      "specialEvent": "saint-valentin",
+      "problemSolved": "Besoin d'un cadeau romantique durable et original pour St Valentin en Afrique",
+      "whyItWorks": "Roses qui ne fanent jamais, effet LED romantique, personnalisation du message, adapté au budget africain",
+      "proofIndicator": "Meta Ads actives au Sénégal et Côte d'Ivoire pendant St Valentin, volume élevé sur AliExpress en février",
+      "supplierPrice": 8,
+      "sellingPrice": 35000,
+      "priceRange": "30 000 - 40 000 FCFA",
+      "countries": ["Sénégal", "Côte d'Ivoire", "Cameroun", "Maroc"],
+      "marketingAngle": "romance",
+      "scalingPotential": "Élevé",
+      "demandScore": 92,
+      "trendScore": 88,
+      "saturation": 20,
+      "status": "hot"
+    }
+  ]
+}`;
+
+const buildPrompt = () => `Rôle :
+Tu es un expert e-commerce senior spécialisé dans les marchés africains (Afrique de l'Ouest, Centrale et du Nord), avec une expertise avancée en product research, data Meta Ads, Minea, Alibaba et AliExpress.
+
+Objectif :
+Identifier EXACTEMENT 50 produits WINNERS RÉELS qui ont VRAIMENT été vendus avec succès en Afrique francophone. Ces produits doivent être CONCRETS, avec des PRIX RÉELS et des PREUVES de vente.
+
+IMPORTANT : Tu DOIS générer exactement 50 produits RÉELS, pas moins. Chaque produit doit avoir un nom précis, un prix réel en FCFA, et une preuve de vente.
+
+Sources d'analyse obligatoires :
+- Meta Ads Library (publicités ACTIVES et RÉCURRENTES en Afrique francophone)
+- Minea (produits gagnants avec PREUVES de scaling et ventes réelles)
+- Alibaba & AliExpress (volume de commandes RÉEL, fournisseurs avec ventes vérifiées)
+- Tendances locales africaines (produits VRAIMENT vendus, pas théoriques)
+
+Critères STRICTS de sélection des produits RÉELS :
+- PRODUITS RÉELS : Doivent être des produits CONCRETS qui existent vraiment (ex: Powerbank 20000mAh, Fleur artificielle LED, etc.)
+- PREUVES DE VENTE : Doivent avoir été VRAIMENT vendus en Afrique (publicités Meta actives, ventes sur Minea, commandes Alibaba/AliExpress)
+- PRIX RÉELS : Fournir des prix CONCRETS en FCFA (ex: 15 000 FCFA, 25 000 FCFA, pas de plages vagues)
+- PRIX FOURNISSEUR : 2$ à 20$ USD (convertis en FCFA dans le prix de vente)
+- PRIX DE VENTE : x3 à x6 du prix fournisseur, en FCFA CONCRET (ex: fournisseur 5$ = vente 15 000 - 20 000 FCFA)
+- GADGETS RÉELS : Powerbank, fleurs artificielles LED, gadgets USB, accessoires téléphone, etc.
+- FACILE À EXPLIQUER : Produits qui se vendent bien en vidéo UGC
+- COMPATIBLE COD : Livraison locale et paiement à la livraison
+
+IMPORTANT - Format de réponse JSON :
+Réponds UNIQUEMENT avec un objet JSON valide de la forme {"products":[...]} sans texte avant ou après.
+Le JSON doit être complet et valide.
+
+Pour chaque produit RÉEL, fournis OBLIGATOIREMENT dans le JSON :
+- name : Nom PRÉCIS et RÉEL du produit (ex: "Powerbank 20000mAh avec LED", "Fleur artificielle LED rose", "Chargeur USB magnétique")
+- category : Maison, Auto, Beauté, Santé, Cuisine, Sécurité, Électronique, etc.
+- problemSolved : Problème RÉEL résolu en Afrique (ex: "Coupures d'électricité fréquentes", "Besoin de charger téléphone sans électricité")
+- whyItWorks : Pourquoi ce produit RÉEL marche VRAIMENT en Afrique (preuves concrètes, pas théoriques)
+- proofIndicator : PREUVE RÉELLE de vente (ex: "Meta Ads actives au Sénégal depuis 3 mois", "5000+ ventes sur AliExpress", "Scaling actif sur Minea")
+- supplierPrice : Prix fournisseur RÉEL en USD (2$ à 20$)
+- sellingPrice : Prix de vente RÉEL en FCFA (ex: 15000, 25000, 35000 - prix CONCRET, pas de plage)
+- priceRange : Plage de prix RÉELLE en FCFA (format "15 000 - 20 000 FCFA" avec prix CONCRETS)
+- countries : Pays africains où le produit est VRAIMENT vendu (array de 2-5 pays : Sénégal, Côte d'Ivoire, Maroc, Cameroun, etc.)
+- marketingAngle : Angle marketing RÉEL utilisé (peur, gain, confort, économie, statut)
+- scalingPotential : Potentiel RÉEL basé sur les ventes actuelles (Faible / Moyen / Élevé)
+- demandScore : 0-100 (basé sur PREUVES RÉELLES de traction : publicités actives, ventes réelles)
+- trendScore : 0-100 (basé sur tendances RÉELLES actuelles, pas théoriques)
+- saturation : 0-100 (saturation RÉELLE du marché basée sur données concrètes)
+- status : "hot" si demandScore >= 75 ET trendScore >= 75 ET preuves réelles, "dead" si les deux <= 30, sinon "warm"
+
+Contraintes STRICTES :
+- AUCUN produit théorique ou inventé
+- TOUS les produits doivent être RÉELS et EXISTER vraiment
+- TOUS doivent avoir des PREUVES RÉELLES de vente (publicités actives, ventes vérifiées)
+- PRIX RÉELS en FCFA (ex: 15 000 FCFA, 25 000 FCFA - pas de plages vagues)
+- Focus EXCLUSIF sur produits VRAIMENT vendus en Afrique francophone
+- Classer les 50 produits du plus fort potentiel RÉEL au plus faible
+- Exemples de produits RÉELS acceptés : Powerbank 20000mAh, Fleur artificielle LED, Chargeur USB, Gadgets téléphone, etc.
+
+Exemple de format JSON attendu avec produits RÉELS :
+{
+  "products": [
+    {
+      "name": "Powerbank 20000mAh avec LED et charge rapide",
+      "category": "Électronique",
+      "problemSolved": "Coupures d'électricité fréquentes en Afrique, besoin de charger téléphone sans électricité",
+      "whyItWorks": "Autonomie élevée, charge rapide, LED intégrée pour éclairage, vendu activement au Sénégal et Côte d'Ivoire",
+      "proofIndicator": "Meta Ads actives au Sénégal depuis 4 mois, 8000+ ventes sur AliExpress, scaling actif sur Minea",
+      "supplierPrice": 6,
       "sellingPrice": 25000,
-      "priceRange": "20 000 - 30 000 FCFA",
+      "priceRange": "22 000 - 28 000 FCFA",
       "countries": ["Sénégal", "Côte d'Ivoire", "Cameroun", "Mali"],
       "marketingAngle": "confort",
       "scalingPotential": "Élevé",
-      "demandScore": 90,
-      "trendScore": 85,
-      "saturation": 25,
+      "demandScore": 92,
+      "trendScore": 88,
+      "saturation": 20,
+      "status": "hot"
+    },
+    {
+      "name": "Fleur artificielle LED rose avec message personnalisé",
+      "category": "Décoration",
+      "problemSolved": "Besoin de cadeau romantique durable et original",
+      "whyItWorks": "Ne fane jamais, effet LED romantique, personnalisation, vendu activement pendant St Valentin",
+      "proofIndicator": "Meta Ads actives au Maroc et Cameroun, 5000+ ventes sur AliExpress en février",
+      "supplierPrice": 8,
+      "sellingPrice": 35000,
+      "priceRange": "30 000 - 40 000 FCFA",
+      "countries": ["Maroc", "Cameroun", "Sénégal", "Côte d'Ivoire"],
+      "marketingAngle": "romance",
+      "scalingPotential": "Élevé",
+      "demandScore": 85,
+      "trendScore": 90,
+      "saturation": 15,
       "status": "hot"
     }
   ]
@@ -181,7 +284,7 @@ const generateAlibabaLink = (productName) => {
   return `https://www.alibaba.com/trade/search?fsb=y&IndexArea=product_en&CatId=&SearchText=${searchQuery}`;
 };
 
-const normalizeProduct = (product) => {
+const normalizeProduct = (product, specialEvent = '') => {
   const name = product.name?.toString().trim() || 'Produit sans nom';
   
   // Utiliser priceRange si fourni, sinon calculer depuis sellingPrice
@@ -201,6 +304,9 @@ const normalizeProduct = (product) => {
     alibabaLink = generateAlibabaLink(name);
   }
   
+  // Déterminer specialEvent : utiliser celui du produit ou celui passé en paramètre
+  const event = product.specialEvent?.toString().trim() || specialEvent || '';
+  
   return {
     name: name,
     category: product.category?.toString().trim() || '',
@@ -219,6 +325,7 @@ const normalizeProduct = (product) => {
     marketingAngle: product.marketingAngle?.toString().trim() || '',
     scalingPotential: product.scalingPotential?.toString().trim() || '',
     alibabaLink: alibabaLink,
+    specialEvent: event,
     lastUpdated: new Date()
   };
 };
@@ -298,21 +405,113 @@ export const fetchWinningProducts = async () => {
     throw new Error('Aucune donnée produit reçue depuis OpenAI');
   }
 
+  // S'assurer d'avoir au moins 50 produits
+  if (products.length < 50) {
+    console.warn(`⚠️ Seulement ${products.length} produits générés, minimum 50 requis`);
+  }
+  
   // Limiter à 50 produits comme demandé dans le prompt
-  return products.slice(0, 50).map(normalizeProduct);
+  // Les produits généraux n'ont pas de specialEvent (ou specialEvent vide)
+  return products.slice(0, 50).map(p => normalizeProduct(p, ''));
+};
+
+// Fonction pour générer spécifiquement les produits St Valentin
+export const fetchValentineProducts = async () => {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY manquant pour Success Radar');
+  }
+
+  const messages = [
+    { role: 'system', content: 'Tu es un générateur de tendances e-commerce spécialisé dans les produits romantiques pour la Saint-Valentin en Afrique.' },
+    { role: 'user', content: buildValentinePrompt() }
+  ];
+
+  const response = await openai.chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages,
+    temperature: 0.8, // Légèrement plus élevé pour plus de créativité romantique
+    max_tokens: 6000,
+    response_format: { type: 'json_object' }
+  });
+
+  const content = response.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('Réponse OpenAI vide pour produits St Valentin');
+  }
+
+  console.log('💝 Réponse OpenAI St Valentin reçue, longueur:', content.length);
+  
+  // Nettoyer le contenu avant parsing
+  const cleanedContent = cleanJSONContent(content);
+  
+  let products = [];
+  try {
+    const parsed = JSON.parse(cleanedContent);
+    
+    // Chercher le tableau de produits dans différentes structures possibles
+    if (Array.isArray(parsed)) {
+      products = parsed;
+    } else if (Array.isArray(parsed.products)) {
+      products = parsed.products;
+    } else if (Array.isArray(parsed.data)) {
+      products = parsed.data;
+    } else if (parsed.products && typeof parsed.products === 'object') {
+      products = Object.values(parsed.products);
+    }
+    
+    console.log(`💝 ${products.length} produits St Valentin extraits du JSON`);
+  } catch (err) {
+    console.error('❌ Erreur parsing produits St Valentin:', err.message);
+    
+    // Essayer avec la fonction de fallback
+    products = parseProducts(content);
+    
+    if (!products.length) {
+      console.log('⚠️ Tentative d\'extraction manuelle du JSON St Valentin...');
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*"products"[\s\S]*\}/);
+        if (jsonMatch) {
+          const manualParsed = JSON.parse(jsonMatch[0]);
+          if (Array.isArray(manualParsed.products)) {
+            products = manualParsed.products;
+            console.log(`💝 ${products.length} produits St Valentin extraits manuellement`);
+          }
+        }
+      } catch (manualErr) {
+        console.error('❌ Échec extraction manuelle St Valentin:', manualErr.message);
+      }
+    }
+  }
+
+  if (!products.length) {
+    throw new Error('Aucune donnée produit St Valentin reçue depuis OpenAI');
+  }
+
+  // Normaliser les produits avec specialEvent = 'saint-valentin'
+  // S'assurer d'avoir au moins 50 produits
+  if (products.length < 50) {
+    console.warn(`⚠️ Seulement ${products.length} produits St Valentin générés, minimum 50 requis`);
+  }
+  return products.slice(0, 50).map(p => normalizeProduct(p, 'saint-valentin'));
 };
 
 export const refreshSuccessRadar = async () => {
   console.log('🔄 Mise à jour Success Radar...');
   const products = await fetchWinningProducts();
 
-  // Supprimer les anciens produits
-  await WinningProduct.deleteMany({});
+  // Supprimer uniquement les anciens produits généraux (pas les St Valentin)
+  await WinningProduct.deleteMany({ 
+    $or: [
+      { specialEvent: { $exists: false } },
+      { specialEvent: '' },
+      { specialEvent: { $ne: 'saint-valentin' } }
+    ]
+  });
   
-  // Insérer les 50 nouveaux produits
+  // Insérer les 50 nouveaux produits généraux
   if (products.length > 0) {
     await WinningProduct.insertMany(products, { ordered: false });
-    console.log(`✅ ${products.length} produits enregistrés en base de données`);
+    console.log(`✅ ${products.length} produits généraux enregistrés en base de données`);
   } else {
     console.warn('⚠️ Aucun produit à enregistrer');
   }
@@ -334,7 +533,24 @@ export const runSuccessRadarOnce = async () => {
   try {
     await refreshSuccessRadar();
   } catch (err) {
-    console.error('❌ Impossible d’exécuter Success Radar initial:', err.message);
+    console.error('❌ Impossible d\'exécuter Success Radar initial:', err.message);
+  }
+};
+
+// Fonction pour rafraîchir uniquement les produits St Valentin
+export const refreshValentineProducts = async () => {
+  console.log('💝 Mise à jour produits St Valentin...');
+  const products = await fetchValentineProducts();
+
+  // Supprimer uniquement les anciens produits St Valentin
+  await WinningProduct.deleteMany({ specialEvent: 'saint-valentin' });
+  
+  // Insérer les nouveaux produits St Valentin
+  if (products.length > 0) {
+    await WinningProduct.insertMany(products, { ordered: false });
+    console.log(`💝 ${products.length} produits St Valentin enregistrés en base de données`);
+  } else {
+    console.warn('⚠️ Aucun produit St Valentin à enregistrer');
   }
 };
 

@@ -246,7 +246,15 @@ app.use("/api/comments", commentsRoutes);
 // Success Radar (protégé - accès selon status)
 app.use("/api", successRadarRoutes);
 console.log('✅ Routes Success Radar chargées:');
-console.log('   - GET /api/success-radar');
+console.log('   - GET /api/success-radar (avec ?force=true pour forcer la génération)');
+console.log('   - GET /api/valentine-winners (avec ?force=true pour forcer la génération)');
+console.log('   - POST /api/regenerate-products (forcer régénération produits généraux)');
+console.log('   - POST /api/regenerate-valentine (forcer régénération produits St Valentin)');
+// Vérifier que les routes sont bien enregistrées
+const routes = successRadarRoutes.stack
+  .filter(r => r.route)
+  .map(r => `${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
+console.log('   Routes enregistrées dans le router:', routes);
 
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
@@ -344,6 +352,7 @@ app.use((req, res, next) => {
       'PUT /api/profile',
       'POST /api/chat',
       'GET /api/success-radar',
+      'GET /api/valentine-winners',
       'POST /api/admin/register',
       'GET /api/admin/check',
       'GET /api/admin/ressources-pdf',
@@ -655,6 +664,7 @@ const startServer = async () => {
       console.log(`   POST /api/admin/register - Inscription admin`);
       console.log(`   GET  /api/admin/check - Vérifier admin`);
       console.log(`   GET  /api/success-radar - Success Radar (protégé)`);
+      console.log(`   GET  /api/valentine-winners - Winners St Valentin (protégé)`);
       console.log(`\n✅ Serveur prêt à recevoir des requêtes!\n`);
     });
   } catch (error) {

@@ -18,6 +18,7 @@ import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
+import ValentineWinnersPage from './pages/ValentineWinnersPage'
 import GenerateurPubPage from './pages/GenerateurPubPage'
 import CommunautePage from './pages/CommunautePage'
 import PaymentSuccessPage from './pages/PaymentSuccessPage'
@@ -76,6 +77,7 @@ function App() {
           <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
           <Route path="/ressources-pdf" element={<PlatformLayout><RessourcesPdfPage /></PlatformLayout>} />
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
+          <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
