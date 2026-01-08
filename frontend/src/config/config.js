@@ -8,15 +8,10 @@ const getBackendUrl = () => {
     return import.meta.env.VITE_BACKEND_URL
   }
   
-  // En développement local (mode dev de Vite), utiliser localhost
-  if (import.meta.env.DEV) {
-    logger.log('🌐 BACKEND_URL mode DEV: http://localhost:3000')
-    return 'http://localhost:3000'
-  }
-  
-  // En production, utiliser l'URL de production par défaut
-  const prodUrl = 'http://13.60.216.44'
-  return prodUrl
+  // URL par défaut : serveur AWS
+  const apiUrl = 'http://13.60.216.44'
+  logger.log('🌐 BACKEND_URL:', apiUrl)
+  return apiUrl
 }
 
 export const CONFIG = {
