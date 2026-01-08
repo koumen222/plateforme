@@ -243,19 +243,20 @@ export default function Chatbot({ className = '' }) {
 
   return (
     <div className={className}>
-      {/* Bouton flottant style africain premium */}
+      {/* Bouton flottant avec couleurs de la plateforme */}
       <button 
-        className="fixed bottom-4 md:bottom-6 right-4 md:right-6 w-14 h-14 md:w-16 md:h-16 text-white rounded-full flex items-center justify-center text-xl md:text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg chatbot-toggle-african"
+        className="fixed bottom-4 md:bottom-6 right-4 md:right-6 w-14 h-14 md:w-16 md:h-16 bg-accent hover:bg-accent-hover text-white rounded-full flex items-center justify-center text-xl md:text-2xl hover:scale-105 transition-all duration-300 z-50 shadow-lg"
+        style={{ boxShadow: '0 4px 12px var(--accent-shadow)' }}
         aria-label="Ouvrir le chat"
         onClick={() => setIsOpen(!isOpen)}
       >
         <FiMessageCircle />
       </button>
 
-      {/* Container du chatbot style africain premium */}
-      <div className={`fixed bottom-20 md:bottom-24 right-2 md:right-6 w-[calc(100vw-1rem)] md:w-96 h-[calc(100vh-8rem)] md:h-[600px] max-h-[600px] chatbot-african flex flex-col transform transition-all duration-300 z-50 ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
+      {/* Container du chatbot avec couleurs de la plateforme */}
+      <div className={`fixed bottom-20 md:bottom-24 right-2 md:right-6 w-[calc(100vw-1rem)] md:w-96 h-[calc(100vh-8rem)] md:h-[600px] max-h-[600px] flex flex-col transform transition-all duration-300 z-50 shadow-xl rounded-2xl border border-theme ${isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
         {/* Header */}
-        <div className="bg-gradient-to-r from-orange-500 via-red-500 to-yellow-500 text-white p-3 md:p-4 rounded-t-2xl flex justify-between items-center">
+        <div className="bg-accent text-white p-3 md:p-4 rounded-t-2xl flex justify-between items-center">
           <div className="flex items-center gap-2 md:gap-3">
             <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-full flex items-center justify-center font-bold">
               <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
@@ -272,29 +273,29 @@ export default function Chatbot({ className = '' }) {
         </div>
 
         {/* Notification */}
-        <div className="bg-gradient-to-r from-yellow-100 to-orange-100 dark:from-yellow-900/30 dark:to-orange-900/30 border-b border-orange-300 dark:border-orange-700 p-2 md:p-3 text-xs md:text-md">
-          <strong className="text-orange-800 dark:text-orange-300 font-semibold">Astuce :</strong>
-          <span className="text-orange-700 dark:text-orange-400 ml-1">Pour des questions personnalisées, contactez directement Morgan !</span>
+        <div className="bg-accent/10 dark:bg-accent/20 border-b border-accent/20 dark:border-accent/30 p-2 md:p-3 text-xs md:text-md">
+          <strong className="text-accent dark:text-accent-light font-semibold">Astuce :</strong>
+          <span className="text-primary dark:text-secondary ml-1">Pour des questions personnalisées, contactez directement Morgan !</span>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 bg-gradient-to-b from-orange-50/50 to-yellow-50/50 dark:from-neutral-900 dark:to-orange-950">
+        <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-3 md:space-y-4 bg-secondary">
           {messages.map((msg, idx) => (
             <div key={idx} className={`flex gap-2 md:gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {msg.role === 'bot' && (
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
                   <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
                 </div>
               )}
               <div className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-3 md:p-4 ${
                 msg.role === 'user' 
-                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md' 
+                  ? 'bg-accent text-white shadow-md' 
                   : 'bg-card text-primary border border-theme shadow-sm'
               }`}>
                 <div className="whitespace-pre-wrap text-sm md:text-md leading-relaxed">{msg.content}</div>
               </div>
               {msg.role === 'user' && (
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+                <div className="w-8 h-8 md:w-10 md:h-10 bg-accent-hover rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
                   <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
@@ -304,14 +305,14 @@ export default function Chatbot({ className = '' }) {
           ))}
           {loading && (
             <div className="flex gap-2 md:gap-3 justify-start">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-r from-orange-500 to-yellow-500 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-accent rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 shadow-md">
                 <FiMessageCircle className="w-4 h-4 md:w-5 md:h-5" />
               </div>
               <div className="bg-card rounded-2xl p-3 md:p-4 border border-theme shadow-sm">
                 <div className="flex gap-2">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                  <div className="w-2 h-2 bg-yellow-500 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                  <div className="w-2 h-2 bg-accent rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-accent-hover rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-accent-light rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                 </div>
               </div>
             </div>

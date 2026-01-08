@@ -11,12 +11,45 @@ const router = express.Router();
  */
 router.get('/', async (req, res) => {
   try {
-    // Récupérer uniquement les cours "activés/publies" (par défaut en premier)
-    const courses = await Course.find({ isPublished: true }).sort({ isDefault: -1, createdAt: -1 });
+    // Récupérer uniquement les cours "activés/publies"
+    const courses = await Course.find({ isPublished: true }).sort({ createdAt: 1 });
+    
+    // Fonction pour obtenir la priorité d'un cours
+    const getCoursePriority = (course) => {
+      const slug = (course.slug || '').toLowerCase();
+      const title = (course.title || '').toLowerCase();
+      
+      // Priorité 1: Facebook Ads
+      if (slug.includes('facebook') || title.includes('facebook')) {
+        return 1;
+      }
+      // Priorité 2: TikTok Ads
+      if (slug.includes('tiktok') || title.includes('tiktok')) {
+        return 2;
+      }
+      // Priorité 3: Autres cours (garder l'ordre de création)
+      return 3;
+    };
+    
+    // Trier les cours : Facebook Ads et TikTok Ads en premier
+    const sortedCourses = courses.sort((a, b) => {
+      const priorityA = getCoursePriority(a);
+      const priorityB = getCoursePriority(b);
+      
+      // Comparer les priorités
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // Si même priorité, garder l'ordre de création (plus anciens en premier)
+      return 0;
+    });
+    
+    console.log('📚 Cours triés:', sortedCourses.map(c => ({ title: c.title, slug: c.slug })));
     
     res.json({
       success: true,
-      courses: courses
+      courses: sortedCourses
     });
   } catch (error) {
     console.error('Erreur récupération cours:', error);
@@ -462,6 +495,503 @@ router.post('/init-facebook-ads', async (req, res) => {
       error: 'Erreur lors de l\'initialisation du cours',
       details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
+  }
+});
+
+/**
+ * POST /api/courses/init-tiktok-ads
+ * Initialise le cours TikTok Ads avec modules et leçons
+ */
+router.post('/init-tiktok-ads', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'tiktok-ads' });
+    
+    if (!course) {
+      course = new Course({
+        title: 'TikTok Ads',
+        description: 'Maîtrisez les campagnes publicitaires TikTok pour le marché africain',
+        coverImage: '/img/tiktok-ads-2026.png',
+        slug: 'tiktok-ads',
+        isPublished: true
+      });
+      await course.save();
+    }
+
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({
+        courseId: course._id,
+        title: 'Module 1 - Maîtrise TikTok Ads',
+        order: 1
+      });
+      await module1.save();
+    }
+
+    const lessonsData = [
+      {
+        title: 'JOUR 1 - Introduction à TikTok Ads',
+        videoId: '847328491',
+        videoType: 'vimeo',
+        order: 1,
+        summary: {
+          text: 'Découvrez TikTok Ads et son potentiel pour le marché africain. Apprenez les fondamentaux de la plateforme publicitaire TikTok.',
+          points: ['Comprendre TikTok Ads', 'Le potentiel du marché africain', 'Les différences avec Facebook Ads', 'Structure d\'une campagne TikTok']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 2 - Configuration du compte TikTok Ads',
+        videoId: '912456723',
+        videoType: 'vimeo',
+        order: 2,
+        summary: {
+          text: 'Configurez votre compte TikTok Ads Manager étape par étape.',
+          points: ['Créer un compte TikTok Ads', 'Configurer la devise et le paiement', 'Comprendre l\'interface', 'Paramètres de base']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 3 - Création de vidéos TikTok performantes',
+        videoId: '765234189',
+        videoType: 'vimeo',
+        order: 3,
+        summary: {
+          text: 'Apprenez à créer des vidéos TikTok qui convertissent pour vos campagnes publicitaires.',
+          points: ['Format vidéo TikTok optimal', 'Hook dans les 3 premières secondes', 'Musique et tendances', 'Call-to-action efficace']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 4 - Lancement de votre première campagne',
+        videoId: '623891456',
+        videoType: 'vimeo',
+        order: 4,
+        summary: {
+          text: 'Lancez votre première campagne TikTok Ads avec les meilleures pratiques.',
+          points: ['Créer une campagne', 'Définir le budget', 'Cibler votre audience', 'Lancer et monitorer']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 5 - Optimisation et scaling',
+        videoId: '489567123',
+        videoType: 'vimeo',
+        order: 5,
+        summary: {
+          text: 'Optimisez vos campagnes TikTok et augmentez vos résultats.',
+          points: ['Analyser les performances', 'Optimiser les créatives', 'Scaling progressif', 'ROI et rentabilité']
+        },
+        resources: []
+      }
+    ];
+
+    for (const lessonData of lessonsData) {
+      const existingLesson = await Lesson.findOne({ moduleId: module1._id, order: lessonData.order });
+      if (!existingLesson) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          ...lessonData,
+          locked: false
+        });
+        await lesson.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Cours TikTok Ads initialisé' });
+  } catch (error) {
+    console.error('Erreur initialisation TikTok Ads:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
+/**
+ * POST /api/courses/init-shopify
+ * Initialise le cours Shopify avec modules et leçons
+ */
+router.post('/init-shopify', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'shopify' });
+    
+    if (!course) {
+      course = new Course({
+        title: 'Shopify',
+        description: 'Créez et gérez votre boutique Shopify de A à Z',
+        coverImage: '/img/shopify-2026.png',
+        slug: 'shopify',
+        isPublished: true
+      });
+      await course.save();
+    }
+
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({
+        courseId: course._id,
+        title: 'Module 1 - Création boutique Shopify',
+        order: 1
+      });
+      await module1.save();
+    }
+
+    const lessonsData = [
+      {
+        title: 'JOUR 1 - Introduction à Shopify',
+        videoId: '856234791',
+        videoType: 'vimeo',
+        order: 1,
+        summary: {
+          text: 'Découvrez Shopify et apprenez pourquoi c\'est la meilleure plateforme e-commerce pour l\'Afrique.',
+          points: ['Qu\'est-ce que Shopify', 'Avantages pour le marché africain', 'Tarifs et plans', 'Préparer votre projet']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 2 - Configuration de votre boutique',
+        videoId: '723456891',
+        videoType: 'vimeo',
+        order: 2,
+        summary: {
+          text: 'Configurez votre boutique Shopify étape par étape.',
+          points: ['Créer votre compte', 'Choisir un thème', 'Configurer les paramètres', 'Personnaliser le design']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 3 - Ajouter vos produits',
+        videoId: '634789123',
+        videoType: 'vimeo',
+        order: 3,
+        summary: {
+          text: 'Apprenez à ajouter et gérer vos produits sur Shopify.',
+          points: ['Créer un produit', 'Photos et descriptions', 'Variantes et prix', 'Gestion des stocks']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 4 - Configuration des paiements et livraisons',
+        videoId: '567891234',
+        videoType: 'vimeo',
+        order: 4,
+        summary: {
+          text: 'Configurez les méthodes de paiement et de livraison pour l\'Afrique.',
+          points: ['Méthodes de paiement africaines', 'Zones de livraison', 'Tarifs de livraison', 'Gestion des commandes']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 5 - Marketing et vente',
+        videoId: '456123789',
+        videoType: 'vimeo',
+        order: 5,
+        summary: {
+          text: 'Apprenez à promouvoir et vendre sur votre boutique Shopify.',
+          points: ['SEO et référencement', 'Réseaux sociaux', 'Email marketing', 'Analytics et performance']
+        },
+        resources: []
+      }
+    ];
+
+    for (const lessonData of lessonsData) {
+      const existingLesson = await Lesson.findOne({ moduleId: module1._id, order: lessonData.order });
+      if (!existingLesson) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          ...lessonData,
+          locked: false
+        });
+        await lesson.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Cours Shopify initialisé' });
+  } catch (error) {
+    console.error('Erreur initialisation Shopify:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
+/**
+ * POST /api/courses/init-creatives-sora
+ * Initialise le cours Créatives avec Sora 2
+ */
+router.post('/init-creatives-sora', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'creatives-sora' });
+    
+    if (!course) {
+      course = new Course({
+        title: 'Créatives avec Sora 2',
+        description: 'Créez des vidéos publicitaires percutantes avec Sora 2',
+        coverImage: '/img/creatives-2026.png',
+        slug: 'creatives-sora',
+        isPublished: true
+      });
+      await course.save();
+    }
+
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({
+        courseId: course._id,
+        title: 'Module 1 - Maîtrise Sora 2',
+        order: 1
+      });
+      await module1.save();
+    }
+
+    const lessonsData = [
+      {
+        title: 'JOUR 1 - Introduction à Sora 2',
+        videoId: '891234567',
+        videoType: 'vimeo',
+        order: 1,
+        summary: {
+          text: 'Découvrez Sora 2, l\'outil révolutionnaire de génération vidéo IA.',
+          points: ['Qu\'est-ce que Sora 2', 'Capacités et limites', 'Cas d\'usage publicitaires', 'Préparer vos prompts']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 2 - Créer vos premières vidéos',
+        videoId: '789123456',
+        videoType: 'vimeo',
+        order: 2,
+        summary: {
+          text: 'Apprenez à créer vos premières vidéos avec Sora 2.',
+          points: ['Interface Sora 2', 'Rédiger des prompts efficaces', 'Générer des vidéos', 'Premiers résultats']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 3 - Optimisation des créatives',
+        videoId: '678912345',
+        videoType: 'vimeo',
+        order: 3,
+        summary: {
+          text: 'Optimisez vos vidéos générées pour maximiser les conversions.',
+          points: ['Édition et post-production', 'Ajouter du texte et CTA', 'Musique et voix off', 'Format pour réseaux sociaux']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 4 - Intégration dans vos campagnes',
+        videoId: '567891234',
+        videoType: 'vimeo',
+        order: 4,
+        summary: {
+          text: 'Intégrez vos créatives Sora 2 dans vos campagnes publicitaires.',
+          points: ['Exporter vos vidéos', 'Formats optimaux', 'A/B testing', 'Performance et ROI']
+        },
+        resources: []
+      }
+    ];
+
+    for (const lessonData of lessonsData) {
+      const existingLesson = await Lesson.findOne({ moduleId: module1._id, order: lessonData.order });
+      if (!existingLesson) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          ...lessonData,
+          locked: false
+        });
+        await lesson.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Cours Créatives Sora initialisé' });
+  } catch (error) {
+    console.error('Erreur initialisation Créatives Sora:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
+/**
+ * POST /api/courses/init-alibaba
+ * Initialise le cours Achat sur Alibaba
+ */
+router.post('/init-alibaba', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'alibaba' });
+    
+    if (!course) {
+      course = new Course({
+        title: 'Achat sur Alibaba',
+        description: 'Apprenez à acheter en gros sur Alibaba pour votre business e-commerce',
+        coverImage: '/img/alibaba-2026.png',
+        slug: 'alibaba',
+        isPublished: true
+      });
+      await course.save();
+    }
+
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({
+        courseId: course._id,
+        title: 'Module 1 - Maîtrise Alibaba',
+        order: 1
+      });
+      await module1.save();
+    }
+
+    const lessonsData = [
+      {
+        title: 'JOUR 1 - Introduction à Alibaba',
+        videoId: '345678912',
+        videoType: 'vimeo',
+        order: 1,
+        summary: {
+          text: 'Découvrez Alibaba et apprenez à naviguer sur la plateforme.',
+          points: ['Qu\'est-ce qu\'Alibaba', 'Types de fournisseurs', 'Navigation sur le site', 'Recherche de produits']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 2 - Trouver les bons fournisseurs',
+        videoId: '234567891',
+        videoType: 'vimeo',
+        order: 2,
+        summary: {
+          text: 'Apprenez à identifier et choisir les meilleurs fournisseurs sur Alibaba.',
+          points: ['Critères de sélection', 'Vérifier la fiabilité', 'Négocier les prix', 'Échantillons et commandes test']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 3 - Négociation et commande',
+        videoId: '123456789',
+        videoType: 'vimeo',
+        order: 3,
+        summary: {
+          text: 'Maîtrisez l\'art de la négociation et passez vos premières commandes.',
+          points: ['Techniques de négociation', 'MOQ et prix', 'Paiement sécurisé', 'Suivi de commande']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 4 - Logistique et importation',
+        videoId: '912345678',
+        videoType: 'vimeo',
+        order: 4,
+        summary: {
+          text: 'Gérez la logistique et l\'importation vers l\'Afrique.',
+          points: ['Transport et shipping', 'Douanes et taxes', 'Documentation nécessaire', 'Réception et contrôle qualité']
+        },
+        resources: []
+      }
+    ];
+
+    for (const lessonData of lessonsData) {
+      const existingLesson = await Lesson.findOne({ moduleId: module1._id, order: lessonData.order });
+      if (!existingLesson) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          ...lessonData,
+          locked: false
+        });
+        await lesson.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Cours Alibaba initialisé' });
+  } catch (error) {
+    console.error('Erreur initialisation Alibaba:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
+/**
+ * POST /api/courses/init-recherche-produit
+ * Initialise le cours Recherche de produits
+ */
+router.post('/init-recherche-produit', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'recherche-produit' });
+    
+    if (!course) {
+      course = new Course({
+        title: 'Recherche de Produits',
+        description: 'Trouvez les produits gagnants pour votre business e-commerce',
+        coverImage: '/img/produits-gagnants-2026.png',
+        slug: 'recherche-produit',
+        isPublished: true
+      });
+      await course.save();
+    }
+
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({
+        courseId: course._id,
+        title: 'Module 1 - Trouver des produits gagnants',
+        order: 1
+      });
+      await module1.save();
+    }
+
+    const lessonsData = [
+      {
+        title: 'JOUR 1 - Introduction à la recherche de produits',
+        videoId: '456789123',
+        videoType: 'vimeo',
+        order: 1,
+        summary: {
+          text: 'Apprenez les fondamentaux de la recherche de produits gagnants.',
+          points: ['Qu\'est-ce qu\'un produit gagnant', 'Critères de sélection', 'Marchés porteurs en Afrique', 'Outils de recherche']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 2 - Analyser la demande et la concurrence',
+        videoId: '567891234',
+        videoType: 'vimeo',
+        order: 2,
+        summary: {
+          text: 'Analysez la demande et la concurrence pour vos produits.',
+          points: ['Étude de marché', 'Analyse concurrentielle', 'Tendances et saisonnalité', 'Niche vs marché large']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 3 - Valider votre produit',
+        videoId: '678912345',
+        videoType: 'vimeo',
+        order: 3,
+        summary: {
+          text: 'Validez votre choix de produit avant d\'investir.',
+          points: ['Tests de marché', 'Échantillons et prototypes', 'Feedback clients', 'Calcul de rentabilité']
+        },
+        resources: []
+      },
+      {
+        title: 'JOUR 4 - Sourcing et approvisionnement',
+        videoId: '789123456',
+        videoType: 'vimeo',
+        order: 4,
+        summary: {
+          text: 'Trouvez les meilleurs fournisseurs pour vos produits.',
+          points: ['Sourcing sur Alibaba', 'Alternatives de sourcing', 'Négociation des prix', 'Gestion des stocks']
+        },
+        resources: []
+      }
+    ];
+
+    for (const lessonData of lessonsData) {
+      const existingLesson = await Lesson.findOne({ moduleId: module1._id, order: lessonData.order });
+      if (!existingLesson) {
+        const lesson = new Lesson({
+          moduleId: module1._id,
+          ...lessonData,
+          locked: false
+        });
+        await lesson.save();
+      }
+    }
+
+    res.json({ success: true, message: 'Cours Recherche Produit initialisé' });
+  } catch (error) {
+    console.error('Erreur initialisation Recherche Produit:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
   }
 });
 

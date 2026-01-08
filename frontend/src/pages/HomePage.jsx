@@ -21,13 +21,18 @@ export default function HomePage() {
       const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses`)
       
       if (response.data.success) {
+        const coursesData = response.data.courses || []
+        console.log('📚 Cours reçus:', coursesData.length)
+        console.log('📚 Ordre des cours:', coursesData.map(c => ({ title: c.title, slug: c.slug })))
         // Afficher toutes les formations
-        setCourses(response.data.courses || [])
+        setCourses(coursesData)
+      } else {
+        console.error('❌ Réponse API invalide:', response.data)
       }
     } catch (err) {
-      // Erreur silencieuse en production, loggée en dev
+      console.error('❌ Erreur chargement cours:', err)
       if (import.meta.env.DEV) {
-        console.error('Erreur chargement cours:', err)
+        console.error('Détails erreur:', err.response?.data || err.message)
       }
     } finally {
       setLoading(false)
