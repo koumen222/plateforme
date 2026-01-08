@@ -309,6 +309,7 @@ app.post("/api/chat", authenticate, async (req, res) => {
 // Middleware de gestion des routes non trouvées (doit être après toutes les routes)
 app.use((req, res, next) => {
   console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
+  console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
   res.status(404).json({ 
     error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
     availableRoutes: [
@@ -321,7 +322,11 @@ app.use((req, res, next) => {
       'POST /api/chat',
       'GET /api/success-radar',
       'POST /api/admin/register',
-      'GET /api/admin/check'
+      'GET /api/admin/check',
+      'GET /api/admin/ressources-pdf',
+      'POST /api/admin/ressources-pdf',
+      'PUT /api/admin/ressources-pdf/:id',
+      'DELETE /api/admin/ressources-pdf/:id'
     ]
   });
 });

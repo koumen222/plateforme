@@ -831,6 +831,18 @@ router.delete('/comments/:id', async (req, res) => {
 router.get('/ressources-pdf', async (req, res) => {
   try {
     console.log('📥 GET /api/admin/ressources-pdf appelé');
+    console.log('   - User:', req.user?.email);
+    console.log('   - Role:', req.user?.role);
+    
+    // Vérifier que le modèle RessourcePdf est bien disponible
+    if (!RessourcePdf) {
+      console.error('❌ Modèle RessourcePdf non disponible');
+      return res.status(500).json({ 
+        success: false,
+        error: 'Modèle RessourcePdf non disponible' 
+      });
+    }
+    
     const ressourcesPdf = await RessourcePdf.find().sort({ createdAt: -1 });
     console.log(`✅ ${ressourcesPdf.length} ressources PDF trouvées`);
     res.json({
@@ -838,8 +850,13 @@ router.get('/ressources-pdf', async (req, res) => {
       ressourcesPdf
     });
   } catch (error) {
-    console.error('Erreur récupération ressources PDF:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des ressources PDF' });
+    console.error('❌ Erreur récupération ressources PDF:', error);
+    console.error('   - Stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des ressources PDF',
+      details: error.message 
+    });
   }
 });
 
