@@ -16,15 +16,17 @@ router.get('/', async (req, res) => {
     
     // Fonction pour obtenir la priorité d'un cours
     const getCoursePriority = (course) => {
-      const slug = (course.slug || '').toLowerCase();
-      const title = (course.title || '').toLowerCase();
+      const slug = (course.slug || '').toLowerCase().trim();
+      const title = (course.title || '').toLowerCase().trim();
       
-      // Priorité 1: Facebook Ads
-      if (slug.includes('facebook') || title.includes('facebook')) {
+      // Priorité 1: Facebook Ads (vérifier slug exact ou contenu)
+      if (slug === 'facebook-ads' || slug === 'facebookads' || 
+          slug.includes('facebook') || title.includes('facebook')) {
         return 1;
       }
-      // Priorité 2: TikTok Ads
-      if (slug.includes('tiktok') || title.includes('tiktok')) {
+      // Priorité 2: TikTok Ads (vérifier slug exact ou contenu)
+      if (slug === 'tiktok-ads' || slug === 'tiktokads' || 
+          slug.includes('tiktok') || title.includes('tiktok')) {
         return 2;
       }
       // Priorité 3: Autres cours (garder l'ordre de création)
@@ -32,7 +34,7 @@ router.get('/', async (req, res) => {
     };
     
     // Trier les cours : Facebook Ads et TikTok Ads en premier
-    const sortedCourses = courses.sort((a, b) => {
+    const sortedCourses = [...courses].sort((a, b) => {
       const priorityA = getCoursePriority(a);
       const priorityB = getCoursePriority(b);
       
@@ -45,7 +47,11 @@ router.get('/', async (req, res) => {
       return 0;
     });
     
-    console.log('📚 Cours triés:', sortedCourses.map(c => ({ title: c.title, slug: c.slug })));
+    console.log('📚 Cours triés:', sortedCourses.map(c => ({ 
+      title: c.title, 
+      slug: c.slug, 
+      priority: getCoursePriority(c) 
+    })));
     
     res.json({
       success: true,

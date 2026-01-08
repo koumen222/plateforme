@@ -20,8 +20,25 @@ export default function CoursesPage() {
       if (response.data.success) {
         const coursesData = response.data.courses || []
         console.log('📚 Cours reçus:', coursesData.length)
-        console.log('📚 Ordre des cours:', coursesData.map(c => ({ title: c.title, slug: c.slug })))
-        setCourses(coursesData)
+        console.log('📚 Ordre des cours avant tri:', coursesData.map(c => ({ title: c.title, slug: c.slug })))
+        
+        // Tri de sécurité côté frontend pour garantir l'ordre
+        const getCoursePriority = (course) => {
+          const slug = (course.slug || '').toLowerCase().trim();
+          const title = (course.title || '').toLowerCase().trim();
+          if (slug === 'facebook-ads' || slug.includes('facebook') || title.includes('facebook')) return 1;
+          if (slug === 'tiktok-ads' || slug.includes('tiktok') || title.includes('tiktok')) return 2;
+          return 3;
+        };
+        
+        const sortedCourses = [...coursesData].sort((a, b) => {
+          const priorityA = getCoursePriority(a);
+          const priorityB = getCoursePriority(b);
+          return priorityA - priorityB;
+        });
+        
+        console.log('📚 Ordre des cours après tri:', sortedCourses.map(c => ({ title: c.title, slug: c.slug, priority: getCoursePriority(c) })))
+        setCourses(sortedCourses)
       } else {
         console.error('❌ Réponse API invalide:', response.data)
         setError('Erreur lors du chargement des cours')
