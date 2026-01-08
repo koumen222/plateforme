@@ -12,6 +12,7 @@ export default function ProductsPage() {
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [sortBy, setSortBy] = useState('trend')
+  const [showValentineOnly, setShowValentineOnly] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selectedProduct, setSelectedProduct] = useState(null)
@@ -116,7 +117,9 @@ export default function ProductsPage() {
 
   const filteredProducts = useMemo(() => {
     const search = searchTerm.toLowerCase()
-    return regularProducts
+    const productsToFilter = showValentineOnly ? valentineProducts : regularProducts
+    
+    return productsToFilter
       .filter((product) => {
         const matchesSearch =
           product.name?.toLowerCase().includes(search) ||
@@ -143,7 +146,7 @@ export default function ProductsPage() {
         }
         return 0
       })
-  }, [regularProducts, searchTerm, categoryFilter, statusFilter, sortBy])
+  }, [regularProducts, valentineProducts, showValentineOnly, searchTerm, categoryFilter, statusFilter, sortBy])
 
   const filteredValentineProducts = useMemo(() => {
     return valentineProducts.sort((a, b) => {
@@ -248,7 +251,26 @@ export default function ProductsPage() {
                 )}
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              {valentineProducts.length > 0 && (
+                <button
+                  onClick={() => {
+                    setShowValentineOnly(!showValentineOnly)
+                    setSearchTerm('')
+                    setCategoryFilter('all')
+                    setStatusFilter('all')
+                  }}
+                  className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-xl transition-all duration-200 ${
+                    showValentineOnly
+                      ? 'bg-gradient-to-r from-pink-500 to-pink-600 text-white shadow-lg hover:from-pink-600 hover:to-pink-700'
+                      : 'bg-pink-100 dark:bg-pink-900/30 text-pink-700 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-900/50 border-2 border-pink-300 dark:border-pink-700'
+                  }`}
+                  aria-label={showValentineOnly ? 'Afficher tous les produits' : 'Afficher uniquement les winners Saint-Valentin'}
+                >
+                  <span className="text-lg">💝</span>
+                  <span>{showValentineOnly ? 'Tous les produits' : `Winners Saint-Valentin (${valentineProducts.length})`}</span>
+                </button>
+              )}
               <button
                 onClick={handleRefresh}
                 disabled={refreshing || loading}
@@ -456,8 +478,8 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {/* Section spéciale Saint-Valentin */}
-        {!loading && valentineProducts.length > 0 && canAccess && (
+        {/* Section spéciale Saint-Valentin - Affichée seulement si on ne filtre pas par Saint-Valentin */}
+        {!loading && valentineProducts.length > 0 && canAccess && !showValentineOnly && (
           <div className="mb-12 relative overflow-hidden rounded-2xl border-2" style={{
             background: 'linear-gradient(135deg, #ff6b9d 0%, #c44569 50%, #f8b500 100%)',
             borderColor: '#ff6b9d'
@@ -571,6 +593,22 @@ export default function ProductsPage() {
             <p className="text-secondary">Analyse des tendances en cours...</p>
           </div>
         ) : filteredProducts.length > 0 ? (
+          <>
+            {showValentineOnly && (
+              <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-pink-50 to-pink-100 dark:from-pink-900/20 dark:to-pink-800/20 border-2 border-pink-200 dark:border-pink-700">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">💝</span>
+                  <div>
+                    <h3 className="font-bold text-pink-700 dark:text-pink-300 text-lg">
+                      Winners Saint-Valentin
+                    </h3>
+                    <p className="text-sm text-pink-600 dark:text-pink-400">
+                      {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} spécial{filteredProducts.length > 1 ? 'aux' : ''} Saint-Valentin
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {filteredProducts.map((product, index) => (
               <div
@@ -663,6 +701,7 @@ export default function ProductsPage() {
               </div>
             ))}
           </div>
+          </>
         ) : (
           <div className="card-startup p-12 text-center">
             <div className="text-6xl mb-4">🔍</div>
