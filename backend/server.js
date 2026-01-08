@@ -55,41 +55,12 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
 
 const app = express();
 
-// Configuration CORS pour accepter local et production
-const allowedOrigins = [
-  'http://localhost:5173', // Frontend Vite en développement
-  'http://127.0.0.1:5173',  // Alternative localhost
-  'https://www.safitech.shop', // Frontend en production
-  'https://safitech.shop', // Frontend en production (sans www)
-  'https://safitech.shop/', // Frontend en production (avec slash)
-  'https://plateforme.pages.dev', // Frontend Cloudflare Pages
-  process.env.FRONTEND_URL // Variable d'environnement
-].filter(Boolean); // Enlever les valeurs undefined
-
-console.log('🌐 Origines CORS autorisées:', allowedOrigins);
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Autoriser les requêtes sans origin (même origine, Postman, etc.)
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('⚠️  CORS blocked origin:', origin);
-      console.log('   Allowed origins:', allowedOrigins);
-      callback(null, true); // Autoriser temporairement pour debug (à changer en production)
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['Content-Type', 'Authorization']
-};
-
-app.use(cors(corsOptions));
+// Configuration CORS pour accepter toutes les origines
+app.use(cors({
+  origin: "*",
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  credentials: true
+}));
 
 app.use(express.json());
 app.use(cookieParser());

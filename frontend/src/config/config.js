@@ -15,7 +15,7 @@ const getBackendUrl = () => {
   }
   
   // En production, utiliser l'URL de production par défaut
-  const prodUrl = 'https://plateforme-r1h7.onrender.com'
+  const prodUrl = 'http://13.60.216.44'
   return prodUrl
 }
 
