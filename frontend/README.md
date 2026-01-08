@@ -80,14 +80,19 @@ Les fichiers optimisés seront générés dans le dossier `dist/`
 
 ### Backend URL
 
-Pour configurer l'URL du backend, créez un fichier `.env` dans `frontend/`:
+**⚠️ OBLIGATOIRE** : Vous devez créer un fichier `.env` dans `frontend/` avec l'URL de votre backend :
 
 ```env
-# URL du backend API
-VITE_API_BASE_URL=http://13.60.216.44
+# URL du backend API (OBLIGATOIRE)
+VITE_API_BASE_URL=https://votre-backend-url.com
 ```
 
-**Note** : Par défaut, l'application utilise `http://13.60.216.44` comme URL du backend. Pour utiliser une autre URL, définissez `VITE_API_BASE_URL` dans votre `.env`.
+**Exemples :**
+- Production HTTPS : `VITE_API_BASE_URL=https://api.safitech.shop`
+- Cloudflare Tunnel : `VITE_API_BASE_URL=https://plateforme-backend-xxxxx.trycloudflare.com`
+- Développement local : `VITE_API_BASE_URL=http://localhost:3000`
+
+**Note** : Si votre frontend est en HTTPS, votre backend DOIT aussi être en HTTPS pour éviter l'erreur "Mixed Content". Voir `backend/SSL_SETUP_GUIDE.md` pour configurer SSL.
 
 ## 📝 Notes
 

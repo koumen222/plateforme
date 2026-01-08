@@ -5,14 +5,15 @@
 
 const CONFIG = {
     // URL du backend API
-    // URL par défaut : serveur AWS
+    // ⚠️ OBLIGATOIRE : Définissez window.CONFIG_BACKEND_URL dans votre HTML
     BACKEND_URL: (function() {
         // Si CONFIG_BACKEND_URL est défini globalement (depuis HTML), l'utiliser
         if (typeof window !== 'undefined' && window.CONFIG_BACKEND_URL) {
             return window.CONFIG_BACKEND_URL;
         }
-        // URL par défaut : serveur AWS
-        return 'http://13.60.216.44';
+        // ⚠️ ERREUR : CONFIG_BACKEND_URL n'est pas défini
+        console.error('❌ CONFIG_BACKEND_URL n\'est pas défini. Définissez window.CONFIG_BACKEND_URL dans votre HTML.');
+        throw new Error('CONFIG_BACKEND_URL n\'est pas défini. Définissez window.CONFIG_BACKEND_URL dans votre HTML.');
     })()
 };
 

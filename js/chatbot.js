@@ -14,10 +14,14 @@
     const chatbotInput = document.getElementById('chatbotInput');
     const chatbotSend = document.getElementById('chatbotSend');
 
-    // URL de l'API backend - Utilise CONFIG si disponible, sinon valeur par défaut
+    // URL de l'API backend - Utilise CONFIG si disponible
+    // ⚠️ OBLIGATOIRE : CONFIG.BACKEND_URL doit être défini via window.CONFIG_BACKEND_URL
     const BACKEND_URL = (typeof CONFIG !== 'undefined' && CONFIG.BACKEND_URL) 
         ? CONFIG.BACKEND_URL 
-        : 'http://13.60.216.44';
+        : (() => {
+            console.error('❌ CONFIG.BACKEND_URL n\'est pas défini. Définissez window.CONFIG_BACKEND_URL dans votre HTML.');
+            throw new Error('CONFIG.BACKEND_URL n\'est pas défini.');
+        })();
     
     const API_URL = BACKEND_URL ? `${BACKEND_URL}/api/chat` : '/api/chat';
 

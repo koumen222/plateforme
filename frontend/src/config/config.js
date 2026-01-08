@@ -2,16 +2,18 @@ import { logger } from '../utils/logger'
 
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
-  // Si VITE_API_BASE_URL est défini, l'utiliser (priorité)
+  // VITE_API_BASE_URL doit être défini dans le fichier .env
   if (import.meta.env.VITE_API_BASE_URL) {
     logger.log('🌐 BACKEND_URL depuis VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
     return import.meta.env.VITE_API_BASE_URL
   }
   
-  // URL par défaut : serveur AWS
-  const apiUrl = 'http://13.60.216.44'
-  logger.log('🌐 BACKEND_URL:', apiUrl)
-  return apiUrl
+  // ⚠️ ERREUR : VITE_API_BASE_URL n'est pas défini
+  // Créez un fichier .env dans frontend/ avec :
+  // VITE_API_BASE_URL=https://votre-backend-url.com
+  logger.error('❌ VITE_API_BASE_URL n\'est pas défini dans .env')
+  logger.error('⚠️  Créez un fichier .env dans frontend/ avec VITE_API_BASE_URL')
+  throw new Error('VITE_API_BASE_URL n\'est pas défini. Créez un fichier .env avec VITE_API_BASE_URL.')
 }
 
 export const CONFIG = {
