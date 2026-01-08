@@ -17,7 +17,7 @@
     // URL de l'API backend - Utilise CONFIG si disponible, sinon valeur par défaut
     const BACKEND_URL = (typeof CONFIG !== 'undefined' && CONFIG.BACKEND_URL) 
         ? CONFIG.BACKEND_URL 
-        : (window.location.origin === 'file://' ? 'http://localhost:3000' : '');
+        : 'http://13.60.216.44';
     
     const API_URL = BACKEND_URL ? `${BACKEND_URL}/api/chat` : '/api/chat';
 

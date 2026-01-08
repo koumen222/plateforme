@@ -2,10 +2,10 @@ import { logger } from '../utils/logger'
 
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
-  // Si VITE_BACKEND_URL est défini, l'utiliser (priorité)
-  if (import.meta.env.VITE_BACKEND_URL) {
-    logger.log('🌐 BACKEND_URL depuis VITE_BACKEND_URL:', import.meta.env.VITE_BACKEND_URL)
-    return import.meta.env.VITE_BACKEND_URL
+  // Si VITE_API_BASE_URL est défini, l'utiliser (priorité)
+  if (import.meta.env.VITE_API_BASE_URL) {
+    logger.log('🌐 BACKEND_URL depuis VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
+    return import.meta.env.VITE_API_BASE_URL
   }
   
   // URL par défaut : serveur AWS

@@ -83,26 +83,11 @@ Les fichiers optimisés seront générés dans le dossier `dist/`
 Pour configurer l'URL du backend, créez un fichier `.env` dans `frontend/`:
 
 ```env
-# Développement local
-VITE_BACKEND_URL=http://localhost:3000
-
-# Production
-# VITE_BACKEND_URL=https://votre-backend.onrender.com
+# URL du backend API
+VITE_API_BASE_URL=http://13.60.216.44
 ```
 
-**Note** : En développement, le backend URL pointe automatiquement vers `http://localhost:3000` si vous êtes sur `localhost`. Pour la production, définissez `VITE_BACKEND_URL` dans votre `.env`.
-
-### Démarrage du Backend
-
-Avant de lancer le frontend, assurez-vous que le backend est démarré :
-
-```bash
-cd ../backend
-npm install
-npm start
-```
-
-Le backend doit tourner sur `http://localhost:3000`.
+**Note** : Par défaut, l'application utilise `http://13.60.216.44` comme URL du backend. Pour utiliser une autre URL, définissez `VITE_API_BASE_URL` dans votre `.env`.
 
 ## 📝 Notes
 
