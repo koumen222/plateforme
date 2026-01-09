@@ -181,6 +181,54 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
 });
 
+// Route GET /api/valentine-winners - PRIORITAIRE (avant toutes les autres routes)
+// Cette route est définie ici pour garantir qu'elle soit toujours disponible
+app.get("/api/valentine-winners", authenticate, async (req, res) => {
+  console.log('💝 Route /api/valentine-winners appelée (route principale)');
+  try {
+    const WinningProduct = (await import("./models/WinningProduct.js")).default;
+    
+    let valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
+      .sort({ lastUpdated: -1, createdAt: -1 })
+      .limit(50)
+      .lean();
+    
+    // Si des produits existent en base, retourner leurs noms
+    if (valentineProducts.length > 0) {
+      const productNames = valentineProducts.map(p => p.name || 'Produit sans nom').filter(Boolean);
+      return res.json({
+        success: true,
+        products: productNames
+      });
+    }
+    
+    // Sinon, retourner une liste par défaut
+    return res.json({
+      success: true,
+      products: [
+        "Montre connectée couple",
+        "Projecteur galaxie",
+        "Parfum couple",
+        "Bracelet amour magnétique",
+        "Lampe coeur LED"
+      ]
+    });
+  } catch (error) {
+    console.error('❌ Erreur route /api/valentine-winners:', error);
+    // En cas d'erreur, retourner la liste par défaut
+    res.json({
+      success: true,
+      products: [
+        "Montre connectée couple",
+        "Projecteur galaxie",
+        "Parfum couple",
+        "Bracelet amour magnétique",
+        "Lampe coeur LED"
+      ]
+    });
+  }
+});
+
 // Route de test pour vérifier que les routes sont bien chargées
 app.get("/api/test-routes", (req, res) => {
   const allRoutes = [];
@@ -312,54 +360,7 @@ app.get("/api/test-success-radar-routes", (req, res) => {
   });
 });
 
-// Route GET /api/valentine-winners - Retourne la liste des produits St Valentin
-console.log('💝 Route /api/valentine-winners enregistrée directement dans server.js');
-app.get("/api/valentine-winners", authenticate, async (req, res) => {
-  try {
-    // Essayer d'utiliser la route depuis successRadarRoutes si disponible
-    // Sinon, retourner une liste par défaut
-    const WinningProduct = (await import("./models/WinningProduct.js")).default;
-    
-    let valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
-      .sort({ lastUpdated: -1, createdAt: -1 })
-      .limit(50)
-      .lean();
-    
-    // Si des produits existent en base, retourner leurs noms
-    if (valentineProducts.length > 0) {
-      const productNames = valentineProducts.map(p => p.name || 'Produit sans nom').filter(Boolean);
-      return res.json({
-        success: true,
-        products: productNames
-      });
-    }
-    
-    // Sinon, retourner une liste par défaut
-    return res.json({
-      success: true,
-      products: [
-        "Montre connectée couple",
-        "Projecteur galaxie",
-        "Parfum couple",
-        "Bracelet amour magnétique",
-        "Lampe coeur LED"
-      ]
-    });
-  } catch (error) {
-    console.error('❌ Erreur route /api/valentine-winners:', error);
-    // En cas d'erreur, retourner la liste par défaut
-    res.json({
-      success: true,
-      products: [
-        "Montre connectée couple",
-        "Projecteur galaxie",
-        "Parfum couple",
-        "Bracelet amour magnétique",
-        "Lampe coeur LED"
-      ]
-    });
-  }
-});
+// Note: La route /api/valentine-winners est définie plus haut (ligne ~183) pour garantir sa priorité
 
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
