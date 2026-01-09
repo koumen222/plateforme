@@ -181,6 +181,52 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
 });
 
+// Route de test pour vérifier les routes Success Radar (avant le montage)
+app.get("/api/test-success-radar-routes", (req, res) => {
+  const routes = successRadarRoutes.stack
+    .filter(r => r.route)
+    .map(r => ({
+      method: Object.keys(r.route.methods)[0].toUpperCase(),
+      path: r.route.path,
+      regex: r.regexp.toString()
+    }));
+  
+  res.json({ 
+    success: true,
+    message: 'Routes Success Radar disponibles',
+    routes: routes,
+    valentineExists: routes.some(r => r.path === '/valentine-winners')
+  });
+});
+
+// Route de test pour vérifier que les routes sont bien chargées
+app.get("/api/test-routes", (req, res) => {
+  const allRoutes = [];
+  
+  // Collecter toutes les routes enregistrées
+  app._router.stack.forEach((middleware) => {
+    if (middleware.route) {
+      const methods = Object.keys(middleware.route.methods).map(m => m.toUpperCase());
+      allRoutes.push(`${methods.join(',')} ${middleware.route.path}`);
+    } else if (middleware.name === 'router') {
+      // Routes dans un router
+      middleware.handle.stack?.forEach((handler) => {
+        if (handler.route) {
+          const methods = Object.keys(handler.route.methods).map(m => m.toUpperCase());
+          allRoutes.push(`${methods.join(',')} ${handler.regexp.source}`);
+        }
+      });
+    }
+  });
+  
+  res.json({
+    success: true,
+    message: 'Routes disponibles',
+    routes: allRoutes,
+    valentineRouteExists: allRoutes.some(r => r.includes('valentine-winners'))
+  });
+});
+
 // Route GET /api/auth/me - Récupérer l'utilisateur depuis le cookie
 app.get("/api/auth/me", authenticate, async (req, res) => {
   try {
@@ -255,6 +301,15 @@ const routes = successRadarRoutes.stack
   .filter(r => r.route)
   .map(r => `${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
 console.log('   Routes enregistrées dans le router:', routes);
+// Vérifier spécifiquement la route valentine-winners
+const valentineRoute = successRadarRoutes.stack.find(r => 
+  r.route && r.route.path === '/valentine-winners'
+);
+if (valentineRoute) {
+  console.log('   ✅ Route /valentine-winners trouvée et enregistrée');
+} else {
+  console.log('   ⚠️ Route /valentine-winners NON trouvée dans le router!');
+}
 
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
@@ -350,9 +405,18 @@ app.use((req, res, next) => {
       'POST /api/login',
       'GET /api/user/me',
       'PUT /api/profile',
+      'PUT /api/change-password',
       'POST /api/chat',
       'GET /api/success-radar',
       'GET /api/valentine-winners',
+      'POST /api/regenerate-products',
+      'POST /api/regenerate-valentine',
+      'GET /api/ressources-pdf',
+      'GET /api/ressources-pdf/:slug',
+      'GET /api/courses',
+      'GET /api/courses/:id',
+      'GET /api/comments',
+      'GET /api/progress',
       'POST /api/admin/register',
       'GET /api/admin/check',
       'GET /api/admin/ressources-pdf',

@@ -5,6 +5,15 @@ import { refreshSuccessRadar, refreshValentineProducts } from '../services/succe
 
 const router = express.Router();
 
+// Route de test pour vérifier que le router fonctionne
+router.get('/test-success-radar', (req, res) => {
+  res.json({ 
+    success: true, 
+    message: 'Router Success Radar fonctionne',
+    routes: ['/success-radar', '/valentine-winners', '/regenerate-products', '/regenerate-valentine']
+  });
+});
+
 const blurProduct = (product) => {
   const maskedName = product.name ? `${product.name.substring(0, 10)}...` : 'Produit réservé';
   return {
@@ -153,6 +162,8 @@ router.get('/success-radar', authenticate, async (req, res) => {
 // Route pour générer et récupérer les produits St Valentin
 console.log('💝 Route /valentine-winners enregistrée');
 router.get('/valentine-winners', authenticate, async (req, res) => {
+  console.log('💝 Route /valentine-winners appelée');
+  console.log('💝 User:', req.user ? { id: req.user._id, status: req.user.status } : 'non authentifié');
   try {
     // Vérifier si des produits St Valentin existent
     let valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })

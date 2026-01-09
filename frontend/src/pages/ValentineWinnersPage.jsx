@@ -31,7 +31,10 @@ export default function ValentineWinnersPage() {
       setError(null)
 
       // Toujours ignorer le cache pour avoir les produits les plus récents
-      const res = await fetch(`${CONFIG.BACKEND_URL}/api/valentine-winners?cache=false`, {
+      const url = `${CONFIG.BACKEND_URL}/api/valentine-winners?cache=false`
+      console.log('🔍 Tentative de chargement depuis:', url)
+      
+      const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -39,16 +42,43 @@ export default function ValentineWinnersPage() {
       })
 
       if (!res.ok) {
+        // Si 404, la route n'existe pas sur le serveur
+        if (res.status === 404) {
+          const errorMsg = 'La route /api/valentine-winners n\'est pas disponible sur le serveur. Veuillez contacter l\'administrateur pour mettre à jour le serveur.'
+          console.error('❌ Route non trouvée (404):', {
+            status: res.status,
+            url: url,
+            message: 'Le serveur de production n\'a peut-être pas été mis à jour'
+          })
+          setError(errorMsg)
+          setValentineProducts([])
+          return
+        }
+        
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error || 'Impossible de charger les produits St Valentin')
+        const errorMessage = data.error || `Erreur ${res.status}: ${res.statusText}`
+        console.error('❌ Erreur API valentine-winners:', {
+          status: res.status,
+          statusText: res.statusText,
+          error: data.error,
+          url: url
+        })
+        throw new Error(errorMessage)
       }
 
       const data = await res.json()
       // Les produits sont déjà filtrés par l'API
       setValentineProducts(data.products || [])
+      console.log('✅ Produits St Valentin chargés:', data.products?.length || 0)
     } catch (err) {
       console.error('Erreur chargement winners St Valentin:', err)
-      setError(err.message || 'Impossible de charger les winners St Valentin')
+      // Si c'est une erreur réseau ou autre, afficher un message plus clair
+      if (err.message.includes('404') || err.message.includes('Route non trouvée')) {
+        setError('La route /api/valentine-winners n\'est pas disponible sur le serveur. Le serveur doit être mis à jour.')
+      } else {
+        setError(err.message || 'Impossible de charger les winners St Valentin')
+      }
+      setValentineProducts([])
     } finally {
       setLoading(false)
     }
