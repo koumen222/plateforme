@@ -275,7 +275,7 @@ app.use("/api/comments", commentsRoutes);
 app.use("/api", successRadarRoutes);
 console.log('✅ Routes Success Radar chargées:');
 console.log('   - GET /api/success-radar (avec ?force=true pour forcer la génération)');
-console.log('   - GET /api/valentine-winners (avec ?force=true pour forcer la génération)');
+console.log('   - GET /api/valentine-winners (via successRadarRoutes - avec ?force=true pour forcer la génération)');
 console.log('   - POST /api/regenerate-products (forcer régénération produits généraux)');
 console.log('   - POST /api/regenerate-valentine (forcer régénération produits St Valentin)');
 // Vérifier que les routes sont bien enregistrées
@@ -313,6 +313,7 @@ app.get("/api/test-success-radar-routes", (req, res) => {
 });
 
 // Route GET /api/valentine-winners - Retourne la liste des produits St Valentin
+console.log('💝 Route /api/valentine-winners enregistrée directement dans server.js');
 app.get("/api/valentine-winners", authenticate, async (req, res) => {
   try {
     // Essayer d'utiliser la route depuis successRadarRoutes si disponible
