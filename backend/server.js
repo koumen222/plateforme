@@ -181,24 +181,6 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
 });
 
-// Route de test pour vérifier les routes Success Radar (avant le montage)
-app.get("/api/test-success-radar-routes", (req, res) => {
-  const routes = successRadarRoutes.stack
-    .filter(r => r.route)
-    .map(r => ({
-      method: Object.keys(r.route.methods)[0].toUpperCase(),
-      path: r.route.path,
-      regex: r.regexp.toString()
-    }));
-  
-  res.json({ 
-    success: true,
-    message: 'Routes Success Radar disponibles',
-    routes: routes,
-    valentineExists: routes.some(r => r.path === '/valentine-winners')
-  });
-});
-
 // Route de test pour vérifier que les routes sont bien chargées
 app.get("/api/test-routes", (req, res) => {
   const allRoutes = [];
@@ -309,7 +291,26 @@ if (valentineRoute) {
   console.log('   ✅ Route /valentine-winners trouvée et enregistrée');
 } else {
   console.log('   ⚠️ Route /valentine-winners NON trouvée dans le router!');
+  console.log('   Routes disponibles:', routes);
 }
+
+// Route de test pour vérifier les routes Success Radar (APRÈS le montage)
+app.get("/api/test-success-radar-routes", (req, res) => {
+  const routes = successRadarRoutes.stack
+    .filter(r => r.route)
+    .map(r => ({
+      method: Object.keys(r.route.methods)[0].toUpperCase(),
+      path: r.route.path
+    }));
+  
+  res.json({ 
+    success: true,
+    message: 'Routes Success Radar disponibles',
+    routes: routes,
+    valentineExists: routes.some(r => r.path === '/valentine-winners'),
+    totalRoutes: routes.length
+  });
+});
 
 // Routes admin (protégées)
 app.use("/api/admin", adminRoutes);
