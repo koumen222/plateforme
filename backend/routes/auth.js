@@ -427,6 +427,54 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
+// PUT /api/auth/change-password - Changer le mot de passe de l'utilisateur connecté
+router.put('/change-password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    const userId = req.user._id;
+
+    // Validation
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Le mot de passe actuel et le nouveau mot de passe sont requis' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+    }
+
+    // Récupérer l'utilisateur avec le mot de passe
+    const user = await User.findById(userId).select('+password');
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier si l'utilisateur a un mot de passe (peut être connecté via Google)
+    if (!user.password) {
+      return res.status(400).json({ error: 'Vous êtes connecté via Google. Impossible de changer le mot de passe.' });
+    }
+
+    // Vérifier le mot de passe actuel
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
+    }
+
+    // Mettre à jour le mot de passe
+    user.password = newPassword;
+    await user.save();
+
+    console.log(`✅ Mot de passe modifié pour: ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Mot de passe modifié avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur changement mot de passe:', error);
+    res.status(500).json({ error: 'Erreur lors du changement de mot de passe' });
+  }
+});
+
 // GET /api/user/me - Récupérer les données de l'utilisateur connecté (pour synchronisation)
 router.get('/user/me', authenticate, async (req, res) => {
   try {
@@ -455,6 +503,68 @@ router.get('/user/me', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Erreur récupération utilisateur:', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des données utilisateur' });
+  }
+});
+
+// Route temporaire pour valentine-winners (solution de contournement jusqu'à ce que successRadar soit déployé)
+router.get('/valentine-winners', authenticate, async (req, res) => {
+  try {
+    const WinningProduct = (await import('../models/WinningProduct.js')).default;
+    const { refreshValentineProducts } = await import('../services/successRadarCron.js');
+    
+    console.log('💝 Route temporaire /api/valentine-winners appelée');
+    
+    let valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
+      .sort({ lastUpdated: -1, createdAt: -1 })
+      .lean();
+    
+    const forceRefresh = req.query.force === 'true' || req.query.force === '1' || req.query.cache === 'false';
+    
+    if (forceRefresh || !valentineProducts.length) {
+      try {
+        console.log('💝 Génération de nouveaux produits St Valentin...');
+        await WinningProduct.deleteMany({ specialEvent: 'saint-valentin' });
+        await refreshValentineProducts();
+        valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
+          .sort({ lastUpdated: -1, createdAt: -1 })
+          .lean();
+      } catch (err) {
+        console.error('❌ Erreur génération produits St Valentin:', err.message);
+      }
+    }
+    
+    if (!valentineProducts.length) {
+      return res.json({ products: [], message: 'Aucun produit St Valentin disponible pour le moment' });
+    }
+    
+    if (req.user?.status === 'blocked') {
+      return res.status(403).json({ error: 'Accès refusé. Compte bloqué.' });
+    }
+    
+    if (req.user?.status === 'active') {
+      return res.json({ products: valentineProducts });
+    }
+    
+    // Comptes pending : renvoyer version floutée
+    const blurred = valentineProducts.map(p => ({
+      name: p.name ? `${p.name.substring(0, 10)}...` : 'Produit réservé',
+      category: p.category || 'Catégorie réservée',
+      priceRange: 'Disponible pour comptes actifs',
+      countries: Array.isArray(p.countries) ? p.countries.slice(0, 1) : [],
+      saturation: null,
+      demandScore: null,
+      trendScore: null,
+      status: 'warm',
+      lastUpdated: p.lastUpdated
+    }));
+    
+    return res.json({
+      products: blurred,
+      message: 'Active ton compte pour débloquer les données complètes'
+    });
+  } catch (error) {
+    console.error('❌ Erreur récupération produits St Valentin:', error);
+    res.status(500).json({ error: 'Impossible de récupérer les produits St Valentin' });
   }
 });
 
