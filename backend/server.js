@@ -26,22 +26,19 @@ import { configurePassport } from "./config/passport.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
 import User from "./models/User.js";
 import jwt from "jsonwebtoken";
-import authRoutes from "./routes/auth.js";
-import videoRoutes from "./routes/videos.js";
-import adminRoutes from "./routes/admin.js";
-import coursesRoutes from "./routes/courses.js";
-import progressRoutes from "./routes/progress.js";
-import commentsRoutes from "./routes/comments.js";
-import paymentRoutes from "./routes/payment.js";
-import successRadarRoutes from "./routes/successRadar.js";
-import diagnosticRoutes from "./routes/diagnostic.js";
-import { startSuccessRadarCron, runSuccessRadarOnce } from "./services/successRadarCron.js";
-
-// Variable pour stocker le router ressources-pdf (chargé dynamiquement)
+// Variables pour les modules chargés dynamiquement (évite les crashes si fichiers absents)
+let authRoutes = null;
+let videoRoutes = null;
+let adminRoutes = null;
+let coursesRoutes = null;
+let progressRoutes = null;
+let commentsRoutes = null;
+let paymentRoutes = null;
+let successRadarRoutes = null;
+let diagnosticRoutes = null;
 let ressourcesPdfRoutes = null;
-
-// Vérifier que le module Success Radar est bien chargé
-console.log('✅ Module Success Radar importé:', typeof successRadarRoutes);
+let startSuccessRadarCron = null;
+let runSuccessRadarOnce = null;
 import Course from "./models/Course.js";
 import Module from "./models/Module.js";
 import Lesson from "./models/Lesson.js";
@@ -300,24 +297,8 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
   }
 });
 
-// Routes d'authentification (doit être avant les autres routes /api)
-console.log('📋 Chargement des routes d\'authentification...');
-app.use("/api", authRoutes);
-console.log('✅ Routes d\'authentification chargées:');
-console.log('   - POST /api/register');
-console.log('   - POST /api/login');
-console.log('   - GET /auth/google ← Route Google OAuth (redirection)');
-console.log('   - GET /auth/google/callback ← Callback Google OAuth');
-console.log('   - GET /api/user/me');
-console.log('   - PUT /api/profile');
-console.log('   - POST /api/admin/register');
-console.log('   - GET /api/admin/check');
-
-// Routes protégées (vidéos)
-app.use("/api", videoRoutes);
-
-// Routes cours (publiques et protégées)
-app.use("/api/courses", coursesRoutes);
+// Routes seront montées dans startServer après chargement dynamique
+// Placeholders pour éviter les erreurs si routes non chargées
 
 // Routes ressources PDF (publiques) - seront montées dans startServer après chargement dynamique
 // Placeholder pour éviter les erreurs
@@ -340,37 +321,17 @@ app.get("/api/ressources-pdf", async (req, res) => {
   }
 });
 
-// Routes progression (protégées)
-app.use("/api/progress", progressRoutes);
+// Routes seront montées dans startServer après chargement dynamique
 
-// Routes commentaires (protégées)
-app.use("/api/comments", commentsRoutes);
-
-// Success Radar (protégé - accès selon status)
-app.use("/api", successRadarRoutes);
-console.log('✅ Routes Success Radar chargées:');
-console.log('   - GET /api/success-radar (avec ?force=true pour forcer la génération)');
-console.log('   - GET /api/valentine-winners (via successRadarRoutes - avec ?force=true pour forcer la génération)');
-console.log('   - POST /api/regenerate-products (forcer régénération produits généraux)');
-console.log('   - POST /api/regenerate-valentine (forcer régénération produits St Valentin)');
-// Vérifier que les routes sont bien enregistrées
-const routes = successRadarRoutes.stack
-  .filter(r => r.route)
-  .map(r => `${Object.keys(r.route.methods)[0].toUpperCase()} ${r.route.path}`);
-console.log('   Routes enregistrées dans le router:', routes);
-// Vérifier spécifiquement la route valentine-winners
-const valentineRoute = successRadarRoutes.stack.find(r => 
-  r.route && r.route.path === '/valentine-winners'
-);
-if (valentineRoute) {
-  console.log('   ✅ Route /valentine-winners trouvée et enregistrée');
-} else {
-  console.log('   ⚠️ Route /valentine-winners NON trouvée dans le router!');
-  console.log('   Routes disponibles:', routes);
-}
-
-// Route de test pour vérifier les routes Success Radar (APRÈS le montage)
+// Route de test pour vérifier les routes Success Radar (sera montée après chargement dynamique)
 app.get("/api/test-success-radar-routes", (req, res) => {
+  if (!successRadarRoutes) {
+    return res.status(503).json({ 
+      success: false,
+      message: 'Module successRadar non chargé' 
+    });
+  }
+  
   const routes = successRadarRoutes.stack
     .filter(r => r.route)
     .map(r => ({
@@ -388,22 +349,7 @@ app.get("/api/test-success-radar-routes", (req, res) => {
 });
 
 // Note: La route /api/valentine-winners est définie plus haut (ligne ~183) pour garantir sa priorité
-
-// Routes admin (protégées)
-app.use("/api/admin", adminRoutes);
-console.log('✅ Routes admin chargées:');
-console.log('   - POST /api/admin/upload/course-image');
-console.log('   - POST /api/admin/upload/pdf');
-console.log('   - GET /api/admin/ressources-pdf');
-console.log('   - POST /api/admin/ressources-pdf');
-console.log('   - PUT /api/admin/ressources-pdf/:id');
-console.log('   - DELETE /api/admin/ressources-pdf/:id');
-
-// Routes paiement (publiques)
-app.use("/api/payment", paymentRoutes);
-console.log('✅ Routes de paiement chargées:');
-console.log('   - POST /api/payment/init');
-console.log('   - GET /api/payment/verify/:order_id');
+// Toutes les autres routes seront montées dans startServer après chargement dynamique
 
 // Route chatbot (protégée - nécessite statut active)
 app.post("/api/chat", authenticate, async (req, res) => {
@@ -510,39 +456,123 @@ const PORT = process.env.PORT || 3000;
 // Démarrer le serveur après la connexion MongoDB
 const startServer = async () => {
   try {
-    // Charger le module diagnostic dynamiquement
+    // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
+    console.log('📦 Chargement dynamique de tous les modules...');
+    
+    // 1. Routes d'authentification
     try {
-      const diagnosticModule = await import("./routes/diagnostic.js");
-      diagnosticRoutes = diagnosticModule.default;
-      app.use("/api/diagnostic", diagnosticRoutes);
-      console.log('✅ Routes de diagnostic chargées:');
-      console.log('   - GET /api/diagnostic/routes (liste toutes les routes)');
-      console.log('   - GET /api/diagnostic/test-valentine (test accès DB)');
+      const authModule = await import("./routes/auth.js");
+      authRoutes = authModule.default;
+      app.use("/api", authRoutes);
+      console.log('✅ Routes d\'authentification chargées');
     } catch (error) {
-      console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
-      console.error('   Le fichier n\'existe peut-être pas sur le serveur de production');
-      // Routes de secours déjà définies plus haut
+      console.error('⚠️ Erreur chargement auth.js:', error.message);
     }
     
-    // Charger le module ressources-pdf dynamiquement
+    // 2. Routes vidéos
+    try {
+      const videoModule = await import("./routes/videos.js");
+      videoRoutes = videoModule.default;
+      app.use("/api", videoRoutes);
+      console.log('✅ Routes vidéos chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement videos.js:', error.message);
+    }
+    
+    // 3. Routes cours
+    try {
+      const coursesModule = await import("./routes/courses.js");
+      coursesRoutes = coursesModule.default;
+      app.use("/api/courses", coursesRoutes);
+      console.log('✅ Routes cours chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement courses.js:', error.message);
+    }
+    
+    // 4. Routes ressources PDF
     try {
       const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
       ressourcesPdfRoutes = ressourcesPdfModule.default;
       app.use("/api/ressources-pdf", ressourcesPdfRoutes);
-      console.log('✅ Routes ressources PDF chargées:');
-      console.log('   - GET /api/ressources-pdf');
-      console.log('   - GET /api/ressources-pdf/:slug');
+      console.log('✅ Routes ressources PDF chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ressources-pdf.js:', error.message);
-      console.error('   Le fichier n\'existe peut-être pas sur le serveur de production');
-      // Créer des routes de secours
       app.get("/api/ressources-pdf", (req, res) => {
         res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
       });
-      app.get("/api/ressources-pdf/:slug", (req, res) => {
-        res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
-      });
     }
+    
+    // 5. Routes progression
+    try {
+      const progressModule = await import("./routes/progress.js");
+      progressRoutes = progressModule.default;
+      app.use("/api/progress", progressRoutes);
+      console.log('✅ Routes progression chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement progress.js:', error.message);
+    }
+    
+    // 6. Routes commentaires
+    try {
+      const commentsModule = await import("./routes/comments.js");
+      commentsRoutes = commentsModule.default;
+      app.use("/api/comments", commentsRoutes);
+      console.log('✅ Routes commentaires chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement comments.js:', error.message);
+    }
+    
+    // 7. Routes Success Radar
+    try {
+      const successRadarModule = await import("./routes/successRadar.js");
+      successRadarRoutes = successRadarModule.default;
+      app.use("/api", successRadarRoutes);
+      console.log('✅ Routes Success Radar chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement successRadar.js:', error.message);
+    }
+    
+    // 8. Routes admin
+    try {
+      const adminModule = await import("./routes/admin.js");
+      adminRoutes = adminModule.default;
+      app.use("/api/admin", adminRoutes);
+      console.log('✅ Routes admin chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement admin.js:', error.message);
+    }
+    
+    // 9. Routes paiement
+    try {
+      const paymentModule = await import("./routes/payment.js");
+      paymentRoutes = paymentModule.default;
+      app.use("/api/payment", paymentRoutes);
+      console.log('✅ Routes paiement chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement payment.js:', error.message);
+    }
+    
+    // 10. Routes diagnostic
+    try {
+      const diagnosticModule = await import("./routes/diagnostic.js");
+      diagnosticRoutes = diagnosticModule.default;
+      app.use("/api/diagnostic", diagnosticRoutes);
+      console.log('✅ Routes diagnostic chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
+    }
+    
+    // 11. Services Success Radar Cron
+    try {
+      const successRadarCronModule = await import("./services/successRadarCron.js");
+      startSuccessRadarCron = successRadarCronModule.startSuccessRadarCron;
+      runSuccessRadarOnce = successRadarCronModule.runSuccessRadarOnce;
+      console.log('✅ Services Success Radar Cron chargés');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement successRadarCron.js:', error.message);
+    }
+    
+    console.log('📦 Chargement dynamique terminé\n');
     
     // Connexion MongoDB
     await connectDB();
@@ -823,9 +853,13 @@ const startServer = async () => {
       }
     }
     
-    // Démarrer le Success Radar (cron + exécution initiale)
-    startSuccessRadarCron();
-    runSuccessRadarOnce();
+    // Démarrer le Success Radar (cron + exécution initiale) si disponible
+    if (startSuccessRadarCron && runSuccessRadarOnce) {
+      startSuccessRadarCron();
+      runSuccessRadarOnce();
+    } else {
+      console.warn('⚠️ Services Success Radar Cron non disponibles');
+    }
     
     // Démarrer le serveur Express
     app.listen(PORT, '0.0.0.0', () => {
