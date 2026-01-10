@@ -30,13 +30,15 @@ import authRoutes from "./routes/auth.js";
 import videoRoutes from "./routes/videos.js";
 import adminRoutes from "./routes/admin.js";
 import coursesRoutes from "./routes/courses.js";
-import ressourcesPdfRoutes from "./routes/ressources-pdf.js";
 import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
 import paymentRoutes from "./routes/payment.js";
 import successRadarRoutes from "./routes/successRadar.js";
 import diagnosticRoutes from "./routes/diagnostic.js";
 import { startSuccessRadarCron, runSuccessRadarOnce } from "./services/successRadarCron.js";
+
+// Variable pour stocker le router ressources-pdf (chargé dynamiquement)
+let ressourcesPdfRoutes = null;
 
 // Vérifier que le module Success Radar est bien chargé
 console.log('✅ Module Success Radar importé:', typeof successRadarRoutes);
@@ -312,19 +314,26 @@ app.use("/api", videoRoutes);
 // Routes cours (publiques et protégées)
 app.use("/api/courses", coursesRoutes);
 
-// Routes ressources PDF (publiques)
-if (ressourcesPdfRoutes) {
-  app.use("/api/ressources-pdf", ressourcesPdfRoutes);
-  console.log('✅ Routes ressources PDF chargées:');
-  console.log('   - GET /api/ressources-pdf');
-  console.log('   - GET /api/ressources-pdf/:slug');
-} else {
-  console.error('❌ Module ressources-pdf.js non chargé - routes non disponibles');
-  // Créer des routes de secours pour éviter le crash
-  app.get("/api/ressources-pdf", (req, res) => {
-    res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
-  });
-}
+// Routes ressources PDF (publiques) - seront montées dans startServer après chargement dynamique
+// Placeholder pour éviter les erreurs
+app.get("/api/ressources-pdf", async (req, res) => {
+  if (!ressourcesPdfRoutes) {
+    // Essayer de charger le module si pas encore chargé
+    try {
+      const module = await import("./routes/ressources-pdf.js");
+      ressourcesPdfRoutes = module.default;
+      app.use("/api/ressources-pdf", ressourcesPdfRoutes);
+      // Laisser la requête passer au router
+      return;
+    } catch (error) {
+      return res.status(503).json({ 
+        success: false, 
+        error: 'Module ressources-pdf non disponible',
+        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+});
 
 // Routes progression (protégées)
 app.use("/api/progress", progressRoutes);
@@ -496,6 +505,26 @@ const PORT = process.env.PORT || 3000;
 // Démarrer le serveur après la connexion MongoDB
 const startServer = async () => {
   try {
+    // Charger le module ressources-pdf dynamiquement
+    try {
+      const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
+      ressourcesPdfRoutes = ressourcesPdfModule.default;
+      app.use("/api/ressources-pdf", ressourcesPdfRoutes);
+      console.log('✅ Routes ressources PDF chargées:');
+      console.log('   - GET /api/ressources-pdf');
+      console.log('   - GET /api/ressources-pdf/:slug');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ressources-pdf.js:', error.message);
+      console.error('   Le fichier n\'existe peut-être pas sur le serveur de production');
+      // Créer des routes de secours
+      app.get("/api/ressources-pdf", (req, res) => {
+        res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
+      });
+      app.get("/api/ressources-pdf/:slug", (req, res) => {
+        res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
+      });
+    }
+    
     // Connexion MongoDB
     await connectDB();
     
