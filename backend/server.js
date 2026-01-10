@@ -313,10 +313,18 @@ app.use("/api", videoRoutes);
 app.use("/api/courses", coursesRoutes);
 
 // Routes ressources PDF (publiques)
-app.use("/api/ressources-pdf", ressourcesPdfRoutes);
-console.log('✅ Routes ressources PDF chargées:');
-console.log('   - GET /api/ressources-pdf');
-console.log('   - GET /api/ressources-pdf/:slug');
+if (ressourcesPdfRoutes) {
+  app.use("/api/ressources-pdf", ressourcesPdfRoutes);
+  console.log('✅ Routes ressources PDF chargées:');
+  console.log('   - GET /api/ressources-pdf');
+  console.log('   - GET /api/ressources-pdf/:slug');
+} else {
+  console.error('❌ Module ressources-pdf.js non chargé - routes non disponibles');
+  // Créer des routes de secours pour éviter le crash
+  app.get("/api/ressources-pdf", (req, res) => {
+    res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
+  });
+}
 
 // Routes progression (protégées)
 app.use("/api/progress", progressRoutes);
