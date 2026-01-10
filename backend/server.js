@@ -35,6 +35,7 @@ import progressRoutes from "./routes/progress.js";
 import commentsRoutes from "./routes/comments.js";
 import paymentRoutes from "./routes/payment.js";
 import successRadarRoutes from "./routes/successRadar.js";
+import diagnosticRoutes from "./routes/diagnostic.js";
 import { startSuccessRadarCron, runSuccessRadarOnce } from "./services/successRadarCron.js";
 
 // Vérifier que le module Success Radar est bien chargé
@@ -176,15 +177,30 @@ app.get("/health", (req, res) => {
 //   }
 // );
 
+// Routes de diagnostic (avant toutes les autres pour faciliter le debug)
+app.use("/api/diagnostic", diagnosticRoutes);
+console.log('✅ Routes de diagnostic chargées:');
+console.log('   - GET /api/diagnostic/routes (liste toutes les routes)');
+console.log('   - GET /api/diagnostic/test-valentine (test accès DB)');
+
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
-  res.json({ message: "API backend fonctionne", timestamp: new Date().toISOString() });
+  res.json({ 
+    message: "API backend fonctionne", 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    nodeVersion: process.version
+  });
 });
 
 // Route GET /api/valentine-winners - PRIORITAIRE (avant toutes les autres routes)
 // Cette route est définie ici pour garantir qu'elle soit toujours disponible
 app.get("/api/valentine-winners", authenticate, async (req, res) => {
   console.log('💝 Route /api/valentine-winners appelée (route principale)');
+  console.log('💝 Headers:', JSON.stringify(req.headers, null, 2));
+  console.log('💝 User:', req.user ? { id: req.user._id, status: req.user.status } : 'non authentifié');
+  console.log('💝 Query params:', req.query);
+  
   try {
     const WinningProduct = (await import("./models/WinningProduct.js")).default;
     
@@ -193,9 +209,12 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
       .limit(50)
       .lean();
     
+    console.log(`💝 Produits trouvés en DB: ${valentineProducts.length}`);
+    
     // Si des produits existent en base, retourner leurs noms
     if (valentineProducts.length > 0) {
       const productNames = valentineProducts.map(p => p.name || 'Produit sans nom').filter(Boolean);
+      console.log(`💝 Retour de ${productNames.length} produits depuis la DB`);
       return res.json({
         success: true,
         products: productNames
@@ -203,6 +222,7 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
     }
     
     // Sinon, retourner une liste par défaut
+    console.log('💝 Aucun produit en DB, retour liste par défaut');
     return res.json({
       success: true,
       products: [
@@ -215,6 +235,7 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('❌ Erreur route /api/valentine-winners:', error);
+    console.error('❌ Stack:', error.stack);
     // En cas d'erreur, retourner la liste par défaut
     res.json({
       success: true,
@@ -224,7 +245,8 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
         "Parfum couple",
         "Bracelet amour magnétique",
         "Lampe coeur LED"
-      ]
+      ],
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
