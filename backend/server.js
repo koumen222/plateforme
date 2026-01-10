@@ -162,11 +162,16 @@ app.get("/health", (req, res) => {
 //   }
 // );
 
-// Routes de diagnostic (avant toutes les autres pour faciliter le debug)
-app.use("/api/diagnostic", diagnosticRoutes);
-console.log('✅ Routes de diagnostic chargées:');
-console.log('   - GET /api/diagnostic/routes (liste toutes les routes)');
-console.log('   - GET /api/diagnostic/test-valentine (test accès DB)');
+// Routes de diagnostic - seront montées dans startServer après chargement dynamique
+// Placeholder pour éviter les erreurs
+app.get("/api/diagnostic/*", async (req, res) => {
+  if (!diagnosticRoutes) {
+    return res.status(503).json({ 
+      success: false, 
+      error: 'Module diagnostic non disponible' 
+    });
+  }
+});
 
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
@@ -505,6 +510,20 @@ const PORT = process.env.PORT || 3000;
 // Démarrer le serveur après la connexion MongoDB
 const startServer = async () => {
   try {
+    // Charger le module diagnostic dynamiquement
+    try {
+      const diagnosticModule = await import("./routes/diagnostic.js");
+      diagnosticRoutes = diagnosticModule.default;
+      app.use("/api/diagnostic", diagnosticRoutes);
+      console.log('✅ Routes de diagnostic chargées:');
+      console.log('   - GET /api/diagnostic/routes (liste toutes les routes)');
+      console.log('   - GET /api/diagnostic/test-valentine (test accès DB)');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
+      console.error('   Le fichier n\'existe peut-être pas sur le serveur de production');
+      // Routes de secours déjà définies plus haut
+    }
+    
     // Charger le module ressources-pdf dynamiquement
     try {
       const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
