@@ -2,6 +2,12 @@ import { logger } from '../utils/logger'
 
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
+  // Fonction pour nettoyer l'URL (supprimer le slash final)
+  const cleanUrl = (url) => {
+    if (!url) return url
+    return url.toString().replace(/\/+$/, '')
+  }
+  
   // Détection du mode développement : vérifier si on est sur localhost
   const isLocalhost = typeof window !== 'undefined' && 
     (window.location.hostname === 'localhost' || 
@@ -12,13 +18,14 @@ const getBackendUrl = () => {
   if (import.meta.env.DEV || import.meta.env.MODE === 'development' || isLocalhost) {
     const localBackendUrl = 'http://localhost:3000'
     logger.log('🌐 MODE DÉVELOPPEMENT - BACKEND_URL local:', localBackendUrl)
-    return localBackendUrl
+    return cleanUrl(localBackendUrl)
   }
   
   // En production, utiliser VITE_API_BASE_URL depuis .env
   if (import.meta.env.VITE_API_BASE_URL) {
-    logger.log('🌐 MODE PRODUCTION - BACKEND_URL depuis VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL)
-    return import.meta.env.VITE_API_BASE_URL
+    const backendUrl = cleanUrl(import.meta.env.VITE_API_BASE_URL)
+    logger.log('🌐 MODE PRODUCTION - BACKEND_URL depuis VITE_API_BASE_URL:', backendUrl)
+    return backendUrl
   }
   
   // ⚠️ ERREUR : VITE_API_BASE_URL n'est pas défini en production

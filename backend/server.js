@@ -68,6 +68,7 @@ const corsOptions = {
     const allowedOrigins = [
       "https://safitech.shop",
       "https://www.safitech.shop",
+      "https://api.safitech.shop",
       "http://localhost:5173",
       "http://localhost:3000",
       "http://127.0.0.1:5173",
