@@ -815,6 +815,40 @@ router.get('/ressources-pdf', async (req, res) => {
 // Note: Les uploads de fichiers PDF sont désormais gérés via des URLs externes (Google Drive, etc.)
 // Les routes d'upload Cloudinary ont été supprimées
 
+// PUT /api/admin/ressources-pdf/:slug/cover - Mettre à jour l'image de couverture d'une ressource PDF
+router.put('/ressources-pdf/:slug/cover', async (req, res) => {
+  try {
+    const { slug } = req.params;
+    const { coverImage } = req.body;
+
+    if (!coverImage) {
+      return res.status(400).json({ error: 'URL de l\'image de couverture requise' });
+    }
+
+    // Vérifier que l'URL est valide
+    if (!coverImage.startsWith('http://') && !coverImage.startsWith('https://')) {
+      return res.status(400).json({ error: 'L\'URL de l\'image doit commencer par http:// ou https://' });
+    }
+
+    const ressourcePdf = await RessourcePdf.findOne({ slug });
+    if (!ressourcePdf) {
+      return res.status(404).json({ error: 'Ressource PDF non trouvée' });
+    }
+
+    ressourcePdf.coverImage = coverImage;
+    await ressourcePdf.save();
+
+    res.json({
+      success: true,
+      message: 'Image de couverture mise à jour avec succès',
+      ressourcePdf
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour image de couverture:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'image de couverture', details: error.message });
+  }
+});
+
 // POST /api/admin/ressources-pdf - Créer une nouvelle ressource PDF
 router.post('/ressources-pdf', async (req, res) => {
   try {
