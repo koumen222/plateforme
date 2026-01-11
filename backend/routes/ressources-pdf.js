@@ -1,5 +1,10 @@
 import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import RessourcePdf from '../models/RessourcePdf.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
@@ -178,6 +183,94 @@ router.delete('/:id', async (req, res) => {
       success: false,
       error: 'Erreur lors de la suppression de la ressource PDF',
       details: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/ressources-pdf/:id/file
+ * Route pour télécharger directement le fichier PDF avec les bons headers
+ * Vérifie si l'utilisateur peut télécharger (PDF gratuit ou utilisateur abonné)
+ */
+router.get('/:id/file', async (req, res) => {
+  try {
+    const ressourcePdf = await RessourcePdf.findById(req.params.id);
+    
+    if (!ressourcePdf) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ressource PDF non trouvée'
+      });
+    }
+
+    // Vérifier si le PDF est payant (non gratuit)
+    const isPayant = !ressourcePdf.isFree;
+    
+    // Si le PDF est payant, vérifier l'authentification et le statut
+    if (isPayant) {
+      let user = null;
+      if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        try {
+          const jwt = (await import('jsonwebtoken')).default;
+          const User = (await import('../models/User.js')).default;
+          const token = req.headers.authorization.substring(7);
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+          user = await User.findById(decoded.userId).select('-password');
+        } catch (error) {
+          // Token invalide ou expiré
+        }
+      }
+
+      if (!user || user.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          error: 'Cette ressource PDF est réservée aux abonnés',
+          requiresSubscription: true,
+          message: 'Vous devez être abonné pour télécharger cette ressource PDF.'
+        });
+      }
+    }
+
+    // Incrémenter le compteur
+    ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
+    await ressourcePdf.save();
+
+    // Construire le chemin du fichier
+    let filePath = ressourcePdf.pdfUrl;
+    if (filePath.startsWith('/uploads/')) {
+      filePath = filePath.replace('/uploads/', '');
+    } else if (filePath.startsWith('/')) {
+      filePath = filePath.substring(1);
+    }
+    
+    const fs = (await import('fs')).default;
+    const fullPath = path.join(__dirname, '..', 'uploads', filePath);
+    
+    // Vérifier que le fichier existe
+    if (!fs.existsSync(fullPath)) {
+      console.error('❌ Fichier non trouvé:', fullPath);
+      return res.status(404).json({
+        success: false,
+        error: 'Fichier PDF non trouvé sur le serveur'
+      });
+    }
+
+    // Définir les headers pour forcer le téléchargement
+    const filename = ressourcePdf.slug ? `${ressourcePdf.slug}.pdf` : path.basename(filePath);
+    const encodedFilename = encodeURIComponent(filename);
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`);
+    res.setHeader('Content-Transfer-Encoding', 'binary');
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    
+    // Envoyer le fichier
+    res.sendFile(fullPath);
+  } catch (error) {
+    console.error('Erreur téléchargement fichier PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors du téléchargement du fichier'
     });
   }
 });
