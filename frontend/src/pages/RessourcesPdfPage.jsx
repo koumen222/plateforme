@@ -88,6 +88,41 @@ export default function RessourcesPdfPage() {
           credentials: 'include'
         })
         
+        // La route /file redirige vers Cloudinary, donc on suit la redirection
+        // Si c'est une redirection (status 302), suivre l'URL de redirection
+        if (response.redirected || response.status === 302) {
+          // Récupérer l'URL de redirection depuis les headers ou utiliser l'URL finale
+          const cloudinaryUrl = response.url || response.headers.get('location')
+          console.log('🌐 Redirection vers URL Cloudinary:', cloudinaryUrl)
+          
+          // Télécharger directement depuis Cloudinary
+          const cloudinaryResponse = await fetch(cloudinaryUrl, {
+            mode: 'cors',
+            credentials: 'include'
+          })
+          if (!cloudinaryResponse.ok) {
+            throw new Error(`Erreur téléchargement Cloudinary: ${cloudinaryResponse.status}`)
+          }
+          const blob = await cloudinaryResponse.blob()
+          const blobUrl = window.URL.createObjectURL(blob)
+          
+          const link = document.createElement('a')
+          link.href = blobUrl
+          link.download = sanitizedFilename
+          link.style.cssText = 'display: none; position: absolute; left: -9999px;'
+          link.setAttribute('download', sanitizedFilename)
+          
+          document.body.appendChild(link)
+          setTimeout(() => {
+            link.click()
+            setTimeout(() => {
+              document.body.removeChild(link)
+              window.URL.revokeObjectURL(blobUrl)
+            }, 2000)
+          }, 100)
+          return true
+        }
+        
         if (!response.ok) {
           if (response.status === 403) {
             const errorData = await response.json()
@@ -96,41 +131,6 @@ export default function RessourcesPdfPage() {
             }
           }
           throw new Error(`HTTP ${response.status}`)
-        }
-        
-        // Vérifier si c'est une redirection vers une URL externe
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json()
-          if (data.redirect && data.pdfUrl) {
-            // C'est une URL Cloudinary, télécharger directement depuis cette URL
-            console.log('🌐 Redirection vers URL Cloudinary:', data.pdfUrl)
-            const cloudinaryResponse = await fetch(data.pdfUrl, {
-              mode: 'cors',
-              credentials: 'include'
-            })
-            if (!cloudinaryResponse.ok) {
-              throw new Error(`Erreur téléchargement Cloudinary: ${cloudinaryResponse.status}`)
-            }
-            const blob = await cloudinaryResponse.blob()
-            const blobUrl = window.URL.createObjectURL(blob)
-            
-            const link = document.createElement('a')
-            link.href = blobUrl
-            link.download = sanitizedFilename
-            link.style.cssText = 'display: none; position: absolute; left: -9999px;'
-            link.setAttribute('download', sanitizedFilename)
-            
-            document.body.appendChild(link)
-            setTimeout(() => {
-              link.click()
-              setTimeout(() => {
-                document.body.removeChild(link)
-                window.URL.revokeObjectURL(blobUrl)
-              }, 2000)
-            }, 100)
-            return true
-          }
         }
         
         const blob = await response.blob()
@@ -154,26 +154,10 @@ export default function RessourcesPdfPage() {
         
         return true
       } else {
-        // Sur desktop, créer un lien direct
+        // Sur desktop, ouvrir directement l'URL (qui redirigera vers Cloudinary)
         console.log('💻 Téléchargement desktop via route')
-        const link = document.createElement('a')
-        link.href = downloadUrl
-        link.download = sanitizedFilename
-        link.target = '_blank'
-        link.rel = 'noopener noreferrer'
-        link.style.display = 'none'
-        
-        // Ajouter le token dans l'URL si nécessaire (fallback si headers ne fonctionnent pas)
-        if (token) {
-          link.href += `?token=${encodeURIComponent(token)}`
-        }
-        
-        document.body.appendChild(link)
-        link.click()
-        setTimeout(() => {
-          document.body.removeChild(link)
-        }, 100)
-        
+        // La route redirige vers Cloudinary, donc on peut ouvrir directement
+        window.open(downloadUrl, '_blank')
         return true
       }
     } catch (error) {

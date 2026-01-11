@@ -346,7 +346,7 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * GET /api/ressources-pdf/:id/file
- * Route pour télécharger directement le fichier PDF avec les bons headers
+ * Route pour télécharger directement le fichier PDF depuis Cloudinary
  * Vérifie si l'utilisateur peut télécharger (PDF gratuit ou utilisateur abonné)
  */
 router.get('/:id/file', async (req, res) => {
@@ -357,6 +357,14 @@ router.get('/:id/file', async (req, res) => {
       return res.status(404).json({
         success: false,
         error: 'Ressource PDF non trouvée'
+      });
+    }
+
+    // Vérifier que pdfUrl existe
+    if (!ressourcePdf.pdfUrl) {
+      return res.status(404).json({
+        success: false,
+        error: 'URL du PDF non trouvée'
       });
     }
 
@@ -392,115 +400,25 @@ router.get('/:id/file', async (req, res) => {
     ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
     await ressourcePdf.save();
 
-    // Construire le chemin du fichier
-    let filePath = ressourcePdf.pdfUrl;
-    
-    // Si c'est une URL externe (Cloudinary ou autre), servir directement ou rediriger
-    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      console.log('✅ URL externe détectée:', filePath);
-      
-      // Pour les requêtes avec Authorization header (fetch), retourner l'URL directement
-      // Pour les requêtes navigateur directes, rediriger
-      if (req.headers.authorization || req.headers['user-agent']?.includes('fetch')) {
-        // Retourner l'URL pour que le frontend puisse la télécharger
-        return res.json({
-          success: true,
-          pdfUrl: filePath,
-          redirect: true
-        });
-      } else {
-        // Redirection directe pour les navigateurs
-        return res.redirect(302, filePath);
-      }
+    // Si c'est une URL Cloudinary ou externe, rediriger directement
+    if (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://')) {
+      console.log('✅ Redirection vers URL Cloudinary:', ressourcePdf.pdfUrl);
+      return res.redirect(302, ressourcePdf.pdfUrl);
     }
-    
-    // Nettoyer le chemin - retirer /uploads/ si présent
-    if (filePath.startsWith('/uploads/')) {
-      filePath = filePath.replace('/uploads/', '');
-    } else if (filePath.startsWith('/')) {
-      filePath = filePath.substring(1);
-    }
-    
-    const fs = (await import('fs')).default;
-    
-    // Utiliser le même chemin que celui utilisé pour servir les fichiers statiques
-    // Dans server.js, uploadsPath = path.join(__dirname, 'uploads')
-    // Donc depuis routes/, c'est path.join(__dirname, '..', 'uploads')
-    const uploadsBasePath = path.join(__dirname, '..', 'uploads');
-    
-    // Construire le chemin complet
-    const fullPath = path.join(uploadsBasePath, filePath);
-    
-    console.log('🔍 Recherche fichier PDF:');
-    console.log('   - pdfUrl original:', ressourcePdf.pdfUrl);
-    console.log('   - filePath nettoyé:', filePath);
-    console.log('   - uploadsBasePath:', uploadsBasePath);
-    console.log('   - fullPath:', fullPath);
-    console.log('   - __dirname:', __dirname);
-    console.log('   - process.cwd():', process.cwd());
-    
-    // Vérifier que le dossier uploads existe
-    if (!fs.existsSync(uploadsBasePath)) {
-      console.error('❌ Dossier uploads n\'existe pas:', uploadsBasePath);
-      return res.status(500).json({
-        success: false,
-        error: 'Dossier uploads non configuré sur le serveur',
-        uploadsPath: uploadsBasePath
-      });
-    }
-    
-    // Lister les fichiers dans uploads/pdf pour debug
-    const pdfDir = path.join(uploadsBasePath, 'pdf');
-    if (fs.existsSync(pdfDir)) {
-      try {
-        const files = fs.readdirSync(pdfDir);
-        console.log('📁 Fichiers dans uploads/pdf:', files.slice(0, 5), files.length > 5 ? '...' : '');
-      } catch (err) {
-        console.warn('⚠️ Impossible de lister uploads/pdf:', err.message);
-      }
-    }
-    
-    // Vérifier que le fichier existe
-    if (!fs.existsSync(fullPath)) {
-      console.warn('⚠️ Fichier non trouvé localement:', fullPath);
-      console.warn('   - Tentative de servir via express.static...');
-      
-      // Si le fichier n'existe pas localement, essayer de le servir via express.static
-      // Cela peut fonctionner si le fichier est servi depuis un autre emplacement
-      // ou si express.static peut le trouver
-      const staticUrl = ressourcePdf.pdfUrl.startsWith('/') 
-        ? ressourcePdf.pdfUrl 
-        : '/' + ressourcePdf.pdfUrl;
-      
-      // Construire l'URL complète pour redirection
-      const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
-      const redirectUrl = `${baseUrl}${staticUrl}`;
-      
-      console.log('   - Redirection vers:', redirectUrl);
-      
-      // Rediriger vers l'URL statique - express.static devrait pouvoir la servir
-      // Si express.static ne peut pas la servir non plus, il retournera 404
-      return res.redirect(302, staticUrl);
-    }
-    
-    console.log('✅ Fichier trouvé localement:', fullPath);
 
-    // Définir les headers pour forcer le téléchargement
-    const filename = ressourcePdf.slug ? `${ressourcePdf.slug}.pdf` : path.basename(filePath);
-    const encodedFilename = encodeURIComponent(filename);
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`);
-    res.setHeader('Content-Transfer-Encoding', 'binary');
-    res.setHeader('Cache-Control', 'public, max-age=3600');
-    
-    // Envoyer le fichier
-    res.sendFile(fullPath);
+    // Si c'est encore un chemin local (ancien format), retourner une erreur
+    console.error('❌ Format de pdfUrl non supporté (chemin local):', ressourcePdf.pdfUrl);
+    return res.status(500).json({
+      success: false,
+      error: 'Format de PDF non supporté. Le PDF doit être stocké sur Cloudinary.',
+      pdfUrl: ressourcePdf.pdfUrl
+    });
   } catch (error) {
     console.error('Erreur téléchargement fichier PDF:', error);
     res.status(500).json({
       success: false,
-      error: 'Erreur lors du téléchargement du fichier'
+      error: 'Erreur lors du téléchargement du fichier',
+      details: error.message
     });
   }
 });
