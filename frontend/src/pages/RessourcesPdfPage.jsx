@@ -75,7 +75,7 @@ export default function RessourcesPdfPage() {
     
     console.log('📥 Téléchargement PDF:', { pdfUrl, filename: sanitizedFilename, isMobile: isMobile() })
     
-    // Sur mobile, utiliser une approche différente
+    // Sur mobile, utiliser une approche plus simple et fiable
     if (isMobile()) {
       console.log('📱 Téléchargement mobile')
       
@@ -93,38 +93,53 @@ export default function RessourcesPdfPage() {
         }
         
         const blob = await response.blob()
-        console.log('✅ Blob créé, taille:', blob.size, 'bytes')
-        
-        // Vérifier que c'est bien un PDF
-        if (!blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
-          console.warn('⚠️ Type MIME inattendu:', blob.type)
-        }
+        console.log('✅ Blob créé, taille:', blob.size, 'bytes, type:', blob.type)
         
         // Créer un blob URL
         const blobUrl = window.URL.createObjectURL(blob)
-        console.log('✅ Blob URL créé:', blobUrl)
+        console.log('✅ Blob URL créé')
         
-        // Créer et déclencher le téléchargement
+        // Créer et déclencher le téléchargement avec plusieurs tentatives
         const link = document.createElement('a')
         link.href = blobUrl
         link.download = sanitizedFilename
-        link.style.display = 'none'
-        link.setAttribute('download', sanitizedFilename) // Double sécurité
+        link.style.cssText = 'display: none; position: absolute; left: -9999px;'
+        
+        // Ajouter plusieurs attributs pour meilleure compatibilité
+        link.setAttribute('download', sanitizedFilename)
+        link.setAttribute('target', '_blank')
         
         // Ajouter au DOM
         document.body.appendChild(link)
         
-        // Déclencher le clic
-        link.click()
-        
-        // Attendre un peu avant de nettoyer
+        // Déclencher le clic avec un petit délai pour iOS
         setTimeout(() => {
-          document.body.removeChild(link)
-          window.URL.revokeObjectURL(blobUrl)
-          console.log('✅ Nettoyage effectué')
-        }, 1000)
+          try {
+            link.click()
+            console.log('✅ Clic déclenché sur mobile')
+          } catch (e) {
+            console.error('❌ Erreur lors du clic:', e)
+            // Essayer avec dispatchEvent
+            const clickEvent = new MouseEvent('click', {
+              view: window,
+              bubbles: true,
+              cancelable: true
+            })
+            link.dispatchEvent(clickEvent)
+          }
+          
+          // Nettoyer après un délai plus long pour mobile
+          setTimeout(() => {
+            try {
+              document.body.removeChild(link)
+              window.URL.revokeObjectURL(blobUrl)
+              console.log('✅ Nettoyage effectué')
+            } catch (e) {
+              console.warn('⚠️ Erreur nettoyage:', e)
+            }
+          }, 2000)
+        }, 100)
         
-        console.log('✅ Téléchargement mobile initié')
         return
       } catch (error) {
         console.error('❌ Erreur téléchargement mobile avec blob:', error)
@@ -132,17 +147,23 @@ export default function RessourcesPdfPage() {
       }
       
       // Méthode 2: Fallback - ouvrir directement dans un nouvel onglet
-      // Sur iOS Safari, cela permettra à l'utilisateur de télécharger manuellement
+      // Sur iOS Safari, cela permettra à l'utilisateur de télécharger manuellement via le menu
       try {
-        window.open(pdfUrl, '_blank', 'noopener,noreferrer')
-        console.log('✅ PDF ouvert dans nouvel onglet (fallback mobile)')
+        const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+          // Popup bloquée, utiliser location.href
+          console.log('⚠️ Popup bloquée, utilisation de location.href')
+          window.location.href = pdfUrl
+        } else {
+          console.log('✅ PDF ouvert dans nouvel onglet (fallback mobile)')
+        }
       } catch (error) {
         console.error('❌ Erreur ouverture PDF:', error)
         // Dernière méthode : redirection
         window.location.href = pdfUrl
       }
     } else {
-      // Sur desktop, méthode standard
+      // Sur desktop, méthode standard avec lien
       console.log('💻 Téléchargement desktop')
       const link = document.createElement('a')
       link.href = pdfUrl
@@ -153,7 +174,10 @@ export default function RessourcesPdfPage() {
       
       document.body.appendChild(link)
       link.click()
-      document.body.removeChild(link)
+      
+      setTimeout(() => {
+        document.body.removeChild(link)
+      }, 100)
       
       console.log('✅ Téléchargement desktop initié')
     }
