@@ -447,21 +447,25 @@ export default function RessourcesPdfPage() {
                   {/* Bouton de téléchargement */}
                   <button
                     onClick={() => handleDownload(ressourcePdf)}
-                    className={`w-full inline-flex items-center justify-center gap-2 ${
+                    className={`w-full inline-flex items-center justify-center gap-2 py-3 px-4 text-base font-semibold rounded-xl transition-all duration-300 ${
                       !ressourcePdf.isFree && user?.status !== 'active'
                         ? 'btn-secondary'
                         : 'btn-primary'
-                    }`}
+                    } ${isMobile() ? 'touch-manipulation' : ''}`}
+                    style={isMobile() ? { 
+                      WebkitTapHighlightColor: 'transparent',
+                      touchAction: 'manipulation'
+                    } : {}}
                   >
                     {!ressourcePdf.isFree && user?.status !== 'active' ? (
                       <>
                         <FiLock className="w-5 h-5" />
-                        S'abonner pour télécharger
+                        <span>S'abonner pour télécharger</span>
                       </>
                     ) : (
                       <>
                         <FiDownload className="w-5 h-5" />
-                        {ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}
+                        <span>{ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}</span>
                       </>
                     )}
                   </button>
