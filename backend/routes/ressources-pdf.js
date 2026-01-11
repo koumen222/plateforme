@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import multer from 'multer';
 import RessourcePdf from '../models/RessourcePdf.js';
-import { uploadPdfToCloudinary, uploadImageToCloudinary } from '../utils/cloudinary.js';
+import { uploadPdfToCloudinary, uploadImageToCloudinary, makePublicOnCloudinary } from '../utils/cloudinary.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -541,6 +541,82 @@ router.delete('/admin/ressources-pdf/:id', async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Erreur lors de la suppression de la ressource PDF',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/ressources-pdf/fix-cloudinary-access
+ * Route utilitaire pour rendre publics tous les fichiers Cloudinary existants
+ * (pour corriger les erreurs 401 sur les fichiers uploadés avant la correction)
+ */
+router.post('/admin/ressources-pdf/fix-cloudinary-access', async (req, res) => {
+  try {
+    const ressourcesPdf = await RessourcePdf.find({});
+    const results = {
+      total: ressourcesPdf.length,
+      fixed: 0,
+      errors: [],
+      details: []
+    };
+
+    for (const ressource of ressourcesPdf) {
+      try {
+        // Extraire le public_id depuis l'URL Cloudinary
+        // Format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{version}/{folder}/{public_id}.{format}
+        if (ressource.pdfUrl && ressource.pdfUrl.includes('cloudinary.com')) {
+          const urlParts = ressource.pdfUrl.split('/');
+          const uploadIndex = urlParts.findIndex(part => part === 'upload');
+          
+          if (uploadIndex !== -1 && urlParts.length > uploadIndex + 2) {
+            // Le public_id est après le dossier (plateforme/pdf/)
+            const folderAndFile = urlParts.slice(uploadIndex + 2).join('/');
+            // Retirer l'extension .pdf si présente
+            const publicId = folderAndFile.replace(/\.pdf$/i, '');
+            
+            console.log(`🔧 Correction accès pour PDF: ${publicId}`);
+            await makePublicOnCloudinary(publicId, 'raw');
+            results.fixed++;
+            results.details.push({ type: 'pdf', publicId, url: ressource.pdfUrl });
+          }
+        }
+
+        // Faire de même pour l'image de couverture
+        if (ressource.coverImage && ressource.coverImage.includes('cloudinary.com')) {
+          const urlParts = ressource.coverImage.split('/');
+          const uploadIndex = urlParts.findIndex(part => part === 'upload');
+          
+          if (uploadIndex !== -1 && urlParts.length > uploadIndex + 2) {
+            const folderAndFile = urlParts.slice(uploadIndex + 2).join('/');
+            // Retirer l'extension si présente
+            const publicId = folderAndFile.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
+            
+            console.log(`🔧 Correction accès pour image: ${publicId}`);
+            await makePublicOnCloudinary(publicId, 'image');
+            results.fixed++;
+            results.details.push({ type: 'image', publicId, url: ressource.coverImage });
+          }
+        }
+      } catch (error) {
+        console.error(`❌ Erreur correction pour ressource ${ressource._id}:`, error);
+        results.errors.push({
+          ressourceId: ressource._id,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Correction terminée: ${results.fixed} fichiers rendus publics`,
+      results
+    });
+  } catch (error) {
+    console.error('Erreur correction accès Cloudinary:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la correction de l\'accès Cloudinary',
       details: error.message
     });
   }
