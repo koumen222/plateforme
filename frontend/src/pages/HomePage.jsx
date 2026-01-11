@@ -65,13 +65,24 @@ export default function HomePage() {
       setRessourcesPdfLoading(true)
       const response = await axios.get(`${CONFIG.BACKEND_URL}/api/ressources-pdf`)
       
-      if (response.data.success) {
+      console.log('📚 Réponse API ressources PDF (HomePage):', response.data)
+      
+      if (response.data && response.data.success) {
         // Limiter à 3 ressources PDF pour la page d'accueil
         const ressourcesPdfData = (response.data.ressourcesPdf || []).slice(0, 3)
         setRessourcesPdf(ressourcesPdfData)
+      } else if (response.data && Array.isArray(response.data)) {
+        // Fallback si la réponse est directement un tableau
+        const ressourcesPdfData = (response.data || []).slice(0, 3)
+        setRessourcesPdf(ressourcesPdfData)
+      } else {
+        console.warn('⚠️ Format de réponse inattendu pour ressources PDF:', response.data)
       }
     } catch (err) {
       console.error('❌ Erreur chargement ressources PDF:', err)
+      console.error('❌ Détails:', err.response?.data || err.message)
+      // Ne pas bloquer l'affichage de la page si les ressources PDF ne se chargent pas
+      setRessourcesPdf([])
     } finally {
       setRessourcesPdfLoading(false)
     }
@@ -80,26 +91,43 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-primary overflow-x-hidden">
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-white via-purple-100 to-purple-200 dark:from-purple-900 dark:via-purple-950 dark:to-black py-12 sm:py-16 lg:py-20 relative overflow-hidden w-full">
-        <div className="absolute inset-0 opacity-5 overflow-hidden">
-          <div className="absolute top-20 left-10 w-72 h-72 bg-accent rounded-full blur-3xl"></div>
-          <div className="absolute bottom-20 right-10 w-96 h-96 bg-accent rounded-full blur-3xl"></div>
-        </div>
-        <div className="absolute inset-0 opacity-10 overflow-hidden">
-          <div className="absolute top-0 left-1/2 transform -translate-x-1/2 w-[600px] h-[600px] bg-purple-300 dark:bg-purple-400 rounded-full blur-3xl"></div>
+      <section className="py-12 sm:py-16 lg:py-20 relative overflow-hidden w-full bg-gradient-to-br from-purple-950 via-purple-900 to-purple-950">
+        {/* Image de fond - visible avec style funnel pro */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat opacity-40"
+          style={{
+            backgroundImage: 'url(/img/pexels-pixabay-356056.jpg)'
+          }}
+        ></div>
+        {/* Dégradé violet foncé style funnel pro - couche principale */}
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-950/85 via-purple-900/80 to-purple-950/85"></div>
+        {/* Dégradé radial pour effet de profondeur au centre */}
+        <div 
+          className="absolute inset-0"
+          style={{
+            background: 'radial-gradient(circle at center, rgba(88, 28, 135, 0.3) 0%, rgba(76, 29, 149, 0.5) 50%, rgba(59, 7, 100, 0.9) 100%)'
+          }}
+        ></div>
+        {/* Overlay sombre supplémentaire pour masquer l'image */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent"></div>
+        {/* Effets de lumière subtils violet foncé */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute top-20 left-10 w-96 h-96 bg-purple-700/15 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-20 right-10 w-[500px] h-[500px] bg-purple-800/10 rounded-full blur-3xl"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/8 rounded-full blur-3xl"></div>
         </div>
         <div className="container-startup relative z-10 w-full max-w-full">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-white text-sm font-medium mb-6 animate-fade-in hover:scale-105 transition-transform duration-300 shadow-sm border border-purple-200 dark:border-purple-700">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/20 backdrop-blur-sm text-white text-sm font-medium mb-6 animate-fade-in hover:scale-105 transition-transform duration-300 shadow-lg border border-white/30">
               Ecom Starter - Votre Partenaire E-commerce en Afrique
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-primary dark:text-white mb-6 leading-tight animate-slide-up">
-              Lancez votre <span className="text-accent dark:text-white relative inline-block">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight animate-slide-up drop-shadow-lg">
+              Lancez votre <span className="text-white relative inline-block">
                 <span className="relative z-10">Business E-commerce</span>
-                <span className="absolute bottom-0 left-0 w-full h-3 bg-purple-200 dark:bg-purple-700/50 -z-0"></span>
+                <span className="absolute bottom-0 left-0 w-full h-3 bg-white/30 -z-0"></span>
               </span> en Afrique
             </h1>
-            <p className="text-lg sm:text-xl text-secondary dark:text-gray-200 mb-8 max-w-3xl mx-auto leading-relaxed animate-fade-in">
+            <p className="text-lg sm:text-xl text-white mb-8 max-w-3xl mx-auto leading-relaxed animate-fade-in drop-shadow-md">
               Tout ce qu'il faut pour se lancer en e-commerce en Afrique sur cette plateforme. 
               Formations complètes : Facebook Ads, TikTok Ads, Shopify, Créatives avec Sora 2, 
               Achat sur Alibaba, Recherche produit, et tous les outils essentiels pour créer un business rentable.
@@ -119,7 +147,7 @@ export default function HomePage() {
                     element.scrollIntoView({ behavior: 'smooth', block: 'start' })
                   }
                 }}
-                className="btn-secondary dark:bg-purple-800/50 dark:hover:bg-purple-700/50 dark:text-white dark:border-purple-600 w-full sm:w-auto px-8 py-4 text-base transform hover:scale-105 hover:shadow-lg transition-all duration-300"
+                className="btn-primary dark:bg-purple-600 dark:hover:bg-purple-700 dark:text-white w-full sm:w-auto px-8 py-4 text-base transform hover:scale-105 hover:shadow-xl transition-all duration-300"
                 aria-label="Aller à la section témoignages"
               >
                 Voir les témoignages

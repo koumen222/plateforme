@@ -333,25 +333,7 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
 // Placeholders pour éviter les erreurs si routes non chargées
 
 // Routes ressources PDF (publiques) - seront montées dans startServer après chargement dynamique
-// Placeholder pour éviter les erreurs
-app.get("/api/ressources-pdf", async (req, res) => {
-  if (!ressourcesPdfRoutes) {
-    // Essayer de charger le module si pas encore chargé
-    try {
-      const module = await import("./routes/ressources-pdf.js");
-      ressourcesPdfRoutes = module.default;
-      app.use("/api/ressources-pdf", ressourcesPdfRoutes);
-      // Laisser la requête passer au router
-      return;
-    } catch (error) {
-      return res.status(503).json({ 
-        success: false, 
-        error: 'Module ressources-pdf non disponible',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  }
-});
+// Placeholder supprimé - les routes seront chargées dans startServer()
 
 // Routes seront montées dans startServer après chargement dynamique
 

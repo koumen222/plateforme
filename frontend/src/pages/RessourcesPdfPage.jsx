@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { CONFIG } from '../config/config'
+import { getImageUrl } from '../utils/imageUtils'
 import { FiBook, FiDownload, FiFileText, FiUser, FiTag, FiSearch, FiFilter } from 'react-icons/fi'
 import axios from 'axios'
 
@@ -21,14 +22,21 @@ export default function RessourcesPdfPage() {
       setError(null)
       const response = await axios.get(`${CONFIG.BACKEND_URL}/api/ressources-pdf`)
       
-      if (response.data.success) {
+      console.log('📚 Réponse API ressources PDF:', response.data)
+      
+      if (response.data && response.data.success) {
         setRessourcesPdf(response.data.ressourcesPdf || [])
+      } else if (Array.isArray(response.data)) {
+        // Fallback si la réponse est directement un tableau
+        setRessourcesPdf(response.data)
       } else {
-        setError('Erreur lors du chargement des ressources PDF')
+        console.error('❌ Format de réponse inattendu:', response.data)
+        setError('Format de réponse inattendu du serveur')
       }
     } catch (err) {
-      console.error('Erreur chargement ressources PDF:', err)
-      setError('Impossible de charger les ressources PDF')
+      console.error('❌ Erreur chargement ressources PDF:', err)
+      console.error('❌ Détails:', err.response?.data || err.message)
+      setError(err.response?.data?.error || 'Impossible de charger les ressources PDF')
     } finally {
       setLoading(false)
     }
@@ -52,12 +60,20 @@ export default function RessourcesPdfPage() {
       // Incrémenter le compteur de téléchargements
       await axios.post(`${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`)
       
+      // Construire l'URL complète du PDF
+      const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
+        ? ressourcePdf.pdfUrl 
+        : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+      
       // Ouvrir le PDF dans un nouvel onglet
-      window.open(ressourcePdf.pdfUrl, '_blank')
+      window.open(pdfUrl, '_blank')
     } catch (err) {
       console.error('Erreur téléchargement:', err)
       // Ouvrir quand même le PDF même si l'incrémentation échoue
-      window.open(ressourcePdf.pdfUrl, '_blank')
+      const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
+        ? ressourcePdf.pdfUrl 
+        : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+      window.open(pdfUrl, '_blank')
     }
   }
 
@@ -160,7 +176,7 @@ export default function RessourcesPdfPage() {
                 <div className="relative h-48 sm:h-56 overflow-hidden bg-gradient-to-br from-accent/10 to-accent/5">
                   {ressourcePdf.coverImage ? (
                     <img
-                      src={ressourcePdf.coverImage}
+                      src={getImageUrl(ressourcePdf.coverImage, '/img/ressource-pdf-default.png')}
                       alt={ressourcePdf.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       onError={(e) => {
