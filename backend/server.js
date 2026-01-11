@@ -56,18 +56,49 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
 
 const app = express();
 
+// Configuration CORS dynamique pour autoriser les sous-domaines safitech.shop
 const corsOptions = {
-  origin: [
-    "https://safitech.shop",
-    "https://www.safitech.shop"
-  ],
+  origin: function (origin, callback) {
+    // Autoriser les requêtes sans origine (ex: Postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
+    
+    // Liste des origines autorisées
+    const allowedOrigins = [
+      "https://safitech.shop",
+      "https://www.safitech.shop",
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000"
+    ];
+    
+    // Vérifier si l'origine est dans la liste autorisée
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else if (origin.includes('.safitech.shop')) {
+      // Autoriser tous les sous-domaines de safitech.shop
+      callback(null, true);
+    } else {
+      console.log(`⚠️ CORS bloqué pour l'origine: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
-  allowedHeaders: ["Content-Type","Authorization","X-Requested-With"]
+  allowedHeaders: ["Content-Type","Authorization","X-Requested-With"],
+  exposedHeaders: ["Content-Type","Authorization"],
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// Log de la configuration CORS au démarrage
+console.log('🔒 Configuration CORS activée');
+console.log('   - Origines autorisées: safitech.shop et sous-domaines');
+console.log('   - Credentials: activé');
 
 app.use(express.json());
 app.use(cookieParser());
