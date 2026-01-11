@@ -598,44 +598,38 @@ export default function AdminRessourcesPdfPage() {
               </div>
             </div>
 
-            <div className="admin-form-row">
-              <div className="admin-form-group">
-                <label>Nombre de pages</label>
-                <input
-                  type="number"
-                  value={editFormData.pages}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, pages: parseInt(e.target.value) || 0 }))}
-                  min="0"
-                />
-              </div>
-
-              <div className="admin-form-group">
-                <label>Prix (FCFA)</label>
-                <input
-                  type="number"
-                  value={editFormData.price}
-                  onChange={(e) => {
-                    const price = parseInt(e.target.value) || 0
-                    setEditFormData(prev => ({
-                      ...prev,
-                      price,
-                      isFree: price === 0
-                    }))
-                  }}
-                  min="0"
-                />
-              </div>
+            <div className="admin-form-group">
+              <label>Nombre de pages</label>
+              <input
+                type="number"
+                value={editFormData.pages}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, pages: parseInt(e.target.value) || 0 }))}
+                min="0"
+              />
             </div>
 
             <div className="admin-form-group">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={editFormData.isFree}
-                  onChange={(e) => setEditFormData(prev => ({ ...prev, isFree: e.target.checked }))}
+                  onChange={(e) => {
+                    const isFree = e.target.checked
+                    setEditFormData(prev => ({
+                      ...prev,
+                      isFree,
+                      price: 0 // Toujours 0, le prix n'est pas utilisé
+                    }))
+                  }}
+                  className="cursor-pointer"
                 />
-                Gratuit
+                <span>Gratuit</span>
               </label>
+              <p className="text-xs text-secondary mt-1 ml-6">
+                {editFormData.isFree 
+                  ? '✅ Cette ressource PDF sera accessible gratuitement à tous les utilisateurs connectés'
+                  : '🔒 Cette ressource PDF sera réservée aux utilisateurs abonnés (status: active). Les utilisateurs non abonnés devront payer l\'abonnement pour y accéder.'}
+              </p>
             </div>
 
             <div className="admin-form-group">
