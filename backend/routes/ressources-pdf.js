@@ -198,8 +198,8 @@ router.post('/:id/download', async (req, res) => {
       });
     }
 
-    // Vérifier si le PDF est payant
-    const isPayant = !ressourcePdf.isFree && ressourcePdf.price > 0;
+    // Vérifier si le PDF est payant (non gratuit)
+    const isPayant = !ressourcePdf.isFree;
     
     // Si le PDF est payant, vérifier l'authentification et le statut
     if (isPayant) {
@@ -221,9 +221,8 @@ router.post('/:id/download', async (req, res) => {
       if (!user || user.status !== 'active') {
         return res.status(403).json({
           success: false,
-          error: 'Cette ressource PDF est payante',
+          error: 'Cette ressource PDF est réservée aux abonnés',
           requiresSubscription: true,
-          price: ressourcePdf.price,
           message: 'Vous devez être abonné pour télécharger cette ressource PDF. Veuillez payer votre abonnement.'
         });
       }

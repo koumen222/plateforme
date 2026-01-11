@@ -460,37 +460,14 @@ export default function AdminRessourcesPdfPage() {
               </div>
             </div>
 
-            <div className="admin-form-row">
-              <div className="admin-form-group">
-                <label>Nombre de pages</label>
-                <input
-                  type="number"
-                  value={formData.pages}
-                  onChange={(e) => setFormData(prev => ({ ...prev, pages: parseInt(e.target.value) || 0 }))}
-                  min="0"
-                />
-              </div>
-
-              <div className="admin-form-group">
-                <label>Prix (FCFA)</label>
-                <input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) => {
-                    const price = parseInt(e.target.value) || 0
-                    setFormData(prev => ({
-                      ...prev,
-                      price,
-                      isFree: price === 0
-                    }))
-                  }}
-                  min="0"
-                  disabled={formData.isFree}
-                />
-                {formData.isFree && (
-                  <p className="text-xs text-secondary mt-1">Le prix est automatiquement défini à 0 pour les ressources gratuites</p>
-                )}
-              </div>
+            <div className="admin-form-group">
+              <label>Nombre de pages</label>
+              <input
+                type="number"
+                value={formData.pages}
+                onChange={(e) => setFormData(prev => ({ ...prev, pages: parseInt(e.target.value) || 0 }))}
+                min="0"
+              />
             </div>
 
             <div className="admin-form-group">
@@ -503,17 +480,17 @@ export default function AdminRessourcesPdfPage() {
                     setFormData(prev => ({
                       ...prev,
                       isFree,
-                      price: isFree ? 0 : (prev.price || 2000) // Par défaut 2000 FCFA si payant
+                      price: 0 // Toujours 0, le prix n'est pas utilisé
                     }))
                   }}
                   className="cursor-pointer"
                 />
-                <span>Gratuit (réservé aux abonnés si non coché)</span>
+                <span>Gratuit</span>
               </label>
               <p className="text-xs text-secondary mt-1 ml-6">
                 {formData.isFree 
-                  ? 'Cette ressource PDF sera accessible gratuitement à tous les utilisateurs'
-                  : 'Cette ressource PDF sera réservée aux utilisateurs abonnés (status: active)'}
+                  ? '✅ Cette ressource PDF sera accessible gratuitement à tous les utilisateurs connectés'
+                  : '🔒 Cette ressource PDF sera réservée aux utilisateurs abonnés (status: active). Les utilisateurs non abonnés devront payer l\'abonnement pour y accéder.'}
               </p>
             </div>
 

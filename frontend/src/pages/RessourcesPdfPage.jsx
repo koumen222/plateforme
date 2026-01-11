@@ -64,13 +64,13 @@ export default function RessourcesPdfPage() {
   const handleDownload = async (ressourcePdf) => {
     try {
       // Si le PDF est payant et l'utilisateur n'est pas connecté, rediriger vers login
-      if (!ressourcePdf.isFree && ressourcePdf.price > 0 && !isAuthenticated) {
+      if (!ressourcePdf.isFree && !isAuthenticated) {
         navigate('/login', { state: { from: '/ressources-pdf', message: 'Connectez-vous pour télécharger cette ressource PDF' } })
         return
       }
 
       // Si le PDF est payant et l'utilisateur n'est pas abonné, afficher le modal de paiement
-      if (!ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active') {
+      if (!ressourcePdf.isFree && user?.status !== 'active') {
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
         return
@@ -111,7 +111,7 @@ export default function RessourcesPdfPage() {
       }
       
       // Si le PDF est gratuit, essayer quand même de l'ouvrir
-      if (ressourcePdf.isFree || ressourcePdf.price === 0) {
+      if (ressourcePdf.isFree) {
         const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
           ? ressourcePdf.pdfUrl 
           : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
@@ -286,17 +286,8 @@ export default function RessourcesPdfPage() {
                     )}
                   </div>
 
-                  {/* Prix */}
-                  {!ressourcePdf.isFree && ressourcePdf.price > 0 && (
-                    <div className="mb-4">
-                      <span className="text-2xl font-bold text-accent">
-                        {ressourcePdf.price.toLocaleString('fr-FR')} FCFA
-                      </span>
-                    </div>
-                  )}
-
                   {/* Badge payant */}
-                  {!ressourcePdf.isFree && ressourcePdf.price > 0 && (
+                  {!ressourcePdf.isFree && (
                     <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
                       <FiLock className="w-4 h-4" />
                       <span>Réservé aux abonnés</span>
@@ -307,12 +298,12 @@ export default function RessourcesPdfPage() {
                   <button
                     onClick={() => handleDownload(ressourcePdf)}
                     className={`w-full inline-flex items-center justify-center gap-2 ${
-                      !ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active'
+                      !ressourcePdf.isFree && user?.status !== 'active'
                         ? 'btn-secondary'
                         : 'btn-primary'
                     }`}
                   >
-                    {!ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active' ? (
+                    {!ressourcePdf.isFree && user?.status !== 'active' ? (
                       <>
                         <FiLock className="w-5 h-5" />
                         S'abonner pour télécharger
@@ -358,11 +349,6 @@ export default function RessourcesPdfPage() {
                   <p className="text-secondary text-sm">
                     Cette ressource PDF est réservée aux abonnés. Abonnez-vous pour y accéder.
                   </p>
-                  {selectedPdf.price > 0 && (
-                    <p className="text-accent font-semibold mt-2">
-                      Prix : {selectedPdf.price.toLocaleString('fr-FR')} FCFA
-                    </p>
-                  )}
                 </div>
               )}
               <SubscriptionButton
