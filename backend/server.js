@@ -448,41 +448,6 @@ app.post("/api/chat", authenticate, async (req, res) => {
   }
 });
 
-// Middleware de gestion des routes non trouvées (doit être après toutes les routes)
-app.use((req, res, next) => {
-  console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
-  console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
-  res.status(404).json({ 
-    error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
-    availableRoutes: [
-      'GET /auth/google',
-      'GET /auth/google/callback',
-      'POST /api/register',
-      'POST /api/login',
-      'GET /api/user/me',
-      'PUT /api/profile',
-      'PUT /api/change-password',
-      'POST /api/chat',
-      'GET /api/success-radar',
-      'GET /api/valentine-winners',
-      'POST /api/regenerate-products',
-      'POST /api/regenerate-valentine',
-      'GET /api/ressources-pdf',
-      'GET /api/ressources-pdf/:slug',
-      'GET /api/courses',
-      'GET /api/courses/:id',
-      'GET /api/comments',
-      'GET /api/progress',
-      'POST /api/admin/register',
-      'GET /api/admin/check',
-      'GET /api/admin/ressources-pdf',
-      'POST /api/admin/ressources-pdf',
-      'PUT /api/admin/ressources-pdf/:id',
-      'DELETE /api/admin/ressources-pdf/:id'
-    ]
-  });
-});
-
 const PORT = process.env.PORT || 3000;
 
 // Démarrer le serveur après la connexion MongoDB
@@ -892,6 +857,41 @@ const startServer = async () => {
     } else {
       console.warn('⚠️ Services Success Radar Cron non disponibles');
     }
+    
+    // Middleware de gestion des routes non trouvées (DOIT être après toutes les routes)
+    app.use((req, res, next) => {
+      console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
+      console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
+      res.status(404).json({ 
+        error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
+        availableRoutes: [
+          'GET /auth/google',
+          'GET /auth/google/callback',
+          'POST /api/register',
+          'POST /api/login',
+          'GET /api/user/me',
+          'PUT /api/profile',
+          'PUT /api/change-password',
+          'POST /api/chat',
+          'GET /api/success-radar',
+          'GET /api/valentine-winners',
+          'POST /api/regenerate-products',
+          'POST /api/regenerate-valentine',
+          'GET /api/ressources-pdf',
+          'GET /api/ressources-pdf/:slug',
+          'GET /api/courses',
+          'GET /api/courses/:id',
+          'GET /api/comments',
+          'GET /api/progress',
+          'POST /api/admin/register',
+          'GET /api/admin/check',
+          'GET /api/admin/ressources-pdf',
+          'POST /api/admin/ressources-pdf',
+          'PUT /api/admin/ressources-pdf/:id',
+          'DELETE /api/admin/ressources-pdf/:id'
+        ]
+      });
+    });
     
     // Démarrer le serveur Express
     app.listen(PORT, '0.0.0.0', () => {
