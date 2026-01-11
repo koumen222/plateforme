@@ -520,7 +520,33 @@ router.get('/admin/ressources-pdf', async (req, res) => {
   }
 });
 
-// Les routes POST, PUT et DELETE admin utilisent les mêmes routes que les routes principales
+// Route DELETE admin (alias)
+router.delete('/admin/ressources-pdf/:id', async (req, res) => {
+  try {
+    const ressourcePdf = await RessourcePdf.findByIdAndDelete(req.params.id);
+    
+    if (!ressourcePdf) {
+      return res.status(404).json({
+        success: false,
+        error: 'Ressource PDF non trouvée'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Ressource PDF supprimée avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur suppression ressource PDF:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Erreur lors de la suppression de la ressource PDF',
+      details: error.message
+    });
+  }
+});
+
+// Les routes POST et PUT admin utilisent les mêmes routes que les routes principales
 // car elles sont déjà montées sur /api/ressources-pdf
 // Le frontend peut utiliser /api/ressources-pdf directement
 
