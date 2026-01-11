@@ -67,6 +67,89 @@ export default function RessourcesPdfPage() {
            (window.innerWidth <= 768)
   }
 
+  // Fonction pour télécharger le PDF via la route dédiée (meilleure compatibilité mobile)
+  const downloadPdfViaRoute = async (ressourceId, filename) => {
+    const sanitizedFilename = (filename || 'document.pdf')
+      .replace(/[^a-z0-9.-]/gi, '_')
+      .toLowerCase()
+    
+    console.log('📥 Téléchargement via route dédiée:', { ressourceId, filename: sanitizedFilename, isMobile: isMobile() })
+    
+    try {
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const downloadUrl = `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourceId}/file`
+      
+      if (isMobile()) {
+        // Sur mobile, utiliser fetch + blob
+        console.log('📱 Téléchargement mobile via route')
+        const response = await fetch(downloadUrl, { 
+          headers,
+          mode: 'cors',
+          credentials: 'include'
+        })
+        
+        if (!response.ok) {
+          if (response.status === 403) {
+            const errorData = await response.json()
+            if (errorData.requiresSubscription) {
+              throw new Error('REQUIRES_SUBSCRIPTION')
+            }
+          }
+          throw new Error(`HTTP ${response.status}`)
+        }
+        
+        const blob = await response.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = sanitizedFilename
+        link.style.cssText = 'display: none; position: absolute; left: -9999px;'
+        link.setAttribute('download', sanitizedFilename)
+        
+        document.body.appendChild(link)
+        
+        setTimeout(() => {
+          link.click()
+          setTimeout(() => {
+            document.body.removeChild(link)
+            window.URL.revokeObjectURL(blobUrl)
+          }, 2000)
+        }, 100)
+        
+        return true
+      } else {
+        // Sur desktop, créer un lien direct
+        console.log('💻 Téléchargement desktop via route')
+        const link = document.createElement('a')
+        link.href = downloadUrl
+        link.download = sanitizedFilename
+        link.target = '_blank'
+        link.rel = 'noopener noreferrer'
+        link.style.display = 'none'
+        
+        // Ajouter le token dans l'URL si nécessaire (fallback si headers ne fonctionnent pas)
+        if (token) {
+          link.href += `?token=${encodeURIComponent(token)}`
+        }
+        
+        document.body.appendChild(link)
+        link.click()
+        setTimeout(() => {
+          document.body.removeChild(link)
+        }, 100)
+        
+        return true
+      }
+    } catch (error) {
+      console.error('❌ Erreur téléchargement via route:', error)
+      if (error.message === 'REQUIRES_SUBSCRIPTION') {
+        throw error
+      }
+      return false
+    }
+  }
+
   // Fonction pour télécharger le PDF (optimisée pour mobile et desktop)
   const downloadPdf = async (pdfUrl, filename) => {
     const sanitizedFilename = (filename || 'document.pdf')
@@ -229,13 +312,23 @@ export default function RessourcesPdfPage() {
           console.log('⚠️ Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
         }
         
-        // Construire et télécharger le PDF
-        const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
-        if (pdfUrl) {
-          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-          downloadPdf(pdfUrl, filename)
-        } else {
-          setError('URL du PDF invalide')
+        // Télécharger via la route dédiée (meilleure compatibilité mobile)
+        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+        try {
+          await downloadPdfViaRoute(ressourcePdf._id, filename)
+        } catch (error) {
+          if (error.message === 'REQUIRES_SUBSCRIPTION') {
+            setSelectedPdf(ressourcePdf)
+            setShowSubscriptionModal(true)
+            return
+          }
+          // Fallback vers méthode classique
+          const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
+          if (pdfUrl) {
+            downloadPdf(pdfUrl, filename)
+          } else {
+            setError('URL du PDF invalide')
+          }
         }
         return
       }
@@ -276,15 +369,24 @@ export default function RessourcesPdfPage() {
         return
       }
       
-      // Construire l'URL complète du PDF depuis la réponse ou depuis ressourcePdf
-      const pdfUrlFromResponse = response.data.pdfUrl || ressourcePdf.pdfUrl
-      const pdfUrl = buildPdfUrl(pdfUrlFromResponse)
-      
-      if (pdfUrl) {
-        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-        downloadPdf(pdfUrl, filename)
-      } else {
-        setError('URL du PDF invalide')
+      // Télécharger via la route dédiée (meilleure compatibilité mobile)
+      const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+      try {
+        await downloadPdfViaRoute(ressourcePdf._id, filename)
+      } catch (error) {
+        if (error.message === 'REQUIRES_SUBSCRIPTION') {
+          setSelectedPdf(ressourcePdf)
+          setShowSubscriptionModal(true)
+          return
+        }
+        // Fallback vers méthode classique
+        const pdfUrlFromResponse = response.data.pdfUrl || ressourcePdf.pdfUrl
+        const pdfUrl = buildPdfUrl(pdfUrlFromResponse)
+        if (pdfUrl) {
+          downloadPdf(pdfUrl, filename)
+        } else {
+          setError('URL du PDF invalide')
+        }
       }
     } catch (err) {
       console.error('❌ Erreur téléchargement:', err)
