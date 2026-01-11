@@ -30,6 +30,10 @@ export default function AdminRessourcesPdfPage() {
   const [success, setSuccess] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editFormData, setEditFormData] = useState(null)
+  const [selectedPdfFile, setSelectedPdfFile] = useState(null)
+  const [selectedImageFile, setSelectedImageFile] = useState(null)
+  const [selectedEditPdfFile, setSelectedEditPdfFile] = useState(null)
+  const [selectedEditImageFile, setSelectedEditImageFile] = useState(null)
 
   useEffect(() => {
     if (token) {
@@ -82,7 +86,7 @@ export default function AdminRessourcesPdfPage() {
     }
   }
 
-  const handlePdfUpload = async (e) => {
+  const handlePdfFileSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
@@ -96,74 +100,45 @@ export default function AdminRessourcesPdfPage() {
       return
     }
 
-    try {
-      setUploadingPdf(true)
-      setError('')
-      
-      const formData = new FormData()
-      formData.append('pdf', file)
-
-      const response = await axios.post(
-        `${CONFIG.BACKEND_URL}/api/admin/upload/pdf`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      )
-
-      if (response.data.success) {
-        setFormData(prev => ({ ...prev, pdfUrl: response.data.pdfPath }))
-        setSuccess('✅ PDF uploadé avec succès !')
-        setTimeout(() => setSuccess(''), 3000)
-      }
-    } catch (err) {
-      console.error('Erreur upload PDF:', err)
-      setError(err.response?.data?.error || 'Erreur lors de l\'upload du PDF')
-    } finally {
-      setUploadingPdf(false)
+    if (editingId) {
+      setSelectedEditPdfFile(file)
+      setSuccess('✅ Fichier PDF sélectionné. Il sera uploadé vers Cloudinary lors de la sauvegarde.')
+    } else {
+      setSelectedPdfFile(file)
+      setSuccess('✅ Fichier PDF sélectionné. Il sera uploadé vers Cloudinary lors de la sauvegarde.')
     }
+    setTimeout(() => setSuccess(''), 3000)
   }
 
-  const handleImageUpload = async (e) => {
+  const handleImageFileSelect = (e) => {
     const file = e.target.files[0]
     if (!file) return
 
-    try {
-      setUploadingImage(true)
-      setError('')
-      
-      const formData = new FormData()
-      formData.append('image', file)
-
-      const response = await axios.post(
-        `${CONFIG.BACKEND_URL}/api/admin/upload/course-image`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      )
-
-      if (response.data.success) {
-        if (editingId) {
-          setEditFormData(prev => ({ ...prev, coverImage: response.data.imagePath }))
-        } else {
-          setFormData(prev => ({ ...prev, coverImage: response.data.imagePath }))
-        }
-        setSuccess('✅ Image uploadée avec succès !')
-        setTimeout(() => setSuccess(''), 3000)
-      }
-    } catch (err) {
-      console.error('Erreur upload image:', err)
-      setError(err.response?.data?.error || 'Erreur lors de l\'upload de l\'image')
-    } finally {
-      setUploadingImage(false)
+    if (!file.type.startsWith('image/')) {
+      setError('Seuls les fichiers image sont autorisés')
+      return
     }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('L\'image est trop volumineuse (max 10MB)')
+      return
+    }
+
+    // Afficher un aperçu de l'image
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      if (editingId) {
+        setEditFormData(prev => ({ ...prev, coverImage: e.target.result }))
+        setSelectedEditImageFile(file)
+      } else {
+        setFormData(prev => ({ ...prev, coverImage: e.target.result }))
+        setSelectedImageFile(file)
+      }
+    }
+    reader.readAsDataURL(file)
+
+    setSuccess('✅ Image sélectionnée. Elle sera uploadée vers Cloudinary lors de la sauvegarde.')
+    setTimeout(() => setSuccess(''), 3000)
   }
 
   const handleSubmit = async (e) => {
@@ -172,21 +147,51 @@ export default function AdminRessourcesPdfPage() {
     setError('')
     setSuccess('')
 
-    if (!formData.pdfUrl) {
-      setError('Veuillez uploader un fichier PDF')
+    // Vérifier qu'un PDF est fourni (soit fichier, soit URL)
+    if (!selectedPdfFile && !formData.pdfUrl) {
+      setError('Veuillez sélectionner un fichier PDF ou fournir une URL')
       setSubmitting(false)
       return
     }
 
     try {
+      // Créer FormData pour envoyer les fichiers
+      const submitFormData = new FormData()
+      
+      // Ajouter les champs texte
+      Object.keys(formData).forEach(key => {
+        if (key !== 'pdfUrl' && key !== 'coverImage') {
+          submitFormData.append(key, formData[key])
+        }
+      })
+      
+      // Ajouter le fichier PDF si sélectionné
+      if (selectedPdfFile) {
+        submitFormData.append('pdf', selectedPdfFile)
+      } else if (formData.pdfUrl) {
+        submitFormData.append('pdfUrl', formData.pdfUrl)
+      }
+      
+      // Ajouter l'image de couverture si sélectionnée
+      if (selectedImageFile) {
+        submitFormData.append('coverImage', selectedImageFile)
+      } else if (formData.coverImage && formData.coverImage.startsWith('http')) {
+        submitFormData.append('coverImage', formData.coverImage)
+      }
+
       const response = await axios.post(
-        `${CONFIG.BACKEND_URL}/api/admin/ressources-pdf`,
-        formData,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        `${CONFIG.BACKEND_URL}/api/ressources-pdf`,
+        submitFormData,
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          } 
+        }
       )
 
       if (response.data.success) {
-        setSuccess('✅ Ressource PDF créée avec succès !')
+        setSuccess('✅ Ressource PDF créée avec succès ! Les fichiers ont été uploadés vers Cloudinary.')
         setShowAddForm(false)
         setFormData({
           title: '',
@@ -201,12 +206,14 @@ export default function AdminRessourcesPdfPage() {
           isFree: true,
           isPublished: false
         })
+        setSelectedPdfFile(null)
+        setSelectedImageFile(null)
         fetchRessourcesPdf()
-        setTimeout(() => setSuccess(''), 3000)
+        setTimeout(() => setSuccess(''), 5000)
       }
     } catch (err) {
       console.error('Erreur création ressource PDF:', err)
-      setError(err.response?.data?.error || 'Erreur lors de la création de la ressource PDF')
+      setError(err.response?.data?.error || err.response?.data?.details || 'Erreur lors de la création de la ressource PDF')
     } finally {
       setSubmitting(false)
     }
@@ -227,6 +234,9 @@ export default function AdminRessourcesPdfPage() {
       isFree: ressourcePdf.isFree,
       isPublished: ressourcePdf.isPublished
     })
+    // Réinitialiser les fichiers sélectionnés
+    setSelectedEditPdfFile(null)
+    setSelectedEditImageFile(null)
   }
 
   const handleUpdate = async () => {
@@ -237,18 +247,49 @@ export default function AdminRessourcesPdfPage() {
     setSuccess('')
 
     try {
+      // Créer FormData pour envoyer les fichiers
+      const submitFormData = new FormData()
+      
+      // Ajouter les champs texte
+      Object.keys(editFormData).forEach(key => {
+        if (key !== 'pdfUrl' && key !== 'coverImage') {
+          submitFormData.append(key, editFormData[key])
+        }
+      })
+      
+      // Ajouter le fichier PDF si un nouveau fichier est sélectionné
+      if (selectedEditPdfFile) {
+        submitFormData.append('pdf', selectedEditPdfFile)
+      } else if (editFormData.pdfUrl) {
+        submitFormData.append('pdfUrl', editFormData.pdfUrl)
+      }
+      
+      // Ajouter l'image de couverture si une nouvelle image est sélectionnée
+      if (selectedEditImageFile) {
+        submitFormData.append('coverImage', selectedEditImageFile)
+      } else if (editFormData.coverImage && editFormData.coverImage.startsWith('http')) {
+        submitFormData.append('coverImage', editFormData.coverImage)
+      }
+
       const response = await axios.put(
-        `${CONFIG.BACKEND_URL}/api/admin/ressources-pdf/${editingId}`,
-        editFormData,
-        { headers: { 'Authorization': `Bearer ${token}` } }
+        `${CONFIG.BACKEND_URL}/api/ressources-pdf/${editingId}`,
+        submitFormData,
+        { 
+          headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          } 
+        }
       )
 
       if (response.data.success) {
-        setSuccess('✅ Ressource PDF mise à jour avec succès !')
+        setSuccess('✅ Ressource PDF mise à jour avec succès ! Les fichiers ont été uploadés vers Cloudinary.')
         setEditingId(null)
         setEditFormData(null)
+        setSelectedEditPdfFile(null)
+        setSelectedEditImageFile(null)
         fetchRessourcesPdf()
-        setTimeout(() => setSuccess(''), 3000)
+        setTimeout(() => setSuccess(''), 5000)
       }
     } catch (err) {
       console.error('Erreur mise à jour ressource PDF:', err)
@@ -401,16 +442,21 @@ export default function AdminRessourcesPdfPage() {
                 <input
                   type="file"
                   accept="application/pdf"
-                  onChange={handlePdfUpload}
+                  onChange={handlePdfFileSelect}
                   className="admin-file-input"
-                  disabled={uploadingPdf}
+                  disabled={submitting}
                 />
-                {uploadingPdf && <p className="text-sm text-secondary">⏳ Upload en cours...</p>}
-                {formData.pdfUrl && (
+                {selectedPdfFile && (
+                  <div className="flex items-center gap-2 text-sm text-accent">
+                    <FiCheck className="w-4 h-4" />
+                    <span>PDF sélectionné : {selectedPdfFile.name} (sera uploadé vers Cloudinary)</span>
+                  </div>
+                )}
+                {formData.pdfUrl && !selectedPdfFile && (
                   <div className="flex items-center gap-2 text-sm text-accent">
                     <FiCheck className="w-4 h-4" />
                     <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      PDF uploadé : {formData.pdfUrl.split('/').pop()}
+                      PDF actuel : {formData.pdfUrl.split('/').pop()}
                     </a>
                   </div>
                 )}
@@ -423,14 +469,16 @@ export default function AdminRessourcesPdfPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  onChange={handleImageFileSelect}
                   className="admin-file-input"
-                  disabled={uploadingImage}
+                  disabled={submitting}
                 />
-                {uploadingImage && <p className="text-sm text-secondary">⏳ Upload en cours...</p>}
+                {selectedImageFile && (
+                  <p className="text-sm text-accent">✅ Image sélectionnée : {selectedImageFile.name} (sera uploadée vers Cloudinary)</p>
+                )}
                 {formData.coverImage && (
                   <img
-                    src={getImageUrl(formData.coverImage)}
+                    src={formData.coverImage.startsWith('http') ? formData.coverImage : getImageUrl(formData.coverImage)}
                     alt="Couverture"
                     className="w-32 h-32 object-cover rounded-lg border border-theme"
                   />
