@@ -131,17 +131,26 @@ app.use('/uploads', express.static(uploadsPath, {
       // Permettre le cache pour améliorer les performances
       res.set('Cache-Control', 'public, max-age=86400');
     }
-  },
-  // Gérer les erreurs 404 pour les fichiers statiques
-  fallthrough: false
-}), (req, res) => {
-  // Si le fichier n'existe pas, retourner une erreur 404 propre
-  console.log(`⚠️ Fichier statique non trouvé: ${req.originalUrl}`);
-  res.status(404).json({
-    error: 'Fichier non trouvé',
-    path: req.originalUrl
-  });
+  }
+}));
+
+// Middleware pour gérer les fichiers statiques non trouvés
+app.use('/uploads', (req, res, next) => {
+  // Si on arrive ici, c'est que express.static n'a pas trouvé le fichier
+  // Vérifier si c'est vraiment une requête vers /uploads
+  if (req.originalUrl.startsWith('/uploads/')) {
+    console.log(`⚠️ Fichier statique non trouvé: ${req.originalUrl}`);
+    console.log(`   - Chemin uploads configuré: ${uploadsPath}`);
+    res.status(404).json({
+      error: 'Fichier non trouvé',
+      path: req.originalUrl,
+      uploadsPath: uploadsPath
+    });
+    return;
+  }
+  next();
 });
+
 console.log('📁 Dossier uploads configuré: /uploads');
 console.log('📁 Chemin absolu uploads:', uploadsPath);
 console.log('📁 Dossier uploads/pdf configuré: /uploads/pdf');
