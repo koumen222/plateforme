@@ -291,31 +291,28 @@ router.get('/:id/file', async (req, res) => {
     
     // Vérifier que le fichier existe
     if (!fs.existsSync(fullPath)) {
-      console.error('❌ Fichier non trouvé:', fullPath);
+      console.warn('⚠️ Fichier non trouvé localement:', fullPath);
+      console.warn('   - Tentative de servir via express.static...');
       
-      // Essayer quelques variantes de chemins pour aider au debug
-      const alternativePaths = [
-        path.join(uploadsBasePath, 'pdf', path.basename(filePath)),
-        path.join(process.cwd(), 'uploads', filePath),
-        path.join(process.cwd(), 'backend', 'uploads', filePath),
-      ];
+      // Si le fichier n'existe pas localement, essayer de le servir via express.static
+      // Cela peut fonctionner si le fichier est servi depuis un autre emplacement
+      // ou si express.static peut le trouver
+      const staticUrl = ressourcePdf.pdfUrl.startsWith('/') 
+        ? ressourcePdf.pdfUrl 
+        : '/' + ressourcePdf.pdfUrl;
       
-      console.error('   - Chemins alternatifs testés:');
-      alternativePaths.forEach(p => {
-        const exists = fs.existsSync(p);
-        console.error(`   - ${exists ? '✅' : '❌'} ${p}`);
-      });
+      // Construire l'URL complète pour redirection
+      const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
+      const redirectUrl = `${baseUrl}${staticUrl}`;
       
-      return res.status(404).json({
-        success: false,
-        error: 'Fichier PDF non trouvé sur le serveur',
-        pdfUrl: ressourcePdf.pdfUrl,
-        searchedPath: fullPath,
-        uploadsBasePath: uploadsBasePath
-      });
+      console.log('   - Redirection vers:', redirectUrl);
+      
+      // Rediriger vers l'URL statique - express.static devrait pouvoir la servir
+      // Si express.static ne peut pas la servir non plus, il retournera 404
+      return res.redirect(302, staticUrl);
     }
     
-    console.log('✅ Fichier trouvé:', fullPath);
+    console.log('✅ Fichier trouvé localement:', fullPath);
 
     // Définir les headers pour forcer le téléchargement
     const filename = ressourcePdf.slug ? `${ressourcePdf.slug}.pdf` : path.basename(filePath);
