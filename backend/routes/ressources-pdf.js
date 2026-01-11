@@ -395,9 +395,10 @@ router.get('/:id/file', async (req, res) => {
     // Construire le chemin du fichier
     let filePath = ressourcePdf.pdfUrl;
     
-    // Si c'est une URL externe, rediriger
+    // Si c'est une URL externe (Cloudinary ou autre), rediriger directement
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      return res.redirect(filePath);
+      console.log('✅ URL externe détectée, redirection vers:', filePath);
+      return res.redirect(302, filePath);
     }
     
     // Nettoyer le chemin - retirer /uploads/ si présent
