@@ -61,6 +61,74 @@ export default function RessourcesPdfPage() {
     return matchesSearch && matchesCategory
   })
 
+  // Fonction pour détecter si l'utilisateur est sur mobile
+  const isMobile = () => {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+           (window.innerWidth <= 768)
+  }
+
+  // Fonction pour télécharger le PDF (optimisée pour mobile et desktop)
+  const downloadPdf = async (pdfUrl, filename) => {
+    const sanitizedFilename = (filename || 'document.pdf')
+      .replace(/[^a-z0-9.-]/gi, '_')
+      .toLowerCase()
+    
+    if (isMobile()) {
+      // Sur mobile, utiliser fetch pour télécharger et créer un blob
+      console.log('📱 Téléchargement mobile:', pdfUrl)
+      try {
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+        const response = await fetch(pdfUrl, { headers })
+        
+        if (!response.ok) {
+          throw new Error('Erreur lors du téléchargement')
+        }
+        
+        const blob = await response.blob()
+        const blobUrl = window.URL.createObjectURL(blob)
+        
+        // Créer un lien temporaire pour télécharger
+        const link = document.createElement('a')
+        link.href = blobUrl
+        link.download = sanitizedFilename
+        link.style.display = 'none'
+        
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        
+        // Nettoyer le blob URL après un délai
+        setTimeout(() => {
+          window.URL.revokeObjectURL(blobUrl)
+        }, 100)
+        
+        console.log('✅ PDF téléchargé sur mobile')
+      } catch (error) {
+        console.error('❌ Erreur téléchargement mobile, fallback vers ouverture:', error)
+        // Fallback : ouvrir dans un nouvel onglet
+        window.open(pdfUrl, '_blank')
+      }
+    } else {
+      // Sur desktop, créer un lien avec attribut download pour forcer le téléchargement
+      console.log('💻 Téléchargement desktop:', pdfUrl)
+      const link = document.createElement('a')
+      link.href = pdfUrl
+      link.download = sanitizedFilename
+      link.target = '_blank'
+      link.rel = 'noopener noreferrer'
+      link.style.display = 'none'
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+      // Fallback : ouvrir dans un nouvel onglet après un court délai
+      setTimeout(() => {
+        window.open(pdfUrl, '_blank')
+      }, 100)
+    }
+  }
+
   const handleDownload = async (ressourcePdf) => {
     try {
       console.log('📥 Début téléchargement PDF:', ressourcePdf.title)
@@ -68,6 +136,7 @@ export default function RessourcesPdfPage() {
       console.log('   - isAuthenticated:', isAuthenticated)
       console.log('   - user.status:', user?.status)
       console.log('   - pdfUrl:', ressourcePdf.pdfUrl)
+      console.log('   - isMobile:', isMobile())
 
       // Fonction pour construire l'URL complète du PDF
       const buildPdfUrl = (pdfUrl) => {
@@ -106,11 +175,11 @@ export default function RessourcesPdfPage() {
           console.log('⚠️ Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
         }
         
-        // Construire et ouvrir le PDF
+        // Construire et télécharger le PDF
         const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
         if (pdfUrl) {
-          console.log('🚀 Ouverture PDF:', pdfUrl)
-          window.open(pdfUrl, '_blank')
+          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+          downloadPdf(pdfUrl, filename)
         } else {
           setError('URL du PDF invalide')
         }
@@ -158,8 +227,8 @@ export default function RessourcesPdfPage() {
       const pdfUrl = buildPdfUrl(pdfUrlFromResponse)
       
       if (pdfUrl) {
-        console.log('🚀 Ouverture PDF:', pdfUrl)
-        window.open(pdfUrl, '_blank')
+        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+        downloadPdf(pdfUrl, filename)
       } else {
         setError('URL du PDF invalide')
       }
@@ -181,7 +250,8 @@ export default function RessourcesPdfPage() {
         console.log('🔄 Tentative d\'ouverture PDF gratuit malgré l\'erreur')
         const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
         if (pdfUrl) {
-          window.open(pdfUrl, '_blank')
+          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+          downloadPdf(pdfUrl, filename)
         } else {
           setError('Impossible de télécharger le PDF. URL invalide.')
         }

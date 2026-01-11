@@ -113,10 +113,18 @@ app.use('/uploads', express.static(uploadsPath, {
   index: false,
   maxAge: '1d',
   redirect: false,
-  setHeaders: (res, path) => {
+  setHeaders: (res, filePath) => {
     // Définir les headers CORS pour les fichiers statiques
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET');
+    
+    // Pour les fichiers PDF, ajouter Content-Disposition pour forcer le téléchargement sur mobile
+    if (filePath.endsWith('.pdf')) {
+      const filename = path.basename(filePath);
+      res.set('Content-Type', 'application/pdf');
+      res.set('Content-Disposition', `attachment; filename="${filename}"`);
+      res.set('Content-Transfer-Encoding', 'binary');
+    }
   }
 }));
 console.log('📁 Dossier uploads configuré: /uploads');
