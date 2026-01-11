@@ -2,10 +2,10 @@ import axios from "axios";
 
 // Détection automatique de l'URL du backend
 const getBackendUrl = () => {
-  // Fonction pour nettoyer l'URL (supprimer le slash final)
+  // Fonction pour nettoyer l'URL (supprimer le slash final et les espaces)
   const cleanUrl = (url) => {
     if (!url) return url
-    return url.toString().replace(/\/+$/, '')
+    return url.toString().trim().replace(/\/+$/, '')
   }
   
   // Détection du mode développement : vérifier si on est sur localhost
