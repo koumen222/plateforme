@@ -44,19 +44,14 @@ router.get('/success-radar', authenticate, async (req, res) => {
       .lean();
     
     const now = new Date();
-    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 heures en millisecondes
+    const oneHourInMs = 1 * 60 * 60 * 1000; // 1 heure en millisecondes
     
-    // Forcer la génération si paramètre force=true ou cache=false dans la query
-    const forceRefresh = req.query.force === 'true' || req.query.force === '1' || req.query.cache === 'false';
-    
-    // Si aucun produit OU si le dernier produit a plus de 2h, générer
+    // Toujours respecter le cache - pas de génération forcée
+    // Si aucun produit OU si le dernier produit a plus de 1h, générer
     let shouldRefresh = false;
     let cacheMessage = null;
     
-    if (forceRefresh) {
-      console.log('🔄 Régénération forcée demandée (cache ignoré)');
-      shouldRefresh = true;
-    } else if (!products.length) {
+    if (!products.length) {
       console.log('⚠️ Aucun produit en base, génération immédiate...');
       shouldRefresh = true;
     } else {
@@ -66,14 +61,13 @@ router.get('/success-radar', authenticate, async (req, res) => {
         const lastUpdate = new Date(mostRecentProduct.lastUpdated);
         const timeSinceUpdate = now - lastUpdate;
         
-        if (timeSinceUpdate >= twoHoursInMs) {
+        if (timeSinceUpdate >= oneHourInMs) {
           console.log(`⏰ Produits obsolètes (${Math.round(timeSinceUpdate / (60 * 60 * 1000))}h), génération...`);
           shouldRefresh = true;
         } else {
-          const remainingHours = Math.round((twoHoursInMs - timeSinceUpdate) / (60 * 60 * 1000));
-          const remainingMinutes = Math.round(((twoHoursInMs - timeSinceUpdate) % (60 * 60 * 1000)) / (60 * 1000));
-          console.log(`✅ Produits statiques en cache (actualisation dans ${remainingHours}h ${remainingMinutes}min)`);
-          cacheMessage = `Produits statiques chargés depuis le cache. Prochaine actualisation dans ${remainingHours}h ${remainingMinutes}min`;
+          const remainingMinutes = Math.round((oneHourInMs - timeSinceUpdate) / (60 * 1000));
+          console.log(`✅ Produits statiques en cache (actualisation dans ${remainingMinutes}min)`);
+          cacheMessage = `Produits statiques chargés depuis le cache. Prochaine actualisation dans ${remainingMinutes}min`;
         }
       } else {
         // Si pas de date, considérer comme obsolète
@@ -81,7 +75,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
       }
     }
     
-    // Générer seulement si nécessaire (pas de cache valide) OU si force=true
+    // Générer seulement si nécessaire (pas de cache valide)
     if (shouldRefresh) {
       try {
         console.log('🔄 Génération de 50 nouveaux produits statiques...');
@@ -93,7 +87,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
             { specialEvent: { $ne: 'saint-valentin' } }
           ]
         });
-        await refreshSuccessRadar();
+        await refreshSuccessRadar(false);
         products = await WinningProduct.find({ 
           $or: [
             { specialEvent: { $exists: false } },
@@ -104,7 +98,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
           .sort({ lastUpdated: -1, createdAt: -1 })
           .limit(50)
           .lean();
-        console.log(`✅ ${products.length} produits statiques générés et enregistrés en base avec succès (régénération dans 2h)`);
+        console.log(`✅ ${products.length} produits statiques générés et enregistrés en base avec succès (régénération dans 1h)`);
       } catch (err) {
         console.error('❌ Erreur génération produits:', err.message);
         // En cas d'erreur, essayer de retourner les produits en cache s'ils existent
@@ -128,7 +122,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
         }
       }
     } else {
-      console.log(`📦 Retour des ${products.length} produits statiques depuis le cache (régénération automatique dans 2h)`);
+      console.log(`📦 Retour des ${products.length} produits statiques depuis le cache (régénération automatique dans 1h)`);
     }
 
     if (!products.length) {
@@ -174,17 +168,12 @@ router.get('/valentine-winners', authenticate, async (req, res) => {
     const now = new Date();
     const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 heures pour St Valentin
     
-    // Forcer la génération si paramètre force=true ou cache=false dans la query
-    const forceRefresh = req.query.force === 'true' || req.query.force === '1' || req.query.cache === 'false';
-    
+    // Toujours respecter le cache - pas de génération forcée
     // Si aucun produit St Valentin OU si le dernier a plus de 24h, générer
     let shouldRefresh = false;
     let cacheMessage = null;
     
-    if (forceRefresh) {
-      console.log('💝 Régénération forcée St Valentin demandée (cache ignoré)');
-      shouldRefresh = true;
-    } else if (!valentineProducts.length) {
+    if (!valentineProducts.length) {
       console.log('💝 Aucun produit St Valentin en base, génération immédiate...');
       shouldRefresh = true;
     } else {
@@ -207,10 +196,10 @@ router.get('/valentine-winners', authenticate, async (req, res) => {
       }
     }
     
-    // Générer seulement si nécessaire OU si force=true
+    // Générer seulement si nécessaire
     if (shouldRefresh) {
       try {
-        console.log('💝 Génération de nouveaux produits St Valentin via OpenAI (cache ignoré)...');
+        console.log('💝 Génération de nouveaux produits St Valentin via OpenAI...');
         // Supprimer les anciens produits St Valentin avant de générer
         await WinningProduct.deleteMany({ specialEvent: 'saint-valentin' });
         await refreshValentineProducts();
@@ -280,8 +269,8 @@ router.post('/regenerate-products', authenticate, async (req, res) => {
     await WinningProduct.deleteMany({});
     console.log('🗑️ Anciens produits supprimés');
 
-    // Générer de nouveaux produits
-    await refreshSuccessRadar();
+    // Générer de nouveaux produits (force=true pour bypasser le cache dans cette route admin)
+    await refreshSuccessRadar(true);
     const products = await WinningProduct.find({})
       .sort({ lastUpdated: -1, createdAt: -1 })
       .limit(50)

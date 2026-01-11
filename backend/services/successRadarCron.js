@@ -2,187 +2,95 @@ import cron from 'node-cron';
 import OpenAI from 'openai';
 import WinningProduct from '../models/WinningProduct.js';
 
-const SCHEDULE = '0 */2 * * *'; // every 2 hours
+const SCHEDULE = '0 * * * *'; // every 1 hour
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-const buildValentinePrompt = () => `Rôle :
-Tu es un expert e-commerce senior spécialisé dans les marchés africains (Afrique de l'Ouest, Centrale et du Nord), avec une expertise avancée en product research, data Meta Ads, Minea, Alibaba et AliExpress.
+// Fonction pour construire un prompt simplifié St Valentin pour 20 produits
+const buildValentinePrompt = (batchNumber = 1) => {
+  return `Tu es une API qui renvoie UNIQUEMENT du JSON VALIDE. Pas de texte, pas de commentaire, pas de markdown.
 
-Objectif :
-Identifier EXACTEMENT 50 produits WINNERS RÉELS spécialement adaptés pour la SAINT-VALENTIN en Afrique francophone. Ces produits doivent être des cadeaux romantiques RÉELS qui ont VRAIMENT été vendus avec succès pendant la période St Valentin.
+Règles strictes :
+- Réponds UNIQUEMENT avec un objet JSON valide {"products":[...]}
+- Pas de texte avant ou après le JSON
+- Pas de commentaires dans le JSON
+- Pas de markdown (pas de \`\`\`)
+- EXACTEMENT 20 produits dans le tableau "products"
+- Si tu ne peux pas finir, ferme proprement tous les objets JSON avec } et ]
 
-IMPORTANT : Tu DOIS générer exactement 50 produits St Valentin RÉELS, pas moins.
-IMPORTANT : Tous les produits DOIVENT avoir le champ "specialEvent" défini à "saint-valentin" dans le JSON.
-IMPORTANT : Tous les produits doivent être RÉELS avec des PRIX CONCRETS en FCFA et des PREUVES de vente.
+Génère EXACTEMENT 20 produits romantiques St Valentin RÉELS vendus en Afrique francophone.
 
-Sources d'analyse obligatoires :
-- Meta Ads Library (publicités actives + récurrentes en Afrique)
-- Minea (produits gagnants + scaling proof)
-- Alibaba & AliExpress (volume de commandes, fournisseurs fiables)
-- Tendances locales africaines (problèmes quotidiens, habitudes de consommation, pouvoir d'achat)
+Champs OBLIGATOIRES pour chaque produit :
+- name : Nom du produit romantique
+- category : Cadeaux romantiques, Bijoux, Beauté, etc.
+- specialEvent : "saint-valentin" (OBLIGATOIRE)
+- problemSolved : Besoin romantique résolu
+- whyItWorks : Pourquoi ça marche pendant St Valentin
+- proofIndicator : Preuve de vente St Valentin
+- supplierPrice : Prix fournisseur USD (2-20$)
+- sellingPrice : Prix vente FCFA (ex: 25000, 35000)
+- priceRange : Plage prix FCFA (ex: "25 000 - 30 000 FCFA")
+- countries : ["Sénégal", "Côte d'Ivoire", ...]
+- marketingAngle : romance, émotion, statut, confort, gain
+- scalingPotential : Faible, Moyen, Élevé
+- demandScore : 0-100
+- trendScore : 0-100
+- saturation : 0-100
+- status : hot, warm, dead
 
-Critères STRICTS de sélection des produits ST VALENTIN RÉELS :
-- PRODUITS RÉELS : Fleurs artificielles LED, bijoux romantiques, bougies parfumées, gadgets LED cœur, etc.
-- PREUVES DE VENTE : Doivent avoir été VRAIMENT vendus pendant St Valentin (publicités Meta actives, ventes sur Minea, commandes Alibaba/AliExpress)
-- PRIX RÉELS : Fournir des prix CONCRETS en FCFA (ex: 15 000 FCFA, 25 000 FCFA, 35 000 FCFA)
-- PRIX FOURNISSEUR : 2$ à 20$ USD (convertis en FCFA dans le prix de vente)
-- PRIX DE VENTE : x3 à x6 du prix fournisseur, en FCFA CONCRET (ex: fournisseur 8$ = vente 30 000 - 40 000 FCFA)
-- PRODUITS CONCRETS : Fleur artificielle LED rose, Powerbank cœur LED, Bougie parfumée romantique, Bijou cœur, etc.
-- FACILE À EXPLIQUER : Produits qui se vendent bien en vidéo UGC romantique
-- COMPATIBLE COD : Livraison locale et paiement à la livraison
-- THÈMES RÉELS : Bijoux cœur, fleurs LED, bougies parfumées, gadgets LED romantiques, boîtes cadeau personnalisées, etc.
-
-IMPORTANT - Format de réponse JSON :
-Réponds UNIQUEMENT avec un objet JSON valide de la forme {"products":[...]} sans texte avant ou après.
-Le JSON doit être complet et valide.
-
-Pour chaque produit ST VALENTIN RÉEL, fournis OBLIGATOIREMENT dans le JSON :
-- name : Nom PRÉCIS et RÉEL du produit romantique (ex: "Fleur artificielle LED rose avec message", "Powerbank cœur LED romantique", "Bougie parfumée cœur")
-- category : Cadeaux romantiques, Bijoux, Beauté, Maison, Parfums, Décorations, etc.
-- specialEvent : TOUJOURS "saint-valentin" (OBLIGATOIRE)
-- problemSolved : Besoin romantique RÉEL résolu (ex: "Besoin de cadeau romantique durable pour St Valentin")
-- whyItWorks : Pourquoi ce produit RÉEL marche VRAIMENT pendant St Valentin en Afrique (preuves concrètes)
-- proofIndicator : PREUVE RÉELLE de vente (ex: "Meta Ads actives au Maroc depuis février", "3000+ ventes sur AliExpress en février", "Scaling actif sur Minea")
-- supplierPrice : Prix fournisseur RÉEL en USD (2$ à 20$)
-- sellingPrice : Prix de vente RÉEL en FCFA (ex: 25000, 35000, 45000 - prix CONCRET)
-- priceRange : Plage de prix RÉELLE en FCFA (format "25 000 - 30 000 FCFA" avec prix CONCRETS)
-- countries : Pays africains où le produit est VRAIMENT vendu pendant St Valentin (array de 2-5 pays)
-- marketingAngle : Angle marketing RÉEL utilisé (romance, émotion, statut, confort, gain)
-- scalingPotential : Potentiel RÉEL basé sur ventes actuelles (Faible / Moyen / Élevé)
-- demandScore : 0-100 (basé sur PREUVES RÉELLES de traction pendant St Valentin)
-- trendScore : 0-100 (basé sur tendances RÉELLES St Valentin actuelles)
-- saturation : 0-100 (saturation RÉELLE du marché St Valentin)
-- status : "hot" si demandScore >= 75 ET trendScore >= 75 ET preuves réelles, "dead" si les deux <= 30, sinon "warm"
-
-Contraintes STRICTES ST VALENTIN :
-- AUCUN produit théorique ou inventé
-- TOUS les produits doivent être RÉELS et EXISTER vraiment
-- TOUS doivent avoir des PREUVES RÉELLES de vente pendant St Valentin
-- PRIX RÉELS en FCFA (ex: 25 000 FCFA, 35 000 FCFA - pas de plages vagues)
-- Focus EXCLUSIF sur produits romantiques VRAIMENT vendus pendant St Valentin en Afrique
-- Classer les 50 produits du plus fort potentiel RÉEL au plus faible
-- Exemples de produits RÉELS acceptés : Fleur artificielle LED, Powerbank cœur, Bougie parfumée, Bijou cœur, etc.
-
-Exemple de format JSON attendu pour ST VALENTIN :
+Format JSON strict :
 {
   "products": [
-    {
-      "name": "Bouquet de roses artificielles LED avec message personnalisé",
-      "category": "Cadeaux romantiques",
-      "specialEvent": "saint-valentin",
-      "problemSolved": "Besoin d'un cadeau romantique durable et original pour St Valentin en Afrique",
-      "whyItWorks": "Roses qui ne fanent jamais, effet LED romantique, personnalisation du message, adapté au budget africain",
-      "proofIndicator": "Meta Ads actives au Sénégal et Côte d'Ivoire pendant St Valentin, volume élevé sur AliExpress en février",
-      "supplierPrice": 8,
-      "sellingPrice": 35000,
-      "priceRange": "30 000 - 40 000 FCFA",
-      "countries": ["Sénégal", "Côte d'Ivoire", "Cameroun", "Maroc"],
-      "marketingAngle": "romance",
-      "scalingPotential": "Élevé",
-      "demandScore": 92,
-      "trendScore": 88,
-      "saturation": 20,
-      "status": "hot"
-    }
+    {"name": "...", "category": "...", "specialEvent": "saint-valentin", ...},
+    ...
   ]
 }`;
+};
 
-const buildPrompt = () => `Rôle :
-Tu es un expert e-commerce senior spécialisé dans les marchés africains (Afrique de l'Ouest, Centrale et du Nord), avec une expertise avancée en product research, data Meta Ads, Minea, Alibaba et AliExpress.
+// Fonction pour construire un prompt simplifié pour 20 produits
+const buildPrompt = (batchNumber = 1, totalBatches = 3, includeSkinCare = true) => {
+  const skinCareCount = batchNumber === 1 ? 4 : (batchNumber === 2 ? 4 : 2); // 4+4+2 = 10 produits Skin Care
+  
+  return `Tu es une API qui renvoie UNIQUEMENT du JSON VALIDE. Pas de texte, pas de commentaire, pas de markdown.
 
-Objectif :
-Identifier EXACTEMENT 50 produits WINNERS RÉELS qui ont VRAIMENT été vendus avec succès en Afrique francophone. Ces produits doivent être CONCRETS, avec des PRIX RÉELS et des PREUVES de vente.
+Règles strictes :
+- Réponds UNIQUEMENT avec un objet JSON valide {"products":[...]}
+- Pas de texte avant ou après le JSON
+- Pas de commentaires dans le JSON
+- Pas de markdown (pas de \`\`\`)
+- EXACTEMENT 20 produits dans le tableau "products"
+- Si tu ne peux pas finir, ferme proprement tous les objets JSON avec } et ]
 
-IMPORTANT : Tu DOIS générer exactement 50 produits RÉELS, pas moins. Chaque produit doit avoir un nom précis, un prix réel en FCFA, et une preuve de vente.
+Génère EXACTEMENT 20 produits e-commerce RÉELS vendus en Afrique francophone.
+${includeSkinCare ? `Inclus ${skinCareCount} produits Skin Care (category: "Skin Care") parmi les 20 produits.` : ''}
 
-Sources d'analyse obligatoires :
-- Meta Ads Library (publicités ACTIVES et RÉCURRENTES en Afrique francophone)
-- Minea (produits gagnants avec PREUVES de scaling et ventes réelles)
-- Alibaba & AliExpress (volume de commandes RÉEL, fournisseurs avec ventes vérifiées)
-- Tendances locales africaines (produits VRAIMENT vendus, pas théoriques)
+Champs OBLIGATOIRES pour chaque produit :
+- name : Nom du produit
+- category : Catégorie (Skin Care, Électronique, Maison, Beauté, etc.)
+- problemSolved : Problème résolu
+- whyItWorks : Pourquoi ça marche
+- proofIndicator : Preuve de vente
+- supplierPrice : Prix fournisseur USD (2-20$)
+- sellingPrice : Prix vente FCFA (ex: 15000, 25000)
+- priceRange : Plage prix FCFA (ex: "15 000 - 20 000 FCFA")
+- countries : ["Sénégal", "Côte d'Ivoire", ...]
+- marketingAngle : peur, gain, confort, économie, statut
+- scalingPotential : Faible, Moyen, Élevé
+- demandScore : 0-100
+- trendScore : 0-100
+- saturation : 0-100
+- status : hot, warm, dead
 
-Critères STRICTS de sélection des produits RÉELS :
-- PRODUITS RÉELS : Doivent être des produits CONCRETS qui existent vraiment (ex: Powerbank 20000mAh, Fleur artificielle LED, etc.)
-- PREUVES DE VENTE : Doivent avoir été VRAIMENT vendus en Afrique (publicités Meta actives, ventes sur Minea, commandes Alibaba/AliExpress)
-- PRIX RÉELS : Fournir des prix CONCRETS en FCFA (ex: 15 000 FCFA, 25 000 FCFA, pas de plages vagues)
-- PRIX FOURNISSEUR : 2$ à 20$ USD (convertis en FCFA dans le prix de vente)
-- PRIX DE VENTE : x3 à x6 du prix fournisseur, en FCFA CONCRET (ex: fournisseur 5$ = vente 15 000 - 20 000 FCFA)
-- GADGETS RÉELS : Powerbank, fleurs artificielles LED, gadgets USB, accessoires téléphone, etc.
-- FACILE À EXPLIQUER : Produits qui se vendent bien en vidéo UGC
-- COMPATIBLE COD : Livraison locale et paiement à la livraison
-
-IMPORTANT - Format de réponse JSON :
-Réponds UNIQUEMENT avec un objet JSON valide de la forme {"products":[...]} sans texte avant ou après.
-Le JSON doit être complet et valide.
-
-Pour chaque produit RÉEL, fournis OBLIGATOIREMENT dans le JSON :
-- name : Nom PRÉCIS et RÉEL du produit (ex: "Powerbank 20000mAh avec LED", "Fleur artificielle LED rose", "Chargeur USB magnétique")
-- category : Maison, Auto, Beauté, Santé, Cuisine, Sécurité, Électronique, etc.
-- problemSolved : Problème RÉEL résolu en Afrique (ex: "Coupures d'électricité fréquentes", "Besoin de charger téléphone sans électricité")
-- whyItWorks : Pourquoi ce produit RÉEL marche VRAIMENT en Afrique (preuves concrètes, pas théoriques)
-- proofIndicator : PREUVE RÉELLE de vente (ex: "Meta Ads actives au Sénégal depuis 3 mois", "5000+ ventes sur AliExpress", "Scaling actif sur Minea")
-- supplierPrice : Prix fournisseur RÉEL en USD (2$ à 20$)
-- sellingPrice : Prix de vente RÉEL en FCFA (ex: 15000, 25000, 35000 - prix CONCRET, pas de plage)
-- priceRange : Plage de prix RÉELLE en FCFA (format "15 000 - 20 000 FCFA" avec prix CONCRETS)
-- countries : Pays africains où le produit est VRAIMENT vendu (array de 2-5 pays : Sénégal, Côte d'Ivoire, Maroc, Cameroun, etc.)
-- marketingAngle : Angle marketing RÉEL utilisé (peur, gain, confort, économie, statut)
-- scalingPotential : Potentiel RÉEL basé sur les ventes actuelles (Faible / Moyen / Élevé)
-- demandScore : 0-100 (basé sur PREUVES RÉELLES de traction : publicités actives, ventes réelles)
-- trendScore : 0-100 (basé sur tendances RÉELLES actuelles, pas théoriques)
-- saturation : 0-100 (saturation RÉELLE du marché basée sur données concrètes)
-- status : "hot" si demandScore >= 75 ET trendScore >= 75 ET preuves réelles, "dead" si les deux <= 30, sinon "warm"
-
-Contraintes STRICTES :
-- AUCUN produit théorique ou inventé
-- TOUS les produits doivent être RÉELS et EXISTER vraiment
-- TOUS doivent avoir des PREUVES RÉELLES de vente (publicités actives, ventes vérifiées)
-- PRIX RÉELS en FCFA (ex: 15 000 FCFA, 25 000 FCFA - pas de plages vagues)
-- Focus EXCLUSIF sur produits VRAIMENT vendus en Afrique francophone
-- Classer les 50 produits du plus fort potentiel RÉEL au plus faible
-- Exemples de produits RÉELS acceptés : Powerbank 20000mAh, Fleur artificielle LED, Chargeur USB, Gadgets téléphone, etc.
-
-Exemple de format JSON attendu avec produits RÉELS :
+Format JSON strict :
 {
   "products": [
-    {
-      "name": "Powerbank 20000mAh avec LED et charge rapide",
-      "category": "Électronique",
-      "problemSolved": "Coupures d'électricité fréquentes en Afrique, besoin de charger téléphone sans électricité",
-      "whyItWorks": "Autonomie élevée, charge rapide, LED intégrée pour éclairage, vendu activement au Sénégal et Côte d'Ivoire",
-      "proofIndicator": "Meta Ads actives au Sénégal depuis 4 mois, 8000+ ventes sur AliExpress, scaling actif sur Minea",
-      "supplierPrice": 6,
-      "sellingPrice": 25000,
-      "priceRange": "22 000 - 28 000 FCFA",
-      "countries": ["Sénégal", "Côte d'Ivoire", "Cameroun", "Mali"],
-      "marketingAngle": "confort",
-      "scalingPotential": "Élevé",
-      "demandScore": 92,
-      "trendScore": 88,
-      "saturation": 20,
-      "status": "hot"
-    },
-    {
-      "name": "Fleur artificielle LED rose avec message personnalisé",
-      "category": "Décoration",
-      "problemSolved": "Besoin de cadeau romantique durable et original",
-      "whyItWorks": "Ne fane jamais, effet LED romantique, personnalisation, vendu activement pendant St Valentin",
-      "proofIndicator": "Meta Ads actives au Maroc et Cameroun, 5000+ ventes sur AliExpress en février",
-      "supplierPrice": 8,
-      "sellingPrice": 35000,
-      "priceRange": "30 000 - 40 000 FCFA",
-      "countries": ["Maroc", "Cameroun", "Sénégal", "Côte d'Ivoire"],
-      "marketingAngle": "romance",
-      "scalingPotential": "Élevé",
-      "demandScore": 85,
-      "trendScore": 90,
-      "saturation": 15,
-      "status": "hot"
-    }
+    {"name": "...", "category": "...", ...},
+    ...
   ]
 }`;
+};
 
 // Fonction pour nettoyer et extraire le JSON de la réponse
 const cleanJSONContent = (content) => {
@@ -307,9 +215,18 @@ const normalizeProduct = (product, specialEvent = '') => {
   // Déterminer specialEvent : utiliser celui du produit ou celui passé en paramètre
   const event = product.specialEvent?.toString().trim() || specialEvent || '';
   
+  // Normaliser la catégorie Skin Care (plusieurs variantes possibles)
+  let category = product.category?.toString().trim() || '';
+  const categoryLower = category.toLowerCase();
+  if (categoryLower.includes('skin') && categoryLower.includes('care')) {
+    category = 'Skin Care'; // Standardiser sur "Skin Care"
+  } else if (categoryLower.includes('soin') && (categoryLower.includes('peau') || categoryLower.includes('visage'))) {
+    category = 'Skin Care'; // Traduire "Soin de la peau" en "Skin Care"
+  }
+  
   return {
     name: name,
-    category: product.category?.toString().trim() || '',
+    category: category,
     priceRange: normalizePriceToFCFA(priceRange || ''),
     countries: Array.isArray(product.countries) ? product.countries.map(c => c.toString().trim()) : [],
     saturation: Number.isFinite(product.saturation) ? Math.max(0, Math.min(100, product.saturation)) : 0,
@@ -330,40 +247,127 @@ const normalizeProduct = (product, specialEvent = '') => {
   };
 };
 
-export const fetchWinningProducts = async () => {
-  if (!process.env.OPENAI_API_KEY) {
-    throw new Error('OPENAI_API_KEY manquant pour Success Radar');
-  }
-
-  const messages = [
-    { role: 'system', content: 'Tu es un générateur de tendances e-commerce précis et concis.' },
-    { role: 'user', content: buildPrompt() }
-  ];
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages,
-    temperature: 0.7,
-    max_tokens: 8000, // Augmenté pour éviter les JSON tronqués
-    response_format: { type: 'json_object' }
-  });
-
-  const content = response.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('Réponse OpenAI vide pour Success Radar');
-  }
-
-  console.log('📥 Réponse OpenAI reçue, longueur:', content.length);
+// Fonction pour extraire les produits d'un JSON tronqué
+const extractProductsFromTruncatedJSON = (content) => {
+  const products = [];
   
-  // Nettoyer le contenu avant parsing
+  try {
+    // Chercher le début du tableau products
+    const productsStart = content.indexOf('"products"');
+    if (productsStart === -1) return products;
+    
+    // Chercher l'ouverture du tableau [
+    const arrayStart = content.indexOf('[', productsStart);
+    if (arrayStart === -1) return products;
+    
+    let depth = 0;
+    let inString = false;
+    let escapeNext = false;
+    let currentProduct = '';
+    let braceDepth = 0;
+    
+    // Parcourir caractère par caractère pour extraire les objets produits complets
+    for (let i = arrayStart + 1; i < content.length; i++) {
+      const char = content[i];
+      
+      if (escapeNext) {
+        currentProduct += char;
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        currentProduct += char;
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        currentProduct += char;
+        continue;
+      }
+      
+      if (inString) {
+        currentProduct += char;
+        continue;
+      }
+      
+      if (char === '{') {
+        braceDepth++;
+        currentProduct += char;
+        continue;
+      }
+      
+      if (char === '}') {
+        braceDepth--;
+        currentProduct += char;
+        
+        // Si on ferme un objet produit complet
+        if (braceDepth === 0) {
+          try {
+            const productObj = JSON.parse(currentProduct);
+            if (productObj.name || productObj.category) {
+              products.push(productObj);
+            }
+          } catch (e) {
+            // Ignorer les objets invalides
+          }
+          currentProduct = '';
+        }
+        continue;
+      }
+      
+      if (char === '[') {
+        depth++;
+        currentProduct += char;
+        continue;
+      }
+      
+      if (char === ']') {
+        depth--;
+        if (depth < 0) break; // Fin du tableau
+        currentProduct += char;
+        continue;
+      }
+      
+      if (braceDepth > 0) {
+        currentProduct += char;
+      }
+    }
+    
+    // Essayer d'extraire le dernier produit incomplet si possible
+    if (currentProduct.trim() && currentProduct.includes('"name"')) {
+      try {
+        // Essayer de compléter l'objet en ajoutant les accolades manquantes
+        let tempProduct = currentProduct;
+        while (tempProduct.match(/\{/g)?.length > tempProduct.match(/\}/g)?.length) {
+          tempProduct += '}';
+        }
+        const productObj = JSON.parse(tempProduct);
+        if (productObj.name || productObj.category) {
+          products.push(productObj);
+        }
+      } catch (e) {
+        // Ignorer si on ne peut pas parser
+      }
+    }
+    
+  } catch (err) {
+    console.error('❌ Erreur extraction JSON tronqué:', err.message);
+  }
+  
+  return products;
+};
+
+// Fonction helper pour extraire les produits d'une réponse OpenAI
+const extractProductsFromResponse = (content) => {
   const cleanedContent = cleanJSONContent(content);
-  
-  // response_format json_object => expect { products: [...] }
   let products = [];
+  
   try {
     const parsed = JSON.parse(cleanedContent);
     
-    // Chercher le tableau de produits dans différentes structures possibles
     if (Array.isArray(parsed)) {
       products = parsed;
     } else if (Array.isArray(parsed.products)) {
@@ -371,48 +375,371 @@ export const fetchWinningProducts = async () => {
     } else if (Array.isArray(parsed.data)) {
       products = parsed.data;
     } else if (parsed.products && typeof parsed.products === 'object') {
-      // Si products est un objet, essayer de le convertir en array
       products = Object.values(parsed.products);
     }
-    
-    console.log(`✅ ${products.length} produits extraits du JSON`);
   } catch (err) {
-    console.error('❌ Erreur parsing principal:', err.message);
-    console.error('   Position erreur:', err.message.match(/position (\d+)/)?.[1]);
+    console.error('❌ Erreur parsing JSON complet:', err.message);
     
-    // Essayer avec la fonction de fallback
+    // Si le JSON est tronqué, essayer d'extraire les produits valides
+    console.log('🔄 Tentative d\'extraction depuis JSON tronqué...');
+    products = extractProductsFromTruncatedJSON(content);
+    
+    if (products.length > 0) {
+      console.log(`✅ ${products.length} produits extraits depuis JSON tronqué`);
+    } else {
+      // Essayer avec parseProducts comme fallback
     products = parseProducts(content);
     
     if (!products.length) {
-      // Dernier recours : essayer d'extraire manuellement
-      console.log('⚠️ Tentative d\'extraction manuelle du JSON...');
       try {
         const jsonMatch = content.match(/\{[\s\S]*"products"[\s\S]*\}/);
         if (jsonMatch) {
           const manualParsed = JSON.parse(jsonMatch[0]);
           if (Array.isArray(manualParsed.products)) {
             products = manualParsed.products;
-            console.log(`✅ ${products.length} produits extraits manuellement`);
+            }
           }
+        } catch (manualErr) {
+          console.error('❌ Échec extraction manuelle:', manualErr.message);
+          // Dernier recours : extraction depuis JSON tronqué
+          products = extractProductsFromTruncatedJSON(content);
         }
-      } catch (manualErr) {
-        console.error('❌ Échec extraction manuelle:', manualErr.message);
       }
     }
   }
+  
+  return products;
+};
 
-  if (!products.length) {
-    throw new Error('Aucune donnée produit reçue depuis OpenAI');
+// Fonction pour générer les produits manquants
+const generateMissingProducts = async (existingProducts, specialEvent = '') => {
+  const missingCount = 50 - existingProducts.length;
+  if (missingCount <= 0) return [];
+  
+  console.log(`🔄 Génération de ${missingCount} produits manquants...`);
+  
+  const existingNames = existingProducts.map(p => (p.name || '').toLowerCase());
+  
+  // Compter les produits Skin Care existants
+  const existingSkinCare = existingProducts.filter(p => {
+    const category = (p.category || '').toLowerCase();
+    return category.includes('skin') || category.includes('care') || category.includes('soin');
+  }).length;
+  
+  const targetSkinCare = 10; // Objectif : 10 produits Skin Care
+  const missingSkinCare = Math.max(0, targetSkinCare - existingSkinCare);
+  const skinCareToGenerate = Math.min(missingSkinCare, Math.floor(missingCount * 0.4)); // 40% des produits manquants en Skin Care
+  
+  const completionPrompt = specialEvent === 'saint-valentin' 
+    ? `Génère EXACTEMENT ${missingCount} produits romantiques St Valentin supplémentaires pour compléter une liste de 50 produits. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis avec specialEvent="saint-valentin".`
+    : `Génère EXACTEMENT ${missingCount} produits e-commerce supplémentaires pour compléter une liste de 50 produits pour l'Afrique francophone. 
+    
+⚠️ IMPORTANT : Inclus OBLIGATOIREMENT ${skinCareToGenerate} produits Skin Care (category: "Skin Care") parmi les ${missingCount} produits à générer.
+Produits Skin Care acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc.
+
+Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis.`;
+  
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { 
+          role: 'system', 
+          content: 'Tu es un générateur de produits e-commerce. Génère EXACTEMENT le nombre de produits demandé en JSON valide.' 
+        },
+        { role: 'user', content: completionPrompt }
+      ],
+      temperature: 0.8,
+      max_tokens: 8000,
+      response_format: { type: 'json_object' }
+    });
+    
+      const content = response.choices?.[0]?.message?.content;
+      if (!content) {
+        throw new Error('Réponse OpenAI vide pour produits complémentaires');
+      }
+      
+      // Vérifier si le JSON est tronqué
+      const isTruncated = !content.trim().endsWith('}') && !content.trim().endsWith(']');
+      if (isTruncated) {
+        console.warn(`⚠️ JSON complémentaire semble tronqué`);
+      }
+      
+      const additionalProducts = extractProductsFromResponse(content);
+      
+      if (additionalProducts.length === 0) {
+        console.warn(`⚠️ Aucun produit complémentaire extrait depuis la réponse`);
+        return [];
+      }
+      
+      // Filtrer les doublons basés sur le nom
+      const uniqueProducts = additionalProducts.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        return name && !existingNames.includes(name);
+      });
+      
+      console.log(`✅ ${uniqueProducts.length} produits complémentaires générés (${uniqueProducts.length >= missingCount ? 'suffisant' : 'insuffisant'})`);
+      return uniqueProducts.slice(0, missingCount);
+  } catch (error) {
+    console.error('❌ Erreur génération produits complémentaires:', error.message);
+    return [];
   }
+};
 
-  // S'assurer d'avoir au moins 50 produits
-  if (products.length < 50) {
-    console.warn(`⚠️ Seulement ${products.length} produits générés, minimum 50 requis`);
+// Fonction pour réparer un JSON tronqué
+const repairTruncatedJSON = (content) => {
+  let repaired = content.trim();
+  
+  // Si ça ne se termine pas par }, essayer de fermer proprement
+  if (!repaired.endsWith('}') && !repaired.endsWith(']')) {
+    // Compter les accolades ouvertes/fermées
+    const openBraces = (repaired.match(/\{/g) || []).length;
+    const closeBraces = (repaired.match(/\}/g) || []).length;
+    const openBrackets = (repaired.match(/\[/g) || []).length;
+    const closeBrackets = (repaired.match(/\]/g) || []).length;
+    
+    // Fermer les tableaux ouverts
+    if (openBrackets > closeBrackets) {
+      repaired += ']';
+    }
+    
+    // Fermer les objets ouverts
+    if (openBraces > closeBraces) {
+      repaired += '}';
+    }
   }
   
-  // Limiter à 50 produits comme demandé dans le prompt
-  // Les produits généraux n'ont pas de specialEvent (ou specialEvent vide)
-  return products.slice(0, 50).map(p => normalizeProduct(p, ''));
+  return repaired;
+};
+
+// Fonction pour générer un batch de 20 produits
+const generateBatch = async (batchNumber, totalBatches, existingProducts = [], specialEvent = '') => {
+  const existingNames = existingProducts.map(p => (p.name || '').toLowerCase());
+  const prompt = specialEvent === 'saint-valentin' 
+    ? buildValentinePrompt(batchNumber)
+    : buildPrompt(batchNumber, totalBatches, true);
+  
+  const systemMessage = specialEvent === 'saint-valentin'
+    ? 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire.'
+    : 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire.';
+  
+  try {
+    console.log(`🔄 Génération batch ${batchNumber}/${totalBatches} (20 produits)...`);
+    
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemMessage },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 8000, // Limité pour 20 produits
+      response_format: { type: 'json_object' }
+    });
+
+    const content = response.choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error('Réponse OpenAI vide');
+    }
+
+    console.log(`📥 Réponse batch ${batchNumber} reçue, longueur:`, content.length);
+    
+    // Vérifier si le JSON est tronqué
+    let isTruncated = !content.trim().endsWith('}') && !content.trim().endsWith(']');
+    let processedContent = content;
+    
+    if (isTruncated) {
+      console.warn(`⚠️ JSON batch ${batchNumber} semble tronqué, tentative de réparation...`);
+      processedContent = repairTruncatedJSON(content);
+    }
+    
+    const products = extractProductsFromResponse(processedContent);
+    
+    if (products.length === 0 && isTruncated) {
+      // Essayer avec le contenu original
+      products.push(...extractProductsFromResponse(content));
+    }
+    
+    // Filtrer les doublons avec les produits existants
+    const uniqueProducts = products.filter(p => {
+      const name = (p.name || '').toLowerCase();
+      return name && !existingNames.includes(name);
+    });
+    
+    console.log(`✅ Batch ${batchNumber}: ${uniqueProducts.length} produits uniques extraits`);
+    return uniqueProducts;
+    
+  } catch (error) {
+    console.error(`❌ Erreur batch ${batchNumber}:`, error.message);
+    return [];
+  }
+};
+
+export const fetchWinningProducts = async () => {
+  if (!process.env.OPENAI_API_KEY) {
+    throw new Error('OPENAI_API_KEY manquant pour Success Radar');
+  }
+
+  let allProducts = [];
+  const batches = [20, 20, 10]; // 20 + 20 + 10 = 50 produits
+  
+  // Générer les batches séquentiellement
+  for (let i = 0; i < batches.length; i++) {
+    const batchSize = batches[i];
+    const batchNumber = i + 1;
+    const totalBatches = batches.length;
+    
+    // Générer le batch
+    const batchProducts = await generateBatch(batchNumber, totalBatches, allProducts, '');
+    
+    if (batchProducts.length > 0) {
+      allProducts = [...allProducts, ...batchProducts];
+      
+      // Éliminer les doublons
+      const seen = new Set();
+      allProducts = allProducts.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        if (!name || seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
+    }
+    
+    console.log(`📊 Total produits accumulés: ${allProducts.length}/50`);
+    
+    // Si on a déjà 50 produits, arrêter
+    if (allProducts.length >= 50) {
+      break;
+    }
+    
+    // Attendre un peu entre les batches pour éviter les rate limits
+    if (i < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+
+  // Si on n'a toujours pas 50 produits, générer les produits manquants
+  if (allProducts.length < 50) {
+    const missingCount = 50 - allProducts.length;
+    console.log(`⚠️ Seulement ${allProducts.length} produits après ${batches.length} batches. Génération de ${missingCount} produits complémentaires...`);
+    
+    const missingProducts = await generateMissingProducts(allProducts, '');
+    allProducts = [...allProducts, ...missingProducts];
+    
+    // Éliminer les doublons à nouveau
+    const seen = new Set();
+    allProducts = allProducts.filter(p => {
+      const name = (p.name || '').toLowerCase();
+      if (!name || seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+  }
+
+  if (allProducts.length < 50) {
+    console.error(`❌ ERREUR CRITIQUE : Impossible de générer 50 produits. Seulement ${allProducts.length} produits obtenus.`);
+    throw new Error(`Impossible de générer 50 produits. Seulement ${allProducts.length} produits obtenus.`);
+  }
+  
+  // Vérifier que les produits Skin Care sont présents
+  let skinCareProducts = allProducts.filter(p => {
+    const category = (p.category || '').toLowerCase();
+    return category.includes('skin') || category.includes('care') || category.includes('soin');
+  });
+  
+  const requiredSkinCare = 10; // Objectif : 10 produits Skin Care minimum
+  const currentSkinCareCount = skinCareProducts.length;
+  
+  // Si moins de 10 produits Skin Care, générer les produits Skin Care manquants
+  if (currentSkinCareCount < requiredSkinCare && allProducts.length >= 50) {
+    const missingSkinCare = requiredSkinCare - currentSkinCareCount;
+    console.log(`⚠️ Seulement ${currentSkinCareCount} produits Skin Care détectés. Génération de ${missingSkinCare} produits Skin Care supplémentaires...`);
+    
+    try {
+      const skinCarePrompt = `Génère EXACTEMENT ${missingSkinCare} produits Skin Care / Soins de la peau RÉELS pour l'Afrique francophone. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit DOIT avoir "category": "Skin Care". Produits acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc.`;
+      
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'Tu es un générateur de produits Skin Care pour l\'Afrique. Génère EXACTEMENT le nombre de produits demandé avec category="Skin Care".' 
+          },
+          { role: 'user', content: skinCarePrompt }
+        ],
+        temperature: 0.8,
+        max_tokens: 6000,
+        response_format: { type: 'json_object' }
+      });
+      
+      const content = response.choices?.[0]?.message?.content;
+      if (content) {
+        const newSkinCareProducts = extractProductsFromResponse(content);
+        
+        // S'assurer que tous ont bien category = "Skin Care"
+        const correctedSkinCare = newSkinCareProducts.map(p => ({
+          ...p,
+          category: 'Skin Care'
+        }));
+        
+        // Filtrer les doublons avec les produits existants
+        const existingNames = allProducts.map(p => (p.name || '').toLowerCase());
+        const uniqueSkinCare = correctedSkinCare.filter(p => {
+          const name = (p.name || '').toLowerCase();
+          return name && !existingNames.includes(name);
+        });
+        
+        // Remplacer certains produits non-Skin Care par des produits Skin Care
+        const nonSkinCareProducts = allProducts.filter(p => {
+          const category = (p.category || '').toLowerCase();
+          return !category.includes('skin') && !category.includes('care') && !category.includes('soin');
+        });
+        
+        // Remplacer les produits non-Skin Care en excès par des produits Skin Care
+        const toReplace = Math.min(uniqueSkinCare.length, nonSkinCareProducts.length, missingSkinCare);
+        if (toReplace > 0) {
+          // Retirer les produits non-Skin Care en excès
+          const productsToKeep = nonSkinCareProducts.slice(0, Math.max(0, nonSkinCareProducts.length - toReplace));
+          const skinCareToAdd = uniqueSkinCare.slice(0, toReplace);
+          
+          // Reconstruire la liste : garder les Skin Care existants + nouveaux Skin Care + autres produits
+          allProducts = [
+            ...skinCareProducts,
+            ...skinCareToAdd,
+            ...productsToKeep
+          ];
+          
+          console.log(`✅ ${toReplace} produits Skin Care ajoutés (remplacement de produits non-Skin Care)`);
+        } else {
+          // Si on peut juste ajouter sans remplacer
+          allProducts = [...allProducts, ...uniqueSkinCare.slice(0, missingSkinCare)];
+          console.log(`✅ ${Math.min(uniqueSkinCare.length, missingSkinCare)} produits Skin Care ajoutés`);
+        }
+        
+        // Re-vérifier le nombre de produits Skin Care
+        skinCareProducts = allProducts.filter(p => {
+          const category = (p.category || '').toLowerCase();
+          return category.includes('skin') || category.includes('care') || category.includes('soin');
+        });
+      }
+    } catch (error) {
+      console.error('❌ Erreur génération produits Skin Care complémentaires:', error.message);
+    }
+  }
+  
+  if (skinCareProducts.length < 8) {
+    console.warn(`⚠️ ATTENTION : Seulement ${skinCareProducts.length} produits Skin Care détectés après complétion`);
+    console.warn(`   Le prompt exige au minimum 8-12 produits Skin Care.`);
+  } else {
+    console.log(`✅ ${skinCareProducts.length} produits Skin Care détectés (requis: 8-12, objectif: 10)`);
+  }
+  
+  // Limiter à exactement 50 produits et normaliser
+  const finalProducts = allProducts.slice(0, 50).map(p => normalizeProduct(p, ''));
+  
+  console.log(`✅ Exactement ${finalProducts.length} produits générés et normalisés`);
+  
+  return finalProducts;
 };
 
 // Fonction pour générer spécifiquement les produits St Valentin
@@ -421,81 +748,128 @@ export const fetchValentineProducts = async () => {
     throw new Error('OPENAI_API_KEY manquant pour Success Radar');
   }
 
-  const messages = [
-    { role: 'system', content: 'Tu es un générateur de tendances e-commerce spécialisé dans les produits romantiques pour la Saint-Valentin en Afrique.' },
-    { role: 'user', content: buildValentinePrompt() }
-  ];
-
-  const response = await openai.chat.completions.create({
-    model: 'gpt-4o-mini',
-    messages,
-    temperature: 0.8, // Légèrement plus élevé pour plus de créativité romantique
-    max_tokens: 6000,
-    response_format: { type: 'json_object' }
-  });
-
-  const content = response.choices?.[0]?.message?.content;
-  if (!content) {
-    throw new Error('Réponse OpenAI vide pour produits St Valentin');
-  }
-
-  console.log('💝 Réponse OpenAI St Valentin reçue, longueur:', content.length);
+  let allProducts = [];
+  const batches = [20, 20, 10]; // 20 + 20 + 10 = 50 produits
   
-  // Nettoyer le contenu avant parsing
-  const cleanedContent = cleanJSONContent(content);
-  
-  let products = [];
-  try {
-    const parsed = JSON.parse(cleanedContent);
+  // Générer les batches séquentiellement
+  for (let i = 0; i < batches.length; i++) {
+    const batchSize = batches[i];
+    const batchNumber = i + 1;
+    const totalBatches = batches.length;
     
-    // Chercher le tableau de produits dans différentes structures possibles
-    if (Array.isArray(parsed)) {
-      products = parsed;
-    } else if (Array.isArray(parsed.products)) {
-      products = parsed.products;
-    } else if (Array.isArray(parsed.data)) {
-      products = parsed.data;
-    } else if (parsed.products && typeof parsed.products === 'object') {
-      products = Object.values(parsed.products);
+    // Générer le batch
+    const batchProducts = await generateBatch(batchNumber, totalBatches, allProducts, 'saint-valentin');
+    
+    if (batchProducts.length > 0) {
+      // S'assurer que tous ont specialEvent="saint-valentin"
+      const correctedProducts = batchProducts.map(p => ({
+        ...p,
+        specialEvent: 'saint-valentin'
+      }));
+      
+      allProducts = [...allProducts, ...correctedProducts];
+      
+      // Éliminer les doublons
+      const seen = new Set();
+      allProducts = allProducts.filter(p => {
+        const name = (p.name || '').toLowerCase();
+        if (!name || seen.has(name)) return false;
+        seen.add(name);
+        return true;
+      });
     }
     
-    console.log(`💝 ${products.length} produits St Valentin extraits du JSON`);
-  } catch (err) {
-    console.error('❌ Erreur parsing produits St Valentin:', err.message);
+    console.log(`💝 Total produits St Valentin accumulés: ${allProducts.length}/50`);
     
-    // Essayer avec la fonction de fallback
-    products = parseProducts(content);
+    // Si on a déjà 50 produits, arrêter
+    if (allProducts.length >= 50) {
+      break;
+    }
     
-    if (!products.length) {
-      console.log('⚠️ Tentative d\'extraction manuelle du JSON St Valentin...');
-      try {
-        const jsonMatch = content.match(/\{[\s\S]*"products"[\s\S]*\}/);
-        if (jsonMatch) {
-          const manualParsed = JSON.parse(jsonMatch[0]);
-          if (Array.isArray(manualParsed.products)) {
-            products = manualParsed.products;
-            console.log(`💝 ${products.length} produits St Valentin extraits manuellement`);
-          }
-        }
-      } catch (manualErr) {
-        console.error('❌ Échec extraction manuelle St Valentin:', manualErr.message);
+    // Attendre un peu entre les batches pour éviter les rate limits
+    if (i < batches.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+  }
+
+  // Si on n'a toujours pas 50 produits, générer les produits manquants
+  if (allProducts.length < 50) {
+    const missingCount = 50 - allProducts.length;
+    console.log(`⚠️ Seulement ${allProducts.length} produits St Valentin après ${batches.length} batches. Génération de ${missingCount} produits complémentaires...`);
+    
+    const missingProducts = await generateMissingProducts(allProducts, 'saint-valentin');
+    
+    // S'assurer que tous ont specialEvent="saint-valentin"
+    const correctedMissing = missingProducts.map(p => ({
+      ...p,
+      specialEvent: 'saint-valentin'
+    }));
+    
+    allProducts = [...allProducts, ...correctedMissing];
+    
+    // Éliminer les doublons à nouveau
+    const seen = new Set();
+    allProducts = allProducts.filter(p => {
+      const name = (p.name || '').toLowerCase();
+      if (!name || seen.has(name)) return false;
+      seen.add(name);
+      return true;
+    });
+  }
+
+  if (allProducts.length < 50) {
+    console.error(`❌ ERREUR CRITIQUE : Impossible de générer 50 produits St Valentin. Seulement ${allProducts.length} produits obtenus.`);
+    throw new Error(`Impossible de générer 50 produits St Valentin. Seulement ${allProducts.length} produits obtenus.`);
+  }
+  
+  // Vérifier que tous les produits ont bien specialEvent="saint-valentin"
+  const invalidProducts = allProducts.filter(p => p.specialEvent !== 'saint-valentin');
+  if (invalidProducts.length > 0) {
+    console.warn(`⚠️ ${invalidProducts.length} produits sans specialEvent="saint-valentin" détectés. Correction...`);
+    allProducts = allProducts.map(p => ({
+      ...p,
+      specialEvent: 'saint-valentin'
+    }));
+  }
+  
+  // Limiter à exactement 50 produits et normaliser
+  const finalValentineProducts = allProducts.slice(0, 50).map(p => normalizeProduct(p, 'saint-valentin'));
+  
+  console.log(`✅ Exactement ${finalValentineProducts.length} produits St Valentin générés et normalisés`);
+  
+  return finalValentineProducts;
+};
+
+export const refreshSuccessRadar = async (force = false) => {
+  console.log('🔄 Vérification Success Radar...');
+  
+  // Vérifier si des produits existent déjà et sont récents (moins d'1h)
+  if (!force) {
+    const existingProducts = await WinningProduct.find({ 
+      $or: [
+        { specialEvent: { $exists: false } },
+        { specialEvent: '' },
+        { specialEvent: { $ne: 'saint-valentin' } }
+      ]
+    })
+      .sort({ lastUpdated: -1 })
+      .limit(1)
+      .lean();
+    
+    if (existingProducts.length > 0 && existingProducts[0].lastUpdated) {
+      const now = new Date();
+      const lastUpdate = new Date(existingProducts[0].lastUpdated);
+      const oneHourInMs = 1 * 60 * 60 * 1000;
+      const timeSinceUpdate = now - lastUpdate;
+      
+      if (timeSinceUpdate < oneHourInMs) {
+        const remainingMinutes = Math.round((oneHourInMs - timeSinceUpdate) / (60 * 1000));
+        console.log(`✅ Produits déjà générés il y a moins d'1h (${remainingMinutes}min restantes). Cache respecté.`);
+        return;
       }
     }
   }
-
-  if (!products.length) {
-    throw new Error('Aucune donnée produit St Valentin reçue depuis OpenAI');
-  }
-
-  // Normaliser les produits avec specialEvent = 'saint-valentin'
-  // S'assurer d'avoir au moins 50 produits
-  if (products.length < 50) {
-    console.warn(`⚠️ Seulement ${products.length} produits St Valentin générés, minimum 50 requis`);
-  }
-  return products.slice(0, 50).map(p => normalizeProduct(p, 'saint-valentin'));
-};
-
-export const refreshSuccessRadar = async () => {
+  
   console.log('🔄 Mise à jour Success Radar...');
   const products = await fetchWinningProducts();
 
