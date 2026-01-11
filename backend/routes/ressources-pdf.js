@@ -499,5 +499,30 @@ router.post('/:id/download', async (req, res) => {
   }
 });
 
+// Routes admin (alias pour compatibilité avec le frontend)
+// Ces routes sont identiques aux routes principales mais avec le préfixe /admin
+router.get('/admin/ressources-pdf', async (req, res) => {
+  try {
+    // Récupérer toutes les ressources PDF (pas seulement publiées pour l'admin)
+    const ressourcesPdf = await RessourcePdf.find({})
+      .sort({ createdAt: -1 });
+    
+    res.json({
+      success: true,
+      ressourcesPdf
+    });
+  } catch (error) {
+    console.error('Erreur récupération ressources PDF admin:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors de la récupération des ressources PDF' 
+    });
+  }
+});
+
+// Les routes POST, PUT et DELETE admin utilisent les mêmes routes que les routes principales
+// car elles sont déjà montées sur /api/ressources-pdf
+// Le frontend peut utiliser /api/ressources-pdf directement
+
 export default router;
 
