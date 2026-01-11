@@ -315,20 +315,19 @@ export default function RessourcesPdfPage() {
         // Télécharger via la route dédiée (meilleure compatibilité mobile)
         const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
         try {
-          await downloadPdfViaRoute(ressourcePdf._id, filename)
+          const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+          if (!success) {
+            throw new Error('Échec du téléchargement via route dédiée')
+          }
         } catch (error) {
+          console.error('❌ Erreur téléchargement via route dédiée:', error)
           if (error.message === 'REQUIRES_SUBSCRIPTION') {
             setSelectedPdf(ressourcePdf)
             setShowSubscriptionModal(true)
             return
           }
-          // Fallback vers méthode classique
-          const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
-          if (pdfUrl) {
-            downloadPdf(pdfUrl, filename)
-          } else {
-            setError('URL du PDF invalide')
-          }
+          // Afficher une erreur plutôt que d'essayer le fallback
+          setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
         }
         return
       }
@@ -372,21 +371,19 @@ export default function RessourcesPdfPage() {
       // Télécharger via la route dédiée (meilleure compatibilité mobile)
       const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
       try {
-        await downloadPdfViaRoute(ressourcePdf._id, filename)
+        const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+        if (!success) {
+          throw new Error('Échec du téléchargement via route dédiée')
+        }
       } catch (error) {
+        console.error('❌ Erreur téléchargement via route dédiée:', error)
         if (error.message === 'REQUIRES_SUBSCRIPTION') {
           setSelectedPdf(ressourcePdf)
           setShowSubscriptionModal(true)
           return
         }
-        // Fallback vers méthode classique
-        const pdfUrlFromResponse = response.data.pdfUrl || ressourcePdf.pdfUrl
-        const pdfUrl = buildPdfUrl(pdfUrlFromResponse)
-        if (pdfUrl) {
-          downloadPdf(pdfUrl, filename)
-        } else {
-          setError('URL du PDF invalide')
-        }
+        // Afficher une erreur plutôt que d'essayer le fallback
+        setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
       }
     } catch (err) {
       console.error('❌ Erreur téléchargement:', err)
@@ -401,15 +398,18 @@ export default function RessourcesPdfPage() {
         return
       }
       
-      // Si le PDF est gratuit, essayer quand même de l'ouvrir
+      // Si le PDF est gratuit, essayer quand même via la route dédiée
       if (ressourcePdf.isFree) {
-        console.log('🔄 Tentative d\'ouverture PDF gratuit malgré l\'erreur')
-        const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
-        if (pdfUrl) {
-          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-          downloadPdf(pdfUrl, filename)
-        } else {
-          setError('Impossible de télécharger le PDF. URL invalide.')
+        console.log('🔄 Tentative téléchargement PDF gratuit malgré l\'erreur')
+        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+        try {
+          const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+          if (!success) {
+            setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
+          }
+        } catch (error) {
+          console.error('❌ Erreur téléchargement PDF gratuit:', error)
+          setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
         }
       } else {
         // PDF payant et erreur → demander l'abonnement
