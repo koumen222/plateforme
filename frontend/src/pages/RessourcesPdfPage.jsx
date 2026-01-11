@@ -138,96 +138,6 @@ export default function RessourcesPdfPage() {
     // Ouvrir directement l'URL dans un nouvel onglet
     window.open(pdfUrl, '_blank', 'noopener,noreferrer')
     return true
-        
-        const blob = await response.blob()
-        console.log('✅ Blob créé, taille:', blob.size, 'bytes, type:', blob.type)
-        
-        // Créer un blob URL
-        const blobUrl = window.URL.createObjectURL(blob)
-        console.log('✅ Blob URL créé')
-        
-        // Créer et déclencher le téléchargement avec plusieurs tentatives
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = sanitizedFilename
-        link.style.cssText = 'display: none; position: absolute; left: -9999px;'
-        
-        // Ajouter plusieurs attributs pour meilleure compatibilité
-        link.setAttribute('download', sanitizedFilename)
-        link.setAttribute('target', '_blank')
-        
-        // Ajouter au DOM
-        document.body.appendChild(link)
-        
-        // Déclencher le clic avec un petit délai pour iOS
-        setTimeout(() => {
-          try {
-            link.click()
-            console.log('✅ Clic déclenché sur mobile')
-          } catch (e) {
-            console.error('❌ Erreur lors du clic:', e)
-            // Essayer avec dispatchEvent
-            const clickEvent = new MouseEvent('click', {
-              view: window,
-              bubbles: true,
-              cancelable: true
-            })
-            link.dispatchEvent(clickEvent)
-          }
-          
-          // Nettoyer après un délai plus long pour mobile
-          setTimeout(() => {
-            try {
-              document.body.removeChild(link)
-              window.URL.revokeObjectURL(blobUrl)
-              console.log('✅ Nettoyage effectué')
-            } catch (e) {
-              console.warn('⚠️ Erreur nettoyage:', e)
-            }
-          }, 2000)
-        }, 100)
-        
-        return
-      } catch (error) {
-        console.error('❌ Erreur téléchargement mobile avec blob:', error)
-        console.log('🔄 Fallback vers ouverture directe')
-      }
-      
-      // Méthode 2: Fallback - ouvrir directement dans un nouvel onglet
-      // Sur iOS Safari, cela permettra à l'utilisateur de télécharger manuellement via le menu
-      try {
-        const newWindow = window.open(pdfUrl, '_blank', 'noopener,noreferrer')
-        if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-          // Popup bloquée, utiliser location.href
-          console.log('⚠️ Popup bloquée, utilisation de location.href')
-          window.location.href = pdfUrl
-        } else {
-          console.log('✅ PDF ouvert dans nouvel onglet (fallback mobile)')
-        }
-      } catch (error) {
-        console.error('❌ Erreur ouverture PDF:', error)
-        // Dernière méthode : redirection
-        window.location.href = pdfUrl
-      }
-    } else {
-      // Sur desktop, méthode standard avec lien
-      console.log('💻 Téléchargement desktop')
-      const link = document.createElement('a')
-      link.href = pdfUrl
-      link.download = sanitizedFilename
-      link.target = '_blank'
-      link.rel = 'noopener noreferrer'
-      link.style.display = 'none'
-      
-      document.body.appendChild(link)
-      link.click()
-      
-      setTimeout(() => {
-        document.body.removeChild(link)
-      }, 100)
-      
-      console.log('✅ Téléchargement desktop initié')
-    }
   }
 
   const handleDownload = async (ressourcePdf) => {
@@ -270,26 +180,24 @@ export default function RessourcesPdfPage() {
         
         // Si URL externe directe, ouvrir directement
         if (hasExternalUrl) {
-          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-          downloadPdf(ressourcePdf.pdfUrl, filename)
+          openPdf(ressourcePdf.pdfUrl)
           return
         }
         
         // Sinon, utiliser la route backend
-        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
         try {
-          const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+          const success = await openPdfViaRoute(ressourcePdf._id)
           if (!success) {
-            throw new Error('Échec du téléchargement via route dédiée')
+            throw new Error('Échec de l\'ouverture via route dédiée')
           }
         } catch (error) {
-          console.error('❌ Erreur téléchargement via route dédiée:', error)
+          console.error('❌ Erreur ouverture via route dédiée:', error)
           if (error.message === 'REQUIRES_SUBSCRIPTION') {
             setSelectedPdf(ressourcePdf)
             setShowSubscriptionModal(true)
             return
           }
-          setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
+          setError(`Impossible d'ouvrir le PDF: ${error.message || 'Erreur inconnue'}`)
         }
         return
       }
@@ -332,26 +240,24 @@ export default function RessourcesPdfPage() {
       
       // Si URL externe directe, ouvrir directement
       if (hasExternalUrl) {
-        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-        downloadPdf(ressourcePdf.pdfUrl, filename)
+        openPdf(ressourcePdf.pdfUrl)
         return
       }
       
       // Sinon, utiliser la route backend
-      const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
       try {
-        const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+        const success = await openPdfViaRoute(ressourcePdf._id)
         if (!success) {
-          throw new Error('Échec du téléchargement via route dédiée')
+          throw new Error('Échec de l\'ouverture via route dédiée')
         }
       } catch (error) {
-        console.error('❌ Erreur téléchargement via route dédiée:', error)
+        console.error('❌ Erreur ouverture via route dédiée:', error)
         if (error.message === 'REQUIRES_SUBSCRIPTION') {
           setSelectedPdf(ressourcePdf)
           setShowSubscriptionModal(true)
           return
         }
-        setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
+        setError(`Impossible d'ouvrir le PDF: ${error.message || 'Erreur inconnue'}`)
       }
     } catch (err) {
       console.error('❌ Erreur téléchargement:', err)
@@ -368,20 +274,18 @@ export default function RessourcesPdfPage() {
       
       // Si le PDF est gratuit, essayer directement avec l'URL externe si disponible
       if (ressourcePdf.isFree) {
-        console.log('🔄 Tentative téléchargement PDF gratuit malgré l\'erreur')
+        console.log('🔄 Tentative ouverture PDF gratuit malgré l\'erreur')
         if (hasExternalUrl) {
-          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-          downloadPdf(ressourcePdf.pdfUrl, filename)
+          openPdf(ressourcePdf.pdfUrl)
         } else {
-          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
           try {
-            const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+            const success = await openPdfViaRoute(ressourcePdf._id)
             if (!success) {
-              setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
+              setError('Impossible d\'ouvrir le PDF. Veuillez réessayer plus tard.')
             }
           } catch (error) {
-            console.error('❌ Erreur téléchargement PDF gratuit:', error)
-            setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
+            console.error('❌ Erreur ouverture PDF gratuit:', error)
+            setError('Impossible d\'ouvrir le PDF. Veuillez réessayer plus tard.')
           }
         }
       } else {
