@@ -294,23 +294,15 @@ export default function RessourcesPdfPage() {
       console.log('   - pdfUrl:', ressourcePdf.pdfUrl)
       console.log('   - isMobile:', isMobile())
 
-      // Fonction pour construire l'URL complète du PDF
-      const buildPdfUrl = (pdfUrl) => {
-        if (!pdfUrl) {
-          console.error('❌ pdfUrl est vide')
-          return null
-        }
-        
-        // Si c'est déjà une URL complète (http/https), l'utiliser telle quelle
-        if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
-          console.log('✅ URL complète détectée:', pdfUrl)
-          return pdfUrl
-        }
-        
-        // Sinon, construire l'URL complète avec le backend
-        const fullUrl = `${CONFIG.BACKEND_URL}${pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl}`
-        console.log('✅ URL construite:', fullUrl)
-        return fullUrl
+      // Si le PDF a une URL Cloudinary directe, l'utiliser directement
+      // Sinon, utiliser la route backend qui gère l'authentification et redirige
+      const hasCloudinaryUrl = ressourcePdf.pdfUrl && 
+        (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://'))
+      
+      if (hasCloudinaryUrl) {
+        console.log('✅ URL Cloudinary directe disponible:', ressourcePdf.pdfUrl)
+      } else {
+        console.log('📡 Utilisation route backend pour téléchargement')
       }
 
       // Cas 1: PDF gratuit → téléchargement direct
@@ -331,7 +323,14 @@ export default function RessourcesPdfPage() {
           console.log('⚠️ Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
         }
         
-        // Télécharger via la route dédiée (meilleure compatibilité mobile)
+        // Si URL Cloudinary directe, télécharger directement
+        if (hasCloudinaryUrl) {
+          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+          downloadPdf(ressourcePdf.pdfUrl, filename)
+          return
+        }
+        
+        // Sinon, utiliser la route backend
         const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
         try {
           const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
@@ -345,7 +344,6 @@ export default function RessourcesPdfPage() {
             setShowSubscriptionModal(true)
             return
           }
-          // Afficher une erreur plutôt que d'essayer le fallback
           setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
         }
         return
@@ -387,7 +385,14 @@ export default function RessourcesPdfPage() {
         return
       }
       
-      // Télécharger via la route dédiée (meilleure compatibilité mobile)
+      // Si URL Cloudinary directe, télécharger directement
+      if (hasCloudinaryUrl) {
+        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+        downloadPdf(ressourcePdf.pdfUrl, filename)
+        return
+      }
+      
+      // Sinon, utiliser la route backend
       const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
       try {
         const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
@@ -401,7 +406,6 @@ export default function RessourcesPdfPage() {
           setShowSubscriptionModal(true)
           return
         }
-        // Afficher une erreur plutôt que d'essayer le fallback
         setError(`Impossible de télécharger le PDF: ${error.message || 'Erreur inconnue'}`)
       }
     } catch (err) {
