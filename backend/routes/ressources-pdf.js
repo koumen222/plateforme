@@ -237,6 +237,8 @@ router.get('/:id/file', async (req, res) => {
 
     // Construire le chemin du fichier
     let filePath = ressourcePdf.pdfUrl;
+    
+    // Nettoyer le chemin
     if (filePath.startsWith('/uploads/')) {
       filePath = filePath.replace('/uploads/', '');
     } else if (filePath.startsWith('/')) {
@@ -244,14 +246,50 @@ router.get('/:id/file', async (req, res) => {
     }
     
     const fs = (await import('fs')).default;
-    const fullPath = path.join(__dirname, '..', 'uploads', filePath);
+    
+    // Essayer plusieurs chemins possibles
+    const possiblePaths = [
+      path.join(__dirname, '..', 'uploads', filePath), // Chemin relatif depuis routes/
+      path.join(__dirname, '..', '..', 'uploads', filePath), // Si routes/ressources-pdf.js
+      path.join(process.cwd(), 'uploads', filePath), // Chemin depuis la racine
+      path.join(process.cwd(), 'backend', 'uploads', filePath), // Chemin depuis la racine avec backend/
+    ];
+    
+    let fullPath = null;
+    for (const testPath of possiblePaths) {
+      if (fs.existsSync(testPath)) {
+        fullPath = testPath;
+        console.log('✅ Fichier trouvé à:', fullPath);
+        break;
+      }
+    }
+    
+    // Si aucun chemin ne fonctionne, essayer de construire depuis pdfUrl directement
+    if (!fullPath) {
+      // Si pdfUrl est un chemin absolu ou complet
+      if (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://')) {
+        // C'est une URL externe, rediriger
+        return res.redirect(ressourcePdf.pdfUrl);
+      }
+      
+      // Essayer le chemin tel quel
+      const directPath = path.join(__dirname, '..', ressourcePdf.pdfUrl.replace(/^\/+/, ''));
+      if (fs.existsSync(directPath)) {
+        fullPath = directPath;
+        console.log('✅ Fichier trouvé (chemin direct):', fullPath);
+      }
+    }
     
     // Vérifier que le fichier existe
-    if (!fs.existsSync(fullPath)) {
-      console.error('❌ Fichier non trouvé:', fullPath);
+    if (!fullPath || !fs.existsSync(fullPath)) {
+      console.error('❌ Fichier non trouvé. Chemins testés:');
+      possiblePaths.forEach(p => console.error('   -', p));
+      console.error('   - pdfUrl original:', ressourcePdf.pdfUrl);
       return res.status(404).json({
         success: false,
-        error: 'Fichier PDF non trouvé sur le serveur'
+        error: 'Fichier PDF non trouvé sur le serveur',
+        pdfUrl: ressourcePdf.pdfUrl,
+        testedPaths: possiblePaths
       });
     }
 
