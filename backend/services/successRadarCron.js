@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import OpenAI from 'openai';
 import WinningProduct from '../models/WinningProduct.js';
 
-const SCHEDULE = '0 * * * *'; // every 1 hour
+const SCHEDULE = '0 */2 * * *'; // every 2 hours
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY

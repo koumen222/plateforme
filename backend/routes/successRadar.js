@@ -44,12 +44,12 @@ router.get('/success-radar', authenticate, async (req, res) => {
       .lean();
     
     const now = new Date();
-    const oneHourInMs = 60 * 60 * 1000; // 1 heure en millisecondes
+    const twoHoursInMs = 2 * 60 * 60 * 1000; // 2 heures en millisecondes
     
     // Forcer la génération si paramètre force=true ou cache=false dans la query
     const forceRefresh = req.query.force === 'true' || req.query.force === '1' || req.query.cache === 'false';
     
-    // Si aucun produit OU si le dernier produit a plus de 1h, générer
+    // Si aucun produit OU si le dernier produit a plus de 2h, générer
     let shouldRefresh = false;
     let cacheMessage = null;
     
@@ -66,13 +66,14 @@ router.get('/success-radar', authenticate, async (req, res) => {
         const lastUpdate = new Date(mostRecentProduct.lastUpdated);
         const timeSinceUpdate = now - lastUpdate;
         
-        if (timeSinceUpdate >= oneHourInMs) {
+        if (timeSinceUpdate >= twoHoursInMs) {
           console.log(`⏰ Produits obsolètes (${Math.round(timeSinceUpdate / (60 * 60 * 1000))}h), génération...`);
           shouldRefresh = true;
         } else {
-          const remainingMinutes = Math.round((oneHourInMs - timeSinceUpdate) / (60 * 1000));
-          console.log(`✅ Produits en cache (actualisation dans ${remainingMinutes}min)`);
-          cacheMessage = `Produits chargés depuis le cache. Prochaine actualisation dans ${remainingMinutes}min`;
+          const remainingHours = Math.round((twoHoursInMs - timeSinceUpdate) / (60 * 60 * 1000));
+          const remainingMinutes = Math.round(((twoHoursInMs - timeSinceUpdate) % (60 * 60 * 1000)) / (60 * 1000));
+          console.log(`✅ Produits statiques en cache (actualisation dans ${remainingHours}h ${remainingMinutes}min)`);
+          cacheMessage = `Produits statiques chargés depuis le cache. Prochaine actualisation dans ${remainingHours}h ${remainingMinutes}min`;
         }
       } else {
         // Si pas de date, considérer comme obsolète
@@ -83,7 +84,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
     // Générer seulement si nécessaire (pas de cache valide) OU si force=true
     if (shouldRefresh) {
       try {
-        console.log('🔄 Génération de 50 nouveaux produits (cache ignoré)...');
+        console.log('🔄 Génération de 50 nouveaux produits statiques...');
         // Supprimer les anciens produits généraux avant de générer (pas les St Valentin)
         await WinningProduct.deleteMany({ 
           $or: [
@@ -103,7 +104,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
           .sort({ lastUpdated: -1, createdAt: -1 })
           .limit(50)
           .lean();
-        console.log(`✅ ${products.length} produits générés et enregistrés en base avec succès`);
+        console.log(`✅ ${products.length} produits statiques générés et enregistrés en base avec succès (régénération dans 2h)`);
       } catch (err) {
         console.error('❌ Erreur génération produits:', err.message);
         // En cas d'erreur, essayer de retourner les produits en cache s'ils existent
@@ -127,7 +128,7 @@ router.get('/success-radar', authenticate, async (req, res) => {
         }
       }
     } else {
-      console.log(`📦 Retour des ${products.length} produits depuis le cache (pas de nouvelle génération)`);
+      console.log(`📦 Retour des ${products.length} produits statiques depuis le cache (régénération automatique dans 2h)`);
     }
 
     if (!products.length) {
