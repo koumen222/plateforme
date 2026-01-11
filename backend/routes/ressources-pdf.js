@@ -232,10 +232,22 @@ router.post('/:id/download', async (req, res) => {
     ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
     await ressourcePdf.save();
 
+    // Construire l'URL complète du PDF
+    let pdfUrl = ressourcePdf.pdfUrl;
+    if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
+      // Si c'est un chemin relatif, construire l'URL complète
+      const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
+      pdfUrl = `${baseUrl}${pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl}`;
+    }
+
+    console.log('✅ Téléchargement autorisé pour:', ressourcePdf.title);
+    console.log('   - PDF URL:', pdfUrl);
+    console.log('   - Download count:', ressourcePdf.downloadCount);
+
     res.json({
       success: true,
       downloadCount: ressourcePdf.downloadCount,
-      pdfUrl: ressourcePdf.pdfUrl
+      pdfUrl: pdfUrl || ressourcePdf.pdfUrl
     });
   } catch (error) {
     console.error('Erreur incrémentation téléchargements:', error);
