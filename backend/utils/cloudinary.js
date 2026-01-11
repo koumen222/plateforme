@@ -102,6 +102,8 @@ export const uploadPdfToCloudinary = async (fileBuffer, filename, folder = 'pdf'
         format: 'pdf',
         use_filename: false, // Ne pas utiliser le nom de fichier original
         unique_filename: true, // Ajouter un suffixe unique si nécessaire
+        access_mode: 'public', // IMPORTANT: Rendre le fichier public pour éviter l'erreur 401
+        type: 'upload', // Type d'upload standard
       },
       (error, result) => {
         if (error) {
@@ -159,6 +161,8 @@ export const uploadImageToCloudinary = async (fileBuffer, filename, folder = 'im
         public_id: publicId, // Utiliser le public_id nettoyé
         use_filename: false, // Ne pas utiliser le nom de fichier original
         unique_filename: true, // Ajouter un suffixe unique si nécessaire
+        access_mode: 'public', // IMPORTANT: Rendre le fichier public pour éviter l'erreur 401
+        type: 'upload', // Type d'upload standard
       },
       (error, result) => {
         if (error) {
@@ -182,6 +186,34 @@ export const uploadImageToCloudinary = async (fileBuffer, filename, folder = 'im
     bufferStream.push(null);
     bufferStream.pipe(uploadStream);
   });
+};
+
+/**
+ * Rendre un fichier public sur Cloudinary (pour corriger les erreurs 401)
+ * @param {string} publicId - L'ID public du fichier
+ * @param {string} resourceType - Le type de ressource ('raw' pour PDF, 'image' pour images)
+ * @returns {Promise<void>}
+ */
+export const makePublicOnCloudinary = async (publicId, resourceType = 'raw') => {
+  // Initialiser Cloudinary si nécessaire
+  const cloudinaryInstance = await initCloudinary();
+  
+  if (!cloudinaryInstance) {
+    throw new Error('Cloudinary n\'est pas configuré.');
+  }
+  
+  try {
+    const result = await cloudinaryInstance.uploader.explicit(publicId, {
+      resource_type: resourceType,
+      type: 'upload',
+      access_mode: 'public',
+    });
+    console.log('✅ Fichier rendu public sur Cloudinary:', publicId);
+    return result;
+  } catch (error) {
+    console.error('❌ Erreur lors de la mise à jour du fichier Cloudinary:', error);
+    throw error;
+  }
 };
 
 /**
