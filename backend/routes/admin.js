@@ -970,4 +970,3 @@ router.delete('/ressources-pdf/:id', async (req, res) => {
 });
 
 export default router;
-

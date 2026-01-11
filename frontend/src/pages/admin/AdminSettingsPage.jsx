@@ -167,12 +167,14 @@ export default function AdminSettingsPage() {
     }
   }
 
+  const [regenerating, setRegenerating] = useState({ general: false, valentine: false })
+
   const handleRegenerateProducts = async (type) => {
-    if (!confirm(`Êtes-vous sûr de vouloir régénérer tous les produits ${type === 'general' ? 'généraux' : 'St Valentin'} ?`)) {
+    if (!confirm(`Êtes-vous sûr de vouloir forcer la génération immédiate de tous les produits ${type === 'general' ? 'généraux' : 'St Valentin'} ?\n\nCette action va :\n- Supprimer tous les produits existants\n- Générer 50 nouveaux produits via OpenAI\n- Ignorer le cache de 1h`)) {
       return
     }
 
-    setLoading(true)
+    setRegenerating({ ...regenerating, [type]: true })
     try {
       const endpoint = type === 'general' 
         ? '/api/regenerate-products' 
@@ -187,14 +189,15 @@ export default function AdminSettingsPage() {
 
       const data = await response.json()
       if (response.ok) {
-        showNotification(`Produits ${type === 'general' ? 'généraux' : 'St Valentin'} régénérés avec succès`, 'success')
+        showNotification(`✅ ${data.productsCount || 50} produits ${type === 'general' ? 'généraux' : 'St Valentin'} générés avec succès !`, 'success')
       } else {
-        showNotification(data.error || 'Erreur lors de la régénération', 'error')
+        showNotification(data.error || data.details || 'Erreur lors de la régénération', 'error')
       }
     } catch (error) {
-      showNotification('Erreur lors de la régénération', 'error')
+      console.error('Erreur régénération:', error)
+      showNotification('Erreur lors de la régénération : ' + error.message, 'error')
     } finally {
-      setLoading(false)
+      setRegenerating({ ...regenerating, [type]: false })
     }
   }
 
@@ -425,9 +428,11 @@ export default function AdminSettingsPage() {
                   <FiInfo className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
                   <div className="text-sm text-primary">
                     <p className="font-semibold mb-1">À propos de la génération</p>
-                    <p className="text-secondary">
-                      Les produits sont générés automatiquement toutes les heures via OpenAI. 
-                      Vous pouvez forcer une régénération immédiate si nécessaire.
+                    <p className="text-secondary mb-2">
+                      Les produits sont générés automatiquement toutes les heures via OpenAI et mis en cache pendant 1h.
+                    </p>
+                    <p className="text-secondary font-semibold">
+                      ⚡ Le bouton "Forcer la génération immédiate" permet de bypasser le cache et régénérer immédiatement 50 nouveaux produits (incluant des produits Skin Care).
                     </p>
                   </div>
                 </div>
@@ -451,12 +456,17 @@ export default function AdminSettingsPage() {
                     </div>
                     <button
                       onClick={() => handleRegenerateProducts('general')}
-                      disabled={loading}
-                      className="w-full px-4 py-3 bg-accent text-white rounded-lg font-semibold hover:bg-accent/90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={regenerating.general || loading}
+                      className="w-full px-4 py-3 bg-accent text-white rounded-lg font-semibold hover:bg-accent/90 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                     >
-                      <FiRefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                      Régénérer maintenant
+                      <FiRefreshCw className={`w-5 h-5 ${regenerating.general ? 'animate-spin' : ''}`} />
+                      {regenerating.general ? 'Génération en cours...' : '🔄 Forcer la génération immédiate'}
                     </button>
+                    {regenerating.general && (
+                      <p className="text-xs text-secondary text-center mt-2">
+                        ⏳ Génération de 50 produits via OpenAI...
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -477,12 +487,17 @@ export default function AdminSettingsPage() {
                     </div>
                     <button
                       onClick={() => handleRegenerateProducts('valentine')}
-                      disabled={loading}
-                      className="w-full px-4 py-3 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={regenerating.valentine || loading}
+                      className="w-full px-4 py-3 bg-pink-500 text-white rounded-lg font-semibold hover:bg-pink-600 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl"
                     >
-                      <FiRefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-                      Régénérer maintenant
+                      <FiRefreshCw className={`w-5 h-5 ${regenerating.valentine ? 'animate-spin' : ''}`} />
+                      {regenerating.valentine ? 'Génération en cours...' : '🔄 Forcer la génération immédiate'}
                     </button>
+                    {regenerating.valentine && (
+                      <p className="text-xs text-secondary text-center mt-2">
+                        ⏳ Génération de 50 produits St Valentin via OpenAI...
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
