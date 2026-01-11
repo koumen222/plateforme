@@ -98,6 +98,41 @@ export default function RessourcesPdfPage() {
           throw new Error(`HTTP ${response.status}`)
         }
         
+        // Vérifier si c'est une redirection vers une URL externe
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json()
+          if (data.redirect && data.pdfUrl) {
+            // C'est une URL Cloudinary, télécharger directement depuis cette URL
+            console.log('🌐 Redirection vers URL Cloudinary:', data.pdfUrl)
+            const cloudinaryResponse = await fetch(data.pdfUrl, {
+              mode: 'cors',
+              credentials: 'include'
+            })
+            if (!cloudinaryResponse.ok) {
+              throw new Error(`Erreur téléchargement Cloudinary: ${cloudinaryResponse.status}`)
+            }
+            const blob = await cloudinaryResponse.blob()
+            const blobUrl = window.URL.createObjectURL(blob)
+            
+            const link = document.createElement('a')
+            link.href = blobUrl
+            link.download = sanitizedFilename
+            link.style.cssText = 'display: none; position: absolute; left: -9999px;'
+            link.setAttribute('download', sanitizedFilename)
+            
+            document.body.appendChild(link)
+            setTimeout(() => {
+              link.click()
+              setTimeout(() => {
+                document.body.removeChild(link)
+                window.URL.revokeObjectURL(blobUrl)
+              }, 2000)
+            }, 100)
+            return true
+          }
+        }
+        
         const blob = await response.blob()
         const blobUrl = window.URL.createObjectURL(blob)
         
@@ -492,12 +527,12 @@ export default function RessourcesPdfPage() {
             <div className="text-5xl mb-4 text-secondary">⚠️</div>
             <p className="text-xl text-secondary mb-4">{error}</p>
             <div className="flex gap-4 justify-center">
-              <button
-                onClick={fetchRessourcesPdf}
-                className="btn-primary inline-flex items-center gap-2"
-              >
-                Réessayer
-              </button>
+            <button
+              onClick={fetchRessourcesPdf}
+              className="btn-primary inline-flex items-center gap-2"
+            >
+              Réessayer
+            </button>
               <button
                 onClick={() => setError(null)}
                 className="btn-secondary inline-flex items-center gap-2"
@@ -620,7 +655,7 @@ export default function RessourcesPdfPage() {
                       </>
                     ) : (
                       <>
-                        <FiDownload className="w-5 h-5" />
+                    <FiDownload className="w-5 h-5" />
                         <span>{ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}</span>
                       </>
                     )}

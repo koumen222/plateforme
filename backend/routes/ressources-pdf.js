@@ -395,10 +395,23 @@ router.get('/:id/file', async (req, res) => {
     // Construire le chemin du fichier
     let filePath = ressourcePdf.pdfUrl;
     
-    // Si c'est une URL externe (Cloudinary ou autre), rediriger directement
+    // Si c'est une URL externe (Cloudinary ou autre), servir directement ou rediriger
     if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
-      console.log('✅ URL externe détectée, redirection vers:', filePath);
-      return res.redirect(302, filePath);
+      console.log('✅ URL externe détectée:', filePath);
+      
+      // Pour les requêtes avec Authorization header (fetch), retourner l'URL directement
+      // Pour les requêtes navigateur directes, rediriger
+      if (req.headers.authorization || req.headers['user-agent']?.includes('fetch')) {
+        // Retourner l'URL pour que le frontend puisse la télécharger
+        return res.json({
+          success: true,
+          pdfUrl: filePath,
+          redirect: true
+        });
+      } else {
+        // Redirection directe pour les navigateurs
+        return res.redirect(302, filePath);
+      }
     }
     
     // Nettoyer le chemin - retirer /uploads/ si présent
