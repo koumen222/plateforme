@@ -238,7 +238,12 @@ router.get('/:id/file', async (req, res) => {
     // Construire le chemin du fichier
     let filePath = ressourcePdf.pdfUrl;
     
-    // Nettoyer le chemin
+    // Si c'est une URL externe, rediriger
+    if (filePath.startsWith('http://') || filePath.startsWith('https://')) {
+      return res.redirect(filePath);
+    }
+    
+    // Nettoyer le chemin - retirer /uploads/ si présent
     if (filePath.startsWith('/uploads/')) {
       filePath = filePath.replace('/uploads/', '');
     } else if (filePath.startsWith('/')) {
@@ -247,51 +252,70 @@ router.get('/:id/file', async (req, res) => {
     
     const fs = (await import('fs')).default;
     
-    // Essayer plusieurs chemins possibles
-    const possiblePaths = [
-      path.join(__dirname, '..', 'uploads', filePath), // Chemin relatif depuis routes/
-      path.join(__dirname, '..', '..', 'uploads', filePath), // Si routes/ressources-pdf.js
-      path.join(process.cwd(), 'uploads', filePath), // Chemin depuis la racine
-      path.join(process.cwd(), 'backend', 'uploads', filePath), // Chemin depuis la racine avec backend/
-    ];
+    // Utiliser le même chemin que celui utilisé pour servir les fichiers statiques
+    // Dans server.js, uploadsPath = path.join(__dirname, 'uploads')
+    // Donc depuis routes/, c'est path.join(__dirname, '..', 'uploads')
+    const uploadsBasePath = path.join(__dirname, '..', 'uploads');
     
-    let fullPath = null;
-    for (const testPath of possiblePaths) {
-      if (fs.existsSync(testPath)) {
-        fullPath = testPath;
-        console.log('✅ Fichier trouvé à:', fullPath);
-        break;
-      }
+    // Construire le chemin complet
+    const fullPath = path.join(uploadsBasePath, filePath);
+    
+    console.log('🔍 Recherche fichier PDF:');
+    console.log('   - pdfUrl original:', ressourcePdf.pdfUrl);
+    console.log('   - filePath nettoyé:', filePath);
+    console.log('   - uploadsBasePath:', uploadsBasePath);
+    console.log('   - fullPath:', fullPath);
+    console.log('   - __dirname:', __dirname);
+    console.log('   - process.cwd():', process.cwd());
+    
+    // Vérifier que le dossier uploads existe
+    if (!fs.existsSync(uploadsBasePath)) {
+      console.error('❌ Dossier uploads n\'existe pas:', uploadsBasePath);
+      return res.status(500).json({
+        success: false,
+        error: 'Dossier uploads non configuré sur le serveur',
+        uploadsPath: uploadsBasePath
+      });
     }
     
-    // Si aucun chemin ne fonctionne, essayer de construire depuis pdfUrl directement
-    if (!fullPath) {
-      // Si pdfUrl est un chemin absolu ou complet
-      if (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://')) {
-        // C'est une URL externe, rediriger
-        return res.redirect(ressourcePdf.pdfUrl);
-      }
-      
-      // Essayer le chemin tel quel
-      const directPath = path.join(__dirname, '..', ressourcePdf.pdfUrl.replace(/^\/+/, ''));
-      if (fs.existsSync(directPath)) {
-        fullPath = directPath;
-        console.log('✅ Fichier trouvé (chemin direct):', fullPath);
+    // Lister les fichiers dans uploads/pdf pour debug
+    const pdfDir = path.join(uploadsBasePath, 'pdf');
+    if (fs.existsSync(pdfDir)) {
+      try {
+        const files = fs.readdirSync(pdfDir);
+        console.log('📁 Fichiers dans uploads/pdf:', files.slice(0, 5), files.length > 5 ? '...' : '');
+      } catch (err) {
+        console.warn('⚠️ Impossible de lister uploads/pdf:', err.message);
       }
     }
     
     // Vérifier que le fichier existe
-    if (!fullPath || !fs.existsSync(fullPath)) {
-      console.error('❌ Fichier non trouvé. Chemins testés:');
-      possiblePaths.forEach(p => console.error('   -', p));
-      console.error('   - pdfUrl original:', ressourcePdf.pdfUrl);
+    if (!fs.existsSync(fullPath)) {
+      console.error('❌ Fichier non trouvé:', fullPath);
+      
+      // Essayer quelques variantes de chemins pour aider au debug
+      const alternativePaths = [
+        path.join(uploadsBasePath, 'pdf', path.basename(filePath)),
+        path.join(process.cwd(), 'uploads', filePath),
+        path.join(process.cwd(), 'backend', 'uploads', filePath),
+      ];
+      
+      console.error('   - Chemins alternatifs testés:');
+      alternativePaths.forEach(p => {
+        const exists = fs.existsSync(p);
+        console.error(`   - ${exists ? '✅' : '❌'} ${p}`);
+      });
+      
       return res.status(404).json({
         success: false,
         error: 'Fichier PDF non trouvé sur le serveur',
         pdfUrl: ressourcePdf.pdfUrl,
-        testedPaths: possiblePaths
+        searchedPath: fullPath,
+        uploadsBasePath: uploadsBasePath
       });
     }
+    
+    console.log('✅ Fichier trouvé:', fullPath);
 
     // Définir les headers pour forcer le téléchargement
     const filename = ressourcePdf.slug ? `${ressourcePdf.slug}.pdf` : path.basename(filePath);
