@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CONFIG } from '../config/config'
 import { getImageUrl } from '../utils/imageUtils'
-import { FiBook, FiDownload, FiFileText, FiUser, FiTag, FiSearch, FiFilter } from 'react-icons/fi'
+import { useAuth } from '../contexts/AuthContext'
+import SubscriptionButton from '../components/SubscriptionButton'
+import { FiBook, FiDownload, FiFileText, FiUser, FiTag, FiSearch, FiFilter, FiLock } from 'react-icons/fi'
 import axios from 'axios'
 
 export default function RessourcesPdfPage() {
+  const { user, token, isAuthenticated } = useAuth()
+  const navigate = useNavigate()
   const [ressourcesPdf, setRessourcesPdf] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('all')
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false)
+  const [selectedPdf, setSelectedPdf] = useState(null)
 
   useEffect(() => {
     fetchRessourcesPdf()
@@ -57,23 +63,62 @@ export default function RessourcesPdfPage() {
 
   const handleDownload = async (ressourcePdf) => {
     try {
+      // Si le PDF est payant et l'utilisateur n'est pas connecté, rediriger vers login
+      if (!ressourcePdf.isFree && ressourcePdf.price > 0 && !isAuthenticated) {
+        navigate('/login', { state: { from: '/ressources-pdf', message: 'Connectez-vous pour télécharger cette ressource PDF' } })
+        return
+      }
+
+      // Si le PDF est payant et l'utilisateur n'est pas abonné, afficher le modal de paiement
+      if (!ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active') {
+        setSelectedPdf(ressourcePdf)
+        setShowSubscriptionModal(true)
+        return
+      }
+
       // Incrémenter le compteur de téléchargements
-      await axios.post(`${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`)
+      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      const response = await axios.post(
+        `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`,
+        {},
+        { headers }
+      )
+      
+      // Si la réponse indique qu'un abonnement est requis
+      if (response.data.requiresSubscription) {
+        setSelectedPdf(ressourcePdf)
+        setShowSubscriptionModal(true)
+        return
+      }
       
       // Construire l'URL complète du PDF
-      const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
-        ? ressourcePdf.pdfUrl 
-        : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+      const pdfUrl = response.data.pdfUrl || (
+        ressourcePdf.pdfUrl?.startsWith('http') 
+          ? ressourcePdf.pdfUrl 
+          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+      )
       
       // Ouvrir le PDF dans un nouvel onglet
       window.open(pdfUrl, '_blank')
     } catch (err) {
       console.error('Erreur téléchargement:', err)
-      // Ouvrir quand même le PDF même si l'incrémentation échoue
-      const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
-        ? ressourcePdf.pdfUrl 
-        : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
-      window.open(pdfUrl, '_blank')
+      
+      // Si l'erreur indique qu'un abonnement est requis
+      if (err.response?.data?.requiresSubscription) {
+        setSelectedPdf(ressourcePdf)
+        setShowSubscriptionModal(true)
+        return
+      }
+      
+      // Si le PDF est gratuit, essayer quand même de l'ouvrir
+      if (ressourcePdf.isFree || ressourcePdf.price === 0) {
+        const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
+          ? ressourcePdf.pdfUrl 
+          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+        window.open(pdfUrl, '_blank')
+      } else {
+        setError(err.response?.data?.message || 'Impossible de télécharger cette ressource PDF. Veuillez vous abonner.')
+      }
     }
   }
 
@@ -250,13 +295,34 @@ export default function RessourcesPdfPage() {
                     </div>
                   )}
 
+                  {/* Badge payant */}
+                  {!ressourcePdf.isFree && ressourcePdf.price > 0 && (
+                    <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
+                      <FiLock className="w-4 h-4" />
+                      <span>Réservé aux abonnés</span>
+                    </div>
+                  )}
+
                   {/* Bouton de téléchargement */}
                   <button
                     onClick={() => handleDownload(ressourcePdf)}
-                    className="w-full btn-primary inline-flex items-center justify-center gap-2"
+                    className={`w-full inline-flex items-center justify-center gap-2 ${
+                      !ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active'
+                        ? 'btn-secondary'
+                        : 'btn-primary'
+                    }`}
                   >
-                    <FiDownload className="w-5 h-5" />
-                    {ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}
+                    {!ressourcePdf.isFree && ressourcePdf.price > 0 && user?.status !== 'active' ? (
+                      <>
+                        <FiLock className="w-5 h-5" />
+                        S'abonner pour télécharger
+                      </>
+                    ) : (
+                      <>
+                        <FiDownload className="w-5 h-5" />
+                        {ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -264,6 +330,56 @@ export default function RessourcesPdfPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de paiement pour PDF payant */}
+      {showSubscriptionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-card border border-theme rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-theme flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-primary">
+                Abonnement requis
+              </h2>
+              <button
+                onClick={() => {
+                  setShowSubscriptionModal(false)
+                  setSelectedPdf(null)
+                }}
+                className="text-secondary hover:text-primary transition-colors"
+              >
+                <FiX className="w-6 h-6" />
+              </button>
+            </div>
+            <div className="p-6">
+              {selectedPdf && (
+                <div className="mb-6 p-4 bg-secondary/50 rounded-xl">
+                  <h3 className="text-lg font-semibold text-primary mb-2">
+                    {selectedPdf.title}
+                  </h3>
+                  <p className="text-secondary text-sm">
+                    Cette ressource PDF est réservée aux abonnés. Abonnez-vous pour y accéder.
+                  </p>
+                  {selectedPdf.price > 0 && (
+                    <p className="text-accent font-semibold mt-2">
+                      Prix : {selectedPdf.price.toLocaleString('fr-FR')} FCFA
+                    </p>
+                  )}
+                </div>
+              )}
+              <SubscriptionButton
+                onSuccess={() => {
+                  setShowSubscriptionModal(false)
+                  setSelectedPdf(null)
+                  // Recharger les données utilisateur après paiement
+                  window.location.reload()
+                }}
+                onError={(error) => {
+                  setError(error)
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

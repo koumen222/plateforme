@@ -185,6 +185,7 @@ router.delete('/:id', async (req, res) => {
 /**
  * POST /api/ressources-pdf/:id/download
  * Incrémente le compteur de téléchargements
+ * Vérifie si l'utilisateur peut télécharger (PDF gratuit ou utilisateur abonné)
  */
 router.post('/:id/download', async (req, res) => {
   try {
@@ -197,12 +198,45 @@ router.post('/:id/download', async (req, res) => {
       });
     }
 
+    // Vérifier si le PDF est payant
+    const isPayant = !ressourcePdf.isFree && ressourcePdf.price > 0;
+    
+    // Si le PDF est payant, vérifier l'authentification et le statut
+    if (isPayant) {
+      // Vérifier le token (optionnel pour les PDF gratuits)
+      let user = null;
+      if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+        try {
+          const jwt = (await import('jsonwebtoken')).default;
+          const User = (await import('../models/User.js')).default;
+          const token = req.headers.authorization.substring(7);
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
+          user = await User.findById(decoded.userId).select('-password');
+        } catch (error) {
+          // Token invalide ou expiré
+        }
+      }
+
+      // Si pas d'utilisateur ou utilisateur non abonné
+      if (!user || user.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          error: 'Cette ressource PDF est payante',
+          requiresSubscription: true,
+          price: ressourcePdf.price,
+          message: 'Vous devez être abonné pour télécharger cette ressource PDF. Veuillez payer votre abonnement.'
+        });
+      }
+    }
+
+    // Incrémenter le compteur de téléchargements
     ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
     await ressourcePdf.save();
 
     res.json({
       success: true,
-      downloadCount: ressourcePdf.downloadCount
+      downloadCount: ressourcePdf.downloadCount,
+      pdfUrl: ressourcePdf.pdfUrl
     });
   } catch (error) {
     console.error('Erreur incrémentation téléchargements:', error);

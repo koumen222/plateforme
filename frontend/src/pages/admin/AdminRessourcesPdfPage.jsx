@@ -485,19 +485,36 @@ export default function AdminRessourcesPdfPage() {
                     }))
                   }}
                   min="0"
+                  disabled={formData.isFree}
                 />
+                {formData.isFree && (
+                  <p className="text-xs text-secondary mt-1">Le prix est automatiquement défini à 0 pour les ressources gratuites</p>
+                )}
               </div>
             </div>
 
             <div className="admin-form-group">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formData.isFree}
-                  onChange={(e) => setFormData(prev => ({ ...prev, isFree: e.target.checked }))}
+                  onChange={(e) => {
+                    const isFree = e.target.checked
+                    setFormData(prev => ({
+                      ...prev,
+                      isFree,
+                      price: isFree ? 0 : (prev.price || 2000) // Par défaut 2000 FCFA si payant
+                    }))
+                  }}
+                  className="cursor-pointer"
                 />
-                Gratuit
+                <span>Gratuit (réservé aux abonnés si non coché)</span>
               </label>
+              <p className="text-xs text-secondary mt-1 ml-6">
+                {formData.isFree 
+                  ? 'Cette ressource PDF sera accessible gratuitement à tous les utilisateurs'
+                  : 'Cette ressource PDF sera réservée aux utilisateurs abonnés (status: active)'}
+              </p>
             </div>
 
             <div className="admin-form-group">
