@@ -1,31 +1,7 @@
 import express from 'express';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import multer from 'multer';
 import RessourcePdf from '../models/RessourcePdf.js';
-import { uploadPdfToCloudinary, uploadImageToCloudinary, makePublicOnCloudinary } from '../utils/cloudinary.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const router = express.Router();
-
-// Configuration Multer pour les uploads temporaires (avant envoi vers Cloudinary)
-const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max
-  },
-  fileFilter: (req, file, cb) => {
-    // Accepter les PDF et les images
-    if (file.mimetype === 'application/pdf' || file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Type de fichier non autorisé. Seuls les PDF et images sont acceptés.'), false);
-    }
-  },
-});
 
 /**
  * GET /api/ressources-pdf
@@ -81,101 +57,12 @@ router.get('/:slug', async (req, res) => {
 });
 
 /**
- * POST /api/admin/ressources-pdf/upload
- * Upload un fichier PDF vers Cloudinary
- */
-router.post('/upload', upload.fields([
-  { name: 'pdf', maxCount: 1 },
-  { name: 'coverImage', maxCount: 1 }
-]), async (req, res) => {
-  try {
-    const results = {};
-
-    // Upload du PDF si présent
-    if (req.files && req.files.pdf && req.files.pdf[0]) {
-      const pdfFile = req.files.pdf[0];
-      const pdfResult = await uploadPdfToCloudinary(
-        pdfFile.buffer,
-        pdfFile.originalname,
-        'pdf'
-      );
-      results.pdfUrl = pdfResult.url;
-      results.pdfPublicId = pdfResult.public_id;
-      console.log('✅ PDF uploadé:', pdfResult.url);
-    }
-
-    // Upload de l'image de couverture si présente
-    if (req.files && req.files.coverImage && req.files.coverImage[0]) {
-      const imageFile = req.files.coverImage[0];
-      const imageResult = await uploadImageToCloudinary(
-        imageFile.buffer,
-        imageFile.originalname,
-        'covers'
-      );
-      results.coverImage = imageResult.url;
-      results.coverImagePublicId = imageResult.public_id;
-      console.log('✅ Image uploadée:', imageResult.url);
-    }
-
-    res.json({
-      success: true,
-      ...results
-    });
-  } catch (error) {
-    console.error('❌ Erreur upload fichiers:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de l\'upload des fichiers',
-      details: error.message
-    });
-  }
-});
-
-/**
  * POST /api/ressources-pdf
  * Crée une nouvelle ressource PDF (admin seulement - à protéger avec middleware auth)
- * Accepte soit un pdfUrl (URL Cloudinary), soit un fichier PDF à uploader
+ * Accepte uniquement des URLs (Google Drive, etc.)
  */
-router.post('/', upload.fields([
-  { name: 'pdf', maxCount: 1 },
-  { name: 'coverImage', maxCount: 1 }
-]), async (req, res) => {
+router.post('/', async (req, res) => {
   try {
-    let pdfUrl = req.body.pdfUrl;
-    let coverImage = req.body.coverImage;
-
-    // Si un fichier PDF est fourni, l'uploader vers Cloudinary
-    if (req.files && req.files.pdf && req.files.pdf[0]) {
-      const pdfFile = req.files.pdf[0];
-      const pdfResult = await uploadPdfToCloudinary(
-        pdfFile.buffer,
-        pdfFile.originalname,
-        'pdf'
-      );
-      pdfUrl = pdfResult.url;
-      console.log('✅ PDF uploadé vers Cloudinary:', pdfUrl);
-    }
-
-    // Si une image de couverture est fournie, l'uploader vers Cloudinary
-    if (req.files && req.files.coverImage && req.files.coverImage[0]) {
-      const imageFile = req.files.coverImage[0];
-      const imageResult = await uploadImageToCloudinary(
-        imageFile.buffer,
-        imageFile.originalname,
-        'covers'
-      );
-      coverImage = imageResult.url;
-      console.log('✅ Image uploadée vers Cloudinary:', coverImage);
-    }
-
-    // Vérifier que pdfUrl est fourni
-    if (!pdfUrl) {
-      return res.status(400).json({
-        success: false,
-        error: 'Le PDF est requis (pdfUrl ou fichier PDF)'
-      });
-    }
-
     const {
       title,
       slug,
@@ -185,8 +72,18 @@ router.post('/', upload.fields([
       pages,
       price,
       isFree,
-      isPublished
+      isPublished,
+      pdfUrl,
+      coverImage
     } = req.body;
+
+    // Vérifier que pdfUrl est fourni et est une URL valide
+    if (!pdfUrl || (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://'))) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'URL du PDF est requise et doit être une URL valide (ex: Google Drive)'
+      });
+    }
 
     // Vérifier si une ressource PDF avec ce slug existe déjà
     const existingRessourcePdf = await RessourcePdf.findOne({ slug });
@@ -230,12 +127,9 @@ router.post('/', upload.fields([
 /**
  * PUT /api/ressources-pdf/:id
  * Met à jour une ressource PDF (admin seulement - à protéger avec middleware auth)
- * Accepte soit un pdfUrl (URL Cloudinary), soit un fichier PDF à uploader
+ * Accepte uniquement des URLs (Google Drive, etc.)
  */
-router.put('/:id', upload.fields([
-  { name: 'pdf', maxCount: 1 },
-  { name: 'coverImage', maxCount: 1 }
-]), async (req, res) => {
+router.put('/:id', async (req, res) => {
   try {
     const ressourcePdf = await RessourcePdf.findById(req.params.id);
     
@@ -244,33 +138,6 @@ router.put('/:id', upload.fields([
         success: false,
         error: 'Ressource PDF non trouvée'
       });
-    }
-
-    let pdfUrl = req.body.pdfUrl || ressourcePdf.pdfUrl;
-    let coverImage = req.body.coverImage || ressourcePdf.coverImage;
-
-    // Si un nouveau fichier PDF est fourni, l'uploader vers Cloudinary
-    if (req.files && req.files.pdf && req.files.pdf[0]) {
-      const pdfFile = req.files.pdf[0];
-      const pdfResult = await uploadPdfToCloudinary(
-        pdfFile.buffer,
-        pdfFile.originalname,
-        'pdf'
-      );
-      pdfUrl = pdfResult.url;
-      console.log('✅ PDF mis à jour vers Cloudinary:', pdfUrl);
-    }
-
-    // Si une nouvelle image de couverture est fournie, l'uploader vers Cloudinary
-    if (req.files && req.files.coverImage && req.files.coverImage[0]) {
-      const imageFile = req.files.coverImage[0];
-      const imageResult = await uploadImageToCloudinary(
-        imageFile.buffer,
-        imageFile.originalname,
-        'covers'
-      );
-      coverImage = imageResult.url;
-      console.log('✅ Image mise à jour vers Cloudinary:', coverImage);
     }
 
     const {
@@ -282,8 +149,18 @@ router.put('/:id', upload.fields([
       pages,
       price,
       isFree,
-      isPublished
+      isPublished,
+      pdfUrl,
+      coverImage
     } = req.body;
+
+    // Vérifier que pdfUrl est une URL valide si fournie
+    if (pdfUrl && (!pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://'))) {
+      return res.status(400).json({
+        success: false,
+        error: 'L\'URL du PDF doit être une URL valide (ex: Google Drive)'
+      });
+    }
 
     // Mettre à jour les champs
     if (title) ressourcePdf.title = title;
@@ -295,9 +172,8 @@ router.put('/:id', upload.fields([
     if (price !== undefined) ressourcePdf.price = price;
     if (isFree !== undefined) ressourcePdf.isFree = isFree;
     if (isPublished !== undefined) ressourcePdf.isPublished = isPublished;
-    
-    ressourcePdf.pdfUrl = pdfUrl;
-    ressourcePdf.coverImage = coverImage;
+    if (pdfUrl) ressourcePdf.pdfUrl = pdfUrl;
+    if (coverImage) ressourcePdf.coverImage = coverImage;
 
     await ressourcePdf.save();
 
@@ -346,7 +222,7 @@ router.delete('/:id', async (req, res) => {
 
 /**
  * GET /api/ressources-pdf/:id/file
- * Route pour télécharger directement le fichier PDF depuis Cloudinary
+ * Route pour rediriger vers l'URL du PDF (Google Drive, etc.)
  * Vérifie si l'utilisateur peut télécharger (PDF gratuit ou utilisateur abonné)
  */
 router.get('/:id/file', async (req, res) => {
@@ -400,17 +276,26 @@ router.get('/:id/file', async (req, res) => {
     ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
     await ressourcePdf.save();
 
-    // Si c'est une URL Cloudinary ou externe, rediriger directement
+    // Rediriger vers l'URL externe (Google Drive, etc.)
     if (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://')) {
-      console.log('✅ Redirection vers URL Cloudinary:', ressourcePdf.pdfUrl);
-      return res.redirect(302, ressourcePdf.pdfUrl);
+      console.log('✅ Redirection vers URL externe:', ressourcePdf.pdfUrl);
+      // Pour les requêtes fetch avec Authorization, retourner JSON avec l'URL
+      if (req.headers.authorization || req.headers['user-agent']?.includes('fetch')) {
+        return res.json({
+          success: true,
+          pdfUrl: ressourcePdf.pdfUrl,
+          redirect: true
+        });
+      } else {
+        // Redirection directe pour les navigateurs
+        return res.redirect(302, ressourcePdf.pdfUrl);
+      }
     }
 
-    // Si c'est encore un chemin local (ancien format), retourner une erreur
-    console.error('❌ Format de pdfUrl non supporté (chemin local):', ressourcePdf.pdfUrl);
-    return res.status(500).json({
+    // Si ce n'est pas une URL valide
+    return res.status(400).json({
       success: false,
-      error: 'Format de PDF non supporté. Le PDF doit être stocké sur Cloudinary.',
+      error: 'URL du PDF invalide. L\'URL doit commencer par http:// ou https://',
       pdfUrl: ressourcePdf.pdfUrl
     });
   } catch (error) {
@@ -473,13 +358,8 @@ router.post('/:id/download', async (req, res) => {
     ressourcePdf.downloadCount = (ressourcePdf.downloadCount || 0) + 1;
     await ressourcePdf.save();
 
-    // Construire l'URL complète du PDF
-    let pdfUrl = ressourcePdf.pdfUrl;
-    if (pdfUrl && !pdfUrl.startsWith('http://') && !pdfUrl.startsWith('https://')) {
-      // Si c'est un chemin relatif, construire l'URL complète
-      const baseUrl = process.env.BACKEND_URL || `http://localhost:${process.env.PORT || 3000}`;
-      pdfUrl = `${baseUrl}${pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl}`;
-    }
+    // Retourner l'URL du PDF
+    const pdfUrl = ressourcePdf.pdfUrl;
 
     console.log('✅ Téléchargement autorisé pour:', ressourcePdf.title);
     console.log('   - PDF URL:', pdfUrl);
@@ -488,7 +368,7 @@ router.post('/:id/download', async (req, res) => {
     res.json({
       success: true,
       downloadCount: ressourcePdf.downloadCount,
-      pdfUrl: pdfUrl || ressourcePdf.pdfUrl
+      pdfUrl: pdfUrl
     });
   } catch (error) {
     console.error('Erreur incrémentation téléchargements:', error);
@@ -500,7 +380,6 @@ router.post('/:id/download', async (req, res) => {
 });
 
 // Routes admin (alias pour compatibilité avec le frontend)
-// Ces routes sont identiques aux routes principales mais avec le préfixe /admin
 router.get('/admin/ressources-pdf', async (req, res) => {
   try {
     // Récupérer toutes les ressources PDF (pas seulement publiées pour l'admin)
@@ -546,85 +425,4 @@ router.delete('/admin/ressources-pdf/:id', async (req, res) => {
   }
 });
 
-/**
- * POST /api/admin/ressources-pdf/fix-cloudinary-access
- * Route utilitaire pour rendre publics tous les fichiers Cloudinary existants
- * (pour corriger les erreurs 401 sur les fichiers uploadés avant la correction)
- */
-router.post('/admin/ressources-pdf/fix-cloudinary-access', async (req, res) => {
-  try {
-    const ressourcesPdf = await RessourcePdf.find({});
-    const results = {
-      total: ressourcesPdf.length,
-      fixed: 0,
-      errors: [],
-      details: []
-    };
-
-    for (const ressource of ressourcesPdf) {
-      try {
-        // Extraire le public_id depuis l'URL Cloudinary
-        // Format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{version}/{folder}/{public_id}.{format}
-        if (ressource.pdfUrl && ressource.pdfUrl.includes('cloudinary.com')) {
-          const urlParts = ressource.pdfUrl.split('/');
-          const uploadIndex = urlParts.findIndex(part => part === 'upload');
-          
-          if (uploadIndex !== -1 && urlParts.length > uploadIndex + 2) {
-            // Le public_id est après le dossier (plateforme/pdf/)
-            const folderAndFile = urlParts.slice(uploadIndex + 2).join('/');
-            // Retirer l'extension .pdf si présente
-            const publicId = folderAndFile.replace(/\.pdf$/i, '');
-            
-            console.log(`🔧 Correction accès pour PDF: ${publicId}`);
-            await makePublicOnCloudinary(publicId, 'raw');
-            results.fixed++;
-            results.details.push({ type: 'pdf', publicId, url: ressource.pdfUrl });
-          }
-        }
-
-        // Faire de même pour l'image de couverture
-        if (ressource.coverImage && ressource.coverImage.includes('cloudinary.com')) {
-          const urlParts = ressource.coverImage.split('/');
-          const uploadIndex = urlParts.findIndex(part => part === 'upload');
-          
-          if (uploadIndex !== -1 && urlParts.length > uploadIndex + 2) {
-            const folderAndFile = urlParts.slice(uploadIndex + 2).join('/');
-            // Retirer l'extension si présente
-            const publicId = folderAndFile.replace(/\.(jpg|jpeg|png|gif|webp)$/i, '');
-            
-            console.log(`🔧 Correction accès pour image: ${publicId}`);
-            await makePublicOnCloudinary(publicId, 'image');
-            results.fixed++;
-            results.details.push({ type: 'image', publicId, url: ressource.coverImage });
-          }
-        }
-      } catch (error) {
-        console.error(`❌ Erreur correction pour ressource ${ressource._id}:`, error);
-        results.errors.push({
-          ressourceId: ressource._id,
-          error: error.message
-        });
-      }
-    }
-
-    res.json({
-      success: true,
-      message: `Correction terminée: ${results.fixed} fichiers rendus publics`,
-      results
-    });
-  } catch (error) {
-    console.error('Erreur correction accès Cloudinary:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Erreur lors de la correction de l\'accès Cloudinary',
-      details: error.message
-    });
-  }
-});
-
-// Les routes POST et PUT admin utilisent les mêmes routes que les routes principales
-// car elles sont déjà montées sur /api/ressources-pdf
-// Le frontend peut utiliser /api/ressources-pdf directement
-
 export default router;
-

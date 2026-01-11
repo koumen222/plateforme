@@ -24,16 +24,10 @@ export default function AdminRessourcesPdfPage() {
     isPublished: false
   })
   const [submitting, setSubmitting] = useState(false)
-  const [uploadingPdf, setUploadingPdf] = useState(false)
-  const [uploadingImage, setUploadingImage] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editFormData, setEditFormData] = useState(null)
-  const [selectedPdfFile, setSelectedPdfFile] = useState(null)
-  const [selectedImageFile, setSelectedImageFile] = useState(null)
-  const [selectedEditPdfFile, setSelectedEditPdfFile] = useState(null)
-  const [selectedEditImageFile, setSelectedEditImageFile] = useState(null)
 
   useEffect(() => {
     if (token) {
@@ -86,60 +80,7 @@ export default function AdminRessourcesPdfPage() {
     }
   }
 
-  const handlePdfFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (file.type !== 'application/pdf') {
-      setError('Seuls les fichiers PDF sont autorisés')
-      return
-    }
-
-    if (file.size > 50 * 1024 * 1024) {
-      setError('Le fichier est trop volumineux (max 50MB)')
-      return
-    }
-
-    if (editingId) {
-      setSelectedEditPdfFile(file)
-      setSuccess('✅ Fichier PDF sélectionné. Il sera uploadé vers Cloudinary lors de la sauvegarde.')
-    } else {
-      setSelectedPdfFile(file)
-      setSuccess('✅ Fichier PDF sélectionné. Il sera uploadé vers Cloudinary lors de la sauvegarde.')
-    }
-    setTimeout(() => setSuccess(''), 3000)
-  }
-
-  const handleImageFileSelect = (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      setError('Seuls les fichiers image sont autorisés')
-      return
-    }
-
-    if (file.size > 10 * 1024 * 1024) {
-      setError('L\'image est trop volumineuse (max 10MB)')
-      return
-    }
-
-    // Afficher un aperçu de l'image
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (editingId) {
-        setEditFormData(prev => ({ ...prev, coverImage: e.target.result }))
-        setSelectedEditImageFile(file)
-      } else {
-        setFormData(prev => ({ ...prev, coverImage: e.target.result }))
-        setSelectedImageFile(file)
-      }
-    }
-    reader.readAsDataURL(file)
-
-    setSuccess('✅ Image sélectionnée. Elle sera uploadée vers Cloudinary lors de la sauvegarde.')
-    setTimeout(() => setSuccess(''), 3000)
-  }
+  // Les uploads de fichiers ont été supprimés - utilisation uniquement d'URLs (Google Drive, etc.)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -147,51 +88,27 @@ export default function AdminRessourcesPdfPage() {
     setError('')
     setSuccess('')
 
-    // Vérifier qu'un PDF est fourni (soit fichier, soit URL)
-    if (!selectedPdfFile && !formData.pdfUrl) {
-      setError('Veuillez sélectionner un fichier PDF ou fournir une URL')
+    // Vérifier qu'une URL PDF est fournie
+    if (!formData.pdfUrl || (!formData.pdfUrl.startsWith('http://') && !formData.pdfUrl.startsWith('https://'))) {
+      setError('Veuillez fournir une URL valide pour le PDF (ex: Google Drive)')
       setSubmitting(false)
       return
     }
 
     try {
-      // Créer FormData pour envoyer les fichiers
-      const submitFormData = new FormData()
-      
-      // Ajouter les champs texte
-      Object.keys(formData).forEach(key => {
-        if (key !== 'pdfUrl' && key !== 'coverImage') {
-          submitFormData.append(key, formData[key])
-        }
-      })
-      
-      // Ajouter le fichier PDF si sélectionné
-      if (selectedPdfFile) {
-        submitFormData.append('pdf', selectedPdfFile)
-      } else if (formData.pdfUrl) {
-        submitFormData.append('pdfUrl', formData.pdfUrl)
-      }
-      
-      // Ajouter l'image de couverture si sélectionnée
-      if (selectedImageFile) {
-        submitFormData.append('coverImage', selectedImageFile)
-      } else if (formData.coverImage && formData.coverImage.startsWith('http')) {
-        submitFormData.append('coverImage', formData.coverImage)
-      }
-
       const response = await axios.post(
         `${CONFIG.BACKEND_URL}/api/ressources-pdf`,
-        submitFormData,
+        formData,
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           } 
         }
       )
 
       if (response.data.success) {
-        setSuccess('✅ Ressource PDF créée avec succès ! Les fichiers ont été uploadés vers Cloudinary.')
+        setSuccess('✅ Ressource PDF créée avec succès !')
         setShowAddForm(false)
         setFormData({
           title: '',
@@ -206,8 +123,6 @@ export default function AdminRessourcesPdfPage() {
           isFree: true,
           isPublished: false
         })
-        setSelectedPdfFile(null)
-        setSelectedImageFile(null)
         fetchRessourcesPdf()
         setTimeout(() => setSuccess(''), 5000)
       }
@@ -234,9 +149,6 @@ export default function AdminRessourcesPdfPage() {
       isFree: ressourcePdf.isFree,
       isPublished: ressourcePdf.isPublished
     })
-    // Réinitialiser les fichiers sélectionnés
-    setSelectedEditPdfFile(null)
-    setSelectedEditImageFile(null)
   }
 
   const handleUpdate = async () => {
@@ -246,48 +158,29 @@ export default function AdminRessourcesPdfPage() {
     setError('')
     setSuccess('')
 
-    try {
-      // Créer FormData pour envoyer les fichiers
-      const submitFormData = new FormData()
-      
-      // Ajouter les champs texte
-      Object.keys(editFormData).forEach(key => {
-        if (key !== 'pdfUrl' && key !== 'coverImage') {
-          submitFormData.append(key, editFormData[key])
-        }
-      })
-      
-      // Ajouter le fichier PDF si un nouveau fichier est sélectionné
-      if (selectedEditPdfFile) {
-        submitFormData.append('pdf', selectedEditPdfFile)
-      } else if (editFormData.pdfUrl) {
-        submitFormData.append('pdfUrl', editFormData.pdfUrl)
-      }
-      
-      // Ajouter l'image de couverture si une nouvelle image est sélectionnée
-      if (selectedEditImageFile) {
-        submitFormData.append('coverImage', selectedEditImageFile)
-      } else if (editFormData.coverImage && editFormData.coverImage.startsWith('http')) {
-        submitFormData.append('coverImage', editFormData.coverImage)
-      }
+    // Vérifier qu'une URL PDF valide est fournie
+    if (!editFormData.pdfUrl || (!editFormData.pdfUrl.startsWith('http://') && !editFormData.pdfUrl.startsWith('https://'))) {
+      setError('Veuillez fournir une URL valide pour le PDF (ex: Google Drive)')
+      setSubmitting(false)
+      return
+    }
 
+    try {
       const response = await axios.put(
         `${CONFIG.BACKEND_URL}/api/ressources-pdf/${editingId}`,
-        submitFormData,
+        editFormData,
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           } 
         }
       )
 
       if (response.data.success) {
-        setSuccess('✅ Ressource PDF mise à jour avec succès ! Les fichiers ont été uploadés vers Cloudinary.')
+        setSuccess('✅ Ressource PDF mise à jour avec succès !')
         setEditingId(null)
         setEditFormData(null)
-        setSelectedEditPdfFile(null)
-        setSelectedEditImageFile(null)
         fetchRessourcesPdf()
         setTimeout(() => setSuccess(''), 5000)
       }
@@ -437,53 +330,38 @@ export default function AdminRessourcesPdfPage() {
             </div>
 
             <div className="admin-form-group">
-              <label>Fichier PDF *</label>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfFileSelect}
-                  className="admin-file-input"
-                  disabled={submitting}
-                />
-                {selectedPdfFile && (
-                  <div className="flex items-center gap-2 text-sm text-accent">
-                    <FiCheck className="w-4 h-4" />
-                    <span>PDF sélectionné : {selectedPdfFile.name} (sera uploadé vers Cloudinary)</span>
-                  </div>
-                )}
-                {formData.pdfUrl && !selectedPdfFile && (
-                  <div className="flex items-center gap-2 text-sm text-accent">
-                    <FiCheck className="w-4 h-4" />
-                    <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                      PDF actuel : {formData.pdfUrl.split('/').pop()}
-                    </a>
-                  </div>
-                )}
-              </div>
+              <label>URL du PDF (Google Drive, etc.) *</label>
+              <input
+                type="url"
+                value={formData.pdfUrl}
+                onChange={(e) => setFormData(prev => ({ ...prev, pdfUrl: e.target.value }))}
+                placeholder="https://drive.google.com/file/d/..."
+                required
+                className="w-full"
+              />
+              {formData.pdfUrl && (
+                <a href={formData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline mt-1 block">
+                  🔗 Vérifier le lien
+                </a>
+              )}
             </div>
 
             <div className="admin-form-group">
-              <label>Image de couverture</label>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileSelect}
-                  className="admin-file-input"
-                  disabled={submitting}
+              <label>URL de l'image de couverture</label>
+              <input
+                type="url"
+                value={formData.coverImage}
+                onChange={(e) => setFormData(prev => ({ ...prev, coverImage: e.target.value }))}
+                placeholder="https://..."
+                className="w-full"
+              />
+              {formData.coverImage && formData.coverImage.startsWith('http') && (
+                <img
+                  src={formData.coverImage}
+                  alt="Couverture"
+                  className="w-32 h-32 object-cover rounded-lg border border-theme mt-2"
                 />
-                {selectedImageFile && (
-                  <p className="text-sm text-accent">✅ Image sélectionnée : {selectedImageFile.name} (sera uploadée vers Cloudinary)</p>
-                )}
-                {formData.coverImage && (
-                  <img
-                    src={formData.coverImage.startsWith('http') ? formData.coverImage : getImageUrl(formData.coverImage)}
-                    alt="Couverture"
-                    className="w-32 h-32 object-cover rounded-lg border border-theme"
-                  />
-                )}
-              </div>
+              )}
             </div>
 
             <div className="admin-form-row">
@@ -596,60 +474,38 @@ export default function AdminRessourcesPdfPage() {
             </div>
 
             <div className="admin-form-group">
-              <label>Fichier PDF *</label>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  onChange={handlePdfFileSelect}
-                  className="admin-file-input"
-                  disabled={submitting}
-                />
-                {selectedEditPdfFile && (
-                  <div className="flex items-center gap-2 text-sm text-accent">
-                    <FiCheck className="w-4 h-4" />
-                    <span>Nouveau PDF sélectionné : {selectedEditPdfFile.name} (sera uploadé vers Cloudinary)</span>
-                  </div>
-                )}
-                {editFormData.pdfUrl && !selectedEditPdfFile && (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-sm text-accent">
-                      <FiCheck className="w-4 h-4" />
-                      <span>PDF actuel :</span>
-                    </div>
-                    <input
-                      type="text"
-                      value={editFormData.pdfUrl}
-                      onChange={(e) => setEditFormData(prev => ({ ...prev, pdfUrl: e.target.value }))}
-                      placeholder="URL Cloudinary"
-                      className="text-sm"
-                    />
-                  </div>
-                )}
-              </div>
+              <label>URL du PDF (Google Drive, etc.) *</label>
+              <input
+                type="url"
+                value={editFormData.pdfUrl}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, pdfUrl: e.target.value }))}
+                placeholder="https://drive.google.com/file/d/..."
+                required
+                className="w-full"
+              />
+              {editFormData.pdfUrl && (
+                <a href={editFormData.pdfUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-accent hover:underline mt-1 block">
+                  🔗 Vérifier le lien
+                </a>
+              )}
             </div>
 
             <div className="admin-form-group">
-              <label>Image de couverture</label>
-              <div className="flex flex-col gap-2">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileSelect}
-                  className="admin-file-input"
-                  disabled={submitting}
+              <label>URL de l'image de couverture</label>
+              <input
+                type="url"
+                value={editFormData.coverImage}
+                onChange={(e) => setEditFormData(prev => ({ ...prev, coverImage: e.target.value }))}
+                placeholder="https://..."
+                className="w-full"
+              />
+              {editFormData.coverImage && editFormData.coverImage.startsWith('http') && (
+                <img
+                  src={editFormData.coverImage}
+                  alt="Couverture"
+                  className="w-32 h-32 object-cover rounded-lg border border-theme mt-2"
                 />
-                {selectedEditImageFile && (
-                  <p className="text-sm text-accent">✅ Nouvelle image sélectionnée : {selectedEditImageFile.name} (sera uploadée vers Cloudinary)</p>
-                )}
-                {editFormData.coverImage && (
-                  <img
-                    src={editFormData.coverImage.startsWith('http') ? editFormData.coverImage : getImageUrl(editFormData.coverImage)}
-                    alt="Couverture"
-                    className="w-32 h-32 object-cover rounded-lg border border-theme"
-                  />
-                )}
-              </div>
+              )}
             </div>
 
             <div className="admin-form-row">

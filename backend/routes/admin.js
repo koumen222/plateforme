@@ -3,7 +3,6 @@ import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
 import { uploadCourseImage, getImagePublicPath, uploadPdf, getPdfPublicPath } from '../middleware/upload.js';
-import { uploadPdfToCloudinary, uploadImageToCloudinary } from '../utils/cloudinary.js';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
 import Module from '../models/Module.js';
@@ -53,69 +52,8 @@ router.post('/validate/:id', async (req, res) => {
   }
 });
 
-// Configuration Multer pour les images (memoryStorage pour Cloudinary)
-const memoryImageUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB max pour les images
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Type de fichier non autorisé. Seules les images sont acceptées.'), false);
-    }
-  },
-});
-
-// POST /api/admin/upload/course-image - Upload d'image vers Cloudinary
-// IMPORTANT: Cette route doit être définie AVANT les routes avec paramètres dynamiques comme /:id
-router.post('/upload/course-image', memoryImageUpload.single('image'), async (req, res) => {
-  try {
-    console.log('📤 Route upload image appelée - /upload/course-image');
-    console.log('   Method:', req.method);
-    console.log('   Original URL:', req.originalUrl);
-    console.log('   Content-Type:', req.headers['content-type']);
-    
-    if (!req.file) {
-      return res.status(400).json({ error: 'Aucun fichier image uploadé' });
-    }
-
-    console.log('🖼️ Fichier image reçu:');
-    console.log('   - Nom du fichier:', req.file.originalname);
-    console.log('   - Taille:', (req.file.size / 1024).toFixed(2), 'KB');
-    console.log('   - Type MIME:', req.file.mimetype);
-    console.log('   - Buffer size:', req.file.buffer.length, 'bytes');
-
-    // Upload vers Cloudinary
-    const imageResult = await uploadImageToCloudinary(
-      req.file.buffer,
-      req.file.originalname,
-      'covers'
-    );
-    
-    console.log('✅ Image uploadée vers Cloudinary avec succès');
-    console.log('   - URL Cloudinary:', imageResult.url);
-    console.log('   - Public ID:', imageResult.public_id);
-    
-    res.json({
-      success: true,
-      message: 'Image uploadée vers Cloudinary avec succès',
-      imagePath: imageResult.url,
-      imageUrl: imageResult.url, // Pour compatibilité
-      publicId: imageResult.public_id,
-      filename: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
-  } catch (error) {
-    console.error('❌ Erreur upload image vers Cloudinary:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de l\'upload de l\'image vers Cloudinary',
-      details: error.message 
-    });
-  }
-});
+// Note: Les uploads de fichiers sont désormais gérés via des URLs externes (Google Drive, etc.)
+// Les routes d'upload Cloudinary ont été supprimées
 
 // POST /api/admin/course - Créer un nouveau cours avec Module 1 automatique
 router.post('/course', async (req, res) => {
@@ -874,69 +812,8 @@ router.get('/ressources-pdf', async (req, res) => {
   }
 });
 
-// Configuration Multer pour les uploads temporaires (memoryStorage pour Cloudinary)
-const memoryUpload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB max
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
-      cb(null, true);
-    } else {
-      cb(new Error('Type de fichier non autorisé. Seuls les PDF sont acceptés.'), false);
-    }
-  },
-});
-
-// POST /api/admin/upload/pdf - Upload d'un fichier PDF vers Cloudinary
-// IMPORTANT: Cette route doit être définie AVANT les routes avec paramètres dynamiques comme /:id
-router.post('/upload/pdf', memoryUpload.single('pdf'), async (req, res) => {
-  try {
-    console.log('📤 Route upload PDF appelée - /upload/pdf');
-    console.log('   Method:', req.method);
-    console.log('   Original URL:', req.originalUrl);
-    console.log('   Content-Type:', req.headers['content-type']);
-    
-    if (!req.file) {
-      return res.status(400).json({ error: 'Aucun fichier PDF uploadé' });
-    }
-
-    console.log('📄 Fichier PDF reçu:');
-    console.log('   - Nom du fichier:', req.file.originalname);
-    console.log('   - Taille:', (req.file.size / 1024 / 1024).toFixed(2), 'MB');
-    console.log('   - Type MIME:', req.file.mimetype);
-    console.log('   - Buffer size:', req.file.buffer.length, 'bytes');
-
-    // Upload vers Cloudinary
-    const pdfResult = await uploadPdfToCloudinary(
-      req.file.buffer,
-      req.file.originalname,
-      'pdf'
-    );
-    
-    console.log('✅ PDF uploadé vers Cloudinary avec succès');
-    console.log('   - URL Cloudinary:', pdfResult.url);
-    console.log('   - Public ID:', pdfResult.public_id);
-    
-    res.json({
-      success: true,
-      message: 'PDF uploadé vers Cloudinary avec succès',
-      pdfUrl: pdfResult.url,
-      pdfPath: pdfResult.url, // Pour compatibilité avec l'ancien code
-      publicId: pdfResult.public_id,
-      filename: req.file.originalname,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    });
-  } catch (error) {
-    console.error('❌ Erreur upload PDF vers Cloudinary:', error);
-    res.status(500).json({ 
-      error: 'Erreur lors de l\'upload du PDF vers Cloudinary',
-      details: error.message 
-    });
-  }
-});
+// Note: Les uploads de fichiers PDF sont désormais gérés via des URLs externes (Google Drive, etc.)
+// Les routes d'upload Cloudinary ont été supprimées
 
 // POST /api/admin/ressources-pdf - Créer une nouvelle ressource PDF
 router.post('/ressources-pdf', async (req, res) => {

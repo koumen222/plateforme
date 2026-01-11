@@ -88,41 +88,6 @@ export default function RessourcesPdfPage() {
           credentials: 'include'
         })
         
-        // La route /file redirige vers Cloudinary, donc on suit la redirection
-        // Si c'est une redirection (status 302), suivre l'URL de redirection
-        if (response.redirected || response.status === 302) {
-          // Récupérer l'URL de redirection depuis les headers ou utiliser l'URL finale
-          const cloudinaryUrl = response.url || response.headers.get('location')
-          console.log('🌐 Redirection vers URL Cloudinary:', cloudinaryUrl)
-          
-          // Télécharger directement depuis Cloudinary
-          const cloudinaryResponse = await fetch(cloudinaryUrl, {
-            mode: 'cors',
-            credentials: 'include'
-          })
-          if (!cloudinaryResponse.ok) {
-            throw new Error(`Erreur téléchargement Cloudinary: ${cloudinaryResponse.status}`)
-          }
-          const blob = await cloudinaryResponse.blob()
-          const blobUrl = window.URL.createObjectURL(blob)
-          
-          const link = document.createElement('a')
-          link.href = blobUrl
-          link.download = sanitizedFilename
-          link.style.cssText = 'display: none; position: absolute; left: -9999px;'
-          link.setAttribute('download', sanitizedFilename)
-          
-          document.body.appendChild(link)
-          setTimeout(() => {
-            link.click()
-            setTimeout(() => {
-              document.body.removeChild(link)
-              window.URL.revokeObjectURL(blobUrl)
-            }, 2000)
-          }, 100)
-          return true
-        }
-        
         if (!response.ok) {
           if (response.status === 403) {
             const errorData = await response.json()
@@ -132,7 +97,27 @@ export default function RessourcesPdfPage() {
           }
           throw new Error(`HTTP ${response.status}`)
         }
+
+        const contentType = response.headers.get('content-type')
+        if (contentType && contentType.includes('application/json')) {
+          const data = await response.json()
+          if (data.redirect && data.pdfUrl) {
+            console.log('🌐 Redirection vers URL externe:', data.pdfUrl)
+            // Ouvrir directement l'URL (Google Drive, etc.)
+            window.open(data.pdfUrl, '_blank')
+            return true
+          }
+        }
+
+        // Si c'est une redirection directe, suivre l'URL
+        if (response.redirected || response.status === 302) {
+          const redirectUrl = response.url || response.headers.get('location')
+          console.log('🌐 Redirection vers URL externe:', redirectUrl)
+          window.open(redirectUrl, '_blank')
+          return true
+        }
         
+        // Télécharger le blob si c'est un fichier
         const blob = await response.blob()
         const blobUrl = window.URL.createObjectURL(blob)
         
@@ -154,9 +139,8 @@ export default function RessourcesPdfPage() {
         
         return true
       } else {
-        // Sur desktop, ouvrir directement l'URL (qui redirigera vers Cloudinary)
+        // Sur desktop, ouvrir directement l'URL
         console.log('💻 Téléchargement desktop via route')
-        // La route redirige vers Cloudinary, donc on peut ouvrir directement
         window.open(downloadUrl, '_blank')
         return true
       }
@@ -294,13 +278,13 @@ export default function RessourcesPdfPage() {
       console.log('   - pdfUrl:', ressourcePdf.pdfUrl)
       console.log('   - isMobile:', isMobile())
 
-      // Si le PDF a une URL Cloudinary directe, l'utiliser directement
+      // Si le PDF a une URL externe directe (Google Drive, etc.), l'utiliser directement
       // Sinon, utiliser la route backend qui gère l'authentification et redirige
-      const hasCloudinaryUrl = ressourcePdf.pdfUrl && 
+      const hasExternalUrl = ressourcePdf.pdfUrl && 
         (ressourcePdf.pdfUrl.startsWith('http://') || ressourcePdf.pdfUrl.startsWith('https://'))
       
-      if (hasCloudinaryUrl) {
-        console.log('✅ URL Cloudinary directe disponible:', ressourcePdf.pdfUrl)
+      if (hasExternalUrl) {
+        console.log('✅ URL externe directe disponible:', ressourcePdf.pdfUrl)
       } else {
         console.log('📡 Utilisation route backend pour téléchargement')
       }
@@ -323,8 +307,8 @@ export default function RessourcesPdfPage() {
           console.log('⚠️ Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
         }
         
-        // Si URL Cloudinary directe, télécharger directement
-        if (hasCloudinaryUrl) {
+        // Si URL externe directe, ouvrir directement
+        if (hasExternalUrl) {
           const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
           downloadPdf(ressourcePdf.pdfUrl, filename)
           return
@@ -385,8 +369,8 @@ export default function RessourcesPdfPage() {
         return
       }
       
-      // Si URL Cloudinary directe, télécharger directement
-      if (hasCloudinaryUrl) {
+      // Si URL externe directe, ouvrir directement
+      if (hasExternalUrl) {
         const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
         downloadPdf(ressourcePdf.pdfUrl, filename)
         return
@@ -421,18 +405,23 @@ export default function RessourcesPdfPage() {
         return
       }
       
-      // Si le PDF est gratuit, essayer quand même via la route dédiée
+      // Si le PDF est gratuit, essayer directement avec l'URL externe si disponible
       if (ressourcePdf.isFree) {
         console.log('🔄 Tentative téléchargement PDF gratuit malgré l\'erreur')
-        const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
-        try {
-          const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
-          if (!success) {
+        if (hasExternalUrl) {
+          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+          downloadPdf(ressourcePdf.pdfUrl, filename)
+        } else {
+          const filename = `${ressourcePdf.slug || ressourcePdf.title || 'document'}.pdf`
+          try {
+            const success = await downloadPdfViaRoute(ressourcePdf._id, filename)
+            if (!success) {
+              setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
+            }
+          } catch (error) {
+            console.error('❌ Erreur téléchargement PDF gratuit:', error)
             setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
           }
-        } catch (error) {
-          console.error('❌ Erreur téléchargement PDF gratuit:', error)
-          setError('Impossible de télécharger le PDF. Veuillez réessayer plus tard.')
         }
       } else {
         // PDF payant et erreur → demander l'abonnement

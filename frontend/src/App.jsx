@@ -15,6 +15,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
 import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
+import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
@@ -113,7 +114,7 @@ function App() {
             <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
-            <Route path="settings" element={<div className="admin-page-header"><h1>Paramètres</h1><p>Page de paramètres à venir</p></div>} />
+            <Route path="settings" element={<AdminSettingsPage />} />
           </Route>
         </Routes>
       </Router>
