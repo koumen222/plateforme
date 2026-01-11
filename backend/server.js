@@ -118,12 +118,18 @@ app.use('/uploads', express.static(uploadsPath, {
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET');
     
-    // Pour les fichiers PDF, ajouter Content-Disposition pour forcer le téléchargement sur mobile
+    // Pour les fichiers PDF, optimiser les headers pour mobile
     if (filePath.endsWith('.pdf')) {
       const filename = path.basename(filePath);
+      // Encoder le nom de fichier pour éviter les problèmes avec les caractères spéciaux
+      const encodedFilename = encodeURIComponent(filename);
       res.set('Content-Type', 'application/pdf');
-      res.set('Content-Disposition', `attachment; filename="${filename}"`);
+      // Utiliser à la fois filename et filename* pour meilleure compatibilité
+      res.set('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`);
       res.set('Content-Transfer-Encoding', 'binary');
+      res.set('Accept-Ranges', 'bytes');
+      // Permettre le cache pour améliorer les performances
+      res.set('Cache-Control', 'public, max-age=86400');
     }
   }
 }));

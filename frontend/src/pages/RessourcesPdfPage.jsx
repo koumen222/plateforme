@@ -73,44 +73,77 @@ export default function RessourcesPdfPage() {
       .replace(/[^a-z0-9.-]/gi, '_')
       .toLowerCase()
     
+    console.log('📥 Téléchargement PDF:', { pdfUrl, filename: sanitizedFilename, isMobile: isMobile() })
+    
+    // Sur mobile, utiliser une approche différente
     if (isMobile()) {
-      // Sur mobile, utiliser fetch pour télécharger et créer un blob
-      console.log('📱 Téléchargement mobile:', pdfUrl)
+      console.log('📱 Téléchargement mobile')
+      
+      // Méthode 1: Essayer avec fetch + blob (meilleure compatibilité)
       try {
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-        const response = await fetch(pdfUrl, { headers })
+        const response = await fetch(pdfUrl, { 
+          headers,
+          mode: 'cors',
+          credentials: 'include'
+        })
         
         if (!response.ok) {
-          throw new Error('Erreur lors du téléchargement')
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
         }
         
         const blob = await response.blob()
-        const blobUrl = window.URL.createObjectURL(blob)
+        console.log('✅ Blob créé, taille:', blob.size, 'bytes')
         
-        // Créer un lien temporaire pour télécharger
+        // Vérifier que c'est bien un PDF
+        if (!blob.type.includes('pdf') && !blob.type.includes('octet-stream')) {
+          console.warn('⚠️ Type MIME inattendu:', blob.type)
+        }
+        
+        // Créer un blob URL
+        const blobUrl = window.URL.createObjectURL(blob)
+        console.log('✅ Blob URL créé:', blobUrl)
+        
+        // Créer et déclencher le téléchargement
         const link = document.createElement('a')
         link.href = blobUrl
         link.download = sanitizedFilename
         link.style.display = 'none'
+        link.setAttribute('download', sanitizedFilename) // Double sécurité
         
+        // Ajouter au DOM
         document.body.appendChild(link)
+        
+        // Déclencher le clic
         link.click()
-        document.body.removeChild(link)
         
-        // Nettoyer le blob URL après un délai
+        // Attendre un peu avant de nettoyer
         setTimeout(() => {
+          document.body.removeChild(link)
           window.URL.revokeObjectURL(blobUrl)
-        }, 100)
+          console.log('✅ Nettoyage effectué')
+        }, 1000)
         
-        console.log('✅ PDF téléchargé sur mobile')
+        console.log('✅ Téléchargement mobile initié')
+        return
       } catch (error) {
-        console.error('❌ Erreur téléchargement mobile, fallback vers ouverture:', error)
-        // Fallback : ouvrir dans un nouvel onglet
-        window.open(pdfUrl, '_blank')
+        console.error('❌ Erreur téléchargement mobile avec blob:', error)
+        console.log('🔄 Fallback vers ouverture directe')
+      }
+      
+      // Méthode 2: Fallback - ouvrir directement dans un nouvel onglet
+      // Sur iOS Safari, cela permettra à l'utilisateur de télécharger manuellement
+      try {
+        window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+        console.log('✅ PDF ouvert dans nouvel onglet (fallback mobile)')
+      } catch (error) {
+        console.error('❌ Erreur ouverture PDF:', error)
+        // Dernière méthode : redirection
+        window.location.href = pdfUrl
       }
     } else {
-      // Sur desktop, créer un lien avec attribut download pour forcer le téléchargement
-      console.log('💻 Téléchargement desktop:', pdfUrl)
+      // Sur desktop, méthode standard
+      console.log('💻 Téléchargement desktop')
       const link = document.createElement('a')
       link.href = pdfUrl
       link.download = sanitizedFilename
@@ -122,10 +155,7 @@ export default function RessourcesPdfPage() {
       link.click()
       document.body.removeChild(link)
       
-      // Fallback : ouvrir dans un nouvel onglet après un court délai
-      setTimeout(() => {
-        window.open(pdfUrl, '_blank')
-      }, 100)
+      console.log('✅ Téléchargement desktop initié')
     }
   }
 
