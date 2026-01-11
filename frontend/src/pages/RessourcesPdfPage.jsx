@@ -63,28 +63,52 @@ export default function RessourcesPdfPage() {
 
   const handleDownload = async (ressourcePdf) => {
     try {
-      // Si le PDF est payant et l'utilisateur n'est pas connecté, rediriger vers login
-      if (!ressourcePdf.isFree && !isAuthenticated) {
+      // Cas 1: PDF gratuit → téléchargement direct
+      if (ressourcePdf.isFree) {
+        // Incrémenter le compteur (optionnel pour les PDF gratuits)
+        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+        try {
+          await axios.post(
+            `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`,
+            {},
+            { headers }
+          )
+        } catch (err) {
+          // Ignorer les erreurs d'incrémentation pour les PDF gratuits
+          console.log('Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
+        }
+        
+        // Ouvrir le PDF directement
+        const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
+          ? ressourcePdf.pdfUrl 
+          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
+        window.open(pdfUrl, '_blank')
+        return
+      }
+
+      // Cas 2: PDF payant
+      // Si l'utilisateur n'est pas connecté, rediriger vers login
+      if (!isAuthenticated) {
         navigate('/login', { state: { from: '/ressources-pdf', message: 'Connectez-vous pour télécharger cette ressource PDF' } })
         return
       }
 
-      // Si le PDF est payant et l'utilisateur n'est pas abonné, afficher le modal de paiement
-      if (!ressourcePdf.isFree && user?.status !== 'active') {
+      // Si l'utilisateur n'est pas abonné (status !== 'active'), afficher le modal d'abonnement
+      if (user?.status !== 'active') {
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
         return
       }
 
-      // Incrémenter le compteur de téléchargements
-      const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
+      // Cas 3: PDF payant ET utilisateur abonné → téléchargement direct
+      const headers = { 'Authorization': `Bearer ${token}` }
       const response = await axios.post(
         `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`,
         {},
         { headers }
       )
       
-      // Si la réponse indique qu'un abonnement est requis
+      // Vérifier si le backend demande un abonnement (sécurité supplémentaire)
       if (response.data.requiresSubscription) {
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
@@ -117,7 +141,9 @@ export default function RessourcesPdfPage() {
           : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
         window.open(pdfUrl, '_blank')
       } else {
-        setError(err.response?.data?.message || 'Impossible de télécharger cette ressource PDF. Veuillez vous abonner.')
+        // PDF payant et erreur → demander l'abonnement
+        setSelectedPdf(ressourcePdf)
+        setShowSubscriptionModal(true)
       }
     }
   }
