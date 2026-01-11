@@ -9,6 +9,24 @@ let cloudinary = null;
 let cloudinaryInitialized = false;
 
 /**
+ * Nettoie le nom de fichier pour créer un public_id valide pour Cloudinary
+ * @param {string} filename - Le nom de fichier original
+ * @returns {string} - Le public_id nettoyé
+ */
+function cleanPublicId(filename) {
+  if (!filename) return 'file';
+  
+  return filename
+    .toLowerCase()
+    .trim()                     // supprime espaces avant/après
+    .replace(/\s+/g, "_")       // espaces internes → _
+    .replace(/[^\w\-_.]/g, "")  // enlève caractères bizarres
+    .replace(/_+/g, "_")        // évite ____
+    .replace(/_$/, "")          // supprime _ final
+    .replace(/^_/, "");         // supprime _ initial
+}
+
+/**
  * Initialise Cloudinary de manière asynchrone
  */
 const initCloudinary = async () => {
@@ -66,15 +84,24 @@ export const uploadPdfToCloudinary = async (fileBuffer, filename, folder = 'pdf'
     throw new Error('Cloudinary n\'est pas configuré. Veuillez configurer les variables d\'environnement CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY et CLOUDINARY_API_SECRET.');
   }
   
+  // Nettoyer le nom de fichier pour créer un public_id valide
+  const rawName = filename.replace(/\.pdf$/i, ''); // Retirer l'extension
+  const publicId = cleanPublicId(rawName);
+  
+  // Logs de vérification
+  console.log('📄 Nom de fichier original:', `"${filename}"`);
+  console.log('🧹 Nom après retrait extension:', `"${rawName}"`);
+  console.log('✨ public_id nettoyé:', `"${publicId}"`);
+  
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinaryInstance.uploader.upload_stream(
       {
         resource_type: 'raw', // Pour les PDF
         folder: `plateforme/${folder}`,
-        public_id: filename.replace(/\.pdf$/i, ''), // Retirer l'extension
+        public_id: publicId, // Utiliser le public_id nettoyé
         format: 'pdf',
-        use_filename: true,
-        unique_filename: true,
+        use_filename: false, // Ne pas utiliser le nom de fichier original
+        unique_filename: true, // Ajouter un suffixe unique si nécessaire
       },
       (error, result) => {
         if (error) {
@@ -115,14 +142,23 @@ export const uploadImageToCloudinary = async (fileBuffer, filename, folder = 'im
     throw new Error('Cloudinary n\'est pas configuré. Veuillez configurer les variables d\'environnement CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY et CLOUDINARY_API_SECRET.');
   }
   
+  // Nettoyer le nom de fichier pour créer un public_id valide
+  const rawName = filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, ''); // Retirer l'extension
+  const publicId = cleanPublicId(rawName);
+  
+  // Logs de vérification
+  console.log('🖼️ Nom de fichier original:', `"${filename}"`);
+  console.log('🧹 Nom après retrait extension:', `"${rawName}"`);
+  console.log('✨ public_id nettoyé:', `"${publicId}"`);
+  
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinaryInstance.uploader.upload_stream(
       {
         resource_type: 'image',
         folder: `plateforme/${folder}`,
-        public_id: filename.replace(/\.(jpg|jpeg|png|gif|webp)$/i, ''),
-        use_filename: true,
-        unique_filename: true,
+        public_id: publicId, // Utiliser le public_id nettoyé
+        use_filename: false, // Ne pas utiliser le nom de fichier original
+        unique_filename: true, // Ajouter un suffixe unique si nécessaire
       },
       (error, result) => {
         if (error) {
