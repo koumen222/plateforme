@@ -1,4 +1,11 @@
 # Dockerfile pour le backend de la plateforme Andromeda
+# 
+# IMPORTANT: Le build context DOIT être le répertoire backend/
+# Pour construire depuis la racine du projet :
+#   docker build -f backend/Dockerfile -t plateforme-backend ./backend
+#
+# Pour construire depuis le répertoire backend/ :
+#   docker build -t plateforme-backend .
 
 # Utiliser une image Node.js officielle
 FROM node:18-alpine
@@ -27,4 +34,3 @@ ENV NODE_ENV=production
 
 # Commande pour démarrer le serveur
 CMD ["node", "server.js"]
-
