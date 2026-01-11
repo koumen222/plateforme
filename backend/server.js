@@ -105,8 +105,22 @@ app.use(express.json());
 app.use(cookieParser());
 
 // Servir les fichiers statiques (images uploadées et PDF)
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+const uploadsPath = path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadsPath, {
+  dotfiles: 'ignore',
+  etag: true,
+  extensions: ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg'],
+  index: false,
+  maxAge: '1d',
+  redirect: false,
+  setHeaders: (res, path) => {
+    // Définir les headers CORS pour les fichiers statiques
+    res.set('Access-Control-Allow-Origin', '*');
+    res.set('Access-Control-Allow-Methods', 'GET');
+  }
+}));
 console.log('📁 Dossier uploads configuré: /uploads');
+console.log('📁 Chemin absolu uploads:', uploadsPath);
 console.log('📁 Dossier uploads/pdf configuré: /uploads/pdf');
 
 // Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
@@ -841,7 +855,13 @@ const startServer = async () => {
     }
     
     // Middleware de gestion des routes non trouvées (DOIT être après toutes les routes)
+    // Exclure les routes /uploads pour permettre le service des fichiers statiques
     app.use((req, res, next) => {
+      // Ne pas intercepter les routes /uploads (fichiers statiques)
+      if (req.originalUrl.startsWith('/uploads/')) {
+        return next();
+      }
+      
       console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
       console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
       res.status(404).json({ 
