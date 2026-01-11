@@ -26,6 +26,9 @@ import { configurePassport } from "./config/passport.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
 import User from "./models/User.js";
 import jwt from "jsonwebtoken";
+
+// Charger les variables d'environnement depuis .env (doit être en premier)
+dotenv.config();
 // Variables pour les modules chargés dynamiquement (évite les crashes si fichiers absents)
 let authRoutes = null;
 let videoRoutes = null;

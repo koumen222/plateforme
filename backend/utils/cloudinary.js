@@ -1,4 +1,8 @@
 import { Readable } from 'stream';
+import dotenv from 'dotenv';
+
+// Charger les variables d'environnement
+dotenv.config();
 
 // Variable pour stocker l'instance Cloudinary
 let cloudinary = null;
@@ -19,15 +23,24 @@ const initCloudinary = async () => {
     cloudinary = cloudinaryModule.v2;
     
     // Configuration Cloudinary depuis les variables d'environnement
-    if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    
+    if (cloudName && apiKey && apiSecret) {
       cloudinary.config({
-        cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-        api_key: process.env.CLOUDINARY_API_KEY,
-        api_secret: process.env.CLOUDINARY_API_SECRET,
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
       });
-      console.log('✅ Cloudinary configuré');
+      console.log('✅ Cloudinary configuré avec succès');
+      console.log('   - Cloud Name:', cloudName);
+      console.log('   - API Key:', apiKey ? `${apiKey.substring(0, 4)}...` : 'non défini');
     } else {
       console.warn('⚠️ Cloudinary non configuré - les variables d\'environnement sont manquantes');
+      console.warn('   - CLOUDINARY_CLOUD_NAME:', cloudName ? '✅' : '❌');
+      console.warn('   - CLOUDINARY_API_KEY:', apiKey ? '✅' : '❌');
+      console.warn('   - CLOUDINARY_API_SECRET:', apiSecret ? '✅' : '❌');
       cloudinary = null;
     }
   } catch (error) {
