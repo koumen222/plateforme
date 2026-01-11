@@ -54,7 +54,7 @@ export const uploadPdfToCloudinary = async (fileBuffer, filename, folder = 'pdf'
   }
   
   return new Promise((resolve, reject) => {
-    const uploadStream = cloudinary.uploader.upload_stream(
+    const uploadStream = cloudinaryInstance.uploader.upload_stream(
       {
         resource_type: 'raw', // Pour les PDF
         folder: `plateforme/${folder}`,
