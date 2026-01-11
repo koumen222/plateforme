@@ -67,85 +67,63 @@ export default function RessourcesPdfPage() {
            (window.innerWidth <= 768)
   }
 
-  // Fonction pour télécharger le PDF via la route dédiée (meilleure compatibilité mobile)
-  const downloadPdfViaRoute = async (ressourceId, filename) => {
-    const sanitizedFilename = (filename || 'document.pdf')
-      .replace(/[^a-z0-9.-]/gi, '_')
-      .toLowerCase()
-    
-    console.log('📥 Téléchargement via route dédiée:', { ressourceId, filename: sanitizedFilename, isMobile: isMobile() })
+  // Fonction pour ouvrir le PDF via la route dédiée dans un nouvel onglet
+  const openPdfViaRoute = async (ressourceId) => {
+    console.log('📥 Ouverture PDF via route dédiée:', { ressourceId })
     
     try {
       const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
       const downloadUrl = `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourceId}/file`
       
-      if (isMobile()) {
-        // Sur mobile, utiliser fetch + blob
-        console.log('📱 Téléchargement mobile via route')
-        const response = await fetch(downloadUrl, { 
-          headers,
-          mode: 'cors',
-          credentials: 'include'
-        })
-        
-        if (!response.ok) {
-          if (response.status === 403) {
-            const errorData = await response.json()
-            if (errorData.requiresSubscription) {
-              throw new Error('REQUIRES_SUBSCRIPTION')
-            }
-          }
-          throw new Error(`HTTP ${response.status}`)
-        }
-
-        const contentType = response.headers.get('content-type')
-        if (contentType && contentType.includes('application/json')) {
-          const data = await response.json()
-          if (data.redirect && data.pdfUrl) {
-            console.log('🌐 Redirection vers URL externe:', data.pdfUrl)
-            // Ouvrir directement l'URL (Google Drive, etc.)
-            window.open(data.pdfUrl, '_blank')
-            return true
+      // Vérifier d'abord si l'utilisateur a accès (pour les PDF payants)
+      const response = await fetch(downloadUrl, { 
+        headers,
+        mode: 'cors',
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        if (response.status === 403) {
+          const errorData = await response.json()
+          if (errorData.requiresSubscription) {
+            throw new Error('REQUIRES_SUBSCRIPTION')
           }
         }
+        throw new Error(`HTTP ${response.status}`)
+      }
 
-        // Si c'est une redirection directe, suivre l'URL
-        if (response.redirected || response.status === 302) {
-          const redirectUrl = response.url || response.headers.get('location')
-          console.log('🌐 Redirection vers URL externe:', redirectUrl)
-          window.open(redirectUrl, '_blank')
+      // Si la réponse contient une URL JSON (redirection)
+      const contentType = response.headers.get('content-type')
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json()
+        if (data.redirect && data.pdfUrl) {
+          console.log('🌐 Ouverture URL externe:', data.pdfUrl)
+          window.open(data.pdfUrl, '_blank')
           return true
         }
-        
-        // Télécharger le blob si c'est un fichier
-        const blob = await response.blob()
-        const blobUrl = window.URL.createObjectURL(blob)
-        
-        const link = document.createElement('a')
-        link.href = blobUrl
-        link.download = sanitizedFilename
-        link.style.cssText = 'display: none; position: absolute; left: -9999px;'
-        link.setAttribute('download', sanitizedFilename)
-        
-        document.body.appendChild(link)
-        
-        setTimeout(() => {
-          link.click()
-          setTimeout(() => {
-            document.body.removeChild(link)
-            window.URL.revokeObjectURL(blobUrl)
-          }, 2000)
-        }, 100)
-        
-        return true
-      } else {
-        // Sur desktop, ouvrir directement l'URL
-        console.log('💻 Téléchargement desktop via route')
-        window.open(downloadUrl, '_blank')
+      }
+
+      // Si c'est une redirection directe, suivre l'URL
+      if (response.redirected || response.status === 302) {
+        const redirectUrl = response.url || response.headers.get('location')
+        console.log('🌐 Ouverture URL externe (redirection):', redirectUrl)
+        window.open(redirectUrl, '_blank')
         return true
       }
+      
+      // Si c'est un blob, créer une URL et l'ouvrir
+      const blob = await response.blob()
+      const blobUrl = window.URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+      
+      // Nettoyer l'URL après un délai
+      setTimeout(() => {
+        window.URL.revokeObjectURL(blobUrl)
+      }, 1000)
+      
+      return true
     } catch (error) {
-      console.error('❌ Erreur téléchargement via route:', error)
+      console.error('❌ Erreur ouverture PDF via route:', error)
       if (error.message === 'REQUIRES_SUBSCRIPTION') {
         throw error
       }
@@ -153,30 +131,13 @@ export default function RessourcesPdfPage() {
     }
   }
 
-  // Fonction pour télécharger le PDF (optimisée pour mobile et desktop)
-  const downloadPdf = async (pdfUrl, filename) => {
-    const sanitizedFilename = (filename || 'document.pdf')
-      .replace(/[^a-z0-9.-]/gi, '_')
-      .toLowerCase()
+  // Fonction pour ouvrir le PDF dans un nouvel onglet
+  const openPdf = (pdfUrl) => {
+    console.log('📥 Ouverture PDF dans nouvel onglet:', { pdfUrl })
     
-    console.log('📥 Téléchargement PDF:', { pdfUrl, filename: sanitizedFilename, isMobile: isMobile() })
-    
-    // Sur mobile, utiliser une approche plus simple et fiable
-    if (isMobile()) {
-      console.log('📱 Téléchargement mobile')
-      
-      // Méthode 1: Essayer avec fetch + blob (meilleure compatibilité)
-      try {
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
-        const response = await fetch(pdfUrl, { 
-          headers,
-          mode: 'cors',
-          credentials: 'include'
-        })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
-        }
+    // Ouvrir directement l'URL dans un nouvel onglet
+    window.open(pdfUrl, '_blank', 'noopener,noreferrer')
+    return true
         
         const blob = await response.blob()
         console.log('✅ Blob créé, taille:', blob.size, 'bytes, type:', blob.type)
