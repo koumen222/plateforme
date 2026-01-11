@@ -63,8 +63,35 @@ export default function RessourcesPdfPage() {
 
   const handleDownload = async (ressourcePdf) => {
     try {
+      console.log('📥 Début téléchargement PDF:', ressourcePdf.title)
+      console.log('   - isFree:', ressourcePdf.isFree)
+      console.log('   - isAuthenticated:', isAuthenticated)
+      console.log('   - user.status:', user?.status)
+      console.log('   - pdfUrl:', ressourcePdf.pdfUrl)
+
+      // Fonction pour construire l'URL complète du PDF
+      const buildPdfUrl = (pdfUrl) => {
+        if (!pdfUrl) {
+          console.error('❌ pdfUrl est vide')
+          return null
+        }
+        
+        // Si c'est déjà une URL complète (http/https), l'utiliser telle quelle
+        if (pdfUrl.startsWith('http://') || pdfUrl.startsWith('https://')) {
+          console.log('✅ URL complète détectée:', pdfUrl)
+          return pdfUrl
+        }
+        
+        // Sinon, construire l'URL complète avec le backend
+        const fullUrl = `${CONFIG.BACKEND_URL}${pdfUrl.startsWith('/') ? pdfUrl : '/' + pdfUrl}`
+        console.log('✅ URL construite:', fullUrl)
+        return fullUrl
+      }
+
       // Cas 1: PDF gratuit → téléchargement direct
       if (ressourcePdf.isFree) {
+        console.log('📄 PDF gratuit - téléchargement direct')
+        
         // Incrémenter le compteur (optionnel pour les PDF gratuits)
         const headers = token ? { 'Authorization': `Bearer ${token}` } : {}
         try {
@@ -73,62 +100,77 @@ export default function RessourcesPdfPage() {
             {},
             { headers }
           )
+          console.log('✅ Compteur incrémenté')
         } catch (err) {
           // Ignorer les erreurs d'incrémentation pour les PDF gratuits
-          console.log('Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
+          console.log('⚠️ Note: Impossible d\'incrémenter le compteur pour PDF gratuit')
         }
         
-        // Ouvrir le PDF directement
-        const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
-          ? ressourcePdf.pdfUrl 
-          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
-        window.open(pdfUrl, '_blank')
+        // Construire et ouvrir le PDF
+        const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
+        if (pdfUrl) {
+          console.log('🚀 Ouverture PDF:', pdfUrl)
+          window.open(pdfUrl, '_blank')
+        } else {
+          setError('URL du PDF invalide')
+        }
         return
       }
 
       // Cas 2: PDF payant
       // Si l'utilisateur n'est pas connecté, rediriger vers login
       if (!isAuthenticated) {
+        console.log('🔒 Utilisateur non connecté - redirection vers login')
         navigate('/login', { state: { from: '/ressources-pdf', message: 'Connectez-vous pour télécharger cette ressource PDF' } })
         return
       }
 
       // Si l'utilisateur n'est pas abonné (status !== 'active'), afficher le modal d'abonnement
       if (user?.status !== 'active') {
+        console.log('💳 Utilisateur non abonné - affichage modal abonnement')
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
         return
       }
 
       // Cas 3: PDF payant ET utilisateur abonné → téléchargement direct
+      console.log('✅ Utilisateur abonné - téléchargement autorisé')
       const headers = { 'Authorization': `Bearer ${token}` }
+      
       const response = await axios.post(
         `${CONFIG.BACKEND_URL}/api/ressources-pdf/${ressourcePdf._id}/download`,
         {},
         { headers }
       )
       
+      console.log('📥 Réponse backend:', response.data)
+      
       // Vérifier si le backend demande un abonnement (sécurité supplémentaire)
       if (response.data.requiresSubscription) {
+        console.log('⚠️ Backend demande abonnement')
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
         return
       }
       
-      // Construire l'URL complète du PDF
-      const pdfUrl = response.data.pdfUrl || (
-        ressourcePdf.pdfUrl?.startsWith('http') 
-          ? ressourcePdf.pdfUrl 
-          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
-      )
+      // Construire l'URL complète du PDF depuis la réponse ou depuis ressourcePdf
+      const pdfUrlFromResponse = response.data.pdfUrl || ressourcePdf.pdfUrl
+      const pdfUrl = buildPdfUrl(pdfUrlFromResponse)
       
-      // Ouvrir le PDF dans un nouvel onglet
-      window.open(pdfUrl, '_blank')
+      if (pdfUrl) {
+        console.log('🚀 Ouverture PDF:', pdfUrl)
+        window.open(pdfUrl, '_blank')
+      } else {
+        setError('URL du PDF invalide')
+      }
     } catch (err) {
-      console.error('Erreur téléchargement:', err)
+      console.error('❌ Erreur téléchargement:', err)
+      console.error('   - Status:', err.response?.status)
+      console.error('   - Data:', err.response?.data)
       
       // Si l'erreur indique qu'un abonnement est requis
       if (err.response?.data?.requiresSubscription) {
+        console.log('💳 Abonnement requis selon backend')
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
         return
@@ -136,12 +178,16 @@ export default function RessourcesPdfPage() {
       
       // Si le PDF est gratuit, essayer quand même de l'ouvrir
       if (ressourcePdf.isFree) {
-        const pdfUrl = ressourcePdf.pdfUrl?.startsWith('http') 
-          ? ressourcePdf.pdfUrl 
-          : `${CONFIG.BACKEND_URL}${ressourcePdf.pdfUrl?.startsWith('/') ? ressourcePdf.pdfUrl : '/' + ressourcePdf.pdfUrl}`
-        window.open(pdfUrl, '_blank')
+        console.log('🔄 Tentative d\'ouverture PDF gratuit malgré l\'erreur')
+        const pdfUrl = buildPdfUrl(ressourcePdf.pdfUrl)
+        if (pdfUrl) {
+          window.open(pdfUrl, '_blank')
+        } else {
+          setError('Impossible de télécharger le PDF. URL invalide.')
+        }
       } else {
         // PDF payant et erreur → demander l'abonnement
+        console.log('💳 PDF payant - demande abonnement après erreur')
         setSelectedPdf(ressourcePdf)
         setShowSubscriptionModal(true)
       }
@@ -217,14 +263,22 @@ export default function RessourcesPdfPage() {
         {/* Liste des ressources PDF */}
         {error ? (
           <div className="text-center py-16 px-4">
-            <div className="text-5xl mb-4 text-secondary">📚</div>
+            <div className="text-5xl mb-4 text-secondary">⚠️</div>
             <p className="text-xl text-secondary mb-4">{error}</p>
-            <button
-              onClick={fetchRessourcesPdf}
-              className="btn-primary inline-flex items-center gap-2"
-            >
-              Réessayer
-            </button>
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={fetchRessourcesPdf}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                Réessayer
+              </button>
+              <button
+                onClick={() => setError(null)}
+                className="btn-secondary inline-flex items-center gap-2"
+              >
+                Fermer
+              </button>
+            </div>
           </div>
         ) : filteredRessourcesPdf.length === 0 ? (
           <div className="text-center py-16 px-4">
