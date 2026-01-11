@@ -596,14 +596,37 @@ export default function AdminRessourcesPdfPage() {
             </div>
 
             <div className="admin-form-group">
-              <label>URL du PDF *</label>
-              <input
-                type="text"
-                value={editFormData.pdfUrl}
-                onChange={(e) => setEditFormData(prev => ({ ...prev, pdfUrl: e.target.value }))}
-                required
-                placeholder="/uploads/pdf/fichier.pdf"
-              />
+              <label>Fichier PDF *</label>
+              <div className="flex flex-col gap-2">
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  onChange={handlePdfFileSelect}
+                  className="admin-file-input"
+                  disabled={submitting}
+                />
+                {selectedEditPdfFile && (
+                  <div className="flex items-center gap-2 text-sm text-accent">
+                    <FiCheck className="w-4 h-4" />
+                    <span>Nouveau PDF sélectionné : {selectedEditPdfFile.name} (sera uploadé vers Cloudinary)</span>
+                  </div>
+                )}
+                {editFormData.pdfUrl && !selectedEditPdfFile && (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2 text-sm text-accent">
+                      <FiCheck className="w-4 h-4" />
+                      <span>PDF actuel :</span>
+                    </div>
+                    <input
+                      type="text"
+                      value={editFormData.pdfUrl}
+                      onChange={(e) => setEditFormData(prev => ({ ...prev, pdfUrl: e.target.value }))}
+                      placeholder="URL Cloudinary"
+                      className="text-sm"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="admin-form-group">
@@ -612,13 +635,16 @@ export default function AdminRessourcesPdfPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleImageUpload}
+                  onChange={handleImageFileSelect}
                   className="admin-file-input"
-                  disabled={uploadingImage}
+                  disabled={submitting}
                 />
+                {selectedEditImageFile && (
+                  <p className="text-sm text-accent">✅ Nouvelle image sélectionnée : {selectedEditImageFile.name} (sera uploadée vers Cloudinary)</p>
+                )}
                 {editFormData.coverImage && (
                   <img
-                    src={getImageUrl(editFormData.coverImage)}
+                    src={editFormData.coverImage.startsWith('http') ? editFormData.coverImage : getImageUrl(editFormData.coverImage)}
                     alt="Couverture"
                     className="w-32 h-32 object-cover rounded-lg border border-theme"
                   />
