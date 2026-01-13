@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { countries } from '../data/countries'
-import { FiUser, FiMail, FiPhone, FiLock, FiChevronDown, FiSearch, FiGlobe } from 'react-icons/fi'
+import { FiUser, FiMail, FiPhone, FiLock, FiChevronDown, FiSearch, FiGlobe, FiEye, FiEyeOff } from 'react-icons/fi'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [phoneNumber, setPhoneNumber] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login, register, isAuthenticated } = useAuth()
@@ -427,18 +428,29 @@ export default function LoginPage() {
                 <FiLock className="w-4 h-4" />
                 Mot de passe
               </label>
-              <input
-                type="password"
-                id="password"
-                value={password}
-                onChange={(e) => handleFieldChange('password', e.target.value, setPassword)}
-                onBlur={(e) => handleFieldBlur('password', e.target.value)}
-                required
-                placeholder="••••••••"
-                minLength={6}
-                disabled={loading}
-                className={`input-startup ${fieldErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  value={password}
+                  onChange={(e) => handleFieldChange('password', e.target.value, setPassword)}
+                  onBlur={(e) => handleFieldBlur('password', e.target.value)}
+                  required
+                  placeholder="••••••••"
+                  minLength={6}
+                  disabled={loading}
+                  className={`input-startup pr-12 ${fieldErrors.password ? 'border-red-500 focus:border-red-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-primary transition-colors disabled:opacity-50"
+                  disabled={loading}
+                  tabIndex={-1}
+                >
+                  {showPassword ? <FiEyeOff className="w-5 h-5" /> : <FiEye className="w-5 h-5" />}
+                </button>
+              </div>
               {fieldErrors.password ? (
                 <p className="mt-1 text-xs text-red-600 dark:text-red-400 pl-6">{fieldErrors.password}</p>
               ) : !isLogin && (

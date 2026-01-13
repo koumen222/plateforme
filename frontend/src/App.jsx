@@ -28,6 +28,8 @@ import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
 import CoursesPage from './pages/CoursesPage'
 import RessourcesPdfPage from './pages/RessourcesPdfPage'
+import FileManagerPage from './pages/FileManagerPage'
+import AndromedaAdsAnalyzerPage from './pages/AndromedaAdsAnalyzerPage'
 import CourseRouter from './pages/CourseRouter'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
@@ -80,8 +82,10 @@ function App() {
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
+          <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
+          <Route path="/mes-fichiers" element={<PlatformLayout><PrivateRoute><FileManagerPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
           
           {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}

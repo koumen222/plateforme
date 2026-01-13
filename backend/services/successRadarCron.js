@@ -248,7 +248,7 @@ const normalizeProduct = (product, specialEvent = '') => {
 };
 
 // Fonction pour extraire les produits d'un JSON tronqué
-const extractProductsFromTruncatedJSON = (content) => {
+const extractProductsFromTruncatedJSON = (content, specialEvent = '') => {
   const products = [];
   
   try {
@@ -341,15 +341,59 @@ const extractProductsFromTruncatedJSON = (content) => {
       try {
         // Essayer de compléter l'objet en ajoutant les accolades manquantes
         let tempProduct = currentProduct;
-        while (tempProduct.match(/\{/g)?.length > tempProduct.match(/\}/g)?.length) {
+        const openBraces = (tempProduct.match(/\{/g) || []).length;
+        const closeBraces = (tempProduct.match(/\}/g) || []).length;
+        while (openBraces > closeBraces) {
           tempProduct += '}';
+        }
+        // Fermer les chaînes ouvertes si nécessaire
+        const quotes = (tempProduct.match(/"/g) || []).length;
+        if (quotes % 2 !== 0) {
+          // Trouver la dernière chaîne ouverte et la fermer
+          const lastQuoteIndex = tempProduct.lastIndexOf('"');
+          if (lastQuoteIndex !== -1) {
+            const afterQuote = tempProduct.substring(lastQuoteIndex + 1);
+            if (!afterQuote.match(/^\s*[,:}]/)) {
+              tempProduct += '"';
+            }
+          }
         }
         const productObj = JSON.parse(tempProduct);
         if (productObj.name || productObj.category) {
           products.push(productObj);
         }
       } catch (e) {
-        // Ignorer si on ne peut pas parser
+        // Essayer une extraction plus agressive : chercher les champs essentiels
+        try {
+          const nameMatch = currentProduct.match(/"name"\s*:\s*"([^"]+)"/);
+          const categoryMatch = currentProduct.match(/"category"\s*:\s*"([^"]+)"/);
+          if (nameMatch && nameMatch[1]) {
+            // Créer un produit minimal avec les champs disponibles
+            const minimalProduct = {
+              name: nameMatch[1],
+              category: categoryMatch ? categoryMatch[1] : 'Autre',
+              problemSolved: '',
+              whyItWorks: '',
+              proofIndicator: '',
+              supplierPrice: 0,
+              sellingPrice: 0,
+              priceRange: '',
+              countries: [],
+              marketingAngle: '',
+              scalingPotential: 'Moyen',
+              demandScore: 50,
+              trendScore: 50,
+              saturation: 50,
+              status: 'warm'
+            };
+            if (specialEvent) {
+              minimalProduct.specialEvent = specialEvent;
+            }
+            products.push(minimalProduct);
+          }
+        } catch (e2) {
+          // Ignorer si on ne peut toujours pas parser
+        }
       }
     }
     
@@ -382,7 +426,7 @@ const extractProductsFromResponse = (content) => {
     
     // Si le JSON est tronqué, essayer d'extraire les produits valides
     console.log('🔄 Tentative d\'extraction depuis JSON tronqué...');
-    products = extractProductsFromTruncatedJSON(content);
+    products = extractProductsFromTruncatedJSON(content, '');
     
     if (products.length > 0) {
       console.log(`✅ ${products.length} produits extraits depuis JSON tronqué`);
@@ -397,12 +441,12 @@ const extractProductsFromResponse = (content) => {
           const manualParsed = JSON.parse(jsonMatch[0]);
           if (Array.isArray(manualParsed.products)) {
             products = manualParsed.products;
-            }
           }
-        } catch (manualErr) {
-          console.error('❌ Échec extraction manuelle:', manualErr.message);
+        }
+      } catch (manualErr) {
+        console.error('❌ Échec extraction manuelle:', manualErr.message);
           // Dernier recours : extraction depuis JSON tronqué
-          products = extractProductsFromTruncatedJSON(content);
+          products = extractProductsFromTruncatedJSON(content, '');
         }
       }
     }
@@ -486,45 +530,90 @@ Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {
   }
 };
 
-// Fonction pour réparer un JSON tronqué
+// Fonction pour réparer un JSON tronqué de manière plus intelligente
 const repairTruncatedJSON = (content) => {
   let repaired = content.trim();
   
-  // Si ça ne se termine pas par }, essayer de fermer proprement
+  // Si ça ne se termine pas par } ou ], essayer de fermer proprement
   if (!repaired.endsWith('}') && !repaired.endsWith(']')) {
-    // Compter les accolades ouvertes/fermées
-    const openBraces = (repaired.match(/\{/g) || []).length;
-    const closeBraces = (repaired.match(/\}/g) || []).length;
-    const openBrackets = (repaired.match(/\[/g) || []).length;
-    const closeBrackets = (repaired.match(/\]/g) || []).length;
+    // Compter les accolades ouvertes/fermées (en tenant compte des chaînes)
+    let openBraces = 0;
+    let closeBraces = 0;
+    let openBrackets = 0;
+    let closeBrackets = 0;
+    let inString = false;
+    let escapeNext = false;
+    
+    for (let i = 0; i < repaired.length; i++) {
+      const char = repaired[i];
+      
+      if (escapeNext) {
+        escapeNext = false;
+        continue;
+      }
+      
+      if (char === '\\') {
+        escapeNext = true;
+        continue;
+      }
+      
+      if (char === '"') {
+        inString = !inString;
+        continue;
+      }
+      
+      if (inString) continue;
+      
+      if (char === '{') openBraces++;
+      if (char === '}') closeBraces++;
+      if (char === '[') openBrackets++;
+      if (char === ']') closeBrackets++;
+    }
+    
+    // Fermer les chaînes ouvertes si nécessaire
+    if (inString) {
+      // Trouver la dernière chaîne ouverte et la fermer
+      const lastQuote = repaired.lastIndexOf('"');
+      if (lastQuote !== -1) {
+        // Vérifier si c'est une ouverture ou fermeture
+        const beforeQuote = repaired.substring(Math.max(0, lastQuote - 10), lastQuote);
+        if (!beforeQuote.match(/:\s*$/)) {
+          repaired += '"';
+        }
+      }
+    }
     
     // Fermer les tableaux ouverts
-    if (openBrackets > closeBrackets) {
+    while (openBrackets > closeBrackets) {
       repaired += ']';
+      closeBrackets++;
     }
     
     // Fermer les objets ouverts
-    if (openBraces > closeBraces) {
+    while (openBraces > closeBraces) {
       repaired += '}';
+      closeBraces++;
     }
   }
   
   return repaired;
 };
 
-// Fonction pour générer un batch de 20 produits
-const generateBatch = async (batchNumber, totalBatches, existingProducts = [], specialEvent = '') => {
+// Fonction pour générer un batch de 20 produits avec retry et gestion robuste
+const generateBatch = async (batchNumber, totalBatches, existingProducts = [], specialEvent = '', retryCount = 0) => {
   const existingNames = existingProducts.map(p => (p.name || '').toLowerCase());
   const prompt = specialEvent === 'saint-valentin' 
     ? buildValentinePrompt(batchNumber)
     : buildPrompt(batchNumber, totalBatches, true);
   
   const systemMessage = specialEvent === 'saint-valentin'
-    ? 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire.'
-    : 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire.';
+    ? 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire. Si tu ne peux pas finir, ferme proprement tous les objets avec } et ].'
+    : 'Tu es une API JSON. Réponds UNIQUEMENT avec du JSON valide. Pas de texte, pas de commentaire. Si tu ne peux pas finir, ferme proprement tous les objets avec } et ].';
+  
+  const maxRetries = 2;
   
   try {
-    console.log(`🔄 Génération batch ${batchNumber}/${totalBatches} (20 produits)...`);
+    console.log(`🔄 Génération batch ${batchNumber}/${totalBatches} (${retryCount > 0 ? `tentative ${retryCount + 1}` : 'première tentative'})...`);
     
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
@@ -533,7 +622,7 @@ const generateBatch = async (batchNumber, totalBatches, existingProducts = [], s
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
-      max_tokens: 8000, // Limité pour 20 produits
+      max_tokens: 6000, // Réduit pour éviter les troncatures
       response_format: { type: 'json_object' }
     });
 
@@ -553,11 +642,20 @@ const generateBatch = async (batchNumber, totalBatches, existingProducts = [], s
       processedContent = repairTruncatedJSON(content);
     }
     
-    const products = extractProductsFromResponse(processedContent);
+    // Essayer d'extraire les produits avec plusieurs méthodes
+    let products = extractProductsFromResponse(processedContent);
     
+    // Si aucun produit extrait et JSON tronqué, essayer avec le contenu original
     if (products.length === 0 && isTruncated) {
-      // Essayer avec le contenu original
-      products.push(...extractProductsFromResponse(content));
+      console.log(`🔄 Tentative extraction depuis JSON tronqué brut...`);
+      products = extractProductsFromTruncatedJSON(content, specialEvent);
+    }
+    
+    // Si toujours aucun produit et retry possible, réessayer
+    if (products.length === 0 && retryCount < maxRetries) {
+      console.warn(`⚠️ Aucun produit extrait, nouvelle tentative dans 2 secondes...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return generateBatch(batchNumber, totalBatches, existingProducts, specialEvent, retryCount + 1);
     }
     
     // Filtrer les doublons avec les produits existants
@@ -566,11 +664,24 @@ const generateBatch = async (batchNumber, totalBatches, existingProducts = [], s
       return name && !existingNames.includes(name);
     });
     
-    console.log(`✅ Batch ${batchNumber}: ${uniqueProducts.length} produits uniques extraits`);
+    if (uniqueProducts.length > 0) {
+      console.log(`✅ Batch ${batchNumber}: ${uniqueProducts.length} produits uniques extraits`);
+    } else {
+      console.warn(`⚠️ Batch ${batchNumber}: Aucun produit unique extrait`);
+    }
+    
     return uniqueProducts;
     
   } catch (error) {
     console.error(`❌ Erreur batch ${batchNumber}:`, error.message);
+    
+    // Retry si erreur et pas encore au max
+    if (retryCount < maxRetries) {
+      console.log(`🔄 Nouvelle tentative batch ${batchNumber} dans 2 secondes...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      return generateBatch(batchNumber, totalBatches, existingProducts, specialEvent, retryCount + 1);
+    }
+    
     return [];
   }
 };

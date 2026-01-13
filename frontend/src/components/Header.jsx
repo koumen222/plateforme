@@ -120,6 +120,16 @@ export default function Header() {
                 Générateur de Pub
               </Link>
               <Link 
+                to="/analyseur-ads" 
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                  isActive('/analyseur-ads') 
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
+                }`}
+              >
+                Analyseur Ads
+              </Link>
+              <Link 
                 to="/communaute" 
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                   isActive('/communaute') 

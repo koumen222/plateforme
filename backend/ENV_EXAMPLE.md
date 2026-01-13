@@ -1,45 +1,44 @@
 # Variables d'environnement requises
 
-Créez un fichier `.env` à la racine du dossier `backend/` avec les variables suivantes :
+## Variables existantes
+- `JWT_SECRET` - Secret pour les tokens JWT
+- `MONGODB_URI` - URI de connexion MongoDB
+- `FRONTEND_URL` - URL du frontend
+- `OPENAI_API_KEY` - Clé API OpenAI (pour Success Radar)
 
-```env
-# MongoDB
-MONGO_URI=mongodb://localhost:27017/plateforme-formation
+## Nouvelles variables pour Cloudflare R2 (File Manager)
 
-# JWT
-JWT_SECRET=your-secret-key-change-in-production
-JWT_EXPIRES_IN=7d
-
-# Google OAuth (déjà configuré par défaut, peut être surchargé)
-GOOGLE_CLIENT_ID=1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=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
-
-# OpenAI API (pour le chatbot)
-OPENAI_API_KEY=votre_cle_api_openai_ici
-
-# Frontend URL (pour CORS)
-FRONTEND_URL=http://localhost:5173
-PORT=3000
-
-# Backend URL (pour les redirections et URLs complètes)
-BACKEND_URL=http://localhost:3000
-
-# API LYGOS (Paiement Mobile Money)
-LYGOS_API_KEY=sk_live_xxxxxxxxx
-LYGOS_BASE_URL=https://api.lygosapp.com/v1
-
-# Note: Les fichiers PDF et images sont maintenant stockés via des URLs externes (Google Drive, etc.)
-# Plus besoin de configuration Cloudinary
+### Variables requises pour R2
+```bash
+# Cloudflare R2 Configuration
+R2_ACCOUNT_ID=votre-account-id-cloudflare
+R2_ACCESS_KEY_ID=votre-access-key-id
+R2_SECRET_ACCESS_KEY=votre-secret-access-key
+R2_BUCKET_NAME=nom-de-votre-bucket
+R2_ENDPOINT=https://votre-account-id.r2.cloudflarestorage.com  # Optionnel, généré automatiquement
+R2_PUBLIC_DOMAIN=votre-domaine-personnalise.com  # Optionnel, pour custom domain
 ```
 
-## Important
+### Variables alternatives (compatibilité Railway)
+Si vous utilisez Railway avec des noms de variables différents, ces alternatives sont supportées :
+- `R2_ACCOUNT` au lieu de `R2_ACCOUNT_ID`
+- `R2_ACCESS_KEY` au lieu de `R2_ACCESS_KEY_ID`
+- `R2_SECRET_KEY` au lieu de `R2_SECRET_ACCESS_KEY`
+- `R2_BUCKET` au lieu de `R2_BUCKET_NAME`
 
-1. **Le fichier `.env` doit être à la racine du dossier `backend/`**
-2. **`dotenv.config()` est appelé automatiquement** au début de `server.js`
-3. **Ne commitez jamais le fichier `.env`** (il est dans `.gitignore`)
+## Configuration Cloudflare R2
 
-## Stockage des fichiers PDF
+1. Créez un bucket R2 dans votre dashboard Cloudflare
+2. Générez des API tokens avec les permissions :
+   - `Object Read & Write`
+   - `Bucket Read & Write`
+3. Configurez un custom domain (optionnel) pour les URLs publiques
+4. Ajoutez les variables dans Railway ou votre fichier `.env`
 
-Les fichiers PDF sont maintenant stockés via des URLs externes (Google Drive, etc.). 
-Lors de la création d'une ressource PDF, fournissez simplement l'URL du fichier.
+## Notes importantes
 
+- Les fichiers sont stockés dans `users/{userId}/` sur R2
+- Taille maximale : 50MB par fichier
+- Maximum 10 fichiers par requête
+- Les fichiers sont publics par défaut (ACL: public-read)
+- Pour des fichiers privés, modifiez `ACL: 'public-read'` dans `backend/middleware/r2Upload.js`

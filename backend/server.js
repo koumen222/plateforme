@@ -40,6 +40,8 @@ let paymentRoutes = null;
 let successRadarRoutes = null;
 let diagnosticRoutes = null;
 let ressourcesPdfRoutes = null;
+let filesRoutes = null;
+let adsAnalyzerRoutes = null;
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
 import Course from "./models/Course.js";
@@ -67,7 +69,7 @@ const corsOptions = {
     
     // Liste des origines autorisées
     const allowedOrigins = [
-      "https://safitech.shop",
+    "https://safitech.shop",
       "https://www.safitech.shop",
       "https://api.safitech.shop",
       "http://localhost:5173",
@@ -588,7 +590,39 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
     }
     
-    // 11. Services Success Radar Cron
+    // 11. Routes fichiers (File Manager)
+    try {
+      const filesModule = await import("./routes/files.js");
+      filesRoutes = filesModule.default;
+      app.use("/api/files", filesRoutes);
+      console.log('✅ Routes fichiers chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement files.js:', error.message);
+      app.get("/api/files", (req, res) => {
+        res.status(503).json({ success: false, error: 'Module files non disponible' });
+      });
+    }
+    
+    // 12. Routes Ads Analyzer
+    try {
+      const adsAnalyzerModule = await import("./routes/ads-analyzer.js");
+      adsAnalyzerRoutes = adsAnalyzerModule.default;
+      if (!adsAnalyzerRoutes) {
+        throw new Error('Router ads-analyzer est null ou undefined');
+      }
+      app.use("/api/ads-analyzer", adsAnalyzerRoutes);
+      console.log('✅ Routes Ads Analyzer chargées');
+      console.log('   Route test disponible: GET /api/ads-analyzer/test');
+      console.log('   Route analyze disponible: POST /api/ads-analyzer/analyze');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ads-analyzer.js:', error.message);
+      console.error('   Stack:', error.stack);
+      app.post("/api/ads-analyzer/analyze", (req, res) => {
+        res.status(503).json({ success: false, error: 'Module ads-analyzer non disponible', details: error.message });
+      });
+    }
+    
+    // 13. Services Success Radar Cron
     try {
       const successRadarCronModule = await import("./services/successRadarCron.js");
       startSuccessRadarCron = successRadarCronModule.startSuccessRadarCron;
