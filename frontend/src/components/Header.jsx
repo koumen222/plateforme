@@ -63,15 +63,15 @@ export default function Header() {
       <header className="sticky top-0 z-[100] bg-primary border-b border-theme backdrop-blur-lg bg-opacity-95">
         <div className="container-startup">
           {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between h-16 lg:h-20">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <div className="hidden md:flex items-center h-16 lg:h-20">
+            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
               <img src="/img/logo.svg" alt="Ecom Starter" className="h-8 lg:h-10 w-auto" />
             </Link>
 
-            <nav className="flex items-center gap-1 xl:gap-2">
+            <nav className="flex items-center gap-0.5 xl:gap-1 overflow-x-auto scrollbar-none flex-1 justify-center mx-2 xl:mx-4 min-w-0">
               <Link 
                 to="/" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/') && !isActive('/course') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -81,7 +81,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/cours" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/cours') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -91,7 +91,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/ressources-pdf" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/ressources-pdf') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -101,7 +101,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/produits-gagnants" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/produits-gagnants') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -111,7 +111,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/generateur-pub" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/generateur-pub') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -121,7 +121,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/analyseur-ads" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/analyseur-ads') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -131,7 +131,7 @@ export default function Header() {
               </Link>
               <Link 
                 to="/communaute" 
-                className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
                   isActive('/communaute') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
@@ -141,7 +141,7 @@ export default function Header() {
               </Link>
             </nav>
 
-            <div className="flex items-center gap-3 lg:gap-4">
+            <div className="flex items-center gap-3 lg:gap-4 flex-shrink-0">
               <ThemeToggle />
               
               {isAuthenticated ? (

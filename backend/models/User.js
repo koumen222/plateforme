@@ -85,6 +85,28 @@ const userSchema = new mongoose.Schema({
       default: null
     }
   }],
+  metaSelectedCampaign: {
+    campaignId: {
+      type: String,
+      default: null
+    },
+    campaignName: {
+      type: String,
+      default: null
+    },
+    businessId: {
+      type: String,
+      default: null
+    },
+    adAccountId: {
+      type: String,
+      default: null
+    },
+    selectedAt: {
+      type: Date,
+      default: null
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now

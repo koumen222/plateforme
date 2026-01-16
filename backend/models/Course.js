@@ -33,6 +33,15 @@ const courseSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isFree: {
+    type: Boolean,
+    default: false
+  },
+  isFree: {
+    // Si true => accès gratuit pour les utilisateurs inscrits (même pending)
+    type: Boolean,
+    default: false
+  },
   createdAt: {
     type: Date,
     default: Date.now

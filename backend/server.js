@@ -42,6 +42,9 @@ let diagnosticRoutes = null;
 let ressourcesPdfRoutes = null;
 let filesRoutes = null;
 let adsAnalyzerRoutes = null;
+let metaRoutes = null;
+let facebookAuthRoutes = null;
+let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
 import Course from "./models/Course.js";
@@ -414,6 +417,9 @@ app.get("/api/test-success-radar-routes", (req, res) => {
 // Note: La route /api/valentine-winners est définie plus haut (ligne ~183) pour garantir sa priorité
 // Toutes les autres routes seront montées dans startServer après chargement dynamique
 
+// Routes OAuth Facebook sont maintenant gérées par routes/facebookAuth.js
+// Elles sont montées dans startServer() après le chargement dynamique
+
 // Route chatbot (protégée - nécessite statut active)
 app.post("/api/chat", authenticate, async (req, res) => {
   const { message, conversationHistory } = req.body;
@@ -486,6 +492,22 @@ const startServer = async () => {
   try {
     // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
     console.log('📦 Chargement dynamique de tous les modules...');
+    
+    // 0. Routes Facebook Auth OAuth (doivent être montées EN PREMIER pour capturer /auth/*)
+    try {
+      const facebookAuthModule = await import("./routes/facebookAuth.js");
+      facebookAuthRoutes = facebookAuthModule.default;
+      if (!facebookAuthRoutes) {
+        throw new Error('Router facebookAuth est null ou undefined');
+      }
+      app.use("/", facebookAuthRoutes);
+      console.log('✅ Routes Facebook Auth chargées (priorité)');
+      console.log('   Route OAuth: GET /auth/facebook');
+      console.log('   Route Callback: GET /auth/facebook/callback');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement facebookAuth.js:', error.message);
+      console.error('   Stack:', error.stack);
+    }
     
     // 1. Routes d'authentification
     try {
@@ -622,7 +644,30 @@ const startServer = async () => {
       });
     }
     
-    // 13. Services Success Radar Cron
+    // 13. Routes Meta (Facebook Ads)
+    try {
+      const metaModule = await import("./routes/meta.js");
+      metaRoutes = metaModule.default;
+      if (!metaRoutes) {
+        throw new Error('Router meta est null ou undefined');
+      }
+      // Partager le Map facebookTokens avec le module meta (fallback)
+      if (metaModule.setFacebookTokens) {
+        metaModule.setFacebookTokens(facebookTokens);
+      }
+      app.use("/api/meta", metaRoutes);
+      console.log('✅ Routes Meta chargées');
+      console.log('   Route status: GET /api/meta/status');
+      console.log('   Route businesses: GET /api/meta/businesses');
+      console.log('   Route adaccounts: GET /api/meta/adaccounts');
+      console.log('   Route campaigns: GET /api/meta/campaigns');
+      console.log('   Route select: POST /api/meta/select');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement meta.js:', error.message);
+      console.error('   Stack:', error.stack);
+    }
+    
+    // 15. Services Success Radar Cron
     try {
       const successRadarCronModule = await import("./services/successRadarCron.js");
       startSuccessRadarCron = successRadarCronModule.startSuccessRadarCron;
@@ -962,6 +1007,24 @@ const startServer = async () => {
       });
     });
     
+    // Middleware 404 pour les routes non trouvées (doit être APRÈS toutes les routes)
+    app.use((req, res, next) => {
+      console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
+      console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
+      res.status(404).json({ 
+        error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
+        availableRoutes: [
+          'GET /auth/facebook',
+          'GET /auth/facebook/callback',
+          'GET /api/meta/status',
+          'GET /api/meta/businesses',
+          'GET /api/meta/adaccounts',
+          'GET /api/meta/campaigns',
+          'POST /api/meta/select'
+        ]
+      });
+    });
+    
     // Démarrer le serveur Express
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Backend running on port ${PORT}`);
@@ -976,6 +1039,8 @@ const startServer = async () => {
       console.log(`   GET  /api/admin/check - Vérifier admin`);
       console.log(`   GET  /api/success-radar - Success Radar (protégé)`);
       console.log(`   GET  /api/valentine-winners - Winners St Valentin (protégé)`);
+      console.log(`   GET  /auth/facebook - OAuth Facebook (protégé)`);
+      console.log(`   GET  /api/meta/status - Statut Meta (protégé)`);
       console.log(`\n✅ Serveur prêt à recevoir des requêtes!\n`);
     });
   } catch (error) {

@@ -30,6 +30,7 @@ import CoursesPage from './pages/CoursesPage'
 import RessourcesPdfPage from './pages/RessourcesPdfPage'
 import FileManagerPage from './pages/FileManagerPage'
 import AndromedaAdsAnalyzerPage from './pages/AndromedaAdsAnalyzerPage'
+import ConnectFacebook from './pages/ConnectFacebook'
 import CourseRouter from './pages/CourseRouter'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
@@ -87,6 +88,7 @@ function App() {
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
           <Route path="/mes-fichiers" element={<PlatformLayout><PrivateRoute><FileManagerPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
+          <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
           
           {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
           <Route

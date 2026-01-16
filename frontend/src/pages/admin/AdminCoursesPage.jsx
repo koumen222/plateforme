@@ -18,7 +18,8 @@ export default function AdminCoursesPage() {
     coverImage: '/img/fbads.svg',
     slug: '',
     isDefault: false,
-    isPublished: false
+    isPublished: false,
+    isFree: false
   })
   const [submitting, setSubmitting] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -45,7 +46,8 @@ export default function AdminCoursesPage() {
     coverImage: '',
     slug: '',
     isDefault: false,
-    isPublished: false
+    isPublished: false,
+    isFree: false
   })
   const [uploadingEditImage, setUploadingEditImage] = useState(false)
   const [savingCourse, setSavingCourse] = useState(false)
@@ -191,7 +193,8 @@ export default function AdminCoursesPage() {
           coverImage: '/img/fbads.svg',
           slug: '',
           isDefault: false,
-          isPublished: false
+          isPublished: false,
+          isFree: false
         })
         fetchCourses()
         setTimeout(() => setSuccess(''), 3000)
@@ -215,6 +218,25 @@ export default function AdminCoursesPage() {
       )
       if (response.data.success) {
         setSuccess(`✅ Cours ${!currentStatus ? 'activé' : 'désactivé'} !`)
+        fetchCourses()
+        setTimeout(() => setSuccess(''), 2000)
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors de la mise à jour')
+    }
+  }
+
+  const handleToggleFree = async (courseId, currentStatus) => {
+    setError('')
+    setSuccess('')
+    try {
+      const response = await axios.put(
+        `${CONFIG.BACKEND_URL}/api/admin/course/${courseId}`,
+        { isFree: !currentStatus },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (response.data.success) {
+        setSuccess(`✅ Statut ${!currentStatus ? 'gratuit' : 'payant'} appliqué !`)
         fetchCourses()
         setTimeout(() => setSuccess(''), 2000)
       }
@@ -461,7 +483,8 @@ export default function AdminCoursesPage() {
       coverImage: course.coverImage || '/img/fbads.svg',
       slug: course.slug || '',
       isDefault: course.isDefault || false,
-      isPublished: course.isPublished || false
+      isPublished: course.isPublished || false,
+      isFree: course.isFree || false
     })
     setError('')
     setSuccess('')
@@ -475,7 +498,8 @@ export default function AdminCoursesPage() {
       coverImage: '/img/fbads.svg',
       slug: '',
       isDefault: false,
-      isPublished: false
+      isPublished: false,
+      isFree: false
     })
   }
 
@@ -711,6 +735,16 @@ export default function AdminCoursesPage() {
               <label className="admin-checkbox-label">
                 <input
                   type="checkbox"
+                  checked={formData.isFree}
+                  onChange={(e) => setFormData({ ...formData, isFree: e.target.checked })}
+                  className="admin-checkbox"
+                />
+                <span>Formation gratuite (accès pour comptes en attente)</span>
+              </label>
+
+              <label className="admin-checkbox-label">
+                <input
+                  type="checkbox"
                   checked={formData.isPublished}
                   onChange={(e) => setFormData({ ...formData, isPublished: e.target.checked })}
                   className="admin-checkbox"
@@ -746,6 +780,9 @@ export default function AdminCoursesPage() {
                     {course.isDefault && (
                       <span className="admin-badge admin-badge-default">Par défaut</span>
                     )}
+                    <span className={`admin-badge ${course.isFree ? 'admin-badge-success' : 'admin-badge-inactive'}`}>
+                      {course.isFree ? 'Gratuite' : 'Payante'}
+                    </span>
                     <span className={`admin-badge ${course.isPublished ? 'admin-badge-success' : 'admin-badge-inactive'}`}>
                       {course.isPublished ? '✓ Actif' : '○ Inactif'}
                     </span>
@@ -758,6 +795,13 @@ export default function AdminCoursesPage() {
                     title={course.isPublished ? 'Désactiver' : 'Activer'}
                   >
                     {course.isPublished ? '⏸ Désactiver' : '▶ Activer'}
+                  </button>
+                  <button
+                    onClick={() => handleToggleFree(course._id, course.isFree)}
+                    className={`admin-btn admin-btn-sm ${course.isFree ? 'admin-btn-warning' : 'admin-btn-success'}`}
+                    title={course.isFree ? 'Passer en payant' : 'Passer en gratuit'}
+                  >
+                    {course.isFree ? '💸 Payant' : '🎁 Gratuit'}
                   </button>
                   <button
                     onClick={() => toggleCourseManage(course._id)}
@@ -933,6 +977,15 @@ export default function AdminCoursesPage() {
                                   className="admin-checkbox"
                                 />
                                 <span>Cours par défaut</span>
+                              </label>
+                              <label className="admin-checkbox-label">
+                                <input
+                                  type="checkbox"
+                                  checked={editCourseForm.isFree}
+                                  onChange={(e) => setEditCourseForm({ ...editCourseForm, isFree: e.target.checked })}
+                                  className="admin-checkbox"
+                                />
+                                <span>Formation gratuite (accès pour comptes en attente)</span>
                               </label>
                               <label className="admin-checkbox-label">
                                 <input

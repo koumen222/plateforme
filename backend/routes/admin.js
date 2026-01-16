@@ -58,7 +58,7 @@ router.post('/validate/:id', async (req, res) => {
 // POST /api/admin/course - Créer un nouveau cours avec Module 1 automatique
 router.post('/course', async (req, res) => {
   try {
-    const { title, description, coverImage, slug, isDefault, isPublished } = req.body;
+    const { title, description, coverImage, slug, isDefault, isPublished, isFree } = req.body;
 
     // Validation
     if (!title) {
@@ -86,7 +86,8 @@ router.post('/course', async (req, res) => {
       coverImage: coverImage?.trim() || '/img/fbads.png',
       slug: slug.toLowerCase().trim(),
       isDefault: isDefault || false,
-      isPublished: !!isPublished
+      isPublished: !!isPublished,
+      isFree: !!isFree
     });
 
     await course.save();
@@ -127,7 +128,7 @@ router.post('/course', async (req, res) => {
 router.put('/course/:courseId', async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { title, description, coverImage, slug, isDefault, isPublished } = req.body;
+    const { title, description, coverImage, slug, isDefault, isPublished, isFree } = req.body;
 
     const course = await Course.findById(courseId);
     if (!course) return res.status(404).json({ error: 'Cours non trouvé' });
@@ -143,6 +144,7 @@ router.put('/course/:courseId', async (req, res) => {
     if (typeof coverImage === 'string') course.coverImage = coverImage.trim();
 
     if (typeof isPublished === 'boolean') course.isPublished = isPublished;
+    if (typeof isFree === 'boolean') course.isFree = isFree;
 
     if (typeof isDefault === 'boolean') {
       if (isDefault) {

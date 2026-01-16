@@ -2,7 +2,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import VideoPlayer from './VideoPlayer'
 
-export default function ProtectedVideo({ video, title, isFirstVideo = false }) {
+export default function ProtectedVideo({ video, title, isFirstVideo = false, isFreeCourse = false }) {
   const { isAuthenticated, user, loading } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -48,5 +48,5 @@ export default function ProtectedVideo({ video, title, isFirstVideo = false }) {
     )
   }
 
-  return <VideoPlayer video={video} title={title} isFirstVideo={isFirstVideo} />
+  return <VideoPlayer video={video} title={title} isFirstVideo={isFirstVideo} isFreeCourse={isFreeCourse} />
 }

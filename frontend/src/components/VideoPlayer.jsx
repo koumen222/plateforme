@@ -2,7 +2,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import SubscriptionButton from './SubscriptionButton'
 
-export default function VideoPlayer({ video, title, isFirstVideo = false }) {
+export default function VideoPlayer({ video, title, isFirstVideo = false, isFreeCourse = false }) {
   const { isAuthenticated, user } = useAuth()
   const navigate = useNavigate()
 
@@ -34,7 +34,7 @@ export default function VideoPlayer({ video, title, isFirstVideo = false }) {
     return user.status === 'active'
   }
   
-  const isInactive = !isFirstVideo && !isActive()
+  const isInactive = !isFirstVideo && !isActive() && !isFreeCourse
 
   return (
     <div className="w-full max-w-full mb-6 sm:mb-8 overflow-x-hidden">

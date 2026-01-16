@@ -459,10 +459,10 @@ export default function LessonPage({ lesson }) {
       {/* Videos - Conteneur optimisé */}
       <div className="w-full mb-6 sm:mb-8">
         {lesson.video && (
-          <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} />
+          <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} isFreeCourse={!!course?.isFree} />
         )}
         {lesson.videos && lesson.videos.map((video, idx) => (
-          <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} />
+          <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} isFreeCourse={!!course?.isFree} />
         ))}
       </div>
 
