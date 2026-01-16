@@ -14,6 +14,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage'
 import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
+import AdminCoachingReservationsPage from './pages/admin/AdminCoachingReservationsPage'
 import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import CommentsPage from './pages/CommentsPage'
@@ -117,6 +118,7 @@ function App() {
           <Route path="/admin/*" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
+            <Route path="coaching-reservations" element={<AdminCoachingReservationsPage />} />
             <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />

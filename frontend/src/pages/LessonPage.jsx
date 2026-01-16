@@ -47,72 +47,71 @@ export default function LessonPage({ lesson }) {
 
   if (!lesson) return null
 
-  // Charger les leçons du cours depuis la DB si la leçon vient de la DB
+  // Charger le cours depuis la DB pour obtenir le statut gratuit/payant
   useEffect(() => {
-    if (lesson._id) {
-      const loadCourse = async () => {
-        try {
-          const pathParts = window.location.pathname.split('/')
-          const courseSlug = pathParts[2] || 'facebook-ads'
-          const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/${courseSlug}`)
-          if (response.data.success && response.data.course) {
-            setCourse(response.data.course)
-            
-            if (response.data.course.modules) {
-              const allLessons = []
-              response.data.course.modules.forEach((module) => {
-                if (module.lessons) {
-                  module.lessons.forEach((l) => {
-                    const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
-                    const videoType = isYouTube ? 'youtube' : 'vimeo'
-                    let videoUrl = ''
-                    const videoId = l.videoId.toString().trim()
-                    
-                    if (videoType === 'youtube') {
-                      let youtubeId = videoId
-                      if (videoId.includes('youtube.com/watch?v=')) {
-                        youtubeId = videoId.split('v=')[1]?.split('&')[0] || videoId
-                      } else if (videoId.includes('youtu.be/')) {
-                        youtubeId = videoId.split('youtu.be/')[1]?.split('?')[0] || videoId
-                      } else if (videoId.includes('youtube.com/embed/')) {
-                        youtubeId = videoId.split('embed/')[1]?.split('?')[0] || videoId
-                      }
-                      videoUrl = `https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&playsinline=1&autoplay=0`
-                    } else {
-                      let vimeoId = videoId
-                      if (videoId.includes('vimeo.com/')) {
-                        vimeoId = videoId.split('vimeo.com/')[1]?.split('?')[0] || videoId
-                      }
-                      videoUrl = `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&autoplay=0`
+    const loadCourse = async () => {
+      try {
+        const pathParts = window.location.pathname.split('/')
+        const courseSlug = pathParts[2] || 'facebook-ads'
+        const response = await axios.get(`${CONFIG.BACKEND_URL}/api/courses/slug/${courseSlug}`)
+        if (response.data.success && response.data.course) {
+          setCourse(response.data.course)
+
+          if (response.data.course.modules) {
+            const allLessons = []
+            response.data.course.modules.forEach((module) => {
+              if (module.lessons) {
+                module.lessons.forEach((l) => {
+                  const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
+                  const videoType = isYouTube ? 'youtube' : 'vimeo'
+                  let videoUrl = ''
+                  const videoId = l.videoId.toString().trim()
+
+                  if (videoType === 'youtube') {
+                    let youtubeId = videoId
+                    if (videoId.includes('youtube.com/watch?v=')) {
+                      youtubeId = videoId.split('v=')[1]?.split('&')[0] || videoId
+                    } else if (videoId.includes('youtu.be/')) {
+                      youtubeId = videoId.split('youtu.be/')[1]?.split('?')[0] || videoId
+                    } else if (videoId.includes('youtube.com/embed/')) {
+                      youtubeId = videoId.split('embed/')[1]?.split('?')[0] || videoId
                     }
-                    const badgeMatch = l.title.match(/JOUR \d+/)
-                    const badge = badgeMatch ? badgeMatch[0] : `JOUR ${allLessons.length + 1}`
-                    const meta = l.title.split(' - ')[1] || 'Formation'
-                    allLessons.push({
-                      id: allLessons.length + 1,
-                      _id: l._id,
-                      path: `/course/${courseSlug}/lesson/${l._id}`,
-                      title: l.title,
-                      badge: badge,
-                      meta: meta,
-                      video: { type: videoType, url: videoUrl },
-                      summary: l.summary || { text: '', points: [] },
-                      resources: l.resources || [],
-                      isCoaching: l.isCoaching || false
-                    })
+                    videoUrl = `https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&playsinline=1&autoplay=0`
+                  } else {
+                    let vimeoId = videoId
+                    if (videoId.includes('vimeo.com/')) {
+                      vimeoId = videoId.split('vimeo.com/')[1]?.split('?')[0] || videoId
+                    }
+                    videoUrl = `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&autoplay=0`
+                  }
+                  const badgeMatch = l.title.match(/JOUR \d+/)
+                  const badge = badgeMatch ? badgeMatch[0] : `JOUR ${allLessons.length + 1}`
+                  const meta = l.title.split(' - ')[1] || 'Formation'
+                  allLessons.push({
+                    id: allLessons.length + 1,
+                    _id: l._id,
+                    path: `/course/${courseSlug}/lesson/${l._id}`,
+                    title: l.title,
+                    badge: badge,
+                    meta: meta,
+                    video: { type: videoType, url: videoUrl },
+                    summary: l.summary || { text: '', points: [] },
+                    resources: l.resources || [],
+                    isCoaching: l.isCoaching || false
                   })
-                }
-              })
-              setCourseLessons(allLessons)
-            }
+                })
+              }
+            })
+            setCourseLessons(allLessons)
           }
-        } catch (error) {
-          console.error('Erreur chargement cours:', error)
         }
+      } catch (error) {
+        console.error('Erreur chargement cours:', error)
       }
-      loadCourse()
     }
-  }, [lesson._id])
+
+    loadCourse()
+  }, [lesson])
   
 
   // Navigation : utiliser courseLessons si disponible, sinon lessons legacy

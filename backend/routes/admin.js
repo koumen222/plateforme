@@ -8,6 +8,7 @@ import Course from '../models/Course.js';
 import Module from '../models/Module.js';
 import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
+import CoachingReservation from '../models/CoachingReservation.js';
 import RessourcePdf from '../models/RessourcePdf.js';
 
 const router = express.Router();
@@ -773,6 +774,69 @@ router.delete('/comments/:id', async (req, res) => {
   } catch (error) {
     console.error('Erreur suppression commentaire:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression du commentaire' });
+  }
+});
+
+// GET /api/admin/coaching-reservations - Récupérer les réservations de coaching
+router.get('/coaching-reservations', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const filter = status && status !== 'all' ? { status } : {};
+
+    const reservations = await CoachingReservation.find(filter)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      reservations,
+      count: reservations.length
+    });
+  } catch (error) {
+    console.error('Erreur récupération réservations coaching:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des réservations' });
+  }
+});
+
+// PUT /api/admin/coaching-reservations/:id/status - Modifier le statut d'une réservation
+router.put('/coaching-reservations/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
+      return res.status(400).json({ error: 'Statut invalide' });
+    }
+
+    const reservation = await CoachingReservation.findById(id);
+    if (!reservation) {
+      return res.status(404).json({ error: 'Réservation non trouvée' });
+    }
+
+    reservation.status = status;
+    await reservation.save();
+
+    res.json({ success: true, reservation: reservation.toObject() });
+  } catch (error) {
+    console.error('Erreur mise à jour réservation coaching:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour' });
+  }
+});
+
+// DELETE /api/admin/coaching-reservations/:id - Supprimer une réservation
+router.delete('/coaching-reservations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const reservation = await CoachingReservation.findById(id);
+    if (!reservation) {
+      return res.status(404).json({ error: 'Réservation non trouvée' });
+    }
+
+    await CoachingReservation.deleteOne({ _id: id });
+    res.json({ success: true, message: 'Réservation supprimée' });
+  } catch (error) {
+    console.error('Erreur suppression réservation coaching:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
   }
 });
 

@@ -268,7 +268,7 @@ export default function AdminUsersPage() {
     }
     
     const userName = user.name?.trim() || user.email?.split('@')[0] || 'Cher utilisateur'
-    const message = `Bonjour ${userName},\n\nVotre compte est en attente d'activation. Pour finaliser votre paiement et accéder à toutes les vidéos de formation, veuillez procéder au paiement.\n\nMerci de votre confiance !`
+    const message = `Bonjour ${userName},\n\nVotre compte est en attente d’activation. Une fois le paiement confirmé, vous aurez un accès complet à toutes les formations, vidéos et ressources premium.\n\n✅ Avantages :\n- Accès illimité à toutes les formations\n- Ressources et mises à jour régulières\n- Support prioritaire\n\nPour activer votre compte rapidement, merci de me confirmer votre mode de paiement ou d’effectuer le règlement dès maintenant. Je reste disponible si vous avez besoin d’aide.\n\nMerci pour votre confiance !`
     
     const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`
     return whatsappUrl

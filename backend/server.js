@@ -34,6 +34,7 @@ let authRoutes = null;
 let videoRoutes = null;
 let adminRoutes = null;
 let coursesRoutes = null;
+let coachingRoutes = null;
 let progressRoutes = null;
 let commentsRoutes = null;
 let paymentRoutes = null;
@@ -109,6 +110,17 @@ console.log('   - Credentials: activé');
 
 app.use(express.json());
 app.use(cookieParser());
+
+// Corriger les fautes fréquentes dans les routes (fallback)
+app.use((req, res, next) => {
+  if (req.url.startsWith('/api/adminn/')) {
+    req.url = req.url.replace('/api/adminn/', '/api/admin/');
+  }
+  if (req.url.startsWith('/api/coacching-reservations')) {
+    req.url = req.url.replace('/api/coacching-reservations', '/api/coaching-reservations');
+  }
+  next();
+});
 
 // Servir les fichiers statiques (images uploadées et PDF)
 const uploadsPath = path.join(__dirname, 'uploads');
@@ -537,6 +549,16 @@ const startServer = async () => {
       console.log('✅ Routes cours chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement courses.js:', error.message);
+    }
+
+    // 3bis. Routes réservations coaching
+    try {
+      const coachingModule = await import("./routes/coaching-reservations.js");
+      coachingRoutes = coachingModule.default;
+      app.use("/api/coaching-reservations", coachingRoutes);
+      console.log('✅ Routes coaching réservations chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement coaching-reservations.js:', error.message);
     }
     
     // 4. Routes ressources PDF
@@ -995,10 +1017,14 @@ const startServer = async () => {
           'GET /api/ressources-pdf/:slug',
           'GET /api/courses',
           'GET /api/courses/:id',
+          'POST /api/coaching-reservations',
           'GET /api/comments',
           'GET /api/progress',
           'POST /api/admin/register',
           'GET /api/admin/check',
+          'GET /api/admin/coaching-reservations',
+          'PUT /api/admin/coaching-reservations/:id/status',
+          'DELETE /api/admin/coaching-reservations/:id',
           'GET /api/admin/ressources-pdf',
           'POST /api/admin/ressources-pdf',
           'PUT /api/admin/ressources-pdf/:id',
