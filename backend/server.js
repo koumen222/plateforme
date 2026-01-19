@@ -42,9 +42,10 @@ let successRadarRoutes = null;
 let diagnosticRoutes = null;
 let ressourcesPdfRoutes = null;
 let filesRoutes = null;
-let adsAnalyzerRoutes = null;
+let aiAnalyzerRoutes = null;
 let metaRoutes = null;
 let facebookAuthRoutes = null;
+let recrutementRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -561,6 +562,16 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement coaching-reservations.js:', error.message);
     }
     
+    // 3ter. Routes recrutement (annuaire interne)
+    try {
+      const recrutementModule = await import("./routes/recrutement.js");
+      recrutementRoutes = recrutementModule.default;
+      app.use("/api/recrutement", recrutementRoutes);
+      console.log('✅ Routes recrutement chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement recrutement.js:', error.message);
+    }
+    
     // 4. Routes ressources PDF
     try {
       const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
@@ -647,25 +658,24 @@ const startServer = async () => {
       });
     }
     
-    // 12. Routes Ads Analyzer
+    // 12. Routes AI Analyzer
     try {
-      const adsAnalyzerModule = await import("./routes/ads-analyzer.js");
-      adsAnalyzerRoutes = adsAnalyzerModule.default;
-      if (!adsAnalyzerRoutes) {
-        throw new Error('Router ads-analyzer est null ou undefined');
+      const aiAnalyzerModule = await import("./routes/ai-analyzer.js");
+      aiAnalyzerRoutes = aiAnalyzerModule.default;
+      if (!aiAnalyzerRoutes) {
+        throw new Error('Router ai-analyzer est null ou undefined');
       }
-      app.use("/api/ads-analyzer", adsAnalyzerRoutes);
-      console.log('✅ Routes Ads Analyzer chargées');
-      console.log('   Route test disponible: GET /api/ads-analyzer/test');
-      console.log('   Route analyze disponible: POST /api/ads-analyzer/analyze');
+      app.use("/api/ai-analyzer", aiAnalyzerRoutes);
+      console.log('✅ Routes AI Analyzer chargées');
+      console.log('   Route analyze disponible: POST /api/ai-analyzer/analyze');
     } catch (error) {
-      console.error('⚠️ Erreur chargement ads-analyzer.js:', error.message);
+      console.error('⚠️ Erreur chargement ai-analyzer.js:', error.message);
       console.error('   Stack:', error.stack);
-      app.post("/api/ads-analyzer/analyze", (req, res) => {
-        res.status(503).json({ success: false, error: 'Module ads-analyzer non disponible', details: error.message });
+      app.post("/api/ai-analyzer/analyze", (req, res) => {
+        res.status(503).json({ success: false, error: 'Module ai-analyzer non disponible', details: error.message });
       });
     }
-    
+
     // 13. Routes Meta (Facebook Ads)
     try {
       const metaModule = await import("./routes/meta.js");

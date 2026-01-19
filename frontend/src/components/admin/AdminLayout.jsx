@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
 import Chatbot from '../Chatbot'
 import Footer from '../Footer'
-import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar } from 'react-icons/fi'
+import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar, FiBriefcase } from 'react-icons/fi'
 
 export default function AdminLayout() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -37,6 +37,7 @@ export default function AdminLayout() {
     { path: '/admin/courses', label: 'Cours', icon: FiBook },
     { path: '/admin/coaching-reservations', label: 'Coaching', icon: FiCalendar },
     { path: '/admin/ressources-pdf', label: 'Ressources PDF', icon: FiFileText },
+    { path: '/admin/recrutement', label: 'Recrutement', icon: FiBriefcase },
     { path: '/admin/users', label: 'Utilisateurs', icon: FiUsers },
     { path: '/admin/comments', label: 'Commentaires', icon: FiMessageSquare },
     { path: '/admin/settings', label: 'Paramètres', icon: FiSettings }

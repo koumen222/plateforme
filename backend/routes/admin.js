@@ -10,8 +10,11 @@ import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
 import CoachingReservation from '../models/CoachingReservation.js';
 import RessourcePdf from '../models/RessourcePdf.js';
+import Recrutement from '../models/Recrutement.js';
 
 const router = express.Router();
+
+const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Toutes les routes admin nécessitent une authentification ET un rôle admin/superadmin
 router.use(authenticate);
@@ -836,6 +839,74 @@ router.delete('/coaching-reservations/:id', async (req, res) => {
     res.json({ success: true, message: 'Réservation supprimée' });
   } catch (error) {
     console.error('Erreur suppression réservation coaching:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// ============================================
+// Routes recrutement (annuaire interne)
+// ============================================
+
+// GET /api/admin/recrutement - Liste + filtres
+router.get('/recrutement', async (req, res) => {
+  try {
+    const { type, pays, ville } = req.query;
+    const filter = {};
+
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+
+    if (pays && pays.trim()) {
+      filter.pays = new RegExp(escapeRegExp(pays.trim()), 'i');
+    }
+
+    if (ville && ville.trim()) {
+      filter.ville = new RegExp(escapeRegExp(ville.trim()), 'i');
+    }
+
+    const recrutements = await Recrutement.find(filter)
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      recrutements,
+      count: recrutements.length
+    });
+  } catch (error) {
+    console.error('Erreur récupération recrutements:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des entrées' });
+  }
+});
+
+// GET /api/admin/recrutement/:id - Détails
+router.get('/recrutement/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recrutement = await Recrutement.findById(id).lean();
+    if (!recrutement) {
+      return res.status(404).json({ error: 'Entrée non trouvée' });
+    }
+    res.json({ success: true, recrutement });
+  } catch (error) {
+    console.error('Erreur détail recrutement:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération du détail' });
+  }
+});
+
+// DELETE /api/admin/recrutement/:id - Supprimer
+router.delete('/recrutement/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const recrutement = await Recrutement.findById(id);
+    if (!recrutement) {
+      return res.status(404).json({ error: 'Entrée non trouvée' });
+    }
+    await Recrutement.deleteOne({ _id: id });
+    res.json({ success: true, message: 'Entrée supprimée' });
+  } catch (error) {
+    console.error('Erreur suppression recrutement:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression' });
   }
 });
