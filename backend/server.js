@@ -46,6 +46,7 @@ let aiAnalyzerRoutes = null;
 let metaRoutes = null;
 let facebookAuthRoutes = null;
 let recrutementRoutes = null;
+let partenairesRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -281,56 +282,116 @@ app.get("/api/test", (req, res) => {
 // Cette route est définie ici pour garantir qu'elle soit toujours disponible
 app.get("/api/valentine-winners", authenticate, async (req, res) => {
   console.log('💝 Route /api/valentine-winners appelée (route principale)');
-  console.log('💝 Headers:', JSON.stringify(req.headers, null, 2));
   console.log('💝 User:', req.user ? { id: req.user._id, status: req.user.status } : 'non authentifié');
   console.log('💝 Query params:', req.query);
-  
+
+  const blurProduct = (product) => {
+    const maskedName = product.name ? `${product.name.substring(0, 10)}...` : 'Produit réservé';
+    return {
+      name: maskedName,
+      category: product.category || 'Catégorie réservée',
+      priceRange: 'Disponible pour comptes actifs',
+      countries: Array.isArray(product.countries) ? product.countries.slice(0, 1) : [],
+      saturation: null,
+      demandScore: null,
+      trendScore: null,
+      status: 'warm',
+      lastUpdated: product.lastUpdated
+    };
+  };
+
   try {
     const WinningProduct = (await import("./models/WinningProduct.js")).default;
-    
+
     let valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
       .sort({ lastUpdated: -1, createdAt: -1 })
       .limit(50)
       .lean();
-    
-    console.log(`💝 Produits trouvés en DB: ${valentineProducts.length}`);
-    
-    // Si des produits existent en base, retourner leurs noms
-    if (valentineProducts.length > 0) {
-      const productNames = valentineProducts.map(p => p.name || 'Produit sans nom').filter(Boolean);
-      console.log(`💝 Retour de ${productNames.length} produits depuis la DB`);
+
+    const now = new Date();
+    const twentyFourHoursInMs = 24 * 60 * 60 * 1000;
+    let shouldRefresh = false;
+    let cacheMessage = null;
+
+    if (!valentineProducts.length) {
+      console.log('💝 Aucun produit St Valentin en base, génération immédiate...');
+      shouldRefresh = true;
+    } else {
+      const mostRecentValentine = valentineProducts[0];
+      if (mostRecentValentine.lastUpdated) {
+        const lastUpdate = new Date(mostRecentValentine.lastUpdated);
+        const timeSinceUpdate = now - lastUpdate;
+
+        if (timeSinceUpdate >= twentyFourHoursInMs) {
+          console.log(`💝 Produits St Valentin obsolètes (${Math.round(timeSinceUpdate / (60 * 60 * 1000))}h), génération...`);
+          shouldRefresh = true;
+        } else {
+          const remainingHours = Math.round((twentyFourHoursInMs - timeSinceUpdate) / (60 * 60 * 1000));
+          console.log(`💝 Produits St Valentin en cache (actualisation dans ${remainingHours}h)`);
+          cacheMessage = `Produits St Valentin chargés depuis le cache. Prochaine actualisation dans ${remainingHours}h`;
+        }
+      } else {
+        shouldRefresh = true;
+      }
+    }
+
+    if (shouldRefresh) {
+      try {
+        const successRadarCron = await import("./services/successRadarCron.js");
+        console.log('💝 Génération de nouveaux produits St Valentin via OpenAI...');
+        await successRadarCron.refreshValentineProducts();
+        valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
+          .sort({ lastUpdated: -1, createdAt: -1 })
+          .limit(50)
+          .lean();
+        console.log(`💝 ${valentineProducts.length} produits St Valentin générés et enregistrés`);
+      } catch (err) {
+        console.error('❌ Erreur génération produits St Valentin:', err.message);
+        valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
+          .sort({ lastUpdated: -1, createdAt: -1 })
+          .limit(50)
+          .lean();
+
+        if (!valentineProducts.length) {
+          return res.json({
+            products: [],
+            message: 'Aucun produit St Valentin disponible. Génération en cours...',
+            error: process.env.NODE_ENV === 'development' ? err.message : undefined
+          });
+        }
+      }
+    } else {
+      console.log(`💝 Retour des ${valentineProducts.length} produits St Valentin depuis le cache`);
+    }
+
+    if (!valentineProducts.length) {
+      return res.json({ products: [], message: 'Aucun produit St Valentin disponible pour le moment' });
+    }
+
+    if (req.user?.status === 'blocked') {
+      return res.status(403).json({ error: 'Accès refusé. Compte bloqué.' });
+    }
+
+    if (req.user?.status === 'active') {
       return res.json({
-        success: true,
-        products: productNames
+        products: valentineProducts,
+        message: cacheMessage || null,
+        fromCache: !shouldRefresh
       });
     }
-    
-    // Sinon, retourner une liste par défaut
-    console.log('💝 Aucun produit en DB, retour liste par défaut');
+
+    const blurred = valentineProducts.map(blurProduct);
     return res.json({
-      success: true,
-      products: [
-        "Montre connectée couple",
-        "Projecteur galaxie",
-        "Parfum couple",
-        "Bracelet amour magnétique",
-        "Lampe coeur LED"
-      ]
+      products: blurred,
+      message: 'Active ton compte pour débloquer les données complètes',
+      fromCache: !shouldRefresh
     });
   } catch (error) {
     console.error('❌ Erreur route /api/valentine-winners:', error);
     console.error('❌ Stack:', error.stack);
-    // En cas d'erreur, retourner la liste par défaut
-    res.json({
-      success: true,
-      products: [
-        "Montre connectée couple",
-        "Projecteur galaxie",
-        "Parfum couple",
-        "Bracelet amour magnétique",
-        "Lampe coeur LED"
-      ],
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    res.status(500).json({
+      error: 'Impossible de récupérer les produits St Valentin',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -570,6 +631,16 @@ const startServer = async () => {
       console.log('✅ Routes recrutement chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement recrutement.js:', error.message);
+    }
+    
+    // 3quater. Routes partenaires (public)
+    try {
+      const partenairesModule = await import("./routes/partenaires.js");
+      partenairesRoutes = partenairesModule.default;
+      app.use("/api/partenaires", partenairesRoutes);
+      console.log('✅ Routes partenaires chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement partenaires.js:', error.message);
     }
     
     // 4. Routes ressources PDF

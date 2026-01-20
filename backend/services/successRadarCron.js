@@ -8,7 +8,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-// Fonction pour construire un prompt simplifié St Valentin pour 20 produits
+// Fonction pour construire un prompt simplifié St Valentin pour 15 produits
 const buildValentinePrompt = (batchNumber = 1) => {
   return `Tu es une API qui renvoie UNIQUEMENT du JSON VALIDE. Pas de texte, pas de commentaire, pas de markdown.
 
@@ -17,10 +17,12 @@ Règles strictes :
 - Pas de texte avant ou après le JSON
 - Pas de commentaires dans le JSON
 - Pas de markdown (pas de \`\`\`)
-- EXACTEMENT 20 produits dans le tableau "products"
+- EXACTEMENT 15 produits dans le tableau "products"
 - Si tu ne peux pas finir, ferme proprement tous les objets JSON avec } et ]
 
-Génère EXACTEMENT 20 produits romantiques St Valentin RÉELS vendus en Afrique francophone.
+Génère EXACTEMENT 15 produits romantiques St Valentin RÉELS vendus en Afrique francophone.
+IMPORTANT : Produits winners réels trouvés sur AliExpress (pas de services).
+Évite les services, abonnements, prestations ou offres immatérielles.
 
 Champs OBLIGATOIRES pour chaque produit :
 - name : Nom du produit romantique
@@ -63,7 +65,10 @@ Règles strictes :
 - EXACTEMENT 20 produits dans le tableau "products"
 - Si tu ne peux pas finir, ferme proprement tous les objets JSON avec } et ]
 
-Génère EXACTEMENT 20 produits e-commerce RÉELS vendus en Afrique francophone.
+Génère EXACTEMENT 20 produits e-commerce RÉELS vendus en commerce en Afrique francophone (boutiques physiques et en ligne).
+IMPORTANT : Pas de produits "classiques" de dropshipping ou ultra-génériques déjà vus partout.
+Évite absolument : montres/bracelets connectés génériques, écouteurs Bluetooth basiques, bagues LED/anneaux lumineux, mini projecteurs, gaines amincissantes, brosses nettoyantes faciales génériques, lampes décoratives sans valeur claire.
+Privilégie des produits réellement vendus en commerce local avec une utilité évidente et des acheteurs récurrents.
 ${includeSkinCare ? `Inclus ${skinCareCount} produits Skin Care (category: "Skin Care") parmi les 20 produits.` : ''}
 
 Champs OBLIGATOIRES pour chaque produit :
@@ -475,11 +480,13 @@ const generateMissingProducts = async (existingProducts, specialEvent = '') => {
   const skinCareToGenerate = Math.min(missingSkinCare, Math.floor(missingCount * 0.4)); // 40% des produits manquants en Skin Care
   
   const completionPrompt = specialEvent === 'saint-valentin' 
-    ? `Génère EXACTEMENT ${missingCount} produits romantiques St Valentin supplémentaires pour compléter une liste de 50 produits. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis avec specialEvent="saint-valentin".`
+    ? `Génère EXACTEMENT ${missingCount} produits romantiques St Valentin supplémentaires pour compléter une liste. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Produits winners réels trouvés sur AliExpress (pas de services). Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis avec specialEvent="saint-valentin".`
     : `Génère EXACTEMENT ${missingCount} produits e-commerce supplémentaires pour compléter une liste de 50 produits pour l'Afrique francophone. 
     
 ⚠️ IMPORTANT : Inclus OBLIGATOIREMENT ${skinCareToGenerate} produits Skin Care (category: "Skin Care") parmi les ${missingCount} produits à générer.
 Produits Skin Care acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc.
+IMPORTANT : Produits RÉELS vendus en commerce (physique et en ligne). Pas de produits classiques/ultra-génériques de dropshipping.
+Évite : montres/bracelets connectés génériques, écouteurs Bluetooth basiques, bagues LED, mini projecteurs, gaines amincissantes, brosses faciales génériques, lampes décoratives sans valeur claire.
 
 Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis.`;
   
@@ -767,7 +774,7 @@ export const fetchWinningProducts = async () => {
     console.log(`⚠️ Seulement ${currentSkinCareCount} produits Skin Care détectés. Génération de ${missingSkinCare} produits Skin Care supplémentaires...`);
     
     try {
-      const skinCarePrompt = `Génère EXACTEMENT ${missingSkinCare} produits Skin Care / Soins de la peau RÉELS pour l'Afrique francophone. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit DOIT avoir "category": "Skin Care". Produits acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc.`;
+      const skinCarePrompt = `Génère EXACTEMENT ${missingSkinCare} produits Skin Care / Soins de la peau RÉELS vendus en commerce pour l'Afrique francophone. Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit DOIT avoir "category": "Skin Care". Produits acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc. Évite les produits Skin Care ultra-génériques sans valeur claire.`;
       
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -859,8 +866,9 @@ export const fetchValentineProducts = async () => {
     throw new Error('OPENAI_API_KEY manquant pour Success Radar');
   }
 
+  const targetValentineCount = 15;
   let allProducts = [];
-  const batches = [20, 20, 10]; // 20 + 20 + 10 = 50 produits
+  const batches = [15]; // 15 produits
   
   // Générer les batches séquentiellement
   for (let i = 0; i < batches.length; i++) {
@@ -890,10 +898,10 @@ export const fetchValentineProducts = async () => {
       });
     }
     
-    console.log(`💝 Total produits St Valentin accumulés: ${allProducts.length}/50`);
+    console.log(`💝 Total produits St Valentin accumulés: ${allProducts.length}/${targetValentineCount}`);
     
-    // Si on a déjà 50 produits, arrêter
-    if (allProducts.length >= 50) {
+    // Si on a déjà le nombre cible, arrêter
+    if (allProducts.length >= targetValentineCount) {
       break;
     }
     
@@ -903,34 +911,13 @@ export const fetchValentineProducts = async () => {
     }
   }
 
-  // Si on n'a toujours pas 50 produits, générer les produits manquants
-  if (allProducts.length < 50) {
-    const missingCount = 50 - allProducts.length;
-    console.log(`⚠️ Seulement ${allProducts.length} produits St Valentin après ${batches.length} batches. Génération de ${missingCount} produits complémentaires...`);
-    
-    const missingProducts = await generateMissingProducts(allProducts, 'saint-valentin');
-    
-    // S'assurer que tous ont specialEvent="saint-valentin"
-    const correctedMissing = missingProducts.map(p => ({
-      ...p,
-      specialEvent: 'saint-valentin'
-    }));
-    
-    allProducts = [...allProducts, ...correctedMissing];
-    
-    // Éliminer les doublons à nouveau
-    const seen = new Set();
-    allProducts = allProducts.filter(p => {
-      const name = (p.name || '').toLowerCase();
-      if (!name || seen.has(name)) return false;
-      seen.add(name);
-      return true;
-    });
+  // Si on n'a pas le nombre cible, on garde simplement ce qui a été généré
+  if (allProducts.length < targetValentineCount) {
+    console.warn(`⚠️ Seulement ${allProducts.length} produits St Valentin générés. Pas de génération complémentaire.`);
   }
 
-  if (allProducts.length < 50) {
-    console.error(`❌ ERREUR CRITIQUE : Impossible de générer 50 produits St Valentin. Seulement ${allProducts.length} produits obtenus.`);
-    throw new Error(`Impossible de générer 50 produits St Valentin. Seulement ${allProducts.length} produits obtenus.`);
+  if (allProducts.length < targetValentineCount) {
+    console.warn(`⚠️ Génération partielle St Valentin : ${allProducts.length} produits obtenus (au lieu de ${targetValentineCount}).`);
   }
   
   // Vérifier que tous les produits ont bien specialEvent="saint-valentin"
@@ -943,10 +930,10 @@ export const fetchValentineProducts = async () => {
     }));
   }
   
-  // Limiter à exactement 50 produits et normaliser
-  const finalValentineProducts = allProducts.slice(0, 50).map(p => normalizeProduct(p, 'saint-valentin'));
+  // Limiter au nombre cible max et normaliser
+  const finalValentineProducts = allProducts.slice(0, targetValentineCount).map(p => normalizeProduct(p, 'saint-valentin'));
   
-  console.log(`✅ Exactement ${finalValentineProducts.length} produits St Valentin générés et normalisés`);
+  console.log(`✅ ${finalValentineProducts.length} produits St Valentin générés et normalisés`);
   
   return finalValentineProducts;
 };
