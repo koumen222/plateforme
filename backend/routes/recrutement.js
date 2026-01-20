@@ -1,9 +1,9 @@
 import express from 'express';
-import Recrutement from '../models/Recrutement.js';
+import Partenaire from '../models/Partenaire.js';
 
 const router = express.Router();
 
-const normalizeType = (value) => {
+const normalizeDomaine = (value) => {
   if (!value) return 'autre';
   const normalized = value
     .toString()
@@ -11,13 +11,15 @@ const normalizeType = (value) => {
     .toLowerCase()
     .replace(/é/g, 'e')
     .replace(/\s+/g, '_');
-  if (normalized === 'societe_de_livraison') return 'societe_livraison';
+  if (normalized === 'societe_de_livraison' || normalized === 'societe_livraison') {
+    return 'agence_livraison';
+  }
   return normalized;
 };
 
-const allowedTypes = new Set([
+const allowedDomaines = new Set([
   'livreur',
-  'societe_livraison',
+  'agence_livraison',
   'transitaire',
   'closeur',
   'fournisseur',
@@ -26,13 +28,14 @@ const allowedTypes = new Set([
 
 /**
  * POST /api/recrutement
- * Collecte d'informations pour l'annuaire interne
+ * Alias vers l'inscription partenaire
  */
 router.post('/', async (req, res) => {
   try {
     const {
       nom,
       type,
+      domaine,
       pays,
       ville,
       whatsapp,
@@ -44,27 +47,28 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Nom et WhatsApp sont obligatoires' });
     }
 
-    const normalizedType = normalizeType(type);
-    if (!allowedTypes.has(normalizedType)) {
-      return res.status(400).json({ error: 'Type invalide' });
+    const normalizedDomaine = normalizeDomaine(domaine || type);
+    if (!allowedDomaines.has(normalizedDomaine)) {
+      return res.status(400).json({ error: 'Domaine invalide' });
     }
 
-    const entry = new Recrutement({
+    const entry = new Partenaire({
       nom: nom.trim(),
-      type: normalizedType,
+      domaine: normalizedDomaine,
       pays: pays?.trim() || '',
       ville: ville?.trim() || '',
       whatsapp: whatsapp.trim(),
       lien_contact: lien_contact?.trim() || '',
-      autorisation_affichage: Boolean(autorisation_affichage)
+      autorisation_affichage: Boolean(autorisation_affichage),
+      statut: 'en_attente'
     });
 
     await entry.save();
 
     res.status(201).json({
       success: true,
-      message: 'Informations enregistrées',
-      recrutement: entry.toObject()
+      message: 'Merci, votre profil sera visible après validation.',
+      partenaire: entry.toObject()
     });
   } catch (error) {
     console.error('Erreur création recrutement:', error);

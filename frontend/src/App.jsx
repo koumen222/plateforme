@@ -16,7 +16,7 @@ import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
 import AdminCoachingReservationsPage from './pages/admin/AdminCoachingReservationsPage'
 import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
-import AdminRecrutementPage from './pages/admin/AdminRecrutementPage'
+import AdminPartenairesPage from './pages/admin/AdminPartenairesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
@@ -30,6 +30,8 @@ import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
 import CoursesPage from './pages/CoursesPage'
 import RessourcesPdfPage from './pages/RessourcesPdfPage'
+import PartenairesPage from './pages/PartenairesPage'
+import PartenaireProfilePage from './pages/PartenaireProfilePage'
 import RecrutementPage from './pages/RecrutementPage'
 import FileManagerPage from './pages/FileManagerPage'
 import AndromedaAdsAnalyzerPage from './pages/AndromedaAdsAnalyzerPage'
@@ -87,6 +89,8 @@ function App() {
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
+          <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
+          <Route path="/partenaires/:id" element={<PlatformLayout><PartenaireProfilePage /></PlatformLayout>} />
           <Route path="/recrutement" element={<PlatformLayout><RecrutementPage /></PlatformLayout>} />
           <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />
           <Route path="/analyseur-ia" element={<PlatformLayout><AIAdsAnalyzerPage /></PlatformLayout>} />
@@ -125,7 +129,7 @@ function App() {
             <Route path="courses" element={<AdminCoursesPage />} />
             <Route path="coaching-reservations" element={<AdminCoachingReservationsPage />} />
             <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
-            <Route path="recrutement" element={<AdminRecrutementPage />} />
+            <Route path="partenaires" element={<AdminPartenairesPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />

@@ -4,10 +4,18 @@ import { useAuth } from '../../contexts/AuthContext'
 
 export default function AdminDashboardPage() {
   const { token } = useAuth()
+  const todayKey = new Date().toISOString().slice(0, 10)
   const [stats, setStats] = useState({
     users: { total: 0, pending: 0, active: 0 },
     courses: 0,
     loading: true
+  })
+  const [usersList, setUsersList] = useState([])
+  const [selectedDate, setSelectedDate] = useState(todayKey)
+  const [dateStats, setDateStats] = useState({
+    today: 0,
+    yesterday: 0,
+    selected: 0
   })
 
   useEffect(() => {
@@ -15,6 +23,12 @@ export default function AdminDashboardPage() {
       fetchStats()
     }
   }, [token])
+
+  useEffect(() => {
+    if (usersList.length > 0) {
+      setDateStats(buildDateStats(usersList, selectedDate))
+    }
+  }, [usersList, selectedDate])
 
   const fetchStats = async () => {
     try {
@@ -35,9 +49,10 @@ export default function AdminDashboardPage() {
         const usersData = await usersRes.json()
         const coursesData = await coursesRes.json()
 
-        const totalUsers = usersData.users?.length || 0
-        const pendingUsers = usersData.users?.filter(u => u.status === 'pending').length || 0
-        const activeUsers = usersData.users?.filter(u => u.status === 'active').length || 0
+        const allUsers = usersData.users || []
+        const totalUsers = allUsers.length || 0
+        const pendingUsers = allUsers.filter(u => u.status === 'pending').length || 0
+        const activeUsers = allUsers.filter(u => u.status === 'active').length || 0
 
         setStats({
           users: {
@@ -48,12 +63,50 @@ export default function AdminDashboardPage() {
           courses: coursesData.courses?.length || 0,
           loading: false
         })
+        setUsersList(allUsers)
+        setDateStats(buildDateStats(allUsers, selectedDate))
       } else {
         setStats(prev => ({ ...prev, loading: false }))
       }
     } catch (error) {
       console.error('Erreur lors du chargement des statistiques:', error)
       setStats(prev => ({ ...prev, loading: false }))
+    }
+  }
+
+  const getDateKey = (value) => {
+    const date = new Date(value)
+    if (Number.isNaN(date.getTime())) return null
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
+  const buildDateStats = (users, focusDate) => {
+    const today = new Date()
+    const todayKeyLocal = getDateKey(today)
+    const yesterday = new Date(today)
+    yesterday.setDate(today.getDate() - 1)
+    const yesterdayKey = getDateKey(yesterday)
+    const selectedKey = focusDate || todayKeyLocal
+
+    let todayCount = 0
+    let yesterdayCount = 0
+    let selectedCount = 0
+
+    users.forEach(user => {
+      const createdKey = getDateKey(user.createdAt)
+      if (!createdKey) return
+      if (createdKey === todayKeyLocal) todayCount += 1
+      if (createdKey === yesterdayKey) yesterdayCount += 1
+      if (createdKey === selectedKey) selectedCount += 1
+    })
+
+    return {
+      today: todayCount,
+      yesterday: yesterdayCount,
+      selected: selectedCount
     }
   }
 
@@ -228,6 +281,37 @@ export default function AdminDashboardPage() {
               <span className="font-bold text-primary">
                 {stats.loading ? '...' : stats.users.pending}
               </span>
+            </div>
+            <div className="p-3 bg-secondary rounded-xl">
+              <div className="text-sm text-secondary mb-3">Inscriptions par date</div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-card border border-theme rounded-lg p-3">
+                  <div className="text-xs text-secondary mb-1">Aujourd'hui</div>
+                  <div className="text-lg font-bold text-primary">
+                    {stats.loading ? '...' : dateStats.today}
+                  </div>
+                </div>
+                <div className="bg-card border border-theme rounded-lg p-3">
+                  <div className="text-xs text-secondary mb-1">Hier</div>
+                  <div className="text-lg font-bold text-primary">
+                    {stats.loading ? '...' : dateStats.yesterday}
+                  </div>
+                </div>
+                <div className="bg-card border border-theme rounded-lg p-3">
+                  <div className="text-xs text-secondary mb-1">Date choisie</div>
+                  <div className="text-lg font-bold text-primary">
+                    {stats.loading ? '...' : dateStats.selected}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-3">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-theme bg-card text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                />
+              </div>
             </div>
           </div>
         </div>

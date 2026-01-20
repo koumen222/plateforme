@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import { getImageUrl } from '../utils/imageUtils'
 import axios from 'axios'
-import { FiBook, FiDownload, FiBarChart2, FiTrendingUp, FiTarget, FiArrowRight } from 'react-icons/fi'
+import { FiBook, FiDownload } from 'react-icons/fi'
 
 export default function HomePage() {
   const { isAuthenticated } = useAuth()
@@ -303,86 +303,6 @@ export default function HomePage() {
                 Toutes nos formations sont adaptées aux réalités du marché africain : 
                 moyens de paiement locaux, logistique, réglementations et habitudes d'achat.
               </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Andromeda Ads Analyzer Section */}
-      <section className="py-16 bg-gradient-to-br from-accent/10 via-primary to-accent/5 w-full overflow-x-hidden">
-        <div className="container-startup w-full max-w-full">
-          <div className="max-w-4xl mx-auto">
-            <div className="card-startup p-8 md:p-12 border-2 border-accent/30 bg-gradient-to-br from-accent/5 to-primary">
-              <div className="text-center mb-8">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-accent/20 mb-4">
-                  <FiBarChart2 className="w-8 h-8 text-accent" />
-                </div>
-                <h2 className="text-3xl lg:text-4xl font-bold text-primary mb-3">
-                  Andromeda Ads Analyzer
-                </h2>
-                <p className="text-lg text-secondary max-w-2xl mx-auto">
-                  Analysez vos exports Facebook Ads et obtenez des recommandations automatiques en FCFA
-                </p>
-              </div>
-
-              {/* 3 Actions concrètes */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="p-6 bg-secondary/50 rounded-xl border border-theme hover:border-accent/50 transition-all group">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-accent/10 group-hover:bg-accent transition-colors">
-                      <FiTrendingUp className="w-6 h-6 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-primary mb-2">Analyse automatique</h3>
-                      <p className="text-sm text-secondary">
-                        Importez votre export Facebook Ads (CSV/XLS) et obtenez une analyse complète avec conversion en FCFA
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 bg-secondary/50 rounded-xl border border-theme hover:border-accent/50 transition-all group">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-accent/10 group-hover:bg-accent transition-colors">
-                      <FiTarget className="w-6 h-6 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-primary mb-2">Diagnostic ANDROMEDA</h3>
-                      <p className="text-sm text-secondary">
-                        Détection automatique des problèmes : créative faible, ciblage, message, page de destination
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="p-6 bg-secondary/50 rounded-xl border border-theme hover:border-accent/50 transition-all group">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 rounded-lg bg-accent/10 group-hover:bg-accent transition-colors">
-                      <FiArrowRight className="w-6 h-6 text-accent" />
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-lg font-bold text-primary mb-2">Décision claire</h3>
-                      <p className="text-sm text-secondary">
-                        STOP, OPTIMISER ou SCALE avec 3 actions concrètes à faire immédiatement
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* CTA */}
-              <div className="text-center">
-                <Link
-                  to="/analyseur-ads"
-                  className="btn-primary inline-flex items-center gap-2 px-8 py-4 text-lg font-semibold transform hover:scale-105 hover:shadow-xl transition-all duration-300"
-                >
-                  <FiBarChart2 className="w-5 h-5" />
-                  Analyser mes campagnes Facebook Ads
-                </Link>
-                <p className="text-xs text-secondary mt-3">
-                  Gratuit • Aucune inscription requise • Analyse instantanée
-                </p>
-              </div>
             </div>
           </div>
         </div>

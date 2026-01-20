@@ -10,11 +10,94 @@ import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
 import CoachingReservation from '../models/CoachingReservation.js';
 import RessourcePdf from '../models/RessourcePdf.js';
-import Recrutement from '../models/Recrutement.js';
+import Partenaire from '../models/Partenaire.js';
+import PartenaireAvis from '../models/PartenaireAvis.js';
+import PartenaireContact from '../models/PartenaireContact.js';
 
 const router = express.Router();
 
 const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const normalizeToken = (value) => {
+  if (!value) return '';
+  return value
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/é/g, 'e')
+    .replace(/\s+/g, '_');
+};
+
+const normalizeType = (value) => {
+  if (!value) return 'autre';
+  const normalized = normalizeToken(value);
+  if (normalized === 'agence_de_livraison' || normalized === 'agence_livraison') {
+    return 'agence_livraison';
+  }
+  if (normalized === 'closeur') return 'closeur';
+  if (normalized === 'transitaire') return 'transitaire';
+  return 'autre';
+};
+
+const normalizeDomaine = (value) => {
+  if (!value) return 'autre';
+  const normalized = normalizeToken(value);
+  if (normalized === 'societe_de_livraison' || normalized === 'societe_livraison') {
+    return 'agence_livraison';
+  }
+  return normalized || 'autre';
+};
+
+const parseListParam = (value) => {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.flatMap((item) => parseListParam(item));
+  }
+  return value
+    .toString()
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const shapePartenaire = (partenaire) => {
+  const domaines = Array.isArray(partenaire.domaines_activite) && partenaire.domaines_activite.length
+    ? partenaire.domaines_activite
+    : partenaire.domaine
+      ? [partenaire.domaine]
+      : [];
+  const statut = partenaire.statut === 'refuse' ? 'suspendu' : partenaire.statut;
+  return {
+    ...partenaire,
+    statut,
+    domaines_activite: domaines,
+    type_partenaire: partenaire.type_partenaire || normalizeType(partenaire.domaine)
+  };
+};
+
+const recomputePartenaireRating = async (partenaireId) => {
+  const stats = await PartenaireAvis.aggregate([
+    { $match: { partenaire_id: partenaireId, statut: 'approuve' } },
+    {
+      $group: {
+        _id: '$partenaire_id',
+        rating_avg: { $avg: '$note' },
+        rating_count: { $sum: 1 }
+      }
+    }
+  ]);
+  const rating_avg = stats[0]?.rating_avg ? Number(stats[0].rating_avg.toFixed(2)) : 0;
+  const rating_count = stats[0]?.rating_count || 0;
+  await Partenaire.updateOne(
+    { _id: partenaireId },
+    {
+      $set: {
+        'stats.rating_avg': rating_avg,
+        'stats.rating_count': rating_count
+      }
+    }
+  );
+};
 
 // Toutes les routes admin nécessitent une authentification ET un rôle admin/superadmin
 router.use(authenticate);
@@ -844,69 +927,324 @@ router.delete('/coaching-reservations/:id', async (req, res) => {
 });
 
 // ============================================
-// Routes recrutement (annuaire interne)
+// Routes partenaires
 // ============================================
 
-// GET /api/admin/recrutement - Liste + filtres
-router.get('/recrutement', async (req, res) => {
+// GET /api/admin/partenaires - Liste + filtres
+router.get('/partenaires', async (req, res) => {
   try {
-    const { type, pays, ville } = req.query;
+    const { statut, pays, domaine, type, disponibilite } = req.query;
     const filter = {};
 
+    if (statut && statut !== 'all') {
+      filter.statut = statut;
+    }
+
+    if (domaine && domaine !== 'all') {
+      filter.$or = [
+        { domaines_activite: normalizeDomaine(domaine) },
+        { domaine: normalizeDomaine(domaine) }
+      ];
+    }
+
     if (type && type !== 'all') {
-      filter.type = type;
+      filter.type_partenaire = normalizeType(type);
+    }
+
+    if (disponibilite && disponibilite !== 'all') {
+      filter.disponibilite = normalizeToken(disponibilite);
     }
 
     if (pays && pays.trim()) {
       filter.pays = new RegExp(escapeRegExp(pays.trim()), 'i');
     }
 
-    if (ville && ville.trim()) {
-      filter.ville = new RegExp(escapeRegExp(ville.trim()), 'i');
-    }
-
-    const recrutements = await Recrutement.find(filter)
+    const partenaires = await Partenaire.find(filter)
       .sort({ created_at: -1 })
       .lean();
 
     res.json({
       success: true,
-      recrutements,
-      count: recrutements.length
+      partenaires: partenaires.map(shapePartenaire),
+      count: partenaires.length
     });
   } catch (error) {
-    console.error('Erreur récupération recrutements:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération des entrées' });
+    console.error('Erreur récupération partenaires:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des partenaires' });
   }
 });
 
-// GET /api/admin/recrutement/:id - Détails
-router.get('/recrutement/:id', async (req, res) => {
+// PUT /api/admin/partenaires/:id - Mettre à jour un partenaire (admin)
+router.put('/partenaires/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const recrutement = await Recrutement.findById(id).lean();
-    if (!recrutement) {
-      return res.status(404).json({ error: 'Entrée non trouvée' });
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
-    res.json({ success: true, recrutement });
+
+    const payload = req.body || {};
+    const domaines = parseListParam(payload.domaines_activite || payload.domaines || payload.domaine)
+      .map(normalizeDomaine);
+
+    if (payload.nom) partenaire.nom = payload.nom.toString().trim();
+    if (payload.type_partenaire || payload.type) {
+      partenaire.type_partenaire = normalizeType(payload.type_partenaire || payload.type);
+    }
+    if (domaines.length) {
+      partenaire.domaines_activite = domaines;
+      partenaire.domaine = domaines[0];
+    }
+    if (payload.description_courte !== undefined) {
+      partenaire.description_courte = payload.description_courte.toString().trim();
+    }
+    if (payload.pays) partenaire.pays = payload.pays.toString().trim();
+    if (payload.ville) partenaire.ville = payload.ville.toString().trim();
+    if (payload.telephone !== undefined) {
+      partenaire.telephone = payload.telephone.toString().trim();
+    }
+    if (payload.whatsapp !== undefined) {
+      partenaire.whatsapp = payload.whatsapp.toString().trim();
+    }
+    if (payload.email !== undefined) {
+      partenaire.email = payload.email.toString().trim();
+    }
+    if (payload.lien_contact !== undefined) {
+      partenaire.lien_contact = payload.lien_contact.toString().trim();
+    }
+    if (payload.disponibilite) {
+      partenaire.disponibilite = normalizeToken(payload.disponibilite);
+    }
+    if (payload.autorisation_affichage !== undefined) {
+      partenaire.autorisation_affichage = Boolean(payload.autorisation_affichage);
+    }
+    if (payload.statut) {
+      partenaire.statut = payload.statut === 'refuse' ? 'suspendu' : payload.statut;
+    }
+    if (payload.annees_experience !== undefined) {
+      const value = Number(payload.annees_experience);
+      partenaire.annees_experience = Number.isFinite(value) ? value : null;
+    }
+    if (payload.zones_couvertes !== undefined) {
+      partenaire.zones_couvertes = parseListParam(payload.zones_couvertes);
+    }
+    if (payload.delais_moyens !== undefined) {
+      partenaire.delais_moyens = payload.delais_moyens.toString().trim();
+    }
+    if (payload.methodes_paiement !== undefined) {
+      partenaire.methodes_paiement = parseListParam(payload.methodes_paiement);
+    }
+    if (payload.langues_parlees !== undefined) {
+      partenaire.langues_parlees = parseListParam(payload.langues_parlees);
+    }
+    if (payload.logo_url !== undefined) {
+      partenaire.logo_url = payload.logo_url.toString().trim();
+    }
+    if (payload.plan !== undefined) {
+      partenaire.monetisation = partenaire.monetisation || {};
+      partenaire.monetisation.plan = payload.plan === 'premium' ? 'premium' : 'free';
+    }
+    if (payload.subscription_expires_at !== undefined) {
+      const date = payload.subscription_expires_at ? new Date(payload.subscription_expires_at) : null;
+      partenaire.monetisation = partenaire.monetisation || {};
+      partenaire.monetisation.subscription_expires_at = date && !Number.isNaN(date.getTime()) ? date : null;
+    }
+    if (payload.boost_until !== undefined) {
+      const date = payload.boost_until ? new Date(payload.boost_until) : null;
+      partenaire.monetisation = partenaire.monetisation || {};
+      partenaire.monetisation.boost_until = date && !Number.isNaN(date.getTime()) ? date : null;
+    }
+    if (payload.leads_paid_count !== undefined) {
+      const value = Number(payload.leads_paid_count);
+      partenaire.monetisation = partenaire.monetisation || {};
+      partenaire.monetisation.leads_paid_count = Number.isFinite(value) ? value : 0;
+    }
+
+    await partenaire.save();
+    res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
   } catch (error) {
-    console.error('Erreur détail recrutement:', error);
-    res.status(500).json({ error: 'Erreur lors de la récupération du détail' });
+    console.error('Erreur mise à jour partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du partenaire' });
   }
 });
 
-// DELETE /api/admin/recrutement/:id - Supprimer
-router.delete('/recrutement/:id', async (req, res) => {
+// PUT /api/admin/partenaires/:id/approve - Approuver
+router.put('/partenaires/:id/approve', async (req, res) => {
   try {
     const { id } = req.params;
-    const recrutement = await Recrutement.findById(id);
-    if (!recrutement) {
-      return res.status(404).json({ error: 'Entrée non trouvée' });
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
-    await Recrutement.deleteOne({ _id: id });
-    res.json({ success: true, message: 'Entrée supprimée' });
+    partenaire.statut = 'approuve';
+    partenaire.autorisation_affichage = true;
+    partenaire.approved_at = new Date();
+    await partenaire.save();
+    res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
   } catch (error) {
-    console.error('Erreur suppression recrutement:', error);
+    console.error('Erreur approbation partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'approbation' });
+  }
+});
+
+// PUT /api/admin/partenaires/:id/suspend - Suspendre
+router.put('/partenaires/:id/suspend', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+    partenaire.statut = 'suspendu';
+    partenaire.autorisation_affichage = false;
+    partenaire.approved_at = null;
+    await partenaire.save();
+    res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
+  } catch (error) {
+    console.error('Erreur suspension partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de la suspension' });
+  }
+});
+
+// PUT /api/admin/partenaires/:id/refuse - Alias suspend
+router.put('/partenaires/:id/refuse', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+    partenaire.statut = 'suspendu';
+    partenaire.autorisation_affichage = false;
+    partenaire.approved_at = null;
+    await partenaire.save();
+    res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
+  } catch (error) {
+    console.error('Erreur suspension partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de la suspension' });
+  }
+});
+
+// GET /api/admin/partenaires/stats - Stats partenaires
+router.get('/partenaires/stats', async (req, res) => {
+  try {
+    const total = await Partenaire.countDocuments();
+    const approuves = await Partenaire.countDocuments({ statut: 'approuve' });
+    const enAttente = await Partenaire.countDocuments({ statut: 'en_attente' });
+    const suspendus = await Partenaire.countDocuments({ statut: 'suspendu' });
+
+    const byPays = await Partenaire.aggregate([
+      { $match: { pays: { $ne: '' } } },
+      { $group: { _id: '$pays', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]);
+
+    res.json({
+      success: true,
+      stats: {
+        total,
+        approuves,
+        en_attente: enAttente,
+        suspendus,
+        by_pays: byPays
+      }
+    });
+  } catch (error) {
+    console.error('Erreur stats partenaires:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des stats' });
+  }
+});
+
+// GET /api/admin/partenaires/avis - Liste avis + filtres
+router.get('/partenaires/avis', async (req, res) => {
+  try {
+    const { statut } = req.query;
+    const filter = {};
+    if (statut && statut !== 'all') {
+      filter.statut = statut;
+    }
+
+    const avis = await PartenaireAvis.find(filter)
+      .populate('partenaire_id', 'nom')
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({ success: true, avis, count: avis.length });
+  } catch (error) {
+    console.error('Erreur récupération avis partenaires:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des avis' });
+  }
+});
+
+// PUT /api/admin/partenaires/avis/:id/approve - Approuver avis
+router.put('/partenaires/avis/:id/approve', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const avis = await PartenaireAvis.findById(id);
+    if (!avis) {
+      return res.status(404).json({ error: 'Avis non trouvé' });
+    }
+    avis.statut = 'approuve';
+    await avis.save();
+    await recomputePartenaireRating(avis.partenaire_id);
+    res.json({ success: true, avis: avis.toObject() });
+  } catch (error) {
+    console.error('Erreur approbation avis:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'approbation de l\'avis' });
+  }
+});
+
+// PUT /api/admin/partenaires/avis/:id/refuse - Refuser avis
+router.put('/partenaires/avis/:id/refuse', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const avis = await PartenaireAvis.findById(id);
+    if (!avis) {
+      return res.status(404).json({ error: 'Avis non trouvé' });
+    }
+    avis.statut = 'refuse';
+    await avis.save();
+    await recomputePartenaireRating(avis.partenaire_id);
+    res.json({ success: true, avis: avis.toObject() });
+  } catch (error) {
+    console.error('Erreur refus avis:', error);
+    res.status(500).json({ error: 'Erreur lors du refus de l\'avis' });
+  }
+});
+
+// GET /api/admin/partenaires/contacts - Liste des contacts
+router.get('/partenaires/contacts', async (req, res) => {
+  try {
+    const { type } = req.query;
+    const filter = {};
+    if (type && type !== 'all') {
+      filter.type = type;
+    }
+
+    const contacts = await PartenaireContact.find(filter)
+      .populate('partenaire_id', 'nom')
+      .sort({ created_at: -1 })
+      .lean();
+
+    res.json({ success: true, contacts, count: contacts.length });
+  } catch (error) {
+    console.error('Erreur récupération contacts partenaires:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des contacts' });
+  }
+});
+
+// DELETE /api/admin/partenaires/:id - Supprimer
+router.delete('/partenaires/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+    await Partenaire.deleteOne({ _id: id });
+    res.json({ success: true, message: 'Partenaire supprimé' });
+  } catch (error) {
+    console.error('Erreur suppression partenaire:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression' });
   }
 });

@@ -314,6 +314,11 @@ router.post('/select', authenticate, async (req, res) => {
  * Récupère les données des campagnes depuis Meta API et les analyse
  */
 router.post('/analyze', authenticate, async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    error: 'Analyseur désactivé'
+  });
+
   try {
     const userId = req.user._id.toString();
     const tokenData = await getMetaToken(userId);

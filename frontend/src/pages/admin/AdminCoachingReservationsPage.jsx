@@ -103,6 +103,28 @@ export default function AdminCoachingReservationsPage() {
     return badges[status] || badges.pending
   }
 
+  const formatDateLabel = (dateStr) => {
+    if (!dateStr) return '—'
+    const dateObj = new Date(dateStr)
+    if (Number.isNaN(dateObj.getTime())) return dateStr
+    return dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+  }
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return '—'
+    const dateObj = new Date(dateStr)
+    if (Number.isNaN(dateObj.getTime())) return dateStr
+    return dateObj.toLocaleString('fr-FR', { dateStyle: 'medium', timeStyle: 'short' })
+  }
+
+  const formatCourseName = (slug) => {
+    if (!slug) return '—'
+    return slug
+      .split('-')
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ')
+  }
+
   if (loading) {
     return (
       <div className="admin-comments-page">
@@ -178,7 +200,7 @@ export default function AdminCoachingReservationsPage() {
             return (
               <div key={reservation._id} className="admin-comment-card">
                 <div className="admin-comment-header">
-                  <div className="admin-comment-user">
+                  <div className="admin-comment-user flex flex-col gap-1">
                     <span className="admin-comment-name">{reservation.fullName}</span>
                     <span className="admin-comment-email">{reservation.email}</span>
                   </div>
@@ -186,21 +208,42 @@ export default function AdminCoachingReservationsPage() {
                 </div>
 
                 <div className="admin-comment-content">
-                  <p>
-                    📅 {reservation.date} à {reservation.time} • ⏱️ {reservation.durationMinutes} min
-                  </p>
-                  {reservation.phone && (
-                    <p>📱 {reservation.phone}</p>
-                  )}
-                  {reservation.courseSlug && (
-                    <p>📚 Cours: {reservation.courseSlug}</p>
-                  )}
+                  <div className="flex flex-wrap gap-2 text-xs sm:text-sm text-secondary">
+                    <span className="px-2 py-1 rounded-lg bg-secondary">
+                      📅 {formatDateLabel(reservation.date)} à {reservation.time || '—'}
+                    </span>
+                    <span className="px-2 py-1 rounded-lg bg-secondary">
+                      ⏱️ {reservation.durationMinutes || 0} min
+                    </span>
+                    <span className="px-2 py-1 rounded-lg bg-secondary">
+                      🕒 Créée le {formatDateTime(reservation.createdAt)}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="text-secondary">📚 Formation</p>
+                      <p className="text-primary font-semibold">
+                        {formatCourseName(reservation.courseSlug)}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-secondary">📱 Téléphone</p>
+                      <p className="text-primary font-semibold">
+                        {reservation.phone || '—'}
+                      </p>
+                    </div>
+                  </div>
+
                   {reservation.message && (
-                    <p>💬 {reservation.message}</p>
+                    <div className="mt-3 p-3 rounded-lg bg-secondary/60 border border-theme text-sm text-primary">
+                      <span className="text-secondary">💬 Message</span>
+                      <p className="mt-1">{reservation.message}</p>
+                    </div>
                   )}
                 </div>
 
-                <div className="admin-comment-actions">
+                <div className="admin-comment-actions flex flex-wrap gap-2">
                   <button
                     onClick={() => handleStatusChange(reservation._id, 'confirmed')}
                     className="admin-btn admin-btn-sm admin-btn-success"

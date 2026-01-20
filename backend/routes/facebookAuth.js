@@ -120,7 +120,7 @@ router.get('/auth/facebook', async (req, res) => {
         }
       } catch (err) {
         console.error('❌ Token temporaire invalide:', err.message);
-        return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=invalid_token`);
+        return res.redirect(`${FRONTEND_URL}/connect-facebook?error=invalid_token`);
       }
     }
     // Méthode 2: Authentification normale (pour compatibilité)
@@ -139,12 +139,12 @@ router.get('/auth/facebook', async (req, res) => {
         }
       } catch (err) {
         // Si l'authentification échoue, rediriger vers le frontend
-        return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=auth_required`);
+        return res.redirect(`${FRONTEND_URL}/connect-facebook?error=auth_required`);
       }
     }
 
     if (!userId) {
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=no_user_id`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=no_user_id`);
     }
 
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
@@ -152,7 +152,7 @@ router.get('/auth/facebook', async (req, res) => {
       console.error('   FACEBOOK_APP_ID:', FACEBOOK_APP_ID ? '✅ Défini' : '❌ Manquant');
       console.error('   FACEBOOK_APP_SECRET:', FACEBOOK_APP_SECRET ? '✅ Défini' : '❌ Manquant');
       console.error('   📝 Ajoutez ces variables dans backend/.env');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=config_missing&message=${encodeURIComponent('Configuration Facebook manquante - Voir backend/FACEBOOK_SETUP.md')}`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=config_missing&message=${encodeURIComponent('Configuration Facebook manquante - Voir backend/FACEBOOK_SETUP.md')}`);
     }
 
     // Scopes nécessaires pour accéder aux Business Managers et comptes publicitaires
@@ -183,7 +183,7 @@ router.get('/auth/facebook', async (req, res) => {
     res.redirect(authUrl);
   } catch (error) {
     console.error('❌ Erreur initiation OAuth Facebook:', error);
-    res.redirect(`${FRONTEND_URL}/analyseur-ads?error=oauth_init_failed&message=${encodeURIComponent(error.message)}`);
+    res.redirect(`${FRONTEND_URL}/connect-facebook?error=oauth_init_failed&message=${encodeURIComponent(error.message)}`);
   }
 });
 
@@ -199,17 +199,17 @@ router.get('/auth/facebook/callback', async (req, res) => {
     // Vérifier les erreurs Facebook
     if (facebookError) {
       console.error('❌ Erreur Facebook OAuth:', facebookError);
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=facebook_auth_failed&message=${encodeURIComponent(facebookError)}`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=facebook_auth_failed&message=${encodeURIComponent(facebookError)}`);
     }
 
     if (!code) {
       console.error('❌ Code OAuth manquant');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=no_code`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=no_code`);
     }
 
     if (!state) {
       console.error('❌ State manquant');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=no_state`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=no_state`);
     }
 
     // Décoder le state pour récupérer l'userId
@@ -218,19 +218,19 @@ router.get('/auth/facebook/callback', async (req, res) => {
       stateData = JSON.parse(Buffer.from(state, 'base64').toString());
     } catch (err) {
       console.error('❌ Erreur décodage state:', err);
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=invalid_state`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=invalid_state`);
     }
 
     const userId = stateData.userId;
     
     if (!userId) {
       console.error('❌ userId manquant dans state');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=no_user_id`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=no_user_id`);
     }
 
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
       console.error('❌ Configuration Facebook manquante');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=config_missing`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=config_missing`);
     }
 
     const callbackUrl = `${BACKEND_URL}/auth/facebook/callback`;
@@ -249,7 +249,7 @@ router.get('/auth/facebook/callback', async (req, res) => {
     if (!tokenResponse.ok) {
       const errorData = await tokenResponse.json().catch(() => ({}));
       console.error('❌ Erreur échange token Facebook:', errorData);
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=token_exchange_failed&message=${encodeURIComponent(errorData.error?.message || 'Unknown error')}`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=token_exchange_failed&message=${encodeURIComponent(errorData.error?.message || 'Unknown error')}`);
     }
 
     const tokenData = await tokenResponse.json();
@@ -258,7 +258,7 @@ router.get('/auth/facebook/callback', async (req, res) => {
 
     if (!accessToken) {
       console.error('❌ Access token manquant dans la réponse');
-      return res.redirect(`${FRONTEND_URL}/analyseur-ads?error=no_token`);
+      return res.redirect(`${FRONTEND_URL}/connect-facebook?error=no_token`);
     }
 
     // Stocker le token dans Redis avec TTL de 30 minutes
@@ -279,10 +279,10 @@ router.get('/auth/facebook/callback', async (req, res) => {
     console.log(`✅ Token Meta stocké dans Redis pour utilisateur ${userId} (TTL: ${META_TOKEN_TTL}s)`);
 
     // Rediriger vers l'analyseur avec succès
-    res.redirect(`${FRONTEND_URL}/analyseur-ads?success=connected`);
+    res.redirect(`${FRONTEND_URL}/connect-facebook?success=connected`);
   } catch (error) {
     console.error('❌ Erreur callback OAuth Facebook:', error);
-    res.redirect(`${FRONTEND_URL}/analyseur-ads?error=callback_failed&message=${encodeURIComponent(error.message)}`);
+    res.redirect(`${FRONTEND_URL}/connect-facebook?error=callback_failed&message=${encodeURIComponent(error.message)}`);
   }
 });
 

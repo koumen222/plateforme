@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { CONFIG } from '../config/config'
-import { getImageUrl } from '../utils/imageUtils'
 import { useAuth } from '../contexts/AuthContext'
 import SubscriptionButton from '../components/SubscriptionButton'
 import { FiBook, FiDownload, FiFileText, FiUser, FiTag, FiSearch, FiFilter, FiLock } from 'react-icons/fi'
@@ -394,114 +393,96 @@ export default function RessourcesPdfPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-4">
+          <div className="flex flex-col gap-4 px-4">
             {filteredRessourcesPdf.map((ressourcePdf) => (
               <div
                 key={ressourcePdf._id}
-                className="bg-card border border-theme rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 group"
+                className="bg-card border border-theme rounded-2xl p-5 sm:p-6 shadow-sm hover:shadow-md transition-all duration-300"
               >
-                {/* Image de couverture */}
-                <div className="relative h-48 sm:h-56 overflow-hidden bg-gradient-to-br from-accent/10 to-accent/5">
-                  {ressourcePdf.coverImage ? (
-                    <img
-                      src={getImageUrl(ressourcePdf.coverImage, '/img/ressource-pdf-default.png')}
-                      alt={ressourcePdf.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        e.target.src = '/img/ressource-pdf-default.png'
-                      }}
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center">
-                      <FiBook className="w-16 h-16 text-accent/30" />
-                    </div>
-                  )}
-                  {ressourcePdf.isFree && (
-                    <div className="absolute top-3 right-3 bg-accent text-white px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                      Gratuit
-                    </div>
-                  )}
-                </div>
-
-                {/* Contenu */}
-                <div className="p-5 sm:p-6">
-                  {/* Catégorie */}
-                  {ressourcePdf.category && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <FiTag className="w-4 h-4 text-accent" />
-                      <span className="text-xs font-medium text-accent uppercase tracking-wider">
-                        {ressourcePdf.category}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Titre */}
-                  <h3 className="text-lg sm:text-xl font-bold text-primary mb-2 line-clamp-2 group-hover:text-accent transition-colors">
-                    {ressourcePdf.title}
-                  </h3>
-
-                  {/* Description */}
-                  {ressourcePdf.description && (
-                    <p className="text-sm text-secondary mb-4 line-clamp-3">
-                      {ressourcePdf.description}
-                    </p>
-                  )}
-
-                  {/* Métadonnées */}
-                  <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-secondary">
-                    {ressourcePdf.author && (
-                      <div className="flex items-center gap-1">
-                        <FiUser className="w-3 h-3" />
-                        <span>{ressourcePdf.author}</span>
-                      </div>
-                    )}
-                    {ressourcePdf.pages > 0 && (
-                      <div className="flex items-center gap-1">
-                        <FiFileText className="w-3 h-3" />
-                        <span>{ressourcePdf.pages} pages</span>
-                      </div>
-                    )}
-                    {ressourcePdf.downloadCount > 0 && (
-                      <div className="flex items-center gap-1">
-                        <FiDownload className="w-3 h-3" />
-                        <span>{ressourcePdf.downloadCount} téléchargement{ressourcePdf.downloadCount > 1 ? 's' : ''}</span>
-                      </div>
-                    )}
+                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                    <FiBook className="w-6 h-6 text-accent" />
                   </div>
-
-                  {/* Badge payant */}
-                  {!ressourcePdf.isFree && (
-                    <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
-                      <FiLock className="w-4 h-4" />
-                      <span>Réservé aux abonnés</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-3 mb-2">
+                      {ressourcePdf.category && (
+                        <div className="flex items-center gap-2">
+                          <FiTag className="w-4 h-4 text-accent" />
+                          <span className="text-xs font-medium text-accent uppercase tracking-wider">
+                            {ressourcePdf.category}
+                          </span>
+                        </div>
+                      )}
+                      {ressourcePdf.isFree && (
+                        <span className="bg-accent text-white px-3 py-1 rounded-full text-xs font-bold">
+                          Gratuit
+                        </span>
+                      )}
                     </div>
-                  )}
 
-                  {/* Bouton de téléchargement */}
-                  <button
-                    onClick={() => handleDownload(ressourcePdf)}
-                    className={`w-full inline-flex items-center justify-center gap-2 py-3 px-4 text-base font-semibold rounded-xl transition-all duration-300 ${
-                      !ressourcePdf.isFree && user?.status !== 'active'
-                        ? 'btn-secondary'
-                        : 'btn-primary'
-                    } ${isMobile() ? 'touch-manipulation' : ''}`}
-                    style={isMobile() ? { 
-                      WebkitTapHighlightColor: 'transparent',
-                      touchAction: 'manipulation'
-                    } : {}}
-                  >
-                    {!ressourcePdf.isFree && user?.status !== 'active' ? (
-                      <>
-                        <FiLock className="w-5 h-5" />
-                        <span>S'abonner pour télécharger</span>
-                      </>
-                    ) : (
-                      <>
-                    <FiDownload className="w-5 h-5" />
-                        <span>{ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}</span>
-                      </>
+                    <h3 className="text-lg sm:text-xl font-bold text-primary mb-2">
+                      {ressourcePdf.title}
+                    </h3>
+
+                    {ressourcePdf.description && (
+                      <p className="text-sm text-secondary mb-4">
+                        {ressourcePdf.description}
+                      </p>
                     )}
-                  </button>
+
+                    <div className="flex flex-wrap items-center gap-4 mb-4 text-xs text-secondary">
+                      {ressourcePdf.author && (
+                        <div className="flex items-center gap-1">
+                          <FiUser className="w-3 h-3" />
+                          <span>{ressourcePdf.author}</span>
+                        </div>
+                      )}
+                      {ressourcePdf.pages > 0 && (
+                        <div className="flex items-center gap-1">
+                          <FiFileText className="w-3 h-3" />
+                          <span>{ressourcePdf.pages} pages</span>
+                        </div>
+                      )}
+                      {ressourcePdf.downloadCount > 0 && (
+                        <div className="flex items-center gap-1">
+                          <FiDownload className="w-3 h-3" />
+                          <span>{ressourcePdf.downloadCount} téléchargement{ressourcePdf.downloadCount > 1 ? 's' : ''}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {!ressourcePdf.isFree && (
+                      <div className="mb-4 flex items-center gap-2 text-sm text-secondary">
+                        <FiLock className="w-4 h-4" />
+                        <span>Réservé aux abonnés</span>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => handleDownload(ressourcePdf)}
+                      className={`inline-flex items-center justify-center gap-2 py-3 px-4 text-base font-semibold rounded-xl transition-all duration-300 ${
+                        !ressourcePdf.isFree && user?.status !== 'active'
+                          ? 'btn-secondary'
+                          : 'btn-primary'
+                      } ${isMobile() ? 'touch-manipulation' : ''}`}
+                      style={isMobile() ? { 
+                        WebkitTapHighlightColor: 'transparent',
+                        touchAction: 'manipulation'
+                      } : {}}
+                    >
+                      {!ressourcePdf.isFree && user?.status !== 'active' ? (
+                        <>
+                          <FiLock className="w-5 h-5" />
+                          <span>S'abonner pour télécharger</span>
+                        </>
+                      ) : (
+                        <>
+                          <FiDownload className="w-5 h-5" />
+                          <span>{ressourcePdf.isFree ? 'Télécharger gratuitement' : 'Télécharger'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

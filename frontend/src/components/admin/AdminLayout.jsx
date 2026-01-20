@@ -37,7 +37,7 @@ export default function AdminLayout() {
     { path: '/admin/courses', label: 'Cours', icon: FiBook },
     { path: '/admin/coaching-reservations', label: 'Coaching', icon: FiCalendar },
     { path: '/admin/ressources-pdf', label: 'Ressources PDF', icon: FiFileText },
-    { path: '/admin/recrutement', label: 'Recrutement', icon: FiBriefcase },
+  { path: '/admin/partenaires', label: 'Partenaires', icon: FiBriefcase },
     { path: '/admin/users', label: 'Utilisateurs', icon: FiUsers },
     { path: '/admin/comments', label: 'Commentaires', icon: FiMessageSquare },
     { path: '/admin/settings', label: 'Paramètres', icon: FiSettings }

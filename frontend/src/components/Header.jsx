@@ -120,14 +120,14 @@ export default function Header() {
                 Générateur de Pub
               </Link>
               <Link 
-                to="/analyseur-ads" 
+                to="/analyseur-ia" 
                 className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                  isActive('/analyseur-ads') 
+                  isActive('/analyseur-ia') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
                 }`}
               >
-                Analyseur Ads
+                Analyseur IA
               </Link>
               <Link 
                 to="/communaute" 
