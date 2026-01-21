@@ -53,6 +53,8 @@ let runSuccessRadarOnce = null;
 import Course from "./models/Course.js";
 import Module from "./models/Module.js";
 import Lesson from "./models/Lesson.js";
+import RessourcePdf from "./models/RessourcePdf.js";
+import Partenaire from "./models/Partenaire.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -494,6 +496,188 @@ app.get("/api/test-success-radar-routes", (req, res) => {
 // Routes OAuth Facebook sont maintenant gérées par routes/facebookAuth.js
 // Elles sont montées dans startServer() après le chargement dynamique
 
+const CHAT_CONTEXT_TTL_MS = 5 * 60 * 1000;
+const chatContextCache = {
+  value: null,
+  updatedAt: 0
+};
+
+const clampText = (value, maxChars = 600) => {
+  if (!value) return '';
+  const text = value.toString();
+  if (text.length <= maxChars) return text;
+  return `${text.slice(0, maxChars)}…`;
+};
+
+const formatList = (items) => {
+  if (!Array.isArray(items) || !items.length) return '';
+  return items.map((item) => clampText(item, 200)).filter(Boolean).join(' | ');
+};
+
+const formatResource = (resource) => {
+  if (!resource || typeof resource !== 'object') return '';
+  const title = resource.title || 'Ressource';
+  const type = resource.type ? ` (${resource.type})` : '';
+  const download = resource.download ? ' - telechargement' : '';
+  const link = resource.link ? ` - lien: ${resource.link}` : '';
+  return `${title}${type}${download}${link}`.trim();
+};
+
+const buildPlatformContext = async () => {
+  const courses = await Course.find({ isPublished: true }).sort({ createdAt: -1 }).lean();
+  const courseIds = courses.map((course) => course._id);
+  const modules = courseIds.length
+    ? await Module.find({ courseId: { $in: courseIds } }).sort({ order: 1 }).lean()
+    : [];
+  const moduleIds = modules.map((module) => module._id);
+  const lessons = moduleIds.length
+    ? await Lesson.find({ moduleId: { $in: moduleIds } }).sort({ order: 1 }).lean()
+    : [];
+  const ressourcesPdf = await RessourcePdf.find({ isPublished: true }).sort({ createdAt: -1 }).lean();
+  const partenaires = await Partenaire.find({
+    statut: 'approuve',
+    autorisation_affichage: true
+  }).sort({ approved_at: -1, created_at: -1 }).lean();
+
+  const modulesByCourse = new Map();
+  modules.forEach((module) => {
+    const key = module.courseId?.toString();
+    if (!key) return;
+    if (!modulesByCourse.has(key)) modulesByCourse.set(key, []);
+    modulesByCourse.get(key).push(module);
+  });
+
+  const lessonsByModule = new Map();
+  lessons.forEach((lesson) => {
+    const key = lesson.moduleId?.toString();
+    if (!key) return;
+    if (!lessonsByModule.has(key)) lessonsByModule.set(key, []);
+    lessonsByModule.get(key).push(lesson);
+  });
+
+  const lines = [];
+  lines.push('CONTENU DE LA PLATEFORME (donnees internes)');
+  lines.push('');
+  lines.push('COURS ET FORMATIONS:');
+
+  if (!courses.length) {
+    lines.push('- Aucun cours publie pour le moment.');
+  } else {
+    courses.forEach((course) => {
+      lines.push(`- Cours: ${course.title} (${course.slug})`);
+      if (course.description) {
+        lines.push(`  Description: ${clampText(course.description, 400)}`);
+      }
+      lines.push(`  Acces: ${course.isFree ? 'gratuit' : 'abonne/actif'}`);
+
+      const courseModules = modulesByCourse.get(course._id.toString()) || [];
+      if (!courseModules.length) {
+        lines.push('  Modules: aucun module.');
+        return;
+      }
+
+      courseModules.forEach((module) => {
+        lines.push(`  Module ${module.order}: ${module.title}`);
+        const moduleLessons = lessonsByModule.get(module._id.toString()) || [];
+
+        if (!moduleLessons.length) {
+          lines.push('    Lecons: aucune lecon.');
+          return;
+        }
+
+        moduleLessons.forEach((lesson) => {
+          lines.push(`    Lecon ${lesson.order}: ${lesson.title}`);
+          if (lesson.summary?.text) {
+            lines.push(`      Resume: ${clampText(lesson.summary.text, 500)}`);
+          }
+          if (Array.isArray(lesson.summary?.points) && lesson.summary.points.length) {
+            lines.push(`      Points: ${formatList(lesson.summary.points)}`);
+          }
+          if (Array.isArray(lesson.resources) && lesson.resources.length) {
+            const resources = lesson.resources
+              .map(formatResource)
+              .filter(Boolean)
+              .join(' | ');
+            if (resources) {
+              lines.push(`      Ressources: ${resources}`);
+            }
+          }
+        });
+      });
+    });
+  }
+
+  lines.push('');
+  lines.push('RESSOURCES PDF PUBLIQUES:');
+  if (!ressourcesPdf.length) {
+    lines.push('- Aucune ressource PDF publiee.');
+  } else {
+    ressourcesPdf.forEach((pdf) => {
+      const priceLabel = pdf.isFree ? 'gratuit' : `payant (${pdf.price || 0})`;
+      lines.push(`- ${pdf.title} (${pdf.category || 'General'}) - ${priceLabel}`);
+      if (pdf.description) {
+        lines.push(`  Description: ${clampText(pdf.description, 300)}`);
+      }
+      lines.push(`  Auteur: ${pdf.author || 'Ecom Starter'} | Pages: ${pdf.pages || 0} | Slug: ${pdf.slug}`);
+    });
+  }
+
+  lines.push('');
+  lines.push('PARTENAIRES (annuaire public):');
+  if (!partenaires.length) {
+    lines.push('- Aucun partenaire publie.');
+  } else {
+    partenaires.forEach((partenaire) => {
+      const domaines = Array.isArray(partenaire.domaines_activite) && partenaire.domaines_activite.length
+        ? partenaire.domaines_activite.join(', ')
+        : partenaire.domaine || 'autre';
+      lines.push(`- ${partenaire.nom} (${partenaire.type_partenaire || 'autre'})`);
+      lines.push(`  Domaine(s): ${domaines}`);
+      lines.push(`  Localisation: ${partenaire.ville || 'N/A'}, ${partenaire.pays || 'N/A'}`);
+      if (partenaire.description_courte) {
+        lines.push(`  Description: ${clampText(partenaire.description_courte, 240)}`);
+      }
+      lines.push(`  Disponibilite: ${partenaire.disponibilite || 'disponible'}`);
+      if (partenaire.telephone || partenaire.whatsapp || partenaire.email || partenaire.lien_contact) {
+        lines.push(
+          `  Contact: ${[
+            partenaire.telephone ? `tel: ${partenaire.telephone}` : null,
+            partenaire.whatsapp ? `whatsapp: ${partenaire.whatsapp}` : null,
+            partenaire.email ? `email: ${partenaire.email}` : null,
+            partenaire.lien_contact ? `lien: ${partenaire.lien_contact}` : null
+          ].filter(Boolean).join(' | ')}`
+        );
+      }
+    });
+  }
+
+  return lines.join('\n');
+};
+
+const getChatContext = async () => {
+  const now = Date.now();
+  if (chatContextCache.value && now - chatContextCache.updatedAt < CHAT_CONTEXT_TTL_MS) {
+    return chatContextCache.value;
+  }
+  const context = await buildPlatformContext();
+  chatContextCache.value = context;
+  chatContextCache.updatedAt = now;
+  return context;
+};
+
+const buildSystemPrompt = (contextText) => {
+  const trimmedContext = clampText(contextText, 12000);
+  return `Tu es le chatbot IA officiel de la plateforme. Tu reponds en francais et tu utilises prioritairement le contenu ci-dessous.
+
+Regles:
+- Sois clair et structure.
+- Si l'information n'est pas dans le contexte, reponds quand meme avec une aide generale utile sans inventer de faits specifiques sur la plateforme.
+- Ne promets pas d'acces ou de contenu qui n'est pas cite.
+
+CONTEXTE:
+${trimmedContext}`;
+};
+
 // Route chatbot (protégée - nécessite statut active)
 app.post("/api/chat", authenticate, async (req, res) => {
   const { message, conversationHistory } = req.body;
@@ -506,21 +690,34 @@ app.post("/api/chat", authenticate, async (req, res) => {
       return res.status(400).json({ error: 'Le message est requis' });
     }
 
+    const platformContext = await getChatContext();
+    const systemPrompt = buildSystemPrompt(platformContext);
+
     // Préparer les messages pour OpenAI
-    // Utiliser l'historique de conversation si fourni, sinon créer un nouveau contexte
     let messages = [];
-    
+
     if (conversationHistory && Array.isArray(conversationHistory)) {
-      // Filtrer et formater l'historique (exclure les messages système pour OpenAI)
-      messages = conversationHistory
-        .filter(msg => msg.role !== 'system')
-        .map(msg => ({
-          role: msg.role === 'bot' ? 'assistant' : msg.role,
-          content: msg.content
-        }));
+      const normalizedHistory = conversationHistory
+        .filter((msg) => msg && msg.content)
+        .map((msg) => {
+          const role = msg.role === 'bot' ? 'assistant' : msg.role;
+          return { role, content: msg.content };
+        })
+        .filter((msg) => msg.role !== 'system')
+        .filter((msg) => ['user', 'assistant'].includes(msg.role));
+
+      const lastMessage = normalizedHistory[normalizedHistory.length - 1];
+      if (!lastMessage || lastMessage.role !== 'user' || lastMessage.content !== message) {
+        normalizedHistory.push({ role: 'user', content: message });
+      }
+
+      messages = [{ role: 'system', content: systemPrompt }, ...normalizedHistory];
     } else {
       // Si pas d'historique, créer un message simple
-      messages = [{ role: "user", content: message }];
+      messages = [
+        { role: 'system', content: systemPrompt },
+        { role: "user", content: message }
+      ];
     }
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
