@@ -211,9 +211,42 @@ export default function AdminPartenairesPage() {
         body: JSON.stringify(formData)
       })
       if (response.ok) {
+        const data = await response.json().catch(() => ({}))
         showNotification(isEditing ? 'Partenaire mis à jour' : 'Partenaire ajouté')
-        resetForm()
         fetchPartenaires()
+        if (isEditing) {
+          resetForm()
+        } else if (data.partenaire?._id) {
+          setEditingId(data.partenaire._id)
+          setShowForm(true)
+          setGalleryPreview(data.partenaire.galerie_photos || [])
+          setFormData({
+            nom: data.partenaire.nom || '',
+            type_partenaire: data.partenaire.type_partenaire || 'autre',
+            domaine:
+              data.partenaire.domaine ||
+              (data.partenaire.domaines_activite || []).find(Boolean) ||
+              '',
+            description_courte: data.partenaire.description_courte || '',
+            pays: data.partenaire.pays || '',
+            ville: data.partenaire.ville || '',
+            telephone: data.partenaire.telephone || '',
+            whatsapp: data.partenaire.whatsapp || '',
+            email: data.partenaire.email || '',
+            lien_contact: data.partenaire.lien_contact || '',
+            disponibilite: data.partenaire.disponibilite || 'disponible',
+            autorisation_affichage: Boolean(data.partenaire.autorisation_affichage),
+            statut: data.partenaire.statut || 'en_attente',
+            annees_experience: data.partenaire.annees_experience ?? '',
+            zones_couvertes: (data.partenaire.zones_couvertes || []).join(', '),
+            delais_moyens: data.partenaire.delais_moyens || '',
+            methodes_paiement: (data.partenaire.methodes_paiement || []).join(', '),
+            langues_parlees: (data.partenaire.langues_parlees || []).join(', '),
+            logo_url: data.partenaire.logo_url || ''
+          })
+        } else {
+          resetForm()
+        }
       } else {
         const data = await response.json().catch(() => ({}))
         showNotification(data.error || 'Erreur enregistrement', 'error')
