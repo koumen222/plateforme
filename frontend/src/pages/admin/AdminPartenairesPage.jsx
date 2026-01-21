@@ -633,6 +633,14 @@ export default function AdminPartenairesPage() {
             value={formData.lien_contact}
             onChange={(e) => updateFormValue('lien_contact', e.target.value)}
           />
+            <div className="md:col-span-2 text-sm font-semibold text-primary mt-2">Logo</div>
+            <input
+              type="url"
+              className="admin-input"
+              placeholder="Lien du logo (https://...)"
+              value={formData.logo_url}
+              onChange={(e) => updateFormValue('logo_url', e.target.value)}
+            />
           <div className="md:col-span-2 text-sm font-semibold text-primary mt-2">Opérations</div>
           <select
             className="admin-select"
