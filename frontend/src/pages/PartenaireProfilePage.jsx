@@ -301,23 +301,23 @@ export default function PartenaireProfilePage() {
   return (
     <div className="bg-secondary min-h-screen pb-20 md:pb-10">
       <header className="bg-card border-b border-theme sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-4">
+          <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-5">
               {partenaire.logo_url ? (
                 <img
                   src={getImageUrl(partenaire.logo_url)}
                   alt={partenaire.nom}
-                  className="h-12 w-12 rounded-xl object-cover border border-theme bg-card"
+                  className="h-16 w-16 sm:h-12 sm:w-12 rounded-2xl object-cover border border-theme bg-card"
                 />
               ) : (
-                <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-sm font-semibold text-primary">
+                <div className="h-16 w-16 sm:h-12 sm:w-12 rounded-2xl bg-secondary flex items-center justify-center text-lg sm:text-sm font-semibold text-primary">
                   {(partenaire.nom || '?').slice(0, 1).toUpperCase()}
                 </div>
               )}
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-lg font-semibold text-primary truncate">{partenaire.nom}</span>
+                  <span className="text-2xl sm:text-lg font-semibold text-primary truncate">{partenaire.nom}</span>
                   {badges.includes('verifie') && (
                     <span className="inline-flex items-center gap-1 rounded-full border border-accent bg-secondary px-2 py-0.5 text-[11px] text-accent">
                       <FiCheckCircle className="h-3 w-3" />
@@ -330,7 +330,7 @@ export default function PartenaireProfilePage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-sm text-secondary">
+            <div className="flex flex-wrap items-center gap-5 text-sm text-secondary">
               <a href="#presentation" className="hover:text-primary">Présentation</a>
               <a href="#services" className="hover:text-primary">Services</a>
               <a href="#avis" className="hover:text-primary">Avis</a>
@@ -338,7 +338,7 @@ export default function PartenaireProfilePage() {
               <a href="#infos" className="hover:text-primary">Infos</a>
               <button
                 type="button"
-                className="btn-primary text-xs px-3 py-2"
+                className="btn-primary text-sm px-5 py-2"
                 onClick={handleOpenMessage}
               >
                 Collaborer
