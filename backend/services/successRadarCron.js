@@ -65,23 +65,44 @@ Règles strictes :
 - EXACTEMENT 20 produits dans le tableau "products"
 - Si tu ne peux pas finir, ferme proprement tous les objets JSON avec } et ]
 
-Génère EXACTEMENT 20 produits e-commerce RÉELS vendus en commerce en Afrique francophone (boutiques physiques et en ligne).
+Mission :
+- Génère EXACTEMENT 20 produits e-commerce RÉELS vendus en Afrique francophone.
+- 1 produit = 1 objet précis (pas de catégorie vague).
+- Nom générique EXACT, trouvable tel quel sur AliExpress/Minea.
+- Pas de services, abonnements ou offres immatérielles.
+- Doit résoudre un problème réel local (coupures d'électricité, chaleur, mobilité, sécurité, eau, enfants, etc.).
+- Achat impulsif possible, démontrable en vidéo, logistique simple.
+- Prix adapté au pouvoir d'achat africain.
+
+Catégories à couvrir (variété obligatoire) :
+Beauté & soins (non médicaux), Maison & cuisine, Mode & accessoires, Santé du quotidien (bien-être non médical),
+Énergie & solaire, Sécurité & protection, Enfants & bébés, Téléphones & accessoires, Vie quotidienne africaine (eau, chaleur, mobilité).
+
 IMPORTANT : Pas de produits "classiques" de dropshipping ou ultra-génériques déjà vus partout.
 Évite absolument : montres/bracelets connectés génériques, écouteurs Bluetooth basiques, bagues LED/anneaux lumineux, mini projecteurs, gaines amincissantes, brosses nettoyantes faciales génériques, lampes décoratives sans valeur claire.
 Privilégie des produits réellement vendus en commerce local avec une utilité évidente et des acheteurs récurrents.
 ${includeSkinCare ? `Inclus ${skinCareCount} produits Skin Care (category: "Skin Care") parmi les 20 produits.` : ''}
 
+Règles de prix (FCFA) :
+- Petit produit : 5 000 - 10 000 FCFA
+- Produit moyen : 10 000 - 25 000 FCFA
+- Produit premium : 25 000 - 50 000 FCFA
+
 Champs OBLIGATOIRES pour chaque produit :
-- name : Nom du produit
-- category : Catégorie (Skin Care, Électronique, Maison, Beauté, etc.)
+- name : Nom du produit (objet précis)
+- category : Catégorie produit (ex: Skin Care, Maison, Sécurité, Mode, Énergie & solaire)
+- problemCategory : Catégorie du problème (Beauté / Maison / Mode / Santé / Énergie / Sécurité / Enfants / Téléphones / Vie quotidienne)
 - problemSolved : Problème résolu
-- whyItWorks : Pourquoi ça marche
-- proofIndicator : Preuve de vente
+- whyItWorks : Pourquoi ça se vend en Afrique
+- proofIndicator : Preuve de vente ou signal de traction
 - supplierPrice : Prix fournisseur USD (2-20$)
 - sellingPrice : Prix vente FCFA (ex: 15000, 25000)
 - priceRange : Plage prix FCFA (ex: "15 000 - 20 000 FCFA")
 - countries : ["Sénégal", "Côte d'Ivoire", ...]
-- marketingAngle : peur, gain, confort, économie, statut
+- marketingAngle : Angle marketing principal (peur, gain, confort, économie, statut, etc.)
+- mainPlatform : Plateforme principale (FB Marketplace / TikTok / Ads / AliExpress)
+- adPotential : Potentiel publicitaire (Faible / Moyen / Fort ou "🔥 Fort")
+- videoType : Type de vidéo recommandé (démo, avant/après, témoignage, UGC)
 - scalingPotential : Faible, Moyen, Élevé
 - demandScore : 0-100
 - trendScore : 0-100
@@ -245,6 +266,10 @@ const normalizeProduct = (product, specialEvent = '') => {
     supplierPrice: Number.isFinite(product.supplierPrice) ? product.supplierPrice : 0,
     sellingPrice: Number.isFinite(product.sellingPrice) ? product.sellingPrice : 0,
     marketingAngle: product.marketingAngle?.toString().trim() || '',
+    problemCategory: product.problemCategory?.toString().trim() || '',
+    mainPlatform: product.mainPlatform?.toString().trim() || '',
+    adPotential: product.adPotential?.toString().trim() || '',
+    videoType: product.videoType?.toString().trim() || '',
     scalingPotential: product.scalingPotential?.toString().trim() || '',
     alibabaLink: alibabaLink,
     specialEvent: event,
@@ -377,6 +402,7 @@ const extractProductsFromTruncatedJSON = (content, specialEvent = '') => {
             const minimalProduct = {
               name: nameMatch[1],
               category: categoryMatch ? categoryMatch[1] : 'Autre',
+              problemCategory: '',
               problemSolved: '',
               whyItWorks: '',
               proofIndicator: '',
@@ -385,6 +411,9 @@ const extractProductsFromTruncatedJSON = (content, specialEvent = '') => {
               priceRange: '',
               countries: [],
               marketingAngle: '',
+              mainPlatform: '',
+              adPotential: '',
+              videoType: '',
               scalingPotential: 'Moyen',
               demandScore: 50,
               trendScore: 50,
@@ -487,7 +516,7 @@ const generateMissingProducts = async (existingProducts, specialEvent = '') => {
 Produits Skin Care acceptés : Crèmes éclaircissantes, Savons noirs, Masques visage, Sérums, Lotions hydratantes, Crèmes anti-âge, etc.
 IMPORTANT : Produits RÉELS vendus en commerce (physique et en ligne). Pas de produits classiques/ultra-génériques de dropshipping.
 Évite : montres/bracelets connectés génériques, écouteurs Bluetooth basiques, bagues LED, mini projecteurs, gaines amincissantes, brosses faciales génériques, lampes décoratives sans valeur claire.
-
+Respecte les prix FCFA (5 000 - 50 000) et ajoute les champs: problemCategory, mainPlatform, adPotential, videoType.
 Ces produits doivent être DIFFÉRENTS de ceux déjà générés. Format JSON: {"products":[...]}. Chaque produit doit avoir tous les champs requis.`;
   
   try {

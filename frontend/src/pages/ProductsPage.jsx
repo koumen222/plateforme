@@ -868,6 +868,64 @@ export default function ProductsPage() {
                 </div>
               </div>
 
+              {(selectedProduct.problemSolved ||
+                selectedProduct.whyItWorks ||
+                selectedProduct.problemCategory ||
+                selectedProduct.mainPlatform ||
+                selectedProduct.adPotential ||
+                selectedProduct.videoType ||
+                selectedProduct.marketingAngle) && (
+                <div className="mb-8">
+                  <div className="text-lg font-semibold text-primary mb-4">
+                    🔍 Insights produit
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {selectedProduct.problemSolved && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Problème résolu</div>
+                        <div className="text-primary">{selectedProduct.problemSolved}</div>
+                      </div>
+                    )}
+                    {selectedProduct.whyItWorks && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Pourquoi ça se vend</div>
+                        <div className="text-primary">{selectedProduct.whyItWorks}</div>
+                      </div>
+                    )}
+                    {selectedProduct.problemCategory && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Catégorie du problème</div>
+                        <div className="text-primary">{selectedProduct.problemCategory}</div>
+                      </div>
+                    )}
+                    {selectedProduct.mainPlatform && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Plateforme principale</div>
+                        <div className="text-primary">{selectedProduct.mainPlatform}</div>
+                      </div>
+                    )}
+                    {selectedProduct.adPotential && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Potentiel publicitaire</div>
+                        <div className="text-primary">{selectedProduct.adPotential}</div>
+                      </div>
+                    )}
+                    {selectedProduct.videoType && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Type de vidéo recommandé</div>
+                        <div className="text-primary">{selectedProduct.videoType}</div>
+                      </div>
+                    )}
+                    {selectedProduct.marketingAngle && (
+                      <div className="bg-secondary rounded-xl p-4">
+                        <div className="text-sm font-semibold text-secondary mb-2">Angle marketing</div>
+                        <div className="text-primary">{selectedProduct.marketingAngle}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Liste des pays */}
               {selectedProduct.countries && selectedProduct.countries.length > 0 && (
                 <div className="mb-8">

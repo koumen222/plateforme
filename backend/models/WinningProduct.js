@@ -76,6 +76,26 @@ const winningProductSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  problemCategory: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  mainPlatform: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  adPotential: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  videoType: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   scalingPotential: {
     type: String,
     enum: ['Faible', 'Moyen', 'Élevé', ''],
