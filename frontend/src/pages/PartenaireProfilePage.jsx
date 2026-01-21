@@ -300,72 +300,55 @@ export default function PartenaireProfilePage() {
 
   return (
     <div className="bg-secondary min-h-screen pb-20 md:pb-10">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-        <Link to="/partenaires" className="text-sm text-secondary hover:text-primary">
-          ← Retour aux partenaires
-        </Link>
-
-        <div className="rounded-3xl border border-theme bg-card p-6 shadow-sm">
-          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-4">
+      <header className="bg-card border-b border-theme sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-3">
               {partenaire.logo_url ? (
                 <img
                   src={getImageUrl(partenaire.logo_url)}
                   alt={partenaire.nom}
-                  className="h-16 w-16 rounded-2xl object-cover border border-theme"
+                  className="h-12 w-12 rounded-xl object-cover border border-theme bg-card"
                 />
               ) : (
-                <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center text-lg font-semibold text-primary">
+                <div className="h-12 w-12 rounded-xl bg-secondary flex items-center justify-center text-sm font-semibold text-primary">
                   {(partenaire.nom || '?').slice(0, 1).toUpperCase()}
                 </div>
               )}
-              <div>
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-2xl font-semibold text-primary">{partenaire.nom}</h1>
+                  <span className="text-lg font-semibold text-primary truncate">{partenaire.nom}</span>
                   {badges.includes('verifie') && (
-                    <span className="inline-flex items-center gap-1 rounded-full border border-accent bg-secondary px-2 py-0.5 text-xs text-accent">
-                      <FiCheckCircle className="h-3.5 w-3.5" />
+                    <span className="inline-flex items-center gap-1 rounded-full border border-accent bg-secondary px-2 py-0.5 text-[11px] text-accent">
+                      <FiCheckCircle className="h-3 w-3" />
                       Vérifié
                     </span>
                   )}
-                  <span className={`text-xs border rounded-full px-2 py-0.5 ${status.className}`}>
-                    {status.label}
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-theme bg-secondary px-2 py-0.5 text-xs text-secondary">
-                    {profileBadge}
-                  </span>
                 </div>
-                <div className="text-sm text-secondary mt-1">
-                  {domaines || '—'} • 📍 {partenaire.ville || '—'}
-                </div>
-                <div className="text-sm text-secondary mt-1">
-                  ⭐ {ratingAvg.toFixed(1)} ({ratingCount} avis)
+                <div className="text-xs text-secondary">
+                  {profileBadge} • ⭐ {ratingAvg.toFixed(1)} • 📍 {partenaire.ville || '—'}
                 </div>
               </div>
             </div>
-
-            <div className="hidden md:flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 text-sm text-secondary">
+              <a href="#presentation" className="hover:text-primary">Présentation</a>
+              <a href="#services" className="hover:text-primary">Services</a>
+              <a href="#avis" className="hover:text-primary">Avis</a>
+              <a href="#photos" className="hover:text-primary">Photos</a>
+              <a href="#infos" className="hover:text-primary">Infos</a>
               <button
                 type="button"
-                className="btn-primary text-sm px-4 py-2"
+                className="btn-primary text-xs px-3 py-2"
                 onClick={handleOpenMessage}
               >
-                Collaborer avec ce partenaire
+                Collaborer
               </button>
-              {contactLink && (
-                <a
-                  href={contactLink}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-secondary text-sm px-4 py-2"
-                  onClick={() => trackContact('whatsapp')}
-                >
-                  Contacter via WhatsApp
-                </a>
-              )}
             </div>
           </div>
         </div>
+      </header>
+
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -383,14 +366,48 @@ export default function PartenaireProfilePage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
           <div className="space-y-6">
-            <div className="rounded-3xl border border-theme bg-card p-6">
+            <section id="presentation" className="rounded-3xl border border-theme bg-card p-6">
               <h2 className="text-lg font-semibold text-primary">Présentation</h2>
               <p className="text-sm text-secondary mt-3">
                 {partenaire.description_courte || 'Présentation à venir.'}
               </p>
-            </div>
+            </section>
 
-            <div className="rounded-3xl border border-theme bg-card p-6">
+            <section id="services" className="rounded-3xl border border-theme bg-card p-6">
+              <h2 className="text-lg font-semibold text-primary">Services</h2>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-secondary">
+                <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                  Spécialité : <span className="text-primary font-medium">{profileBadge}</span>
+                </div>
+                {domaines && (
+                  <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                    Domaines : <span className="text-primary font-medium">{domaines}</span>
+                  </div>
+                )}
+                {(partenaire.zones_couvertes || []).length > 0 && (
+                  <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                    Zones : <span className="text-primary font-medium">{partenaire.zones_couvertes.join(', ')}</span>
+                  </div>
+                )}
+                {partenaire.delais_moyens && (
+                  <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                    Délai moyen : <span className="text-primary font-medium">{partenaire.delais_moyens}</span>
+                  </div>
+                )}
+                {(partenaire.methodes_paiement || []).length > 0 && (
+                  <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                    Paiements : <span className="text-primary font-medium">{partenaire.methodes_paiement.join(', ')}</span>
+                  </div>
+                )}
+                {(partenaire.langues_parlees || []).length > 0 && (
+                  <div className="rounded-2xl border border-theme bg-secondary px-3 py-2">
+                    Langues : <span className="text-primary font-medium">{partenaire.langues_parlees.join(', ')}</span>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section id="avis" className="rounded-3xl border border-theme bg-card p-6">
               <h2 className="text-lg font-semibold text-primary">Avis clients</h2>
               <form onSubmit={handleReviewSubmit} className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
                 <input
@@ -459,10 +476,10 @@ export default function PartenaireProfilePage() {
                   ))}
                 </div>
               )}
-            </div>
+            </section>
 
             {galeriePhotos.length > 0 && (
-              <div className="space-y-4">
+              <section id="photos" className="space-y-4">
                 {galeriePhotos.map((photo, idx) => (
                   <img
                     key={`${photo}-${idx}`}
@@ -471,7 +488,7 @@ export default function PartenaireProfilePage() {
                     className="w-full aspect-square rounded-2xl object-cover border border-theme"
                   />
                 ))}
-              </div>
+              </section>
             )}
           </div>
 
@@ -487,7 +504,7 @@ export default function PartenaireProfilePage() {
                 ))}
               </div>
             </div>
-            <div>
+            <section id="infos">
               <h2 className="text-lg font-semibold text-primary">Informations clés</h2>
             <div className="mt-4 space-y-2 text-sm text-secondary">
               {infoItems.map((item) => (
@@ -499,7 +516,7 @@ export default function PartenaireProfilePage() {
                 </div>
               ))}
             </div>
-            </div>
+            </section>
             <div className="mt-6 space-y-2">
               {contactLink && (
                 <a

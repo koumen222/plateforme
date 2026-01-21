@@ -94,7 +94,14 @@ function App() {
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
           <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PartenairesCategoryPage /></PlatformLayout>} />
-          <Route path="/partenaires/:id" element={<PlatformLayout><PartenaireProfilePage /></PlatformLayout>} />
+          <Route
+            path="/partenaires/:id"
+            element={
+              <PlatformLayout showHeader={false} showFooter={false} showChatbot={false}>
+                <PartenaireProfilePage />
+              </PlatformLayout>
+            }
+          />
           <Route path="/recrutement" element={<PlatformLayout><RecrutementPage /></PlatformLayout>} />
           <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />
           <Route path="/analyseur-ia" element={<PlatformLayout><AIAdsAnalyzerPage /></PlatformLayout>} />
