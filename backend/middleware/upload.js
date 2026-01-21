@@ -6,16 +6,23 @@ import fs from 'fs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Créer le dossier uploads s'il n'existe pas
+// Créer les dossiers uploads s'ils n'existent pas
 const uploadsDir = path.join(__dirname, '..', 'uploads', 'courses');
+const partenairesUploadsDir = path.join(__dirname, '..', 'uploads', 'partenaires');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('📁 Dossier uploads créé:', uploadsDir);
 } else {
   console.log('📁 Dossier uploads existe déjà:', uploadsDir);
 }
+if (!fs.existsSync(partenairesUploadsDir)) {
+  fs.mkdirSync(partenairesUploadsDir, { recursive: true });
+  console.log('📁 Dossier uploads/partenaires créé:', partenairesUploadsDir);
+} else {
+  console.log('📁 Dossier uploads/partenaires existe déjà:', partenairesUploadsDir);
+}
 
-// Configuration du stockage
+// Configuration du stockage (cours)
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadsDir);
@@ -25,6 +32,18 @@ const storage = multer.diskStorage({
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
     cb(null, `course-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Configuration du stockage (partenaires)
+const partenaireStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, partenairesUploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    cb(null, `partenaire-${uniqueSuffix}${ext}`);
   }
 });
 
@@ -53,6 +72,27 @@ export const uploadCourseImage = multer({
 // Fonction pour obtenir le chemin public de l'image
 export const getImagePublicPath = (filename) => {
   return `/uploads/courses/${filename}`;
+};
+
+// Upload des photos de galerie partenaires
+export const uploadPartenaireGallery = multer({
+  storage: partenaireStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  },
+  fileFilter: fileFilter
+});
+
+export const uploadPartenaireLogo = multer({
+  storage: partenaireStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB max
+  },
+  fileFilter: fileFilter
+});
+
+export const getPartenaireImagePublicPath = (filename) => {
+  return `/uploads/partenaires/${filename}`;
 };
 
 // Créer le dossier uploads/pdf s'il n'existe pas

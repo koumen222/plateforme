@@ -13,7 +13,7 @@ const partenaireSchema = new mongoose.Schema({
   },
   domaine: {
     type: String,
-    enum: ['livreur', 'agence_livraison', 'transitaire', 'closeur', 'fournisseur', 'autre'],
+    enum: ['livreur', 'livreur_personnel', 'agence_livraison', 'transitaire', 'closeur', 'fournisseur', 'autre'],
     default: 'autre'
   },
   domaines_activite: {
@@ -99,6 +99,10 @@ const partenaireSchema = new mongoose.Schema({
     type: String,
     trim: true,
     default: ''
+  },
+  galerie_photos: {
+    type: [String],
+    default: []
   },
   stats: {
     contact_count: { type: Number, default: 0 },

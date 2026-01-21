@@ -447,6 +447,9 @@ export default function HomePage() {
                       </p>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="px-2 py-1 sm:px-3 sm:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap">
+                          {course.lessonsCount || 0} leçons
+                        </span>
+                        <span className="px-2 py-1 sm:px-3 sm:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap">
                           Vidéos HD
                         </span>
                         <span className="px-2 py-1 sm:px-3 sm:py-1 bg-accent/10 text-accent rounded-lg font-medium text-xs sm:text-sm whitespace-nowrap">

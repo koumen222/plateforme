@@ -42,6 +42,7 @@ const normalizeType = (value) => {
 
 const allowedDomaines = new Set([
   'livreur',
+  'livreur_personnel',
   'agence_livraison',
   'transitaire',
   'closeur',
@@ -201,7 +202,10 @@ router.post('/', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const { domaine, domaines, domaines_activite, pays, ville, type, disponibilite, note_min, verifie_only } = req.query;
-    const filter = { statut: 'approuve', autorisation_affichage: true };
+    const filter = { statut: 'approuve' };
+    if (verifie_only === 'true') {
+      filter.autorisation_affichage = true;
+    }
 
     const domainesFilters = normalizeDomaines(domaines_activite || domaines || domaine);
     if (domainesFilters.length) {
@@ -266,6 +270,9 @@ router.get('/:id', async (req, res) => {
     if (!partenaire) {
       return res.status(404).json({ error: 'Partenaire non trouvé' });
     }
+    if (partenaire.statut === 'suspendu') {
+      return res.status(404).json({ error: 'Partenaire non disponible' });
+    }
 
     const avis = await PartenaireAvis.find({
       partenaire_id: id,
@@ -311,12 +318,22 @@ router.post('/:id/avis', async (req, res) => {
       recommande: Boolean(recommande),
       auteur_nom: normalizeString(auteur_nom),
       auteur_email: normalizeString(auteur_email),
-      statut: 'en_attente'
+      statut: 'approuve'
     });
+
+    // Mettre à jour immédiatement la note moyenne + compteur
+    partenaire.stats = partenaire.stats || {};
+    const currentCount = Number(partenaire.stats.rating_count || 0);
+    const currentAvg = Number(partenaire.stats.rating_avg || 0);
+    const nextCount = currentCount + 1;
+    const nextAvg = ((currentAvg * currentCount) + numericNote) / nextCount;
+    partenaire.stats.rating_count = nextCount;
+    partenaire.stats.rating_avg = Number(nextAvg.toFixed(2));
+    await partenaire.save();
 
     res.status(201).json({
       success: true,
-      message: 'Merci pour votre avis. Il sera visible après validation.',
+      message: 'Merci pour votre avis. Il est désormais publié.',
       avis: avis.toObject()
     });
   } catch (error) {

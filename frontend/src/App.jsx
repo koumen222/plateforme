@@ -31,6 +31,7 @@ import HomePage from './pages/HomePage'
 import CoursesPage from './pages/CoursesPage'
 import RessourcesPdfPage from './pages/RessourcesPdfPage'
 import PartenairesPage from './pages/PartenairesPage'
+import PartenairesCategoryPage from './pages/PartenairesCategoryPage'
 import PartenaireProfilePage from './pages/PartenaireProfilePage'
 import RecrutementPage from './pages/RecrutementPage'
 import FileManagerPage from './pages/FileManagerPage'
@@ -38,6 +39,7 @@ import AndromedaAdsAnalyzerPage from './pages/AndromedaAdsAnalyzerPage'
 import AIAdsAnalyzerPage from './pages/AIAdsAnalyzerPage'
 import ConnectFacebook from './pages/ConnectFacebook'
 import CourseRouter from './pages/CourseRouter'
+import ChatbotPage from './pages/ChatbotPage'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
 
@@ -73,6 +75,7 @@ function App() {
       >
         <CleanUrlRedirect />
         <Routes>
+          <Route path="/chat" element={<ChatbotPage />} />
           {/* Routes publiques avec PlatformLayout (Header + Footer) */}
           <Route path="/login" element={<PlatformLayout><LoginPage /></PlatformLayout>} />
           <Route path="/landing" element={<PlatformLayout><LandingPage /></PlatformLayout>} />
@@ -90,6 +93,7 @@ function App() {
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
+          <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PartenairesCategoryPage /></PlatformLayout>} />
           <Route path="/partenaires/:id" element={<PlatformLayout><PartenaireProfilePage /></PlatformLayout>} />
           <Route path="/recrutement" element={<PlatformLayout><RecrutementPage /></PlatformLayout>} />
           <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />

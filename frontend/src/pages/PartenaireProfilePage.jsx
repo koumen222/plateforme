@@ -1,24 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
+import { FiCalendar, FiCheckCircle, FiClock, FiCompass, FiGlobe, FiMail, FiMapPin, FiMessageCircle, FiPhone } from 'react-icons/fi'
 import { CONFIG } from '../config/config'
+import { getImageUrl } from '../utils/imageUtils'
 
 const domaineLabel = (value) => {
   const labels = {
     livreur: 'Livreur',
+    livreur_personnel: 'Livreur personnel',
     agence_livraison: 'Agence de livraison',
     transitaire: 'Transitaire',
     closeur: 'Closeur',
     fournisseur: 'Fournisseur',
-    autre: 'Autre'
-  }
-  return labels[value] || value || '—'
-}
-
-const typeLabel = (value) => {
-  const labels = {
-    agence_livraison: 'Agence de livraison',
-    closeur: 'Closeur',
-    transitaire: 'Transitaire',
     autre: 'Autre'
   }
   return labels[value] || value || '—'
@@ -31,12 +24,48 @@ const formatDate = (value) => {
   return date.toLocaleDateString('fr-FR', { dateStyle: 'medium' })
 }
 
+const getStatusBadge = (value) => {
+  if (value === 'disponible') {
+    return { label: 'Disponible', className: 'bg-secondary text-accent border-accent' }
+  }
+  return { label: 'Occupé', className: 'bg-secondary text-secondary border-theme' }
+}
+
+const getProfileBadge = (value) => {
+  const labels = {
+    livreur: 'Livreur',
+    livreur_personnel: 'Livreur personnel',
+    agence_livraison: 'Agence de livraison',
+    transitaire: 'Transitaire',
+    closeur: 'Closeur',
+    fournisseur: 'Fournisseur',
+    autre: 'Autre'
+  }
+  return labels[value] || value || '—'
+}
+
 export default function PartenaireProfilePage() {
   const { id } = useParams()
   const [loading, setLoading] = useState(true)
   const [partenaire, setPartenaire] = useState(null)
   const [avis, setAvis] = useState([])
   const [error, setError] = useState('')
+  const [isMessageOpen, setIsMessageOpen] = useState(false)
+  const [messageText, setMessageText] = useState('Bonjour, je souhaite collaborer avec vous.')
+  const [contactForm, setContactForm] = useState({
+    nom: '',
+    telephone: '',
+    pays: '',
+    ville: ''
+  })
+  const [reviewForm, setReviewForm] = useState({
+    auteur_nom: '',
+    auteur_email: '',
+    note: '5',
+    commentaire: ''
+  })
+  const [reviewSending, setReviewSending] = useState(false)
+  const [reviewMessage, setReviewMessage] = useState('')
 
   useEffect(() => {
     const load = async () => {
@@ -66,11 +95,11 @@ export default function PartenaireProfilePage() {
     return `https://wa.me/${digits.replace('+', '')}`
   }
 
-  const getPhoneLink = (record) => {
-    const phone = record?.telephone || record?.whatsapp
-    if (!phone) return ''
-    const digits = phone.replace(/[^\d+]/g, '')
-    return `tel:${digits}`
+  const buildWhatsappLink = (record, message) => {
+    const base = getContactLink(record)
+    if (!base) return ''
+    const encoded = encodeURIComponent(message || '')
+    return base.includes('?') ? `${base}&text=${encoded}` : `${base}?text=${encoded}`
   }
 
   const trackContact = async (type, message) => {
@@ -85,31 +114,100 @@ export default function PartenaireProfilePage() {
     }
   }
 
-  const handlePlatformContact = async () => {
-    const message = window.prompt(`Message pour ${partenaire?.nom || 'ce partenaire'} :`)
-    if (!message || !message.trim()) return
-    await trackContact('plateforme', message.trim())
-    alert('✅ Message envoyé. Le partenaire vous recontactera.')
+  const handleOpenMessage = () => {
+    setMessageText('Bonjour, je souhaite collaborer avec vous.')
+    setContactForm({ nom: '', telephone: '', pays: '', ville: '' })
+    setIsMessageOpen(true)
   }
+
+  const handleSendWhatsapp = async () => {
+    const cleaned = messageText.trim()
+    if (!cleaned) return
+    const details = [
+      contactForm.nom && `Nom: ${contactForm.nom}`,
+      contactForm.telephone && `Téléphone: ${contactForm.telephone}`
+    ]
+      .filter(Boolean)
+      .join('\n')
+    const fullMessage = details ? `${cleaned}\n\n${details}` : cleaned
+    const link = buildWhatsappLink(partenaire, fullMessage)
+    if (!link) {
+      alert('⚠️ Numéro WhatsApp indisponible.')
+      return
+    }
+    await trackContact('whatsapp', fullMessage)
+    window.open(link, '_blank')
+    setIsMessageOpen(false)
+  }
+
+  const handleReviewSubmit = async (event) => {
+    event.preventDefault()
+    if (reviewSending) return
+    setReviewSending(true)
+    setReviewMessage('')
+    try {
+      const payload = {
+        note: Number(reviewForm.note),
+        commentaire: reviewForm.commentaire.trim(),
+        auteur_nom: reviewForm.auteur_nom.trim(),
+        auteur_email: reviewForm.auteur_email.trim()
+      }
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires/${id}/avis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l’envoi de l’avis.')
+      }
+      if (data.avis) {
+        setAvis((prev) => [data.avis, ...prev])
+      }
+      setReviewForm({
+        auteur_nom: '',
+        auteur_email: '',
+        note: '5',
+        commentaire: ''
+      })
+      setReviewMessage('✅ Merci ! Votre avis est maintenant publié.')
+    } catch (err) {
+      setReviewMessage(err.message || 'Erreur lors de l’envoi de l’avis.')
+    } finally {
+      setReviewSending(false)
+    }
+  }
+
+  const sortedAvis = useMemo(() => {
+    return [...avis].sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+  }, [avis])
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="admin-loading">Chargement...</div>
+      <div className="bg-secondary min-h-screen">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="animate-pulse space-y-4">
+            <div className="h-28 rounded-3xl bg-secondary" />
+            <div className="h-24 rounded-2xl bg-secondary" />
+            <div className="h-40 rounded-2xl bg-secondary" />
+          </div>
+        </div>
       </div>
     )
   }
 
   if (error || !partenaire) {
     return (
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="admin-empty">
-          <div className="admin-empty-icon">⚠️</div>
-          <h3>Impossible de charger le profil</h3>
-          <p>{error || 'Partenaire introuvable.'}</p>
-          <Link to="/partenaires" className="admin-btn admin-btn-primary mt-4">
-            Retour aux partenaires
-          </Link>
+      <div className="bg-secondary min-h-screen">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="rounded-3xl border border-theme bg-card p-10 text-center">
+            <div className="text-3xl mb-2">⚠️</div>
+            <h3 className="text-lg font-semibold text-primary">Impossible de charger le profil</h3>
+            <p className="text-sm text-secondary mt-2">{error || 'Partenaire introuvable.'}</p>
+            <Link to="/partenaires" className="btn-primary mt-4 inline-flex text-sm px-4 py-2">
+              Retour aux partenaires
+            </Link>
+          </div>
         </div>
       </div>
     )
@@ -121,123 +219,396 @@ export default function PartenaireProfilePage() {
     .join(', ')
   const badges = partenaire.badges || []
   const contactLink = getContactLink(partenaire)
-  const phoneLink = getPhoneLink(partenaire)
+  const status = getStatusBadge(partenaire.disponibilite)
+  const ratingAvg = partenaire.stats?.rating_avg || 0
+  const ratingCount = partenaire.stats?.rating_count || 0
+  const deliveryCount = partenaire.stats?.deliveries_count || partenaire.stats?.deliveries || '—'
+  const satisfactionRate = ratingAvg ? `${Math.round(ratingAvg * 20)}%` : '—'
+  const galeriePhotos = partenaire.galerie_photos || []
+  const categorie = partenaire.domaine || partenaire.type_partenaire || 'autre'
+  const profileBadge = getProfileBadge(categorie)
+
+  const isLivreur = ['livreur', 'livreur_personnel', 'agence_livraison'].includes(categorie)
+  const isTransitaire = categorie === 'transitaire'
+  const isCloseur = categorie === 'closeur'
+  const isFournisseur = categorie === 'fournisseur'
+
+  const baseInfoItems = [
+    { label: 'Pays', value: partenaire.pays || '—', icon: FiGlobe },
+    { label: 'Ville', value: partenaire.ville || '—', icon: FiMapPin },
+    { label: 'Téléphone', value: partenaire.telephone || '—', icon: FiPhone },
+    { label: 'WhatsApp', value: partenaire.whatsapp || '—', icon: FiMessageCircle },
+    { label: 'Email', value: partenaire.email || '—', icon: FiMail },
+    { label: 'Disponibilité', value: partenaire.disponibilite || '—', icon: FiClock },
+    { label: 'Validé le', value: formatDate(partenaire.approved_at), icon: FiCalendar }
+  ]
+
+  const infoItems = [
+    ...baseInfoItems,
+    ...(isLivreur || isTransitaire || isFournisseur
+      ? [
+          {
+            label: 'Zones',
+            value: (partenaire.zones_couvertes || []).join(', ') || '—',
+            icon: FiCompass,
+            hidden: !(partenaire.zones_couvertes || []).length
+          }
+        ]
+      : [])
+  ].filter((item) => !item.hidden)
+
+  const highlightItems = [
+    { label: 'Spécialité', value: profileBadge },
+    ...(isLivreur || isTransitaire
+      ? [
+          {
+            label: 'Zones desservies',
+            value: (partenaire.zones_couvertes || []).join(', '),
+            hidden: !(partenaire.zones_couvertes || []).length
+          },
+          {
+            label: 'Délai moyen',
+            value: partenaire.delais_moyens || '',
+            hidden: !partenaire.delais_moyens
+          }
+        ]
+      : []),
+    ...(isCloseur
+      ? [
+          {
+            label: 'Langues parlées',
+            value: (partenaire.langues_parlees || []).join(', '),
+            hidden: !(partenaire.langues_parlees || []).length
+          }
+        ]
+      : []),
+    ...(isLivreur || isTransitaire || isFournisseur
+      ? [
+          {
+            label: 'Méthodes de paiement',
+            value: (partenaire.methodes_paiement || []).join(', '),
+            hidden: !(partenaire.methodes_paiement || []).length
+          },
+          {
+            label: 'Langues parlées',
+            value: (partenaire.langues_parlees || []).join(', '),
+            hidden: !(partenaire.langues_parlees || []).length
+          }
+        ]
+      : [])
+  ].filter((item) => !item.hidden)
 
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
-      <div className="summary-card-lesson">
-        <Link to="/partenaires" className="text-sm text-accent hover:underline">
+    <div className="bg-secondary min-h-screen pb-20 md:pb-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
+        <Link to="/partenaires" className="text-sm text-secondary hover:text-primary">
           ← Retour aux partenaires
         </Link>
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">{partenaire.nom}</h1>
-            <p className="text-secondary mt-2">{typeLabel(partenaire.type_partenaire)}</p>
-            <p className="text-sm text-secondary mt-1">{domaines || '—'}</p>
-          </div>
-          <div className="text-sm text-secondary">
-            ⭐ {partenaire.stats?.rating_avg || 0} ({partenaire.stats?.rating_count || 0} avis)
-          </div>
-        </div>
-        {badges.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs text-secondary">
-            {badges.includes('verifie') && <span className="px-2 py-1 rounded-lg bg-secondary">✅ Vérifié</span>}
-            {badges.includes('top') && <span className="px-2 py-1 rounded-lg bg-secondary">⭐ Top</span>}
-            {badges.includes('actif_mois') && <span className="px-2 py-1 rounded-lg bg-secondary">🕒 Actif</span>}
-            {badges.includes('reactif') && <span className="px-2 py-1 rounded-lg bg-secondary">🚀 Réactif</span>}
-          </div>
-        )}
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6">
-        <div className="space-y-6">
-          <div className="summary-card-lesson">
-            <h2 className="text-lg font-semibold">Présentation</h2>
-            <p className="text-secondary mt-2">{partenaire.description_courte || '—'}</p>
-          </div>
+        <div className="rounded-3xl border border-theme bg-card p-6 shadow-sm">
+          <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            <div className="flex items-center gap-4">
+              {partenaire.logo_url ? (
+                <img
+                  src={getImageUrl(partenaire.logo_url)}
+                  alt={partenaire.nom}
+                  className="h-16 w-16 rounded-2xl object-cover border border-theme"
+                />
+              ) : (
+                <div className="h-16 w-16 rounded-2xl bg-secondary flex items-center justify-center text-lg font-semibold text-primary">
+                  {(partenaire.nom || '?').slice(0, 1).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-semibold text-primary">{partenaire.nom}</h1>
+                  {badges.includes('verifie') && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-accent bg-secondary px-2 py-0.5 text-xs text-accent">
+                      <FiCheckCircle className="h-3.5 w-3.5" />
+                      Vérifié
+                    </span>
+                  )}
+                  <span className={`text-xs border rounded-full px-2 py-0.5 ${status.className}`}>
+                    {status.label}
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-theme bg-secondary px-2 py-0.5 text-xs text-secondary">
+                    {profileBadge}
+                  </span>
+                </div>
+                <div className="text-sm text-secondary mt-1">
+                  {domaines || '—'} • 📍 {partenaire.ville || '—'}
+                </div>
+                <div className="text-sm text-secondary mt-1">
+                  ⭐ {ratingAvg.toFixed(1)} ({ratingCount} avis)
+                </div>
+              </div>
+            </div>
 
-          <div className="summary-card-lesson">
-            <h2 className="text-lg font-semibold">Informations clés</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 text-sm text-secondary">
-              <div>🌍 Pays : {partenaire.pays || '—'}</div>
-              <div>📍 Ville : {partenaire.ville || '—'}</div>
-              <div>📞 Téléphone : {partenaire.telephone || '—'}</div>
-              <div>💬 WhatsApp : {partenaire.whatsapp || '—'}</div>
-              <div>✉️ Email : {partenaire.email || '—'}</div>
-              <div>🕒 Disponibilité : {partenaire.disponibilite || '—'}</div>
-              <div>🧭 Zones : {(partenaire.zones_couvertes || []).join(', ') || '—'}</div>
-              <div>⏱️ Délais : {partenaire.delais_moyens || '—'}</div>
-              <div>🗣️ Langues : {(partenaire.langues_parlees || []).join(', ') || '—'}</div>
-              <div>💳 Paiements : {(partenaire.methodes_paiement || []).join(', ') || '—'}</div>
-              <div>⭐ Expérience : {partenaire.annees_experience ?? '—'} ans</div>
-              <div>📅 Validé le : {formatDate(partenaire.approved_at)}</div>
+            <div className="hidden md:flex items-center gap-3">
+              <button
+                type="button"
+                className="btn-primary text-sm px-4 py-2"
+                onClick={handleOpenMessage}
+              >
+                Collaborer avec ce partenaire
+              </button>
+              {contactLink && (
+                <a
+                  href={contactLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary text-sm px-4 py-2"
+                  onClick={() => trackContact('whatsapp')}
+                >
+                  Contacter via WhatsApp
+                </a>
+              )}
             </div>
           </div>
+        </div>
 
-          <div className="summary-card-lesson">
-            <h2 className="text-lg font-semibold">Avis</h2>
-            {avis.length === 0 ? (
-              <div className="text-sm text-secondary mt-2">Aucun avis pour le moment.</div>
-            ) : (
-              <div className="mt-3 space-y-3">
-                {avis.map((item) => (
-                  <div key={item._id} className="border border-theme rounded-xl p-3">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold">⭐ {item.note}</span>
-                      <span className="text-secondary">{formatDate(item.created_at)}</span>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { label: 'Livraisons effectuées', value: deliveryCount },
+            { label: 'Délai moyen', value: partenaire.delais_moyens || '—' },
+            { label: 'Taux de satisfaction', value: satisfactionRate },
+            { label: 'Années d’expérience', value: partenaire.annees_experience ?? '—' }
+          ].map((item) => (
+            <div key={item.label} className="rounded-2xl border border-theme bg-card p-4">
+              <div className="text-xs text-secondary">{item.label}</div>
+              <div className="text-lg font-semibold text-primary mt-2">{item.value}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-6">
+          <div className="space-y-6">
+            <div className="rounded-3xl border border-theme bg-card p-6">
+              <h2 className="text-lg font-semibold text-primary">Présentation</h2>
+              <p className="text-sm text-secondary mt-3">
+                {partenaire.description_courte || 'Présentation à venir.'}
+              </p>
+            </div>
+
+            <div className="rounded-3xl border border-theme bg-card p-6">
+              <h2 className="text-lg font-semibold text-primary">Avis clients</h2>
+              <form onSubmit={handleReviewSubmit} className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  className="admin-input"
+                  placeholder="Votre nom"
+                  value={reviewForm.auteur_nom}
+                  onChange={(e) => setReviewForm((prev) => ({ ...prev, auteur_nom: e.target.value }))}
+                />
+                <input
+                  type="email"
+                  className="admin-input"
+                  placeholder="Votre email (optionnel)"
+                  value={reviewForm.auteur_email}
+                  onChange={(e) => setReviewForm((prev) => ({ ...prev, auteur_email: e.target.value }))}
+                />
+                <select
+                  className="admin-select"
+                  value={reviewForm.note}
+                  onChange={(e) => setReviewForm((prev) => ({ ...prev, note: e.target.value }))}
+                >
+                  {[5, 4, 3, 2, 1].map((value) => (
+                    <option key={value} value={value}>
+                      {value} ⭐
+                    </option>
+                  ))}
+                </select>
+                <div className="md:col-span-2">
+                  <textarea
+                    className="admin-textarea"
+                    rows="3"
+                    placeholder="Votre avis (optionnel)"
+                    value={reviewForm.commentaire}
+                    onChange={(e) => setReviewForm((prev) => ({ ...prev, commentaire: e.target.value }))}
+                  />
+                </div>
+                <div className="md:col-span-2 flex items-center gap-3">
+                  <button type="submit" className="btn-primary text-sm px-4 py-2" disabled={reviewSending}>
+                    {reviewSending ? 'Envoi...' : 'Laisser un avis'}
+                  </button>
+                  {reviewMessage && <span className="text-sm text-secondary">{reviewMessage}</span>}
+                </div>
+              </form>
+              {sortedAvis.length === 0 ? (
+                <div className="text-sm text-secondary mt-3">Aucun avis pour le moment.</div>
+              ) : (
+                <div className="mt-4 space-y-3">
+                  {sortedAvis.map((item) => (
+                    <div key={item._id} className="rounded-2xl border border-theme p-4">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="font-semibold text-primary">
+                          {item.auteur_nom || 'Client'}
+                        </div>
+                        <span className="text-secondary">{formatDate(item.created_at)}</span>
+                      </div>
+                      <div className="text-sm text-secondary mt-2">⭐ {item.note}</div>
+                      {item.commentaire && (
+                        <p className="text-sm text-secondary mt-2">{item.commentaire}</p>
+                      )}
+                      <div className="mt-2">
+                        <span className="inline-flex rounded-full border border-theme bg-secondary px-2 py-0.5 text-[11px] text-secondary">
+                          Client vérifié
+                        </span>
+                      </div>
                     </div>
-                    {item.commentaire && (
-                      <p className="text-sm text-secondary mt-2">{item.commentaire}</p>
-                    )}
-                    {item.recommande && (
-                      <div className="text-xs text-secondary mt-2">✅ Recommandé</div>
-                    )}
-                  </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {galeriePhotos.length > 0 && (
+              <div className="space-y-4">
+                {galeriePhotos.map((photo, idx) => (
+                  <img
+                    key={`${photo}-${idx}`}
+                    src={getImageUrl(photo)}
+                    alt={`Photo ${idx + 1}`}
+                    className="w-full aspect-square rounded-2xl object-cover border border-theme"
+                  />
                 ))}
               </div>
             )}
           </div>
-        </div>
 
-        <aside className="summary-card-lesson h-fit">
-          <h2 className="text-lg font-semibold">Contacter</h2>
-          <div className="mt-4 space-y-2">
-            {contactLink && (
-              <a
-                href={contactLink}
-                target="_blank"
-                rel="noreferrer"
-                className="admin-btn admin-btn-primary w-full"
-                onClick={() => trackContact('whatsapp')}
+          <aside className="rounded-3xl border border-theme bg-card p-6 h-fit space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Profil</h2>
+              <div className="mt-4 space-y-2 text-sm text-secondary">
+                {highlightItems.map((item) => (
+                  <div key={item.label} className="flex items-center justify-between gap-3">
+                    <span className="text-secondary">{item.label}</span>
+                    <span className="text-primary font-medium text-right">{item.value || '—'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-primary">Informations clés</h2>
+            <div className="mt-4 space-y-2 text-sm text-secondary">
+              {infoItems.map((item) => (
+                <div key={item.label} className="flex items-center gap-2">
+                  <item.icon className="h-4 w-4 text-accent" />
+                  <span>
+                    {item.label} : {item.value || '—'}
+                  </span>
+                </div>
+              ))}
+            </div>
+            </div>
+            <div className="mt-6 space-y-2">
+              {contactLink && (
+                <a
+                  href={contactLink}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-secondary block text-sm px-4 py-2 text-center"
+                  onClick={() => trackContact('whatsapp')}
+                >
+                  Contacter via WhatsApp
+                </a>
+              )}
+              <button
+                type="button"
+                className="btn-primary block w-full text-sm px-4 py-2"
+                onClick={handleOpenMessage}
               >
-                WhatsApp
-              </a>
-            )}
-            {phoneLink && (
-              <a
-                href={phoneLink}
-                className="admin-btn admin-btn-secondary w-full"
-                onClick={() => trackContact('appel')}
-              >
-                Appeler
-              </a>
-            )}
-            <button className="admin-btn admin-btn-secondary w-full" onClick={handlePlatformContact}>
-              Contacter via la plateforme
-            </button>
-            {partenaire.lien_contact && (
-              <a
-                href={partenaire.lien_contact}
-                target="_blank"
-                rel="noreferrer"
-                className="admin-btn admin-btn-secondary w-full"
-              >
-                Site / lien externe
-              </a>
-            )}
-          </div>
-        </aside>
+                Collaborer avec ce partenaire
+              </button>
+            </div>
+          </aside>
+        </div>
       </div>
+
+      <div className="fixed bottom-0 left-0 right-0 border-t border-theme bg-card p-3 md:hidden">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary flex-1 text-sm px-4 py-2"
+            onClick={handleOpenMessage}
+          >
+            Collaborer avec ce partenaire
+          </button>
+          {contactLink && (
+            <a
+              href={contactLink}
+              target="_blank"
+              rel="noreferrer"
+              className="btn-secondary text-sm px-3 py-2"
+              onClick={() => trackContact('whatsapp')}
+            >
+              WhatsApp
+            </a>
+          )}
+        </div>
+      </div>
+
+      {isMessageOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-theme bg-card p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-primary">Contacter le partenaire</h3>
+            <p className="text-sm text-secondary mt-1">
+              Le message sera envoyé via WhatsApp.
+            </p>
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="text"
+                className="admin-input"
+                placeholder="Votre nom"
+                value={contactForm.nom}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, nom: e.target.value }))}
+              />
+              <input
+                type="text"
+                className="admin-input"
+                placeholder="Votre numéro de téléphone"
+                value={contactForm.telephone}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, telephone: e.target.value }))}
+              />
+              <input
+                type="text"
+                className="admin-input"
+                placeholder="Pays"
+                value={contactForm.pays}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, pays: e.target.value }))}
+              />
+              <input
+                type="text"
+                className="admin-input"
+                placeholder="Ville"
+                value={contactForm.ville}
+                onChange={(e) => setContactForm((prev) => ({ ...prev, ville: e.target.value }))}
+              />
+            </div>
+            <textarea
+              className="admin-textarea mt-4"
+              rows="4"
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                className="btn-secondary text-sm px-4 py-2"
+                onClick={() => setIsMessageOpen(false)}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="btn-primary text-sm px-4 py-2"
+                onClick={handleSendWhatsapp}
+              >
+                Envoyer sur WhatsApp
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

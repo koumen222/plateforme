@@ -28,6 +28,10 @@ export default function AdminRessourcesPdfPage() {
   const [success, setSuccess] = useState('')
   const [editingId, setEditingId] = useState(null)
   const [editFormData, setEditFormData] = useState(null)
+  const categoryOptions = [
+    'Général',
+    ...new Set((ressourcesPdf || []).map((item) => item.category).filter(Boolean))
+  ]
 
   useEffect(() => {
     if (token) {
@@ -367,12 +371,16 @@ export default function AdminRessourcesPdfPage() {
             <div className="admin-form-row">
               <div className="admin-form-group">
                 <label>Catégorie</label>
-                <input
-                  type="text"
+                <select
                   value={formData.category}
                   onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                  placeholder="Ex: Marketing"
-                />
+                >
+                  {categoryOptions.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="admin-form-group">
@@ -511,11 +519,19 @@ export default function AdminRessourcesPdfPage() {
             <div className="admin-form-row">
               <div className="admin-form-group">
                 <label>Catégorie</label>
-                <input
-                  type="text"
-                  value={editFormData.category}
+                <select
+                  value={editFormData.category || 'Général'}
                   onChange={(e) => setEditFormData(prev => ({ ...prev, category: e.target.value }))}
-                />
+                >
+                  {[editFormData.category, ...categoryOptions]
+                    .filter(Boolean)
+                    .filter((value, index, self) => self.indexOf(value) === index)
+                    .map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                </select>
               </div>
 
               <div className="admin-form-group">

@@ -52,10 +52,36 @@ router.get('/', async (req, res) => {
       slug: c.slug, 
       priority: getCoursePriority(c) 
     })));
-    
+
+    const modules = await Module.find(
+      { courseId: { $in: sortedCourses.map(course => course._id) } },
+      { _id: 1, courseId: 1 }
+    );
+    const moduleIdsByCourse = new Map();
+    modules.forEach((moduleDoc) => {
+      const courseId = moduleDoc.courseId.toString();
+      if (!moduleIdsByCourse.has(courseId)) {
+        moduleIdsByCourse.set(courseId, []);
+      }
+      moduleIdsByCourse.get(courseId).push(moduleDoc._id);
+    });
+
+    const coursesWithLessonCounts = await Promise.all(
+      sortedCourses.map(async (course) => {
+        const moduleIds = moduleIdsByCourse.get(course._id.toString()) || [];
+        const lessonsCount = moduleIds.length > 0
+          ? await Lesson.countDocuments({ moduleId: { $in: moduleIds } })
+          : 0;
+        return {
+          ...course.toObject(),
+          lessonsCount
+        };
+      })
+    );
+
     res.json({
       success: true,
-      courses: sortedCourses
+      courses: coursesWithLessonCounts
     });
   } catch (error) {
     console.error('Erreur récupération cours:', error);

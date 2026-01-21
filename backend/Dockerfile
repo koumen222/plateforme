@@ -24,7 +24,7 @@ RUN npm install --production
 COPY . .
 
 # Créer le dossier uploads s'il n'existe pas
-RUN mkdir -p uploads/courses uploads/pdf
+RUN mkdir -p uploads/courses uploads/pdf uploads/partenaires
 
 # Exposer le port 3000
 EXPOSE 3000

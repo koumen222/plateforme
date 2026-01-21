@@ -54,14 +54,15 @@ export default function Header() {
 
   return (
     <>
-      {/* Bannière d'alerte */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 text-center text-sm font-medium">
-        <p>
-          Le couteau suisse de l'e-commerce en Afrique
-        </p>
-      </div>
-      <header className="sticky top-0 z-[100] bg-primary border-b border-theme backdrop-blur-lg bg-opacity-95">
-        <div className="container-startup">
+      <div className="fixed top-0 left-0 right-0 z-[100] md:static">
+        {/* Bannière d'alerte */}
+        <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 text-center text-sm font-medium">
+          <p>
+            Le couteau suisse de l'e-commerce en Afrique
+          </p>
+        </div>
+        <header className="bg-primary border-b border-theme backdrop-blur-lg bg-opacity-95 md:sticky md:top-0">
+          <div className="container-startup">
           {/* Desktop Header */}
           <div className="hidden md:flex items-center h-16 lg:h-20">
             <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
@@ -272,8 +273,10 @@ export default function Header() {
               </Link>
             )}
           </div>
-        </div>
-      </header>
+          </div>
+        </header>
+      </div>
+      <div className="h-[100px] md:hidden" aria-hidden="true" />
 
       {/* Menu mobile drawer */}
       <MobileMenu isOpen={isMobileMenuOpen} onClose={closeMobileMenu} />

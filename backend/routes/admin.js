@@ -2,7 +2,15 @@ import express from 'express';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
-import { uploadCourseImage, getImagePublicPath, uploadPdf, getPdfPublicPath } from '../middleware/upload.js';
+import {
+  uploadCourseImage,
+  getImagePublicPath,
+  uploadPdf,
+  getPdfPublicPath,
+  uploadPartenaireGallery,
+  uploadPartenaireLogo,
+  getPartenaireImagePublicPath
+} from '../middleware/upload.js';
 import User from '../models/User.js';
 import Course from '../models/Course.js';
 import Module from '../models/Module.js';
@@ -930,6 +938,62 @@ router.delete('/coaching-reservations/:id', async (req, res) => {
 // Routes partenaires
 // ============================================
 
+// POST /api/admin/partenaires - Créer un partenaire (admin)
+router.post('/partenaires', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const domaines = parseListParam(payload.domaines_activite || payload.domaines || payload.domaine)
+      .map(normalizeDomaine);
+    const typePartenaire = normalizeType(payload.type_partenaire || payload.type || payload.domaine);
+
+    if (!payload.nom || !payload.nom.toString().trim()) {
+      return res.status(400).json({ error: 'Nom requis' });
+    }
+    if (!domaines.length) {
+      return res.status(400).json({ error: 'Domaine requis' });
+    }
+
+    const statut = ['en_attente', 'approuve', 'suspendu'].includes(payload.statut)
+      ? payload.statut
+      : 'en_attente';
+    const autorisationAffichage = payload.autorisation_affichage !== undefined
+      ? Boolean(payload.autorisation_affichage)
+      : statut === 'approuve';
+
+    const partenaire = new Partenaire({
+      nom: payload.nom.toString().trim(),
+      type_partenaire: typePartenaire,
+      domaine: domaines[0],
+      domaines_activite: domaines,
+      description_courte: payload.description_courte ? payload.description_courte.toString().trim() : '',
+      pays: payload.pays ? payload.pays.toString().trim() : '',
+      ville: payload.ville ? payload.ville.toString().trim() : '',
+      telephone: payload.telephone ? payload.telephone.toString().trim() : '',
+      whatsapp: payload.whatsapp ? payload.whatsapp.toString().trim() : '',
+      email: payload.email ? payload.email.toString().trim() : '',
+      lien_contact: payload.lien_contact ? payload.lien_contact.toString().trim() : '',
+      disponibilite: payload.disponibilite ? normalizeToken(payload.disponibilite) : 'disponible',
+      autorisation_affichage: autorisationAffichage,
+      statut,
+      approved_at: statut === 'approuve' ? new Date() : null,
+      annees_experience: Number.isFinite(Number(payload.annees_experience))
+        ? Number(payload.annees_experience)
+        : null,
+      zones_couvertes: parseListParam(payload.zones_couvertes),
+      delais_moyens: payload.delais_moyens ? payload.delais_moyens.toString().trim() : '',
+      methodes_paiement: parseListParam(payload.methodes_paiement),
+      langues_parlees: parseListParam(payload.langues_parlees),
+      logo_url: payload.logo_url ? payload.logo_url.toString().trim() : ''
+    });
+
+    await partenaire.save();
+    res.status(201).json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
+  } catch (error) {
+    console.error('Erreur création partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de la création du partenaire' });
+  }
+});
+
 // GET /api/admin/partenaires - Liste + filtres
 router.get('/partenaires', async (req, res) => {
   try {
@@ -1122,6 +1186,85 @@ router.put('/partenaires/:id/refuse', async (req, res) => {
   } catch (error) {
     console.error('Erreur suspension partenaire:', error);
     res.status(500).json({ error: 'Erreur lors de la suspension' });
+  }
+});
+
+// POST /api/admin/partenaires/:id/gallery - Upload photos galerie partenaire
+router.post('/partenaires/:id/gallery', uploadPartenaireGallery.array('photos', 8), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+
+    const files = req.files || [];
+    if (!files.length) {
+      return res.status(400).json({ error: 'Aucune image envoyée' });
+    }
+
+    const photoPaths = files.map((file) => getPartenaireImagePublicPath(file.filename));
+    partenaire.galerie_photos = [...(partenaire.galerie_photos || []), ...photoPaths];
+    await partenaire.save();
+
+    res.json({
+      success: true,
+      galerie_photos: partenaire.galerie_photos
+    });
+  } catch (error) {
+    console.error('Erreur upload galerie partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'upload des photos' });
+  }
+});
+
+// DELETE /api/admin/partenaires/:id/gallery - Supprimer une photo de galerie
+router.delete('/partenaires/:id/gallery', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { photo } = req.body || {};
+    if (!photo) {
+      return res.status(400).json({ error: 'Photo manquante' });
+    }
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+
+    const gallery = Array.isArray(partenaire.galerie_photos) ? partenaire.galerie_photos : [];
+    partenaire.galerie_photos = gallery.filter((item) => item !== photo);
+    await partenaire.save();
+
+    res.json({ success: true, galerie_photos: partenaire.galerie_photos });
+  } catch (error) {
+    console.error('Erreur suppression photo galerie:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// POST /api/admin/partenaires/:id/logo - Upload logo partenaire
+router.post('/partenaires/:id/logo', uploadPartenaireLogo.single('logo'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const partenaire = await Partenaire.findById(id);
+    if (!partenaire) {
+      return res.status(404).json({ error: 'Partenaire non trouvé' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'Aucun fichier envoyé' });
+    }
+
+    const logoPath = getPartenaireImagePublicPath(req.file.filename);
+    partenaire.logo_url = logoPath;
+    await partenaire.save();
+
+    res.json({
+      success: true,
+      logo_url: partenaire.logo_url
+    });
+  } catch (error) {
+    console.error('Erreur upload logo partenaire:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'upload du logo' });
   }
 });
 
