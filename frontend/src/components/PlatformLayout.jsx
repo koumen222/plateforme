@@ -15,13 +15,15 @@ export default function PlatformLayout({
 
   useEffect(() => {
     if (loading) return
+    const dismissed = localStorage.getItem('promo_video_dismissed') === '1'
+    if (dismissed) return
     const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
     const shouldShow = !isAuthenticated || isPending
     if (!shouldShow) return
 
     const timer = setTimeout(() => {
       setShowPromo(true)
-    }, 3000)
+    }, 5000)
 
     return () => clearTimeout(timer)
   }, [isAuthenticated, user, loading])
@@ -49,6 +51,7 @@ export default function PlatformLayout({
   }, [showPromo])
 
   const handleClosePromo = () => {
+    localStorage.setItem('promo_video_dismissed', '1')
     setShowPromo(false)
   }
 
