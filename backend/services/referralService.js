@@ -105,8 +105,19 @@ export const createReferralFromRequest = async ({ userId, req }) => {
 
   // Débloquer immédiatement l'accès du parrain, même si le filleul est encore pending
   await User.updateOne(
-    { _id: referrer._id, referralAccessUnlocked: { $ne: true } },
-    { $set: { referralAccessUnlocked: true, referralUnlockedAt: new Date() } }
+    {
+      _id: referrer._id,
+      status: { $ne: 'blocked' },
+      accountStatus: { $ne: 'blocked' }
+    },
+    {
+      $set: {
+        referralAccessUnlocked: true,
+        referralUnlockedAt: new Date(),
+        status: 'active',
+        accountStatus: 'active'
+      }
+    }
   );
 
   return referral;
