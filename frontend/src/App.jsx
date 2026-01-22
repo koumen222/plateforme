@@ -63,6 +63,21 @@ function CleanUrlRedirect() {
   return null
 }
 
+function ReferralCapture() {
+  const location = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search)
+    const ref = params.get('ref')
+    if (!ref) return
+    const normalized = ref.trim().toLowerCase()
+    if (!/^[a-f0-9]{8,20}$/.test(normalized)) return
+    localStorage.setItem('referral_code', normalized)
+  }, [location.search])
+
+  return null
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -74,6 +89,7 @@ function App() {
         }}
       >
         <CleanUrlRedirect />
+        <ReferralCapture />
         <Routes>
           <Route path="/chat" element={<ChatbotPage />} />
           {/* Routes publiques avec PlatformLayout (Header + Footer) */}

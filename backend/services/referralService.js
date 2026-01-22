@@ -24,6 +24,9 @@ export const isReferralEnabled = () => REFERRAL_SYSTEM_ENABLED;
 
 export const getReferralCodeFromRequest = (req) => {
   const queryCode = typeof req.query?.ref === 'string' ? req.query.ref.trim() : '';
+  const headerCode = typeof req.headers?.['x-referral-code'] === 'string'
+    ? req.headers['x-referral-code'].trim()
+    : '';
   const cookieCode = typeof req.cookies?.[REFERRAL_COOKIE_NAME] === 'string'
     ? req.cookies[REFERRAL_COOKIE_NAME].trim()
     : '';
@@ -31,7 +34,7 @@ export const getReferralCodeFromRequest = (req) => {
     ? req.session.referralCode.trim()
     : '';
 
-  const code = queryCode || cookieCode || sessionCode;
+  const code = queryCode || headerCode || cookieCode || sessionCode;
   return isReferralCodeValid(code) ? code : null;
 };
 

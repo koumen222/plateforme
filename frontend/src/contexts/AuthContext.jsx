@@ -182,10 +182,16 @@ export function AuthProvider({ children }) {
     try {
       console.log('📤 Envoi inscription:', { name: name.trim(), email, phoneNumber: phoneNumber.trim() });
       
+      const storedReferral = localStorage.getItem('referral_code')
+      const referralHeader = storedReferral && /^[a-f0-9]{8,20}$/i.test(storedReferral)
+        ? storedReferral
+        : null
+
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(referralHeader ? { 'X-Referral-Code': referralHeader } : {})
         },
         body: JSON.stringify({ 
           name: name.trim(), 
@@ -243,6 +249,9 @@ export function AuthProvider({ children }) {
       setUser(userData)
       localStorage.setItem('token', newToken)
       localStorage.setItem('user', JSON.stringify(userData))
+      if (referralHeader) {
+        localStorage.removeItem('referral_code')
+      }
       
       // Vérifier que les données sont bien stockées
       const storedUser = JSON.parse(localStorage.getItem('user'));
