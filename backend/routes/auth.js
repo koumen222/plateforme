@@ -2,6 +2,12 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
+import {
+  buildAccessFlags,
+  createReferralFromRequest,
+  ensureReferralCodeForUser,
+  maybeValidateReferralForUser
+} from '../services/referralService.js';
 
 const router = express.Router();
 
@@ -190,6 +196,13 @@ router.post('/register', async (req, res) => {
     });
     
     await user.save();
+
+    try {
+      await ensureReferralCodeForUser(user._id);
+      await createReferralFromRequest({ userId: user._id, req });
+    } catch (referralError) {
+      console.warn('⚠️ Parrainage ignoré (register):', referralError.message);
+    }
     
     // Recharger l'utilisateur depuis la base pour s'assurer d'avoir toutes les données
     const savedUser = await User.findById(user._id).lean();
@@ -215,6 +228,7 @@ router.post('/register', async (req, res) => {
     );
 
     // S'assurer que toutes les données sont présentes
+    const accessFlags = buildAccessFlags(savedUser);
     const userResponse = {
       id: savedUser._id.toString(),
       _id: savedUser._id.toString(),
@@ -223,7 +237,10 @@ router.post('/register', async (req, res) => {
       phoneNumber: savedUser.phoneNumber ? savedUser.phoneNumber.trim() : '',
       status: savedUser.status || 'pending',
       role: savedUser.role || 'student',
-      createdAt: savedUser.createdAt || new Date()
+      createdAt: savedUser.createdAt || new Date(),
+      referralCode: savedUser.referralCode || null,
+      referralAccessUnlocked: Boolean(savedUser.referralAccessUnlocked),
+      accessGranted: accessFlags.hasAccess
     };
 
     // Validation finale avant envoi
@@ -320,6 +337,16 @@ router.post('/login', async (req, res) => {
     // Le frontend gérera les restrictions selon user.status
 
     // Générer le token JWT
+    try {
+      const ensuredCode = await ensureReferralCodeForUser(user._id);
+      if (ensuredCode) {
+        user.referralCode = ensuredCode;
+      }
+      await maybeValidateReferralForUser(user._id);
+    } catch (referralError) {
+      console.warn('⚠️ Parrainage ignoré (login):', referralError.message);
+    }
+
     const token = jwt.sign(
       { userId: user._id, email: user.email, status: user.status, role: user.role },
       JWT_SECRET,
@@ -327,6 +354,7 @@ router.post('/login', async (req, res) => {
     );
 
     // S'assurer que le nom est bien présent
+    const accessFlags = buildAccessFlags(user);
     const userResponse = {
       id: user._id.toString(),
       _id: user._id.toString(),
@@ -335,7 +363,10 @@ router.post('/login', async (req, res) => {
       phoneNumber: user.phoneNumber || '',
       status: user.status,
       role: user.role,
-      createdAt: user.createdAt
+      createdAt: user.createdAt,
+      referralCode: user.referralCode || null,
+      referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
+      accessGranted: accessFlags.hasAccess
     };
 
     console.log(`✅ Réponse login - Nom: "${userResponse.name}"`);
@@ -478,12 +509,20 @@ router.put('/change-password', authenticate, async (req, res) => {
 // GET /api/user/me - Récupérer les données de l'utilisateur connecté (pour synchronisation)
 router.get('/user/me', authenticate, async (req, res) => {
   try {
+    try {
+      await ensureReferralCodeForUser(req.user._id);
+      await maybeValidateReferralForUser(req.user._id);
+    } catch (referralError) {
+      console.warn('⚠️ Parrainage ignoré (me):', referralError.message);
+    }
+
     const user = await User.findById(req.user._id).select('-password');
     
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
+    const accessFlags = buildAccessFlags(user);
     res.json({
       success: true,
       user: {
@@ -497,7 +536,10 @@ router.get('/user/me', authenticate, async (req, res) => {
         emailVerified: user.emailVerified,
         role: user.role,
         authProvider: user.authProvider,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        referralCode: user.referralCode || null,
+        referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
+        accessGranted: accessFlags.hasAccess
       }
     });
   } catch (error) {

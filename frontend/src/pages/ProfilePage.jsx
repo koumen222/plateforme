@@ -15,6 +15,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editName, setEditName] = useState('')
   const [editPhoneNumber, setEditPhoneNumber] = useState('')
+  const [referralInfo, setReferralInfo] = useState(null)
+  const [referralLoading, setReferralLoading] = useState(false)
 
   useEffect(() => {
     // Log pour déboguer
@@ -30,6 +32,10 @@ export default function ProfilePage() {
       navigate('/login', { state: { from: { pathname: '/profil' } } })
     } else if (user.status === 'active' && token) {
       fetchProgress()
+    }
+
+    if (user && token) {
+      fetchReferralInfo()
     }
 
     // Rafraîchir les données utilisateur périodiquement pour détecter les changements de statut
@@ -116,6 +122,37 @@ export default function ProfilePage() {
     setEditPhoneNumber(user.phoneNumber || '')
     setIsEditing(true)
     setMessage({ type: '', text: '' })
+  }
+
+  const fetchReferralInfo = async () => {
+    if (!token) return
+    setReferralLoading(true)
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/referrals/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setReferralInfo(data)
+      }
+    } catch (error) {
+      console.error('Erreur chargement parrainage:', error)
+    } finally {
+      setReferralLoading(false)
+    }
+  }
+
+  const handleCopyReferral = async () => {
+    if (!referralInfo?.referralLink) return
+    try {
+      await navigator.clipboard.writeText(referralInfo.referralLink)
+      setMessage({ type: 'success', text: 'Lien d’affiliation copié ✅' })
+    } catch (error) {
+      console.error('Erreur copie lien:', error)
+      setMessage({ type: 'error', text: 'Impossible de copier le lien. Essayez manuellement.' })
+    }
   }
 
   const handleCancelEdit = () => {
@@ -335,6 +372,64 @@ export default function ProfilePage() {
             </div>
           )}
         </div>
+
+        {referralLoading && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 lg:p-8 mb-6 text-gray-500 dark:text-gray-400 italic">
+            Chargement de votre lien d’affiliation...
+          </div>
+        )}
+
+        {!referralLoading && referralInfo?.enabled && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 lg:p-8 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">🤝 Parrainage</h2>
+              <span className={`text-xs font-semibold uppercase tracking-wide ${
+                referralInfo.status === 'unlocked' ? 'text-green-600 dark:text-green-400' : 'text-gray-500 dark:text-gray-400'
+              }`}>
+                {referralInfo.status === 'unlocked' ? 'Débloqué' : 'En attente'}
+              </span>
+            </div>
+
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Partagez votre lien d’affiliation pour débloquer l’accès.
+            </p>
+
+            <div className="field-profile">
+              <label>Lien d’affiliation</label>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="text"
+                  readOnly
+                  value={referralInfo.referralLink || ''}
+                  className="input-profile flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={handleCopyReferral}
+                  className="btn-profile-primary"
+                  disabled={!referralInfo.referralLink}
+                >
+                  📋 Copier
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+              <div className="card-profile-stat">
+                <div className="text-2xl font-bold text-brand dark:text-brand-400 mb-2">
+                  {referralInfo.pendingCount || 0}
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">En attente</div>
+              </div>
+              <div className="card-profile-stat">
+                <div className="text-2xl font-bold text-brand dark:text-brand-400 mb-2">
+                  {referralInfo.validatedCount || 0}
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide">Validés</div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {user.status !== 'active' && (!user.subscriptionExpiry || new Date(user.subscriptionExpiry) <= new Date()) && (
           <div className="notice-profile notice-profile-pending">

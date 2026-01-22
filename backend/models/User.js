@@ -16,6 +16,12 @@ const userSchema = new mongoose.Schema({
     trim: true,
     match: [/^\S+@\S+\.\S+$/, 'Email invalide']
   },
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    trim: true
+  },
   phone: {
     type: String,
     trim: true,
@@ -42,6 +48,14 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'active', 'blocked'],
     default: 'pending'
+  },
+  referralAccessUnlocked: {
+    type: Boolean,
+    default: false
+  },
+  referralUnlockedAt: {
+    type: Date,
+    default: null
   },
   authProvider: {
     type: String,

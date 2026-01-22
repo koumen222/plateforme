@@ -93,7 +93,8 @@ export default function AdminPartenairesPage() {
     delais_moyens: '',
     methodes_paiement: '',
     langues_parlees: '',
-    logo_url: ''
+    logo_url: '',
+    is_sponsored: false
   })
   const [formData, setFormData] = useState(getEmptyForm)
   const [editingId, setEditingId] = useState(null)
@@ -189,7 +190,8 @@ export default function AdminPartenairesPage() {
       delais_moyens: partenaire.delais_moyens || '',
       methodes_paiement: (partenaire.methodes_paiement || []).join(', '),
       langues_parlees: (partenaire.langues_parlees || []).join(', '),
-      logo_url: partenaire.logo_url || ''
+      logo_url: partenaire.logo_url || '',
+      is_sponsored: Boolean(partenaire.is_sponsored)
     })
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -242,11 +244,40 @@ export default function AdminPartenairesPage() {
             delais_moyens: data.partenaire.delais_moyens || '',
             methodes_paiement: (data.partenaire.methodes_paiement || []).join(', '),
             langues_parlees: (data.partenaire.langues_parlees || []).join(', '),
-            logo_url: data.partenaire.logo_url || ''
+            logo_url: data.partenaire.logo_url || '',
+            is_sponsored: Boolean(data.partenaire.is_sponsored)
           })
         } else {
           resetForm()
         }
+  const toggleSponsored = async (partenaire) => {
+    if (!token) return
+    try {
+      const response = await fetch(
+        `${CONFIG.BACKEND_URL}/api/admin/partenaires/${partenaire._id}`,
+        {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ is_sponsored: !partenaire.is_sponsored })
+        }
+      )
+      if (response.ok) {
+        showNotification(
+          partenaire.is_sponsored ? 'Sponsor retiré' : 'Partenaire sponsorisé'
+        )
+        fetchPartenaires()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        showNotification(data.error || 'Erreur mise à jour', 'error')
+      }
+    } catch (error) {
+      showNotification('Erreur mise à jour', 'error')
+    }
+  }
+
       } else {
         const data = await response.json().catch(() => ({}))
         showNotification(data.error || 'Erreur enregistrement', 'error')
@@ -739,6 +770,14 @@ export default function AdminPartenairesPage() {
           <label className="flex items-center gap-2 text-sm text-secondary">
             <input
               type="checkbox"
+              checked={Boolean(formData.is_sponsored)}
+              onChange={(e) => updateFormValue('is_sponsored', e.target.checked)}
+            />
+            Sponsoriser ce partenaire
+          </label>
+          <label className="flex items-center gap-2 text-sm text-secondary">
+            <input
+              type="checkbox"
               checked={formData.autorisation_affichage}
               onChange={(e) => updateFormValue('autorisation_affichage', e.target.checked)}
             />
@@ -1000,6 +1039,11 @@ export default function AdminPartenairesPage() {
                         >
                           {isVerified(partenaire) ? 'Vérifié' : 'Non vérifié'}
                         </span>
+                        {partenaire.is_sponsored && (
+                          <span className="inline-flex items-center rounded-full border border-accent bg-secondary px-2 py-0.5 text-accent">
+                            Sponsorisé
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-secondary mt-2">
                         Affichage : {partenaire.autorisation_affichage ? 'Oui' : 'Non'}
@@ -1017,6 +1061,12 @@ export default function AdminPartenairesPage() {
                           className="admin-btn admin-btn-sm admin-btn-secondary"
                         >
                           Modifier
+                        </button>
+                        <button
+                          onClick={() => toggleSponsored(partenaire)}
+                          className="admin-btn admin-btn-sm admin-btn-primary"
+                        >
+                          {partenaire.is_sponsored ? 'Retirer sponsor' : 'Sponsoriser'}
                         </button>
                         <button
                           onClick={() => toggleVerification(partenaire)}

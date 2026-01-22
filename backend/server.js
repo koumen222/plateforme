@@ -24,8 +24,10 @@ import { fileURLToPath } from "url";
 import { connectDB } from "./config/database.js";
 import { configurePassport } from "./config/passport.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
+import { referralCapture } from "./middleware/referralCapture.js";
 import User from "./models/User.js";
 import jwt from "jsonwebtoken";
+import { buildAccessFlags, ensureReferralCodeForUser, maybeValidateReferralForUser } from "./services/referralService.js";
 
 // Charger les variables d'environnement depuis .env (doit être en premier)
 dotenv.config();
@@ -47,6 +49,7 @@ let metaRoutes = null;
 let facebookAuthRoutes = null;
 let recrutementRoutes = null;
 let partenairesRoutes = null;
+let referralsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -114,6 +117,7 @@ console.log('   - Credentials: activé');
 
 app.use(express.json());
 app.use(cookieParser());
+app.use(referralCapture);
 
 // Corriger les fautes fréquentes dans les routes (fallback)
 app.use((req, res, next) => {
@@ -429,12 +433,20 @@ app.get("/api/test-routes", (req, res) => {
 // Route GET /api/auth/me - Récupérer l'utilisateur depuis le cookie
 app.get("/api/auth/me", authenticate, async (req, res) => {
   try {
+    try {
+      await ensureReferralCodeForUser(req.user._id);
+      await maybeValidateReferralForUser(req.user._id);
+    } catch (referralError) {
+      console.warn('⚠️ Parrainage ignoré (auth/me):', referralError.message);
+    }
+
     const user = await User.findById(req.user._id).select('-password');
     
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
+    const accessFlags = buildAccessFlags(user);
     res.json({
       success: true,
       user: {
@@ -448,7 +460,10 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
         emailVerified: user.emailVerified,
         role: user.role,
         authProvider: user.authProvider,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        referralCode: user.referralCode || null,
+        referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
+        accessGranted: accessFlags.hasAccess
       }
     });
   } catch (error) {
@@ -788,6 +803,16 @@ const startServer = async () => {
       console.log('✅ Routes d\'authentification chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement auth.js:', error.message);
+    }
+
+    // 1bis. Routes parrainage (optionnelles)
+    try {
+      const referralsModule = await import("./routes/referrals.js");
+      referralsRoutes = referralsModule.default;
+      app.use("/api", referralsRoutes);
+      console.log('✅ Routes parrainage chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement referrals.js:', error.message);
     }
     
     // 2. Routes vidéos

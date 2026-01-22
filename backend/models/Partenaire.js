@@ -104,6 +104,10 @@ const partenaireSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  is_sponsored: {
+    type: Boolean,
+    default: false
+  },
   stats: {
     contact_count: { type: Number, default: 0 },
     response_rate: { type: Number, default: 0 },

@@ -201,6 +201,8 @@ export default function PartenairesCategoryPage() {
   const sortedPartenaires = useMemo(() => {
     const items = [...partenaires]
     return items.sort((a, b) => {
+      const sponsoredA = a.is_sponsored ? 1 : 0
+      const sponsoredB = b.is_sponsored ? 1 : 0
       const verifiedA = (a.badges || []).includes('verifie') ? 1 : 0
       const verifiedB = (b.badges || []).includes('verifie') ? 1 : 0
       const ratingA = a.stats?.rating_avg || 0
@@ -210,6 +212,7 @@ export default function PartenairesCategoryPage() {
       const reactA = (a.badges || []).includes('reactif') ? 1 : 0
       const reactB = (b.badges || []).includes('reactif') ? 1 : 0
 
+      if (sponsoredA !== sponsoredB) return sponsoredB - sponsoredA
       if (verifiedA !== verifiedB) return verifiedB - verifiedA
       if (sortBy === 'note') return ratingB - ratingA
       if (sortBy === 'reactivite') return reactB - reactA || ratingB - ratingA
@@ -458,6 +461,11 @@ export default function PartenairesCategoryPage() {
                               <span className="inline-flex items-center gap-1 rounded-full border border-accent bg-secondary px-2 py-0.5 text-[11px] text-accent">
                                 <FiCheckCircle className="h-3 w-3" />
                                 Vérifié
+                              </span>
+                            )}
+                            {partenaire.is_sponsored && (
+                              <span className="inline-flex items-center rounded-full border border-accent bg-secondary px-2 py-0.5 text-[11px] text-accent">
+                                Sponsorisé
                               </span>
                             )}
                           </div>

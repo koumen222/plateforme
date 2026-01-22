@@ -959,6 +959,7 @@ router.post('/partenaires', async (req, res) => {
     const autorisationAffichage = payload.autorisation_affichage !== undefined
       ? Boolean(payload.autorisation_affichage)
       : statut === 'approuve';
+    const isSponsored = payload.is_sponsored !== undefined ? Boolean(payload.is_sponsored) : false;
 
     const partenaire = new Partenaire({
       nom: payload.nom.toString().trim(),
@@ -983,7 +984,8 @@ router.post('/partenaires', async (req, res) => {
       delais_moyens: payload.delais_moyens ? payload.delais_moyens.toString().trim() : '',
       methodes_paiement: parseListParam(payload.methodes_paiement),
       langues_parlees: parseListParam(payload.langues_parlees),
-      logo_url: payload.logo_url ? payload.logo_url.toString().trim() : ''
+      logo_url: payload.logo_url ? payload.logo_url.toString().trim() : '',
+      is_sponsored: isSponsored
     });
 
     await partenaire.save();
@@ -1103,6 +1105,9 @@ router.put('/partenaires/:id', async (req, res) => {
     }
     if (payload.logo_url !== undefined) {
       partenaire.logo_url = payload.logo_url.toString().trim();
+    }
+    if (payload.is_sponsored !== undefined) {
+      partenaire.is_sponsored = Boolean(payload.is_sponsored);
     }
     if (payload.plan !== undefined) {
       partenaire.monetisation = partenaire.monetisation || {};
