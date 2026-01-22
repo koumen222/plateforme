@@ -95,13 +95,21 @@ export const createReferralFromRequest = async ({ userId, req }) => {
 
   const userAgent = req.headers['user-agent'] || null;
 
-  return await Referral.create({
+  const referral = await Referral.create({
     referrerId: referrer._id,
     referredId,
     status: 'pending',
     ipAddress,
     userAgent
   });
+
+  // Débloquer immédiatement l'accès du parrain, même si le filleul est encore pending
+  await User.updateOne(
+    { _id: referrer._id, referralAccessUnlocked: { $ne: true } },
+    { $set: { referralAccessUnlocked: true, referralUnlockedAt: new Date() } }
+  );
+
+  return referral;
 };
 
 export const maybeValidateReferralForUser = async (userOrId) => {
