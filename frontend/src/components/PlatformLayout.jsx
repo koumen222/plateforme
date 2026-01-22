@@ -64,7 +64,7 @@ export default function PlatformLayout({
       </div>
 
       {showPromo && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pb-6 pt-20 sm:items-center sm:pt-6">
           <div className="w-full max-w-3xl rounded-2xl bg-white p-4 shadow-xl dark:bg-gray-900">
             <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <h3 className="text-xl font-semibold text-gray-900 dark:text-white sm:text-2xl">
