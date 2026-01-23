@@ -40,6 +40,7 @@ import AIAdsAnalyzerPage from './pages/AIAdsAnalyzerPage'
 import ConnectFacebook from './pages/ConnectFacebook'
 import CourseRouter from './pages/CourseRouter'
 import ChatbotPage from './pages/ChatbotPage'
+import VideoShowcasePage from './pages/VideoShowcasePage'
 import { lessons } from './data/lessons'
 import { useEffect } from 'react'
 
@@ -126,6 +127,7 @@ function App() {
           <Route path="/mes-fichiers" element={<PlatformLayout><PrivateRoute><FileManagerPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
+          <Route path="/videos-guides" element={<VideoShowcasePage />} />
           
           {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
           <Route
