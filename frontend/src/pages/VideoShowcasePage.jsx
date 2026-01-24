@@ -31,7 +31,7 @@ export default function VideoShowcasePage() {
   const activeVideo = VIDEOS.find((video) => video.id === activeId) || VIDEOS[0]
 
   return (
-    <div className="min-h-screen bg-slate-950 px-4 py-10 text-white">
+    <div className="min-h-screen bg-slate-950 px-4 py-10 pb-24 text-white md:pb-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col gap-2">
           <span className="text-xs font-semibold uppercase tracking-[0.3em] text-white/50">

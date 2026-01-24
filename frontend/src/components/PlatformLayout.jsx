@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link, useLocation } from 'react-router-dom'
 import Header from './Header'
 import Footer from './Footer'
 import Chatbot from './Chatbot'
@@ -11,7 +12,11 @@ export default function PlatformLayout({
   showChatbot = true
 }) {
   const { isAuthenticated, user, loading } = useAuth()
+  const location = useLocation()
   const [showPromo, setShowPromo] = useState(false)
+  const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
+  const isHome = location.pathname === '/' || location.pathname === '/home'
+  const showPendingNotice = isAuthenticated && isPending && isHome
 
   useEffect(() => {
     if (loading) return
@@ -59,7 +64,36 @@ export default function PlatformLayout({
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       <div className={showPromo ? 'pointer-events-none select-none' : ''}>
         {showHeader && <Header />}
-        <main className="flex-1 w-full">
+        {showPendingNotice && (
+          <div className="px-4 pt-3">
+            <Link
+              to="/profil"
+              className="block rounded-2xl border border-amber-200 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm"
+            >
+              Votre statut est encore en attente. Cliquez pour déverrouiller les accès.
+            </Link>
+          </div>
+        )}
+        {showPendingNotice && (
+          <div className="px-4 pt-3">
+            <div className="rounded-2xl border border-theme bg-card p-4 shadow-sm">
+              <p className="text-sm font-semibold text-primary">
+                Comment activer ton compte gratuitement sur la plateforme
+              </p>
+              <div className="mt-3 overflow-hidden rounded-2xl border border-theme bg-black">
+                <iframe
+                  title="Comment activer ton compte gratuitement sur la plateforme"
+                  src="https://player.vimeo.com/video/1157043180"
+                  className="aspect-video w-full"
+                  frameBorder="0"
+                  allow="autoplay; fullscreen; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          </div>
+        )}
+        <main className="flex-1 w-full pb-24 md:pb-0">
           {children}
         </main>
         {showFooter && <Footer className="hidden md:block" />}

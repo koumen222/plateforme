@@ -3,12 +3,14 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
-import { FiMenu, FiUser } from 'react-icons/fi'
+import { FiBell, FiMenu, FiMessageCircle, FiUser } from 'react-icons/fi'
 
 export default function Header() {
   const { isAuthenticated, user, logout } = useAuth()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const notificationCount = 3
+  const messageCount = 1
   const profileMenuRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
@@ -52,11 +54,26 @@ export default function Header() {
     return location.pathname.startsWith(path)
   }
 
+
+  const getMobileTitle = (pathname) => {
+    if (pathname === '/' || pathname === '/home') return 'Accueil'
+    if (pathname.startsWith('/cours') || pathname.startsWith('/course')) return 'Cours'
+    if (pathname.startsWith('/ressources-pdf')) return 'Ressources PDF'
+    if (pathname.startsWith('/produits-gagnants')) return 'Produits Gagnants'
+    if (pathname.startsWith('/generateur-pub')) return 'Générateur de Pub'
+    if (pathname.startsWith('/analyseur-ia')) return 'Analyseur IA'
+    if (pathname.startsWith('/communaute')) return 'Communauté'
+    if (pathname.startsWith('/profil')) return 'Profil'
+    if (pathname.startsWith('/commentaires')) return 'Commentaires'
+    if (pathname.startsWith('/chat')) return 'Messages'
+    return 'Ecom Starter'
+  }
+
   return (
     <>
       <div className="fixed top-0 left-0 right-0 z-[100] md:static">
         {/* Bannière d'alerte */}
-        <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 text-center text-sm font-medium">
+        <div className="hidden md:block bg-gradient-to-r from-purple-600 to-purple-700 text-white py-3 px-4 text-center text-sm font-medium">
           <p>
             Le couteau suisse de l'e-commerce en Afrique
           </p>
@@ -236,41 +253,90 @@ export default function Header() {
           </div>
 
           {/* Mobile Header */}
-          <div className="md:hidden flex items-center justify-between h-14 relative">
-            {/* Hamburger à gauche */}
-            <button
-              onClick={toggleMobileMenu}
-              className="flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors z-10"
-              aria-label="Menu mobile"
-            >
-              <FiMenu className="w-6 h-6 text-primary" />
-            </button>
-
-            {/* Logo centré absolu */}
-            <Link 
-              to="/" 
-              className="absolute left-1/2 transform -translate-x-1/2 flex items-center hover:opacity-80 transition-opacity"
-            >
-              <img src="/img/logo.svg" alt="Ecom Starter" className="h-7 w-auto" />
-            </Link>
-
-            {/* Icône compte à droite */}
+          <div className="md:hidden">
             {isAuthenticated ? (
-              <Link
-                to="/profil"
-                className="w-10 h-10 rounded-full bg-accent text-white flex items-center justify-center font-semibold text-sm hover:opacity-80 transition-opacity"
-                aria-label="Mon profil"
-              >
-                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
-              </Link>
+              <>
+                <div className="flex items-center justify-between px-4 pt-3">
+                  <button
+                    onClick={toggleMobileMenu}
+                    className="flex items-center justify-center rounded-xl bg-secondary p-2 text-primary transition-colors"
+                    aria-label="Menu mobile"
+                  >
+                    <FiMenu className="h-5 w-5" />
+                  </button>
+
+                  <div className="text-center">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.25em] text-secondary">Ecom</p>
+                    <h1 className="text-base font-semibold text-primary">{getMobileTitle(location.pathname)}</h1>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Link
+                      to="/commentaires"
+                      className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary"
+                      aria-label="Notifications"
+                    >
+                      <FiBell className="h-4 w-4" />
+                      {notificationCount > 0 && (
+                        <span className="absolute -right-1 -top-1 rounded-full border-2 border-white bg-red-500 px-1 py-0 text-[7px] font-semibold text-white">
+                          {notificationCount > 99 ? '99+' : notificationCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      to="/chat"
+                      className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary"
+                      aria-label="Messages"
+                    >
+                      <FiMessageCircle className="h-4 w-4" />
+                      {messageCount > 0 && (
+                        <span className="absolute -right-1 -top-1 rounded-full border-2 border-white bg-red-500 px-1 py-0 text-[7px] font-semibold text-white">
+                          {messageCount > 99 ? '99+' : messageCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      to="/profil"
+                      className="flex h-10 w-10 items-center justify-center rounded-full bg-accent text-sm font-semibold text-white"
+                      aria-label="Mon profil"
+                    >
+                      {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                    </Link>
+                  </div>
+                </div>
+                <div className="px-4 pb-3 pt-2">
+                  <input
+                    type="search"
+                    placeholder="Rechercher"
+                    className="w-full rounded-full border border-theme bg-white px-4 py-2 text-sm text-primary placeholder:text-secondary"
+                  />
+                </div>
+              </>
             ) : (
-              <Link
-                to="/login"
-                className="flex items-center justify-center p-2 rounded-lg hover:bg-secondary transition-colors"
-                aria-label="Se connecter"
-              >
-                <FiUser className="w-6 h-6 text-primary" />
-              </Link>
+              <div className="flex items-center justify-between px-4 py-3">
+                <button
+                  onClick={toggleMobileMenu}
+                  className="flex items-center justify-center rounded-lg p-2 hover:bg-secondary transition-colors"
+                  aria-label="Menu mobile"
+                >
+                  <FiMenu className="h-6 w-6 text-primary" />
+                </button>
+
+                <Link
+                  to="/"
+                  className="flex items-center hover:opacity-80 transition-opacity"
+                >
+                  <img src="/img/logo.svg" alt="Ecom Starter" className="h-7 w-auto" />
+                </Link>
+
+                <Link
+                  to="/login"
+                  className="flex items-center justify-center rounded-lg p-2 hover:bg-secondary transition-colors"
+                  aria-label="Se connecter"
+                >
+                  <FiUser className="h-6 w-6 text-primary" />
+                </Link>
+              </div>
             )}
           </div>
           </div>

@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { AuthProvider } from './contexts/AuthContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import Layout from './components/Layout'
 import PlatformLayout from './components/PlatformLayout'
@@ -28,6 +28,7 @@ import PaymentSuccessPage from './pages/PaymentSuccessPage'
 import PaymentFailedPage from './pages/PaymentFailedPage'
 import CheckoutPage from './pages/CheckoutPage'
 import HomePage from './pages/HomePage'
+import MobileHomePage from './pages/MobileHomePage'
 import CoursesPage from './pages/CoursesPage'
 import RessourcesPdfPage from './pages/RessourcesPdfPage'
 import PartenairesPage from './pages/PartenairesPage'
@@ -42,7 +43,8 @@ import CourseRouter from './pages/CourseRouter'
 import ChatbotPage from './pages/ChatbotPage'
 import VideoShowcasePage from './pages/VideoShowcasePage'
 import { lessons } from './data/lessons'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import MobileBottomNav from './components/mobile/MobileBottomNav'
 
 // Composant pour nettoyer l'URL des anciens paramètres token/user
 function CleanUrlRedirect() {
@@ -79,6 +81,55 @@ function ReferralCapture() {
   return null
 }
 
+function useIsMobile(breakpoint = 768) {
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return false
+    return window.matchMedia(`(max-width: ${breakpoint - 1}px)`).matches
+  })
+
+  useEffect(() => {
+    if (!window.matchMedia) return undefined
+    const media = window.matchMedia(`(max-width: ${breakpoint - 1}px)`)
+    const handler = (event) => setIsMobile(event.matches)
+    setIsMobile(media.matches)
+
+    if (media.addEventListener) {
+      media.addEventListener('change', handler)
+    } else {
+      media.addListener(handler)
+    }
+
+    return () => {
+      if (media.removeEventListener) {
+        media.removeEventListener('change', handler)
+      } else {
+        media.removeListener(handler)
+      }
+    }
+  }, [breakpoint])
+
+  return isMobile
+}
+
+function HomeSwitcher() {
+  const { isAuthenticated } = useAuth()
+  const isMobile = useIsMobile()
+
+  if (isMobile && isAuthenticated) {
+    return (
+      <PlatformLayout showFooter={false} showChatbot={false}>
+        <MobileHomePage />
+      </PlatformLayout>
+    )
+  }
+
+  return (
+    <PlatformLayout>
+      <HomePage />
+    </PlatformLayout>
+  )
+}
+
 function App() {
   return (
     <ThemeProvider>
@@ -102,8 +153,8 @@ function App() {
           <Route path="/checkout/:checkoutId" element={<PlatformLayout><CheckoutPage /></PlatformLayout>} />
           
           {/* Routes avec PlatformLayout (Header + Footer) */}
-          <Route path="/" element={<PlatformLayout><HomePage /></PlatformLayout>} />
-          <Route path="/home" element={<PlatformLayout><HomePage /></PlatformLayout>} />
+          <Route path="/" element={<HomeSwitcher />} />
+          <Route path="/home" element={<HomeSwitcher />} />
           <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
           <Route path="/ressources-pdf" element={<PlatformLayout><RessourcesPdfPage /></PlatformLayout>} />
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
@@ -164,6 +215,7 @@ function App() {
             <Route path="settings" element={<AdminSettingsPage />} />
           </Route>
         </Routes>
+        <MobileBottomNav />
       </Router>
       </AuthProvider>
     </ThemeProvider>
