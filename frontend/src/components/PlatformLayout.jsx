@@ -15,7 +15,7 @@ export default function PlatformLayout({
   const location = useLocation()
   const [showPromo, setShowPromo] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
-  const isPending = user?.status === 'waiting'
+  const isPending = user?.status === 'pending'
   const isHome = location.pathname === '/' || location.pathname === '/home'
   const showWelcomeNotice = isAuthenticated && isHome
   const showStatusNotice = isAuthenticated && isPending && isHome
@@ -34,7 +34,7 @@ export default function PlatformLayout({
     if (!isDesktop) return
     const dismissed = localStorage.getItem('promo_video_dismissed') === '1'
     if (dismissed) return
-    const isPending = user?.status === 'waiting'
+    const isPending = user?.status === 'pending'
     const shouldShow = !isAuthenticated || isPending
     if (!shouldShow) return
 
@@ -83,15 +83,32 @@ export default function PlatformLayout({
       <div className={showPromo ? 'pointer-events-none select-none' : ''}>
         {showHeader && <Header />}
         {noticeCount > 0 && (
-          <div className="md:hidden fixed left-0 right-0 top-14 z-[90]">
-            <div className="space-y-1 px-4">
+          <div className="md:hidden px-4 pt-2">
+            <div className="space-y-2">
               {showStatusNotice && (
                 <Link
                   to="/profil"
-                  className="block rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm"
+                  className="block rounded-lg bg-amber-100 px-3 py-2 text-sm font-semibold text-amber-900 shadow-sm line-clamp-2 leading-snug"
                 >
                   Statut: en attente. Cliquez pour déverrouiller les accès.
                 </Link>
+              )}
+              {showStatusNotice && (
+                <div className="overflow-hidden rounded-xl border border-amber-100 bg-white shadow-sm">
+                  <div className="px-3 py-2 text-sm font-semibold text-slate-700">
+                    Comment obtenir un accès gratuit sur la plateforme
+                  </div>
+                  <div className="aspect-video w-full overflow-hidden bg-black">
+                    <iframe
+                      title="Comment avoir un compte gratuit"
+                      src="https://player.vimeo.com/video/1157043180"
+                      className="h-full w-full"
+                      frameBorder="0"
+                      allow="autoplay; fullscreen; picture-in-picture"
+                      allowFullScreen
+                    />
+                  </div>
+                </div>
               )}
               {showWelcomeNotice && (
                 <div className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm">
