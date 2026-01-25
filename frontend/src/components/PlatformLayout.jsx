@@ -14,12 +14,22 @@ export default function PlatformLayout({
   const { isAuthenticated, user, loading } = useAuth()
   const location = useLocation()
   const [showPromo, setShowPromo] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
   const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
   const isHome = location.pathname === '/' || location.pathname === '/home'
   const showPendingNotice = isAuthenticated && isPending && isHome
 
   useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 768px)')
+    const update = () => setIsDesktop(mediaQuery.matches)
+    update()
+    mediaQuery.addEventListener('change', update)
+    return () => mediaQuery.removeEventListener('change', update)
+  }, [])
+
+  useEffect(() => {
     if (loading) return
+    if (!isDesktop) return
     const dismissed = localStorage.getItem('promo_video_dismissed') === '1'
     if (dismissed) return
     const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
@@ -34,6 +44,12 @@ export default function PlatformLayout({
   }, [isAuthenticated, user, loading])
 
   useEffect(() => {
+    if (!isDesktop) {
+      if (showPromo) {
+        setShowPromo(false)
+      }
+      return undefined
+    }
     if (showPromo) {
       const scrollY = window.scrollY || window.pageYOffset || 0
       document.body.style.overflow = 'hidden'
@@ -53,7 +69,7 @@ export default function PlatformLayout({
       }
     }
     return undefined
-  }, [showPromo])
+  }, [showPromo, isDesktop])
 
   const handleClosePromo = () => {
     localStorage.setItem('promo_video_dismissed', '1')
@@ -65,7 +81,7 @@ export default function PlatformLayout({
       <div className={showPromo ? 'pointer-events-none select-none' : ''}>
         {showHeader && <Header />}
         {showPendingNotice && (
-          <div className="px-4 pt-3">
+          <div className="px-4 pt-3 md:hidden">
             <Link
               to="/profil"
               className="block rounded-2xl border border-amber-200 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm"
@@ -75,7 +91,7 @@ export default function PlatformLayout({
           </div>
         )}
         {showPendingNotice && (
-          <div className="px-4 pt-3">
+          <div className="px-4 pt-3 md:hidden">
             <div className="rounded-2xl border border-theme bg-card p-4 shadow-sm">
               <p className="text-sm font-semibold text-primary">
                 Comment activer ton compte gratuitement sur la plateforme

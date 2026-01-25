@@ -98,9 +98,11 @@ Par défaut, les fichiers sont accessibles via:
 https://{bucket}.{account-id}.r2.cloudflarestorage.com/{key}
 ```
 
-Pour utiliser un custom domain:
-1. Configurez un custom domain dans Cloudflare R2
-2. Ajoutez `R2_PUBLIC_DOMAIN=votre-domaine.com` dans les variables
+Pour utiliser un domaine public R2 (bucket public) ou un custom domain:
+1. Configurez un bucket public (r2.dev) ou un custom domain dans Cloudflare R2
+2. Ajoutez l'une des variables suivantes:
+   - `R2_PUBLIC_DOMAIN=pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev`
+   - `R2_PUBLIC_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev`
 
 ## Support
 

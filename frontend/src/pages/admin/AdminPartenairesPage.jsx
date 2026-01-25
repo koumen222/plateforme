@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CONFIG } from '../../config/config'
-import { getImageUrl } from '../../utils/imageUtils'
+import { getImageUrl, handleImageError } from '../../utils/imageUtils'
 import { useAuth } from '../../contexts/AuthContext'
 
 const statutOptions = [
@@ -818,9 +818,7 @@ export default function AdminPartenairesPage() {
               src={getImageUrl(formData.logo_url)}
               alt="Logo partenaire"
               className="h-12 w-12 rounded-xl object-cover border border-theme"
-              onError={(event) => {
-                event.currentTarget.style.display = 'none'
-              }}
+              onError={handleImageError()}
             />
             Aperçu du logo
           </div>
@@ -876,6 +874,7 @@ export default function AdminPartenairesPage() {
                     src={getImageUrl(photo)}
                     alt={`Galerie ${idx + 1}`}
                     className="h-40 w-full rounded-2xl object-cover border border-theme"
+                    onError={handleImageError()}
                   />
                   <button
                     type="button"
@@ -1000,9 +999,7 @@ export default function AdminPartenairesPage() {
                             src={getImageUrl(partenaire.logo_url)}
                             alt={partenaire.nom}
                             className="h-10 w-10 rounded-xl object-cover border border-theme"
-                            onError={(event) => {
-                              event.currentTarget.style.display = 'none'
-                            }}
+                            onError={handleImageError()}
                           />
                         ) : (
                           <div className="h-10 w-10 rounded-xl bg-secondary text-primary flex items-center justify-center font-semibold">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
-import { getImageUrl } from '../../utils/imageUtils'
+import { getImageUrl, handleImageError } from '../../utils/imageUtils'
 import axios from 'axios'
 import { FiBook, FiUpload, FiDownload, FiEdit, FiTrash2, FiX, FiCheck } from 'react-icons/fi'
 
@@ -654,6 +654,7 @@ export default function AdminRessourcesPdfPage() {
                   src={getImageUrl(ressourcePdf.coverImage)}
                   alt={ressourcePdf.title}
                   className="admin-ressource-pdf-cover"
+                  onError={handleImageError()}
                 />
               )}
               <div className="admin-ressource-pdf-info">

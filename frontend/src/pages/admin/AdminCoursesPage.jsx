@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
-import { getImageUrl } from '../../utils/imageUtils'
+import { getImageUrl, handleImageError } from '../../utils/imageUtils'
 import axios from 'axios'
 
 export default function AdminCoursesPage() {
@@ -712,9 +712,7 @@ export default function AdminCoursesPage() {
                         borderRadius: '8px',
                         border: '1px solid var(--border-color)'
                       }}
-                      onError={(e) => {
-                        e.target.style.display = 'none'
-                      }}
+                      onError={handleImageError()}
                     />
                   </div>
                 )}
@@ -959,9 +957,7 @@ export default function AdminCoursesPage() {
                                         borderRadius: '8px',
                                         border: '1px solid var(--border-color)'
                                       }}
-                                      onError={(e) => {
-                                        e.target.style.display = 'none'
-                                      }}
+                                      onError={handleImageError()}
                                     />
                                   </div>
                                 )}
@@ -1048,9 +1044,7 @@ export default function AdminCoursesPage() {
                                     borderRadius: '8px',
                                     border: '1px solid var(--border-color)'
                                   }}
-                                  onError={(e) => {
-                                    e.target.style.display = 'none'
-                                  }}
+                                  onError={handleImageError()}
                                 />
                               </div>
                             )}

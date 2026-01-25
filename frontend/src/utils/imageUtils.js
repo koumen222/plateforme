@@ -40,3 +40,16 @@ export function getImageUrl(imagePath, defaultImage = '/img/fbads.svg') {
   return fullUrl
 }
 
+export function handleImageError(fallbackImage = null) {
+  return (event) => {
+    const img = event.currentTarget
+    if (img.dataset.fallbackApplied === '1') return
+    img.dataset.fallbackApplied = '1'
+    if (fallbackImage) {
+      img.src = fallbackImage
+    } else {
+      img.style.display = 'none'
+    }
+  }
+}
+

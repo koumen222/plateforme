@@ -18,6 +18,9 @@ R2_SECRET_ACCESS_KEY=votre-secret-access-key
 R2_BUCKET_NAME=nom-de-votre-bucket
 R2_ENDPOINT=https://votre-account-id.r2.cloudflarestorage.com  # Optionnel, généré automatiquement
 R2_PUBLIC_DOMAIN=votre-domaine-personnalise.com  # Optionnel, pour custom domain
+# Vous pouvez aussi fournir une URL complète ou un domaine public R2 :
+# R2_PUBLIC_DOMAIN=pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
+# R2_PUBLIC_URL=https://pub-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.r2.dev
 ```
 
 ### Variables alternatives (compatibilité Railway)

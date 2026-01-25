@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FiCheckCircle } from 'react-icons/fi'
 import { CONFIG } from '../config/config'
-import { getImageUrl } from '../utils/imageUtils'
+import { getImageUrl, handleImageError } from '../utils/imageUtils'
 
 const domaineOptions = [
   { value: 'all', label: 'Tous les domaines' },
@@ -448,6 +448,7 @@ export default function PartenairesCategoryPage() {
                             src={getImageUrl(partenaire.logo_url)}
                             alt={partenaire.nom}
                             className="h-12 w-12 rounded-full object-cover border border-theme"
+                            onError={handleImageError()}
                           />
                         ) : (
                           <div className="h-12 w-12 rounded-full bg-secondary flex items-center justify-center text-sm font-semibold text-primary">

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { FiCalendar, FiCheckCircle, FiClock, FiCompass, FiGlobe, FiMail, FiMapPin, FiMessageCircle, FiPhone } from 'react-icons/fi'
 import { CONFIG } from '../config/config'
-import { getImageUrl } from '../utils/imageUtils'
+import { getImageUrl, handleImageError } from '../utils/imageUtils'
 
 const domaineLabel = (value) => {
   const labels = {
@@ -309,6 +309,7 @@ export default function PartenaireProfilePage() {
                   src={getImageUrl(partenaire.logo_url)}
                   alt={partenaire.nom}
                   className="h-16 w-16 sm:h-12 sm:w-12 rounded-2xl object-cover border border-theme bg-card"
+                  onError={handleImageError()}
                 />
               ) : (
                 <div className="h-16 w-16 sm:h-12 sm:w-12 rounded-2xl bg-secondary flex items-center justify-center text-lg sm:text-sm font-semibold text-primary">
@@ -486,6 +487,7 @@ export default function PartenaireProfilePage() {
                     src={getImageUrl(photo)}
                     alt={`Photo ${idx + 1}`}
                     className="w-full aspect-square rounded-2xl object-cover border border-theme"
+                    onError={handleImageError()}
                   />
                 ))}
               </section>

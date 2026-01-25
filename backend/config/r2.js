@@ -36,15 +36,24 @@ export const getR2PublicUrl = (key) => {
   if (!R2_CONFIG.bucket || !R2_CONFIG.accountId) {
     return null;
   }
-  
+
   // Cloudflare R2 public URL format: https://<bucket>.<account-id>.r2.cloudflarestorage.com/<key>
-  // Ou si vous avez un custom domain: https://<custom-domain>/<key>
-  const customDomain = process.env.R2_PUBLIC_DOMAIN;
-  
-  if (customDomain) {
-    return `https://${customDomain}/${key}`;
+  // Ou si vous avez un custom domain/public bucket:
+  //   - https://pub-xxxx.r2.dev/<key> (bucket public)
+  //   - https://files.example.com/<key> (custom domain)
+  const publicBase =
+    process.env.R2_PUBLIC_URL ||
+    process.env.R2_PUBLIC_BASE_URL ||
+    process.env.R2_PUBLIC_DOMAIN;
+
+  if (publicBase) {
+    const trimmedBase = publicBase.replace(/\/+$/, '');
+    const baseWithProtocol = trimmedBase.startsWith('http://') || trimmedBase.startsWith('https://')
+      ? trimmedBase
+      : `https://${trimmedBase}`;
+    return `${baseWithProtocol}/${key}`;
   }
-  
+
   return `https://${R2_CONFIG.bucket}.${R2_CONFIG.accountId}.r2.cloudflarestorage.com/${key}`;
 };
 
