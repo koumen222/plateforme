@@ -1,17 +1,23 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../contexts/AuthContext'
+import { CONFIG } from '../config/config'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
 import { FiBell, FiMenu, FiMessageCircle, FiUser } from 'react-icons/fi'
 
 export default function Header() {
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user, token, logout } = useAuth()
   const [showProfileMenu, setShowProfileMenu] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationsLoading, setNotificationsLoading] = useState(false)
+  const [notificationsError, setNotificationsError] = useState('')
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const notificationCount = 3
+  const notificationCount = notifications.length
   const messageCount = 1
   const profileMenuRef = useRef(null)
+  const notificationRef = useRef(null)
   const navigate = useNavigate()
   const location = useLocation()
 
@@ -20,16 +26,57 @@ export default function Header() {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
         setShowProfileMenu(false)
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (!isAuthenticated || user?.status !== 'active' || !token) {
+      setNotifications([])
+      return
+    }
+
+    const fetchNotifications = async () => {
+      setNotificationsLoading(true)
+      setNotificationsError('')
+      try {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/comments`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        })
+        if (!response.ok) {
+          setNotificationsError('Impossible de charger les notifications.')
+          setNotifications([])
+          return
+        }
+        const data = await response.json()
+        setNotifications(Array.isArray(data.comments) ? data.comments : [])
+      } catch (error) {
+        setNotificationsError('Impossible de charger les notifications.')
+        setNotifications([])
+      } finally {
+        setNotificationsLoading(false)
+      }
+    }
+
+    fetchNotifications()
+  }, [isAuthenticated, user, token])
+
   const handleLogout = () => {
     logout()
     setShowProfileMenu(false)
+    setShowNotifications(false)
     setIsMobileMenuOpen(false)
     navigate('/login')
+  }
+
+  const toggleNotifications = () => {
+    setShowNotifications((prev) => !prev)
   }
 
   const toggleMobileMenu = () => {
@@ -271,18 +318,63 @@ export default function Header() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Link
-                      to="/commentaires"
-                      className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary"
-                      aria-label="Notifications"
-                    >
-                      <FiBell className="h-4 w-4" />
-                      {notificationCount > 0 && (
-                        <span className="absolute -right-1 -top-1 rounded-full border-2 border-white bg-red-500 px-1 py-0 text-[7px] font-semibold text-white">
-                          {notificationCount > 99 ? '99+' : notificationCount}
-                        </span>
+                    <div ref={notificationRef} className="relative">
+                      <button
+                        type="button"
+                        onClick={toggleNotifications}
+                        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary"
+                        aria-label="Notifications"
+                        aria-expanded={showNotifications}
+                      >
+                        <FiBell className="h-4 w-4" />
+                        {notificationCount > 0 && (
+                          <span className="absolute -right-1 -top-1 rounded-full border-2 border-white bg-red-500 px-1 py-0 text-[7px] font-semibold text-white">
+                            {notificationCount > 99 ? '99+' : notificationCount}
+                          </span>
+                        )}
+                      </button>
+                      {showNotifications && (
+                        <div className="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+                            <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                            <Link
+                              to="/commentaires"
+                              className="text-xs font-semibold text-accent"
+                              onClick={() => setShowNotifications(false)}
+                            >
+                              Voir tout
+                            </Link>
+                          </div>
+                          <div className="max-h-72 overflow-auto">
+                            {user?.status !== 'active' ? (
+                              <div className="px-4 py-4 text-xs text-slate-500">
+                                Compte en attente : les notifications seront disponibles une fois activé.
+                              </div>
+                            ) : notificationsLoading ? (
+                              <div className="px-4 py-4 text-xs text-slate-500">Chargement...</div>
+                            ) : notificationsError ? (
+                              <div className="px-4 py-4 text-xs text-rose-600">{notificationsError}</div>
+                            ) : notifications.length === 0 ? (
+                              <div className="px-4 py-4 text-xs text-slate-500">Aucune notification pour le moment.</div>
+                            ) : (
+                              notifications.slice(0, 5).map((comment) => (
+                                <Link
+                                  key={comment._id}
+                                  to="/commentaires"
+                                  onClick={() => setShowNotifications(false)}
+                                  className="block border-b border-slate-100 px-4 py-3 last:border-b-0 hover:bg-slate-50"
+                                >
+                                  <p className="text-xs font-semibold text-slate-900 line-clamp-1">
+                                    {comment.lessonTitle ? `Commentaire • ${comment.lessonTitle}` : 'Nouveau commentaire'}
+                                  </p>
+                                  <p className="mt-1 text-[11px] text-slate-500 line-clamp-2">{comment.content}</p>
+                                </Link>
+                              ))
+                            )}
+                          </div>
+                        </div>
                       )}
-                    </Link>
+                    </div>
                     <Link
                       to="/chat"
                       className="relative flex h-9 w-9 items-center justify-center rounded-full bg-secondary text-primary"
@@ -303,13 +395,6 @@ export default function Header() {
                       {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
                     </Link>
                   </div>
-                </div>
-                <div className="px-4 pb-3 pt-2">
-                  <input
-                    type="search"
-                    placeholder="Rechercher"
-                    className="w-full rounded-full border border-theme bg-white px-4 py-2 text-sm text-primary placeholder:text-secondary"
-                  />
                 </div>
               </>
             ) : (

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import axios from 'axios'
 import { CONFIG } from '../config/config'
-import { getImageUrl } from '../utils/imageUtils'
+import { getCourseCoverImage, getImageUrl } from '../utils/imageUtils'
 import { useAuth } from '../contexts/AuthContext'
 import { FiBook, FiTrendingUp, FiUsers } from 'react-icons/fi'
 
@@ -129,9 +129,12 @@ export default function MobileHomePage() {
 
   return (
     <div className="min-h-screen bg-slate-100">
-      <div className="mx-auto w-full max-w-md space-y-4 px-4 py-4">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Résumé rapide</p>
+      <div className="mx-auto w-full max-w-md space-y-6 px-4 py-4">
+        <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-sm backdrop-blur">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-900">Tableau de bord</p>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Résumé</span>
+          </div>
           <div className="mt-3 grid grid-cols-3 gap-2 text-center">
             <div className="rounded-xl border border-slate-200 bg-slate-50 px-2 py-2">
               <div className="text-lg font-semibold text-slate-900">{courses.length}</div>
@@ -149,151 +152,201 @@ export default function MobileHomePage() {
         </div>
 
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-400">Accès rapides</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-slate-900">Accès rapides</p>
+            <span className="text-[11px] text-slate-400">Raccourcis</span>
+          </div>
           <div className="mt-3 grid grid-cols-3 gap-2">
             <Link
               to="/cours"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-xs font-semibold text-slate-700"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 shadow-sm"
             >
-              <FiBook className="h-4 w-4" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-100 text-emerald-700">
+                <FiBook className="h-4 w-4" />
+              </span>
               Cours
             </Link>
             <Link
               to="/partenaires"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-xs font-semibold text-slate-700"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 shadow-sm"
             >
-              <FiUsers className="h-4 w-4" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                <FiUsers className="h-4 w-4" />
+              </span>
               Partenaires
             </Link>
             <Link
               to="/produits-gagnants"
-              className="flex flex-col items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-2 py-3 text-xs font-semibold text-slate-700"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2 py-3 text-xs font-semibold text-slate-700 shadow-sm"
             >
-              <FiTrendingUp className="h-4 w-4" />
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-purple-100 text-purple-700">
+                <FiTrendingUp className="h-4 w-4" />
+              </span>
               Produits
             </Link>
           </div>
         </div>
 
-        {loading ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Chargement des cours...
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Cours récents</p>
+              <p className="text-[11px] text-slate-500">Continue ta progression</p>
+            </div>
+            <Link to="/cours" className="text-xs font-semibold text-accent">
+              Voir tout
+            </Link>
           </div>
-        ) : visibleCourses.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Aucun cours disponible pour le moment.
-          </div>
-        ) : (
-          visibleCourses.map((course) => (
-            <Link
-              key={course._id || course.slug}
-              to={`/course/${course.slug}`}
-              className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
-            >
-              <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
-                <img
-                  src={course.coverImage ? getImageUrl(course.coverImage) : '/img/cours-2026.png'}
-                  alt={course.title}
-                  className="h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.src = '/img/cours-2026.png'
-                  }}
-                />
+          <div className="mt-3 space-y-3">
+            {loading ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Chargement des cours...
               </div>
-              <div className="flex-1">
-                <div className="flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-slate-900 line-clamp-2">{course.title}</h3>
-                  {course._isNew && (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-                      Nouveau
+            ) : visibleCourses.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Aucun cours disponible pour le moment.
+              </div>
+            ) : (
+              visibleCourses.map((course) => (
+                <Link
+                  key={course._id || course.slug}
+                  to={`/course/${course.slug}`}
+                  className="flex gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
+                >
+                  <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-xl bg-slate-100">
+                    <img
+                      src={getCourseCoverImage(course)}
+                      alt={course.title}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.src = '/img/cours-2026.png'
+                      }}
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-slate-900 line-clamp-2">{course.title}</h3>
+                      {course._isNew && (
+                        <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+                          Nouveau
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500 line-clamp-2">
+                      {course.description || 'Cours disponible sur la plateforme.'}
+                    </p>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      {course.lessonsCount || 0} leçons
+                    </div>
+                  </div>
+                </Link>
+              ))
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Partenaires récents</p>
+              <p className="text-[11px] text-slate-500">Des profils vérifiés</p>
+            </div>
+            <Link to="/partenaires" className="text-xs font-semibold text-accent">
+              Voir tout
+            </Link>
+          </div>
+          <div className="mt-3 space-y-3">
+            {partnersLoading ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Chargement des partenaires...
+              </div>
+            ) : visiblePartenaires.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Aucun partenaire disponible pour le moment.
+              </div>
+            ) : (
+              visiblePartenaires.map((partenaire) => {
+                const domaines = (partenaire.domaines_activite || [partenaire.domaine]).filter(Boolean)
+                const label = domaines.length ? domaines.map(domaineLabel).join(', ') : '—'
+                return (
+                  <Link
+                    key={partenaire._id}
+                    to={`/partenaires/${partenaire._id}`}
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
+                  >
+                    <div className="relative h-12 w-12 flex-shrink-0 rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600 flex items-center justify-center overflow-hidden">
+                      {(partenaire.nom || '?').slice(0, 1).toUpperCase()}
+                      {partenaire.logo_url && (
+                        <img
+                          src={getImageUrl(partenaire.logo_url)}
+                          alt={`Logo ${partenaire.nom || 'Partenaire'}`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                          onError={(event) => {
+                            event.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-900">{partenaire.nom || 'Partenaire'}</p>
+                      <p className="text-xs text-slate-500">{label}</p>
+                      <p className="text-[11px] text-slate-400">
+                        {partenaire.ville || '—'} {partenaire.pays ? `• ${partenaire.pays}` : ''}
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Produits gagnants</p>
+              <p className="text-[11px] text-slate-500">Sélection du moment</p>
+            </div>
+            <Link to="/produits-gagnants" className="text-xs font-semibold text-accent">
+              Voir tout
+            </Link>
+          </div>
+          <div className="mt-3 space-y-3">
+            {productsLoading ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Chargement des produits...
+              </div>
+            ) : visibleProducts.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Aucun produit disponible pour le moment.
+              </div>
+            ) : (
+              visibleProducts.map((product, index) => (
+                <Link
+                  key={`${product.name}-${index}`}
+                  to="/produits-gagnants"
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{product.name || 'Produit'}</p>
+                    <p className="text-xs text-slate-500">{product.category || 'Autre'}</p>
+                    {product.countries?.length ? (
+                      <p className="text-[11px] text-slate-400">
+                        {product.countries.slice(0, 2).join(', ')}
+                        {product.countries.length > 2 ? ` +${product.countries.length - 2}` : ''}
+                      </p>
+                    ) : null}
+                  </div>
+                  {product.status && (
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
+                      {product.status}
                     </span>
                   )}
-                </div>
-                <p className="mt-1 text-xs text-slate-500 line-clamp-2">
-                  {course.description || 'Cours disponible sur la plateforme.'}
-                </p>
-                <div className="mt-2 text-[11px] text-slate-500">
-                  {course.lessonsCount || 0} leçons
-                </div>
-              </div>
-            </Link>
-          ))
-        )}
-
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-          Partenaires récemment ajoutés
+                </Link>
+              ))
+            )}
+          </div>
         </div>
-
-        {partnersLoading ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Chargement des partenaires...
-          </div>
-        ) : visiblePartenaires.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Aucun partenaire disponible pour le moment.
-          </div>
-        ) : (
-          visiblePartenaires.map((partenaire) => {
-            const domaines = (partenaire.domaines_activite || [partenaire.domaine]).filter(Boolean)
-            const label = domaines.length ? domaines.map(domaineLabel).join(', ') : '—'
-            return (
-              <Link
-                key={partenaire._id}
-                to={`/partenaires/${partenaire._id}`}
-                className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
-              >
-                <div className="h-12 w-12 flex-shrink-0 rounded-2xl bg-slate-100 text-sm font-semibold text-slate-600 flex items-center justify-center">
-                  {(partenaire.nom || '?').slice(0, 1).toUpperCase()}
-                </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-slate-900">{partenaire.nom || 'Partenaire'}</p>
-                  <p className="text-xs text-slate-500">{label}</p>
-                  <p className="text-[11px] text-slate-400">
-                    {partenaire.ville || '—'} {partenaire.pays ? `• ${partenaire.pays}` : ''}
-                  </p>
-                </div>
-              </Link>
-            )
-          })
-        )}
-
-        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm">
-          Produits gagnants
-        </div>
-
-        {productsLoading ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Chargement des produits...
-          </div>
-        ) : visibleProducts.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-sm text-slate-500">
-            Aucun produit disponible pour le moment.
-          </div>
-        ) : (
-          visibleProducts.map((product, index) => (
-            <Link
-              key={`${product.name}-${index}`}
-              to="/produits-gagnants"
-              className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-slate-300"
-            >
-              <div>
-                <p className="text-sm font-semibold text-slate-900">{product.name || 'Produit'}</p>
-                <p className="text-xs text-slate-500">{product.category || 'Autre'}</p>
-                {product.countries?.length ? (
-                  <p className="text-[11px] text-slate-400">
-                    {product.countries.slice(0, 2).join(', ')}
-                    {product.countries.length > 2 ? ` +${product.countries.length - 2}` : ''}
-                  </p>
-                ) : null}
-              </div>
-              {product.status && (
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-semibold uppercase text-slate-600">
-                  {product.status}
-                </span>
-              )}
-            </Link>
-          ))
-        )}
       </div>
     </div>
   )

@@ -15,9 +15,11 @@ export default function PlatformLayout({
   const location = useLocation()
   const [showPromo, setShowPromo] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
-  const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
+  const isPending = user?.status === 'waiting'
   const isHome = location.pathname === '/' || location.pathname === '/home'
-  const showPendingNotice = isAuthenticated && isPending && isHome
+  const showWelcomeNotice = isAuthenticated && isHome
+  const showStatusNotice = isAuthenticated && isPending && isHome
+  const noticeCount = (showWelcomeNotice ? 1 : 0) + (showStatusNotice ? 1 : 0)
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(min-width: 768px)')
@@ -32,7 +34,7 @@ export default function PlatformLayout({
     if (!isDesktop) return
     const dismissed = localStorage.getItem('promo_video_dismissed') === '1'
     if (dismissed) return
-    const isPending = user?.status === 'pending' || user?.accountStatus === 'pending'
+    const isPending = user?.status === 'waiting'
     const shouldShow = !isAuthenticated || isPending
     if (!shouldShow) return
 
@@ -41,7 +43,7 @@ export default function PlatformLayout({
     }, 5000)
 
     return () => clearTimeout(timer)
-  }, [isAuthenticated, user, loading])
+  }, [isAuthenticated, user, loading, isDesktop])
 
   useEffect(() => {
     if (!isDesktop) {
@@ -80,36 +82,26 @@ export default function PlatformLayout({
     <div className="min-h-screen flex flex-col bg-white dark:bg-gray-900">
       <div className={showPromo ? 'pointer-events-none select-none' : ''}>
         {showHeader && <Header />}
-        {showPendingNotice && (
-          <div className="px-4 pt-3 md:hidden">
-            <Link
-              to="/profil"
-              className="block rounded-2xl border border-amber-200 bg-amber-100 px-4 py-3 text-sm font-semibold text-amber-900 shadow-sm"
-            >
-              Votre statut est encore en attente. Cliquez pour déverrouiller les accès.
-            </Link>
-          </div>
-        )}
-        {showPendingNotice && (
-          <div className="px-4 pt-3 md:hidden">
-            <div className="rounded-2xl border border-theme bg-card p-4 shadow-sm">
-              <p className="text-sm font-semibold text-primary">
-                Comment activer ton compte gratuitement sur la plateforme
-              </p>
-              <div className="mt-3 overflow-hidden rounded-2xl border border-theme bg-black">
-                <iframe
-                  title="Comment activer ton compte gratuitement sur la plateforme"
-                  src="https://player.vimeo.com/video/1157043180"
-                  className="aspect-video w-full"
-                  frameBorder="0"
-                  allow="autoplay; fullscreen; picture-in-picture"
-                  allowFullScreen
-                />
-              </div>
+        {noticeCount > 0 && (
+          <div className="md:hidden fixed left-0 right-0 top-14 z-[90]">
+            <div className="space-y-1 px-4">
+              {showStatusNotice && (
+                <Link
+                  to="/profil"
+                  className="block rounded-lg bg-amber-100 px-3 py-2 text-xs font-semibold text-amber-900 shadow-sm"
+                >
+                  Statut: en attente. Cliquez pour déverrouiller les accès.
+                </Link>
+              )}
+              {showWelcomeNotice && (
+                <div className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm">
+                  Bienvenue {user?.name ? `, ${user.name}` : 'sur la plateforme'}.
+                </div>
+              )}
             </div>
           </div>
         )}
-        <main className="flex-1 w-full pb-24 md:pb-0">
+        <main className="flex-1 w-full pb-24 md:pb-0 pt-2 md:pt-0">
           {children}
         </main>
         {showFooter && <Footer className="hidden md:block" />}

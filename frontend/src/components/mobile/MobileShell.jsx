@@ -9,13 +9,6 @@ export default function MobileShell({ title, children, rightSlot }) {
           </div>
           {rightSlot}
         </div>
-        <div className="px-4 pb-3">
-          <input
-            type="search"
-            placeholder="Rechercher"
-            className="w-full rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-700 placeholder:text-slate-400"
-          />
-        </div>
       </header>
       <main className="mx-auto flex w-full max-w-md flex-col gap-4 px-4 py-4">{children}</main>
     </div>

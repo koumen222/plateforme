@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
-import { getImageUrl } from '../utils/imageUtils'
+import { getCourseCoverImage } from '../utils/imageUtils'
 import axios from 'axios'
 import { FiBook, FiDownload } from 'react-icons/fi'
 
@@ -394,34 +394,7 @@ export default function HomePage() {
                   >
                     <div className="relative overflow-hidden h-48 sm:h-52 md:h-56 w-full">
                       <img
-                        src={
-                          course.slug?.toLowerCase().includes('tiktok') || 
-                          course.title?.toLowerCase().includes('tiktok')
-                            ? '/img/tiktok-ads-2026.png'
-                            : (course.slug?.toLowerCase().includes('facebook') || 
-                               course.title?.toLowerCase().includes('facebook'))
-                              ? '/img/facebook-ads-2026.png'
-                              : (course.slug?.toLowerCase().includes('shopify') || 
-                                 course.title?.toLowerCase().includes('shopify'))
-                                ? '/img/shopify-2026.png'
-                                : (course.slug?.toLowerCase().includes('creatives') || 
-                                   course.slug?.toLowerCase().includes('sora') ||
-                                   course.title?.toLowerCase().includes('creatives') ||
-                                   course.title?.toLowerCase().includes('sora') ||
-                                   course.title?.toLowerCase().includes('vidéo publicitaire'))
-                                  ? '/img/creatives-2026.png'
-                                  : (course.slug?.toLowerCase().includes('alibaba') || 
-                                     course.title?.toLowerCase().includes('alibaba'))
-                                    ? '/img/alibaba-2026.png'
-                                    : (course.slug?.toLowerCase().includes('produit') || 
-                                       course.slug?.toLowerCase().includes('recherche') ||
-                                       course.title?.toLowerCase().includes('produit') ||
-                                       course.title?.toLowerCase().includes('recherche'))
-                                      ? '/img/cours-2026.png'
-                                      : course.coverImage 
-                                        ? getImageUrl(course.coverImage)
-                                        : '/img/cours-2026.png'
-                        }
+                        src={getCourseCoverImage(course)}
                         alt={course.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {

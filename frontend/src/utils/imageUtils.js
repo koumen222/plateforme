@@ -40,6 +40,29 @@ export function getImageUrl(imagePath, defaultImage = '/img/fbads.svg') {
   return fullUrl
 }
 
+export function getCourseCoverImage(course, defaultImage = '/img/cours-2026.png') {
+  if (!course) return defaultImage
+
+  const slug = course.slug?.toLowerCase() || ''
+  const title = course.title?.toLowerCase() || ''
+  const match = (value) => slug.includes(value) || title.includes(value)
+
+  if (match('tiktok')) return '/img/tiktok-ads-2026.png'
+  if (match('facebook')) return '/img/facebook-ads-2026.png'
+  if (match('shopify')) return '/img/shopify-2026.png'
+  if (match('creatives') || match('sora') || title.includes('vidéo publicitaire')) {
+    return '/img/creatives-2026.png'
+  }
+  if (match('alibaba')) return '/img/alibaba-2026.png'
+  if (match('produit') || match('recherche')) return '/img/cours-2026.png'
+
+  if (course.coverImage) {
+    return getImageUrl(course.coverImage, defaultImage)
+  }
+
+  return defaultImage
+}
+
 export function handleImageError(fallbackImage = null) {
   return (event) => {
     const img = event.currentTarget
