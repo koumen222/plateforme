@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../contexts/AuthContext'
 
 const LIVE_REPLAY = {
   id: 'live-1',
@@ -10,8 +12,16 @@ const LIVE_REPLAY = {
 
 export default function LiveReplaysPage() {
   const [activeId] = useState(LIVE_REPLAY.id)
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
 
   const activeReplay = LIVE_REPLAY
+
+  const handleRequireLogin = () => {
+    if (!isAuthenticated) {
+      navigate('/login', { state: { from: { pathname: '/replays-lives' } } })
+    }
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 px-4 py-10 pb-24 text-white md:pb-10">
@@ -31,15 +41,29 @@ export default function LiveReplaysPage() {
         <div className="flex flex-col items-center gap-4">
           <div className="w-full max-w-4xl overflow-hidden rounded-3xl border border-white/10 bg-black shadow-2xl shadow-black/60 md:max-w-3xl">
             <div className="aspect-video w-full">
-              <video
-                title={activeReplay.title}
-                src={activeReplay.videoUrl}
-                className="h-full w-full"
-                controls
-                controlsList="nodownload"
-                playsInline
-                preload="metadata"
-              />
+              <div className="relative h-full w-full">
+                <video
+                  title={activeReplay.title}
+                  src={activeReplay.videoUrl}
+                  className={`h-full w-full ${!isAuthenticated ? 'pointer-events-none blur-[2px]' : ''}`}
+                  controls={isAuthenticated}
+                  controlsList="nodownload"
+                  playsInline
+                  preload="metadata"
+                />
+                {!isAuthenticated && (
+                  <button
+                    type="button"
+                    onClick={handleRequireLogin}
+                    className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/55 text-center text-sm font-semibold text-white"
+                  >
+                    <span>Connecte-toi pour regarder le replay</span>
+                    <span className="btn-primary px-5 py-2 text-xs font-semibold uppercase tracking-wide">
+                      Se connecter
+                    </span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

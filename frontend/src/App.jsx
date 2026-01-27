@@ -181,9 +181,7 @@ function App() {
             path="/replays-lives"
             element={
               <PlatformLayout>
-                <PrivateRoute>
-                  <LiveReplaysPage />
-                </PrivateRoute>
+                <LiveReplaysPage />
               </PlatformLayout>
             }
           />
