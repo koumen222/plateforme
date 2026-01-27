@@ -20,8 +20,6 @@ export default function MobileBottomNav() {
       { id: 'cours', label: 'Cours', icon: FiBook, badge: 0, href: '/cours', match: ['/cours', '/course'] },
       { id: 'ressources', label: 'Ressources PDF', icon: FiFileText, badge: 0, href: '/ressources-pdf' },
       { id: 'produits', label: 'Produits Gagnants', icon: FiTrendingUp, badge: 0, href: '/produits-gagnants' },
-      { id: 'generateur', label: 'Générateur de Pub', icon: FiZap, badge: 0, href: '/generateur-pub' },
-      { id: 'analyseur', label: 'Analyseur IA', icon: FiCpu, badge: badges.notifications, href: '/analyseur-ia' },
       { id: 'communaute', label: 'Communauté', icon: FiUsers, badge: badges.messages, href: '/communaute' }
     ],
     [badges]

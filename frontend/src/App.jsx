@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { NotificationsProvider } from './contexts/NotificationsContext'
 import Layout from './components/Layout'
 import PlatformLayout from './components/PlatformLayout'
 import AdminLayout from './components/admin/AdminLayout'
@@ -42,6 +43,8 @@ import ConnectFacebook from './pages/ConnectFacebook'
 import CourseRouter from './pages/CourseRouter'
 import ChatbotPage from './pages/ChatbotPage'
 import VideoShowcasePage from './pages/VideoShowcasePage'
+import TestNotificationsPage from './pages/TestNotificationsPage'
+import LiveReplaysPage from './pages/LiveReplaysPage'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
@@ -134,15 +137,16 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-      <Router
-        future={{
-          v7_startTransition: true,
-          v7_relativeSplatPath: true
-        }}
-      >
-        <CleanUrlRedirect />
-        <ReferralCapture />
-        <Routes>
+        <NotificationsProvider>
+          <Router
+            future={{
+              v7_startTransition: true,
+              v7_relativeSplatPath: true
+            }}
+          >
+            <CleanUrlRedirect />
+            <ReferralCapture />
+            <Routes>
           <Route path="/chat" element={<ChatbotPage />} />
           {/* Routes publiques avec PlatformLayout (Header + Footer) */}
           <Route path="/login" element={<PlatformLayout><LoginPage /></PlatformLayout>} />
@@ -173,11 +177,22 @@ function App() {
           <Route path="/recrutement" element={<PlatformLayout><RecrutementPage /></PlatformLayout>} />
           <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />
           <Route path="/analyseur-ia" element={<PlatformLayout><AIAdsAnalyzerPage /></PlatformLayout>} />
+          <Route
+            path="/replays-lives"
+            element={
+              <PlatformLayout>
+                <PrivateRoute>
+                  <LiveReplaysPage />
+                </PrivateRoute>
+              </PlatformLayout>
+            }
+          />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
           <Route path="/mes-fichiers" element={<PlatformLayout><PrivateRoute><FileManagerPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
+          <Route path="/test-notifications" element={<PlatformLayout><PrivateRoute><TestNotificationsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
           
           {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
@@ -217,6 +232,7 @@ function App() {
         </Routes>
         <MobileBottomNav />
       </Router>
+        </NotificationsProvider>
       </AuthProvider>
     </ThemeProvider>
   )

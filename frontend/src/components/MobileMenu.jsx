@@ -73,18 +73,11 @@ export default function MobileMenu({ isOpen, onClose }) {
                 Produits Gagnants
               </Link>
               <Link
-                to="/generateur-pub"
+                to="/replays-lives"
                 className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
                 onClick={onClose}
               >
-                Générateur de Pub
-              </Link>
-              <Link
-                to="/analyseur-ia"
-                className="block px-4 py-3 rounded-lg text-black dark:text-black hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors font-medium"
-                onClick={onClose}
-              >
-                Analyseur IA
+                Replays Lives
               </Link>
               <Link
                 to="/communaute"

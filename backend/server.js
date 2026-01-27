@@ -23,6 +23,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { connectDB } from "./config/database.js";
 import { configurePassport } from "./config/passport.js";
+import { configureWebPush } from "./config/push.js";
 import { authenticate, checkAccountStatus } from "./middleware/auth.js";
 import { referralCapture } from "./middleware/referralCapture.js";
 import User from "./models/User.js";
@@ -50,6 +51,8 @@ let facebookAuthRoutes = null;
 let recrutementRoutes = null;
 let partenairesRoutes = null;
 let referralsRoutes = null;
+let pushRoutes = null;
+let notificationsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -1002,10 +1005,40 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement successRadarCron.js:', error.message);
     }
     
+    // 16. Routes Web Push (notifications push natives)
+    try {
+      const pushModule = await import("./routes/push.js");
+      pushRoutes = pushModule.default;
+      app.use("/api/push", pushRoutes);
+      console.log('✅ Routes Web Push chargées');
+      console.log('   Route public-key: GET /api/push/public-key');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement push.js:', error.message);
+      console.error('   Stack:', error.stack);
+    }
+    
+    // Routes notifications internes
+    try {
+      const notificationsModule = await import("./routes/notifications.js");
+      notificationsRoutes = notificationsModule.default;
+      app.use("/api/notifications", notificationsRoutes);
+      console.log('✅ Routes notifications internes chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement notifications.js:', error.message);
+    }
+    
     console.log('📦 Chargement dynamique terminé\n');
     
     // Connexion MongoDB
     await connectDB();
+    
+    // Configuration Web Push (notifications push natives)
+    try {
+      await configureWebPush();
+    } catch (error) {
+      console.warn('⚠️ Web Push non configuré:', error.message);
+      console.warn('   Les notifications push ne seront pas disponibles');
+    }
     
     // Plus de création automatique d'admin
     // L'admin doit créer son compte via /admin/login (première connexion uniquement)

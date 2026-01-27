@@ -4,6 +4,8 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
+import PushNotificationButton from './PushNotificationButton'
+import NotificationsDropdown from './NotificationsDropdown'
 import { FiBell, FiMenu, FiMessageCircle, FiUser } from 'react-icons/fi'
 
 export default function Header() {
@@ -109,6 +111,7 @@ export default function Header() {
     if (pathname.startsWith('/produits-gagnants')) return 'Produits Gagnants'
     if (pathname.startsWith('/generateur-pub')) return 'Générateur de Pub'
     if (pathname.startsWith('/analyseur-ia')) return 'Analyseur IA'
+    if (pathname.startsWith('/replays-lives')) return 'Replays Lives'
     if (pathname.startsWith('/communaute')) return 'Communauté'
     if (pathname.startsWith('/profil')) return 'Profil'
     if (pathname.startsWith('/commentaires')) return 'Commentaires'
@@ -175,24 +178,14 @@ export default function Header() {
                 Produits Gagnants
               </Link>
               <Link 
-                to="/generateur-pub" 
+                to="/replays-lives" 
                 className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                  isActive('/generateur-pub') 
+                  isActive('/replays-lives') 
                     ? 'bg-accent text-white' 
                     : 'text-primary hover:bg-secondary'
                 }`}
               >
-                Générateur de Pub
-              </Link>
-              <Link 
-                to="/analyseur-ia" 
-                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
-                  isActive('/analyseur-ia') 
-                    ? 'bg-accent text-white' 
-                    : 'text-primary hover:bg-secondary'
-                }`}
-              >
-                Analyseur IA
+                Replays Lives
               </Link>
               <Link 
                 to="/communaute" 
@@ -208,6 +201,16 @@ export default function Header() {
 
             <div className="flex items-center gap-3 lg:gap-4 flex-shrink-0">
               <ThemeToggle />
+              
+              {/* Notifications internes */}
+              {isAuthenticated && user?.status === 'active' && (
+                <NotificationsDropdown />
+              )}
+              
+              {/* Bouton notifications push (uniquement si authentifié et actif) */}
+              {isAuthenticated && user?.status === 'active' && (
+                <PushNotificationButton />
+              )}
               
               {isAuthenticated ? (
                 <div className="relative" ref={profileMenuRef}>
@@ -276,6 +279,15 @@ export default function Header() {
                         >
                           Mes commentaires
                         </Link>
+                        {user?.status === 'active' && (
+                          <Link 
+                            to="/test-notifications" 
+                            className="block px-4 py-2 text-sm text-primary hover:bg-secondary transition-colors"
+                            onClick={() => setShowProfileMenu(false)}
+                          >
+                            🔔 Test notifications
+                          </Link>
+                        )}
                       </div>
                       <div className="border-t border-theme">
                         <button 
@@ -318,6 +330,12 @@ export default function Header() {
                   </div>
 
                   <div className="flex items-center gap-2">
+                    {/* Bouton notifications push */}
+                    {isAuthenticated && user?.status === 'active' && (
+                      <PushNotificationButton />
+                    )}
+                    
+                    {/* Bouton notifications commentaires */}
                     <div ref={notificationRef} className="relative">
                       <button
                         type="button"

@@ -8,7 +8,9 @@
     "start": "node server.js",
     "dev": "node server.js",
     "add-valentine": "node scripts/add-valentine-products.js",
-    "regenerate-products": "node scripts/regenerate-products.js"
+    "regenerate-products": "node scripts/regenerate-products.js",
+    "test-push": "node scripts/test-push-notification.js",
+    "create-notification": "node scripts/create-test-notification.js"
   },
   "keywords": [
     "backend",
@@ -36,9 +38,10 @@
     "node-cron": "^3.0.3",
     "node-fetch": "^3.3.2",
     "openai": "^4.80.1",
-    "redis": "^4.6.12",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "uuid": "^13.0.0"
+    "redis": "^4.6.12",
+    "uuid": "^13.0.0",
+    "web-push": "^3.6.7"
   }
 }
