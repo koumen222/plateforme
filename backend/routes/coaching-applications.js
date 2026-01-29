@@ -10,6 +10,11 @@ router.post('/', async (req, res) => {
     const {
       fullName,
       whatsapp,
+      email,
+      country,
+      monthlySales,
+      mainGoal,
+      facebookAdsExperience,
       hasProduct,
       hasShopify,
       hasStock,
@@ -25,6 +30,10 @@ router.post('/', async (req, res) => {
 
     if (!whatsapp || !whatsapp.trim()) {
       return res.status(400).json({ error: 'Numéro WhatsApp requis' });
+    }
+
+    if (!country || !country.trim()) {
+      return res.status(400).json({ error: 'Pays requis' });
     }
 
     if (!hasProduct || !['Oui', 'Non'].includes(hasProduct)) {
@@ -59,6 +68,11 @@ router.post('/', async (req, res) => {
     const application = new CoachingApplication({
       fullName: fullName.trim(),
       whatsapp: whatsapp.trim(),
+      email: email?.trim() || '',
+      country: country.trim(),
+      monthlySales: monthlySales || '',
+      mainGoal: mainGoal?.trim() || '',
+      facebookAdsExperience: facebookAdsExperience || '',
       hasProduct,
       hasShopify,
       hasStock,

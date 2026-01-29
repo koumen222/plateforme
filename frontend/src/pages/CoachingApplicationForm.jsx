@@ -1,10 +1,16 @@
 import { useState } from 'react'
 import { CONFIG } from '../config/config'
+import { countries } from '../data/countries'
 
 export default function CoachingApplicationForm() {
   const [formData, setFormData] = useState({
     fullName: '',
     whatsapp: '',
+    email: '',
+    country: '',
+    monthlySales: '',
+    mainGoal: '',
+    facebookAdsExperience: '',
     hasProduct: '',
     hasShopify: '',
     hasStock: '',
@@ -22,6 +28,7 @@ export default function CoachingApplicationForm() {
     const newErrors = {}
     if (!formData.fullName.trim()) newErrors.fullName = 'Nom et prénom requis'
     if (!formData.whatsapp.trim()) newErrors.whatsapp = 'Numéro WhatsApp requis'
+    if (!formData.country) newErrors.country = 'Pays requis'
     if (!formData.hasProduct) newErrors.hasProduct = 'Réponse requise'
     if (!formData.hasShopify) newErrors.hasShopify = 'Réponse requise'
     if (!formData.hasStock) newErrors.hasStock = 'Réponse requise'
@@ -144,6 +151,91 @@ export default function CoachingApplicationForm() {
               required
             />
             {errors.whatsapp && <p className="text-red-500 text-sm mt-1">{errors.whatsapp}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Email
+            </label>
+            <input
+              type="email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+              placeholder="exemple@email.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Pays <span className="text-red-500">*</span>
+            </label>
+            <select
+              name="country"
+              value={formData.country}
+              onChange={handleChange}
+              className={`w-full px-4 py-2 border-2 rounded-lg ${errors.country ? 'border-red-500' : 'border-gray-300'}`}
+              required
+            >
+              <option value="">Sélectionnez votre pays</option>
+              {countries.map((country) => (
+                <option key={country.code} value={country.name}>
+                  {country.flag} {country.name}
+                </option>
+              ))}
+            </select>
+            {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Nombre de ventes mensuelles
+            </label>
+            <select
+              name="monthlySales"
+              value={formData.monthlySales}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+            >
+              <option value="">Sélectionnez une option</option>
+              <option value="0 ventes">0 ventes</option>
+              <option value="1-10 ventes">1-10 ventes</option>
+              <option value="11-50 ventes">11-50 ventes</option>
+              <option value="51-100 ventes">51-100 ventes</option>
+              <option value="100+ ventes">100+ ventes</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Objectif principal du coaching
+            </label>
+            <textarea
+              name="mainGoal"
+              value={formData.mainGoal}
+              onChange={handleChange}
+              rows="3"
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+              placeholder="Ex: Augmenter mes ventes, améliorer mon ROAS, lancer un nouveau produit..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold mb-2">
+              Niveau d'expérience avec Facebook Ads
+            </label>
+            <select
+              name="facebookAdsExperience"
+              value={formData.facebookAdsExperience}
+              onChange={handleChange}
+              className="w-full px-4 py-2 border-2 border-gray-300 rounded-lg"
+            >
+              <option value="">Sélectionnez votre niveau</option>
+              <option value="Débutant">Débutant</option>
+              <option value="Intermédiaire">Intermédiaire</option>
+              <option value="Avancé">Avancé</option>
+            </select>
           </div>
 
           <div>

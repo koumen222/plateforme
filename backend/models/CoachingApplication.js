@@ -11,6 +11,32 @@ const coachingApplicationSchema = new mongoose.Schema({
     required: [true, 'Numéro WhatsApp requis'],
     trim: true
   },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true,
+    default: ''
+  },
+  country: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  monthlySales: {
+    type: String,
+    enum: ['0 ventes', '1-10 ventes', '11-50 ventes', '51-100 ventes', '100+ ventes'],
+    default: ''
+  },
+  mainGoal: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  facebookAdsExperience: {
+    type: String,
+    enum: ['Débutant', 'Intermédiaire', 'Avancé'],
+    default: ''
+  },
   hasProduct: {
     type: String,
     enum: ['Oui', 'Non'],

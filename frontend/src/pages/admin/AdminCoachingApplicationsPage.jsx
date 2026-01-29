@@ -191,7 +191,10 @@ export default function AdminCoachingApplicationsPage() {
             <thead>
               <tr className="bg-gray-100 border-b-2 border-gray-300">
                 <th className="px-4 py-3 text-left text-sm font-semibold">Nom</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Pays</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">WhatsApp</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold">Ventes/mois</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Produit</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Shopify</th>
                 <th className="px-4 py-3 text-left text-sm font-semibold">Stock</th>
@@ -207,7 +210,8 @@ export default function AdminCoachingApplicationsPage() {
                 const badge = getStatusBadge(app.status)
                 return (
                   <tr key={app._id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm">{app.fullName}</td>
+                    <td className="px-4 py-3 text-sm font-semibold">{app.fullName}</td>
+                    <td className="px-4 py-3 text-sm">{app.country || '—'}</td>
                     <td className="px-4 py-3 text-sm">
                       <div className="flex items-center gap-2">
                         <span>{app.whatsapp}</span>
@@ -220,6 +224,8 @@ export default function AdminCoachingApplicationsPage() {
                         </button>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{app.email || '—'}</td>
+                    <td className="px-4 py-3 text-sm">{app.monthlySales || '—'}</td>
                     <td className="px-4 py-3 text-sm">{app.hasProduct}</td>
                     <td className="px-4 py-3 text-sm">{app.hasShopify}</td>
                     <td className="px-4 py-3 text-sm">{app.hasStock}</td>
@@ -230,7 +236,7 @@ export default function AdminCoachingApplicationsPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{formatDate(app.createdAt)}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         {app.status === 'En attente' && (
                           <>
                             <button
@@ -256,6 +262,16 @@ export default function AdminCoachingApplicationsPage() {
                           </button>
                         )}
                       </div>
+                      {(app.mainGoal || app.facebookAdsExperience) && (
+                        <details className="mt-2">
+                          <summary className="text-xs text-gray-500 cursor-pointer">Plus d'infos</summary>
+                          <div className="mt-2 text-xs text-gray-600 space-y-1">
+                            {app.mainGoal && <p><strong>Objectif:</strong> {app.mainGoal}</p>}
+                            {app.facebookAdsExperience && <p><strong>Niveau FB Ads:</strong> {app.facebookAdsExperience}</p>}
+                            {app.motivation && <p><strong>Motivation:</strong> {app.motivation}</p>}
+                          </div>
+                        </details>
+                      )}
                     </td>
                   </tr>
                 )
