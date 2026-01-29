@@ -53,6 +53,7 @@ let partenairesRoutes = null;
 let referralsRoutes = null;
 let pushRoutes = null;
 let notificationsRoutes = null;
+let coachingApplicationsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -846,6 +847,16 @@ const startServer = async () => {
       console.log('✅ Routes coaching réservations chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-reservations.js:', error.message);
+    }
+    
+    // 3bis2. Routes candidatures coaching 7 jours
+    try {
+      const coachingApplicationsModule = await import("./routes/coaching-applications.js");
+      coachingApplicationsRoutes = coachingApplicationsModule.default;
+      app.use("/api/coaching-applications", coachingApplicationsRoutes);
+      console.log('✅ Routes candidatures coaching chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement coaching-applications.js:', error.message);
     }
     
     // 3ter. Routes recrutement (annuaire interne)

@@ -16,9 +16,11 @@ import AdminUsersPage from './pages/admin/AdminUsersPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminCoursesPage from './pages/admin/AdminCoursesPage'
 import AdminCoachingReservationsPage from './pages/admin/AdminCoachingReservationsPage'
+import AdminCoachingApplicationsPage from './pages/admin/AdminCoachingApplicationsPage'
 import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
 import AdminPartenairesPage from './pages/admin/AdminPartenairesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
+import CoachingApplicationForm from './pages/CoachingApplicationForm'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
 import ProductsPage from './pages/ProductsPage'
@@ -166,6 +168,7 @@ function App() {
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
           <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
           <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PartenairesCategoryPage /></PlatformLayout>} />
+          <Route path="/coaching-application" element={<PlatformLayout><CoachingApplicationForm /></PlatformLayout>} />
           <Route
             path="/partenaires/:id"
             element={
@@ -221,6 +224,7 @@ function App() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="courses" element={<AdminCoursesPage />} />
             <Route path="coaching-reservations" element={<AdminCoachingReservationsPage />} />
+            <Route path="coaching-applications" element={<AdminCoachingApplicationsPage />} />
             <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
             <Route path="partenaires" element={<AdminPartenairesPage />} />
             <Route path="users" element={<AdminUsersPage />} />
