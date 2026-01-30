@@ -76,10 +76,10 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
 
 const app = express();
 
-// Configuration CORS dynamique pour autoriser les sous-domaines safitech.shop
+// Configuration CORS simplifiée et permissive pour safitech.shop
 const corsOptions = {
   origin: function (origin, callback) {
-    // Autoriser les requêtes sans origine (ex: Postman, curl)
+    // Autoriser les requêtes sans origine (ex: Postman, curl, mobile apps)
     if (!origin) {
       console.log('✅ CORS: Requête sans origine autorisée');
       return callback(null, true);
@@ -97,25 +97,30 @@ const corsOptions = {
     ];
     
     // Normaliser l'origine (enlever le slash final si présent)
-    const normalizedOrigin = origin.replace(/\/$/, '');
+    const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
+    const originLower = origin.toLowerCase();
     
     // Vérifier si l'origine exacte est dans la liste autorisée
-    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes(origin)) {
-      console.log(`✅ CORS: Origine autorisée: ${origin}`);
+    const exactMatch = allowedOrigins.some(allowed => 
+      allowed.toLowerCase() === normalizedOrigin || allowed.toLowerCase() === originLower
+    );
+    
+    if (exactMatch) {
+      console.log(`✅ CORS: Origine exacte autorisée: ${origin}`);
       callback(null, true);
       return;
     }
     
-    // Vérifier si c'est un sous-domaine de safitech.shop
-    if (normalizedOrigin.includes('safitech.shop') || origin.includes('safitech.shop')) {
-      console.log(`✅ CORS: Sous-domaine safitech.shop autorisé: ${origin}`);
+    // Vérifier si c'est un sous-domaine de safitech.shop (plus permissif)
+    if (originLower.includes('safitech.shop')) {
+      console.log(`✅ CORS: Domaine safitech.shop autorisé: ${origin}`);
       callback(null, true);
       return;
     }
     
-    // Vérifier aussi avec www. au début
-    if (origin.startsWith('https://www.') && origin.includes('safitech.shop')) {
-      console.log(`✅ CORS: www.safitech.shop autorisé: ${origin}`);
+    // Autoriser localhost pour développement
+    if (originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
+      console.log(`✅ CORS: Localhost autorisé: ${origin}`);
       callback(null, true);
       return;
     }
@@ -123,49 +128,57 @@ const corsOptions = {
     // Si aucune correspondance, bloquer
     console.log(`❌ CORS bloqué pour l'origine: ${origin}`);
     console.log(`   Origines autorisées:`, allowedOrigins);
-    console.log(`   Origine normalisée: ${normalizedOrigin}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
   allowedHeaders: ["Content-Type","Authorization","X-Requested-With","X-Referral-Code"],
   exposedHeaders: ["Content-Type","Authorization"],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  preflightContinue: false
 };
 
-// Appliquer CORS avant tous les autres middlewares
+// Appliquer CORS en PREMIER, avant tous les autres middlewares
 app.use(cors(corsOptions));
 
-// Middleware CORS explicite pour toutes les routes (fallback)
+// Middleware CORS explicite supplémentaire (fallback absolu)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Autoriser www.safitech.shop, safitech.shop et localhost
-  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Type,Authorization');
-  }
-  
-  // Répondre immédiatement aux requêtes OPTIONS
-  if (req.method === 'OPTIONS') {
-    console.log(`🔍 CORS Preflight OPTIONS pour: ${origin}`);
-    return res.status(200).end();
+  // Autoriser toutes les origines safitech.shop (case-insensitive)
+  if (origin) {
+    const originLower = origin.toLowerCase();
+    if (originLower.includes('safitech.shop') || originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+      res.setHeader('Access-Control-Expose-Headers', 'Content-Type,Authorization');
+      
+      // Répondre immédiatement aux requêtes OPTIONS
+      if (req.method === 'OPTIONS') {
+        console.log(`🔍 CORS Preflight OPTIONS (middleware) pour: ${origin}`);
+        return res.status(200).end();
+      }
+    }
   }
   
   next();
 });
 
-// Gérer explicitement les requêtes OPTIONS (preflight)
+// Gérer explicitement TOUTES les requêtes OPTIONS (preflight) - doit être avant les routes
 app.options("*", (req, res) => {
   const origin = req.headers.origin;
-  console.log(`🔍 CORS Preflight OPTIONS (explicite) pour: ${origin}`);
-  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
-    res.setHeader('Access-Control-Allow-Origin', origin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  console.log(`🔍 CORS Preflight OPTIONS (route explicite) pour: ${origin} - ${req.path}`);
+  
+  if (origin) {
+    const originLower = origin.toLowerCase();
+    if (originLower.includes('safitech.shop') || originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+    }
   }
+  
   res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
   res.setHeader('Access-Control-Max-Age', '86400'); // 24 heures
