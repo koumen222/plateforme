@@ -54,6 +54,8 @@ let referralsRoutes = null;
 let pushRoutes = null;
 let notificationsRoutes = null;
 let coachingApplicationsRoutes = null;
+let ebooksRoutes = null;
+let paymentsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -1037,6 +1039,79 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement notifications.js:', error.message);
     }
+
+    // Routes ebooks
+    try {
+      const ebooksModule = await import("./routes/ebooks.js");
+      ebooksRoutes = ebooksModule.default;
+      app.use("/api/ebooks", ebooksRoutes);
+      console.log('✅ Routes ebooks chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ebooks.js:', error.message);
+    }
+
+    // Routes paiements Monetbil
+    try {
+      const paymentsModule = await import("./routes/payments.js");
+      paymentsRoutes = paymentsModule.default;
+      app.use("/api/payments", paymentsRoutes);
+      console.log('✅ Routes paiements Monetbil chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement payments.js:', error.message);
+    }
+
+    // Routes Marketing Automation (Newsletters, Campagnes Email)
+    try {
+      const subscribersModule = await import("./routes/subscribers.js");
+      if (subscribersModule && subscribersModule.default) {
+        app.use("/api/subscribers", subscribersModule.default);
+        console.log('✅ Routes subscribers chargées');
+      } else {
+        console.error('❌ subscribersModule.default est null ou undefined');
+      }
+      
+      const emailCampaignsModule = await import("./routes/email-campaigns.js");
+      if (emailCampaignsModule && emailCampaignsModule.default) {
+        app.use("/api/email-campaigns", emailCampaignsModule.default);
+        console.log('✅ Routes email-campaigns chargées');
+        console.log('   POST /api/email-campaigns - Créer une campagne');
+        console.log('   GET  /api/email-campaigns - Lister les campagnes');
+        console.log('   POST /api/email-campaigns/:id/send - Envoyer une campagne');
+      } else {
+        console.error('❌ emailCampaignsModule.default est null ou undefined');
+        console.error('   Module:', emailCampaignsModule);
+      }
+      
+      const emailTemplatesModule = await import("./routes/email-templates.js");
+      if (emailTemplatesModule && emailTemplatesModule.default) {
+        app.use("/api/email-templates", emailTemplatesModule.default);
+        console.log('✅ Routes email-templates chargées');
+      } else {
+        console.error('❌ emailTemplatesModule.default est null ou undefined');
+      }
+      
+      const emailTrackingModule = await import("./routes/email-tracking.js");
+      if (emailTrackingModule && emailTrackingModule.default) {
+        app.use("/api/email", emailTrackingModule.default);
+        console.log('✅ Routes email-tracking chargées');
+      } else {
+        console.error('❌ emailTrackingModule.default est null ou undefined');
+      }
+      
+      const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+      if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
+        app.use("/api/whatsapp-campaigns", whatsappCampaignsModule.default);
+        console.log('✅ Routes WhatsApp campaigns chargées');
+        console.log('   POST /api/whatsapp-campaigns - Créer une campagne');
+        console.log('   GET  /api/whatsapp-campaigns - Lister les campagnes');
+        console.log('   POST /api/whatsapp-campaigns/:id/send - Envoyer une campagne');
+      } else {
+        console.error('❌ whatsappCampaignsModule.default est null ou undefined');
+      }
+    } catch (error) {
+      console.error('⚠️ Erreur chargement routes marketing:', error.message);
+      console.error('   Stack:', error.stack);
+    }
     
     console.log('📦 Chargement dynamique terminé\n');
     
@@ -1049,6 +1124,155 @@ const startServer = async () => {
     } catch (error) {
       console.warn('⚠️ Web Push non configuré:', error.message);
       console.warn('   Les notifications push ne seront pas disponibles');
+    }
+
+    // Configuration Email Service (Marketing Automation)
+    try {
+      const { initEmailService } = await import("./services/emailService.js");
+      initEmailService();
+    } catch (error) {
+      console.warn('⚠️ Service email non configuré:', error.message);
+      console.warn('   Les campagnes email ne seront pas disponibles');
+    }
+    
+    // Configuration WhatsApp Service
+    try {
+      const { initWhatsAppService } = await import("./services/whatsappService.js");
+      await initWhatsAppService();
+    } catch (error) {
+      console.warn('⚠️ Service WhatsApp non configuré:', error.message);
+      console.warn('   Les campagnes WhatsApp ne seront pas disponibles');
+    }
+
+    // Planification des campagnes email avec node-cron
+    try {
+      const cron = (await import('node-cron')).default;
+      const EmailCampaign = (await import("./models/EmailCampaign.js")).default;
+      const { sendBulkEmails } = await import("./services/emailService.js");
+      const Subscriber = (await import("./models/Subscriber.js")).default;
+
+      // Vérifier toutes les minutes les campagnes programmées
+      cron.schedule('* * * * *', async () => {
+        try {
+          const now = new Date();
+          const campaigns = await EmailCampaign.find({
+            status: 'scheduled',
+            scheduledAt: { $lte: now }
+          });
+
+          for (const campaign of campaigns) {
+            console.log(`📧 Envoi campagne programmée: ${campaign.name}`);
+            
+            campaign.status = 'sending';
+            await campaign.save();
+
+            let subscribers = [];
+            if (campaign.recipients.type === 'all') {
+              subscribers = await Subscriber.find({ status: 'active' }).lean();
+            } else if (campaign.recipients.type === 'segment') {
+              // Si c'est un tag de statut utilisateur (pending, active, blocked)
+              if (['pending', 'active', 'blocked'].includes(campaign.recipients.segment)) {
+                const User = (await import("./models/User.js")).default;
+                const SubscriberModel = (await import("./models/Subscriber.js")).default;
+                
+                // Récupérer TOUS les utilisateurs avec le statut sélectionné
+                const users = await User.find({ 
+                  email: { $exists: true, $ne: '' },
+                  $or: [
+                    { status: campaign.recipients.segment },
+                    { accountStatus: campaign.recipients.segment }
+                  ]
+                }).select('email name status accountStatus').lean();
+                
+                // Pour chaque utilisateur, s'assurer qu'il existe dans Subscriber
+                const subscriberPromises = users.map(async (user) => {
+                  const emailLower = user.email.toLowerCase().trim();
+                  
+                  // Validation email
+                  if (!emailLower || !/^\S+@\S+\.\S+$/.test(emailLower)) {
+                    return null;
+                  }
+                  
+                  try {
+                    // Vérifier si l'utilisateur existe déjà dans Subscriber
+                    let subscriber = await SubscriberModel.findOne({ email: emailLower }).lean();
+                    
+                    if (!subscriber) {
+                      // Créer l'entrée Subscriber si elle n'existe pas
+                      const newSubscriber = new SubscriberModel({
+                        email: emailLower,
+                        name: user.name || '',
+                        source: 'sync',
+                        status: 'active',
+                        subscribedAt: new Date()
+                      });
+                      await newSubscriber.save();
+                      subscriber = newSubscriber.toObject();
+                    } else if (subscriber.status !== 'active') {
+                      // Réactiver si nécessaire
+                      await SubscriberModel.findByIdAndUpdate(subscriber._id, { status: 'active' });
+                      subscriber.status = 'active';
+                    }
+                    
+                    return {
+                      ...subscriber,
+                      email: emailLower,
+                      name: subscriber.name || user.name || ''
+                    };
+                  } catch (error) {
+                    console.error(`❌ Erreur traitement ${emailLower}:`, error.message);
+                    return null;
+                  }
+                });
+                
+                const subscriberResults = await Promise.all(subscriberPromises);
+                subscribers = subscriberResults.filter(s => s !== null);
+              } else {
+                subscribers = await Subscriber.find({ status: campaign.recipients.segment }).lean();
+              }
+            } else if (campaign.recipients.type === 'list' && campaign.recipients.customEmails?.length) {
+              subscribers = campaign.recipients.customEmails.map(email => ({ email, _id: null }));
+            }
+
+            if (subscribers.length > 0) {
+              const emails = subscribers.map(sub => ({
+                to: sub.email,
+                subject: campaign.subject,
+                html: campaign.content.html,
+                text: campaign.content.text,
+                fromEmail: campaign.fromEmail,
+                fromName: campaign.fromName,
+                replyTo: campaign.replyTo,
+                campaignId: campaign._id,
+                subscriberId: sub._id
+              }));
+
+              const results = await sendBulkEmails(emails);
+              const stats = {
+                sent: results.filter(r => r.success).length,
+                failed: results.filter(r => !r.success).length
+              };
+
+              campaign.status = 'sent';
+              campaign.sentAt = new Date();
+              campaign.stats.sent = stats.sent;
+              await campaign.save();
+
+              console.log(`✅ Campagne ${campaign.name} envoyée: ${stats.sent}/${subscribers.length}`);
+            } else {
+              campaign.status = 'draft';
+              await campaign.save();
+              console.warn(`⚠️ Aucun destinataire pour la campagne ${campaign.name}`);
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erreur planification campagnes:', error);
+        }
+      });
+
+      console.log('✅ Planificateur de campagnes email activé');
+    } catch (error) {
+      console.warn('⚠️ Planificateur de campagnes non configuré:', error.message);
     }
     
     // Plus de création automatique d'admin

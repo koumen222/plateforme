@@ -20,6 +20,12 @@ import AdminCoachingApplicationsPage from './pages/admin/AdminCoachingApplicatio
 import AdminRessourcesPdfPage from './pages/admin/AdminRessourcesPdfPage'
 import AdminPartenairesPage from './pages/admin/AdminPartenairesPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
+import AdminNewsletterPage from './pages/admin/AdminNewsletterPage'
+import AdminWhatsAppCampaignsPage from './pages/admin/AdminWhatsAppCampaignsPage'
+import AdminSubscribersPage from './pages/admin/AdminSubscribersPage'
+import AdminEmailCampaignsPage from './pages/admin/AdminEmailCampaignsPage'
+import AdminEmailTemplatesPage from './pages/admin/AdminEmailTemplatesPage'
+import AdminEbooksPage from './pages/admin/AdminEbooksPage'
 import CoachingApplicationForm from './pages/CoachingApplicationForm'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
@@ -47,6 +53,7 @@ import ChatbotPage from './pages/ChatbotPage'
 import VideoShowcasePage from './pages/VideoShowcasePage'
 import TestNotificationsPage from './pages/TestNotificationsPage'
 import LiveReplaysPage from './pages/LiveReplaysPage'
+import EbookPage from './pages/EbookPage'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
@@ -163,6 +170,7 @@ function App() {
           <Route path="/home" element={<HomeSwitcher />} />
           <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
           <Route path="/ressources-pdf" element={<PlatformLayout><RessourcesPdfPage /></PlatformLayout>} />
+          <Route path="/ebook/:id" element={<PlatformLayout><PrivateRoute><EbookPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
@@ -227,6 +235,12 @@ function App() {
             <Route path="coaching-applications" element={<AdminCoachingApplicationsPage />} />
             <Route path="ressources-pdf" element={<AdminRessourcesPdfPage />} />
             <Route path="partenaires" element={<AdminPartenairesPage />} />
+            <Route path="newsletter" element={<AdminNewsletterPage />} />
+            <Route path="whatsapp-campaigns" element={<AdminWhatsAppCampaignsPage />} />
+            <Route path="subscribers" element={<AdminSubscribersPage />} />
+            <Route path="email-campaigns" element={<AdminEmailCampaignsPage />} />
+            <Route path="email-templates" element={<AdminEmailTemplatesPage />} />
+            <Route path="ebooks" element={<AdminEbooksPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
