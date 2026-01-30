@@ -8,6 +8,12 @@ export default function AdminCoachingApplicationsPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('all')
   const [notification, setNotification] = useState(null)
+  const [analyzingId, setAnalyzingId] = useState(null)
+  const [generatingId, setGeneratingId] = useState(null)
+  const [analyzingAll, setAnalyzingAll] = useState(false)
+  const [analysisResults, setAnalysisResults] = useState({})
+  const [generatedMessages, setGeneratedMessages] = useState({})
+  const [expandedId, setExpandedId] = useState(null)
 
   useEffect(() => {
     if (token) {
@@ -101,6 +107,114 @@ export default function AdminCoachingApplicationsPage() {
     showNotification('Numéro WhatsApp copié')
   }
 
+  const handleAnalyze = async (id) => {
+    setAnalyzingId(id)
+    try {
+      const response = await fetch(
+        `${CONFIG.BACKEND_URL}/api/coaching-applications/${id}/analyze`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setAnalysisResults(prev => ({ ...prev, [id]: data.analysis }))
+        showNotification(`Analyse terminée: ${data.analysis.decision} (Score: ${data.analysis.score})`)
+      } else {
+        const errorData = await response.json()
+        showNotification(errorData.error || 'Erreur analyse IA', 'error')
+      }
+    } catch (error) {
+      showNotification('Erreur analyse IA', 'error')
+    } finally {
+      setAnalyzingId(null)
+    }
+  }
+
+  const handleGenerateMessage = async (id) => {
+    setGeneratingId(id)
+    try {
+      const response = await fetch(
+        `${CONFIG.BACKEND_URL}/api/coaching-applications/${id}/generate-message`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        setGeneratedMessages(prev => ({ ...prev, [id]: data.message }))
+        showNotification('Message généré avec succès')
+      } else {
+        const errorData = await response.json()
+        showNotification(errorData.error || 'Erreur génération message', 'error')
+      }
+    } catch (error) {
+      showNotification('Erreur génération message', 'error')
+    } finally {
+      setGeneratingId(null)
+    }
+  }
+
+  const handleSendWhatsApp = (whatsapp, message) => {
+    if (!message) {
+      showNotification('Génère d\'abord un message', 'error')
+      return
+    }
+    const cleanPhone = whatsapp.replace(/\D/g, '')
+    const encodedMessage = encodeURIComponent(message)
+    window.open(`https://wa.me/${cleanPhone}?text=${encodedMessage}`, '_blank')
+  }
+
+  const handleAnalyzeAll = async () => {
+    if (applications.length === 0) {
+      showNotification('Aucune candidature à analyser', 'error')
+      return
+    }
+
+    setAnalyzingAll(true)
+    try {
+      const response = await fetch(
+        `${CONFIG.BACKEND_URL}/api/coaching-applications/analyze-all`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      )
+
+      if (response.ok) {
+        const data = await response.json()
+        const newResults = {}
+        data.results.forEach(result => {
+          if (result.success) {
+            newResults[result.id] = result.analysis
+          }
+        })
+        setAnalysisResults(prev => ({ ...prev, ...newResults }))
+        showNotification(`Analyse terminée: ${data.successCount}/${data.count} profils analysés`)
+      } else {
+        const errorData = await response.json()
+        showNotification(errorData.error || 'Erreur analyse batch', 'error')
+      }
+    } catch (error) {
+      showNotification('Erreur analyse batch', 'error')
+    } finally {
+      setAnalyzingAll(false)
+    }
+  }
+
   const formatDate = (dateStr) => {
     if (!dateStr) return '—'
     const date = new Date(dateStr)
@@ -152,6 +266,21 @@ export default function AdminCoachingApplicationsPage() {
         </div>
       </div>
 
+      <div className="admin-filter-bar" style={{ marginBottom: '1rem' }}>
+        <button
+          onClick={handleAnalyzeAll}
+          disabled={analyzingAll || applications.length === 0}
+          className="admin-btn"
+          style={{ 
+            backgroundColor: analyzingAll || applications.length === 0 ? '#ccc' : '#6366f1', 
+            color: 'white',
+            marginLeft: 'auto'
+          }}
+        >
+          {analyzingAll ? '⏳ Analyse en cours...' : '🧠 Analyser tous les profils'}
+        </button>
+      </div>
+
       <div className="admin-filter-bar">
         <button
           onClick={() => setStatusFilter('all')}
@@ -186,98 +315,243 @@ export default function AdminCoachingApplicationsPage() {
           <p>Aucune candidature pour le moment.</p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100 border-b-2 border-gray-300">
-                <th className="px-4 py-3 text-left text-sm font-semibold">Nom</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Pays</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">WhatsApp</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Email</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Ventes/mois</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Produit</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Shopify</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Stock</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Budget</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Expérience</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Statut</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {applications.map((app) => {
-                const badge = getStatusBadge(app.status)
-                return (
-                  <tr key={app._id} className="border-b border-gray-200 hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-semibold">{app.fullName}</td>
-                    <td className="px-4 py-3 text-sm">{app.country || '—'}</td>
-                    <td className="px-4 py-3 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span>{app.whatsapp}</span>
-                        <button
-                          onClick={() => copyWhatsApp(app.whatsapp)}
-                          className="text-blue-600 hover:text-blue-800 text-xs"
-                          title="Copier"
-                        >
-                          📋
-                        </button>
+        <div style={{ backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+          <div style={{ padding: '16px', borderBottom: '1px solid #dee2e6' }}>
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Nom</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Statut</th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold">Date</th>
+                </tr>
+              </thead>
+            </table>
+          </div>
+          <div>
+            {applications.map((app, index) => {
+              const badge = getStatusBadge(app.status)
+              const isExpanded = expandedId === app._id
+              return (
+                <div key={app._id} style={{ borderBottom: '1px solid #dee2e6' }}>
+                  <div 
+                    onClick={() => setExpandedId(isExpanded ? null : app._id)}
+                    style={{ 
+                      padding: '16px',
+                      cursor: 'pointer',
+                      backgroundColor: isExpanded ? '#f8f9fa' : index % 2 === 0 ? '#fff' : '#f8f9fa',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => !isExpanded && (e.currentTarget.style.backgroundColor = '#e9ecef')}
+                    onMouseLeave={(e) => !isExpanded && (e.currentTarget.style.backgroundColor = index % 2 === 0 ? '#fff' : '#f8f9fa')}
+                  >
+                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div style={{ fontWeight: '600', fontSize: '15px', color: '#212529' }}>
+                        {app.fullName}
                       </div>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{app.email || '—'}</td>
-                    <td className="px-4 py-3 text-sm">{app.monthlySales || '—'}</td>
-                    <td className="px-4 py-3 text-sm">{app.hasProduct}</td>
-                    <td className="px-4 py-3 text-sm">{app.hasShopify}</td>
-                    <td className="px-4 py-3 text-sm">{app.hasStock}</td>
-                    <td className="px-4 py-3 text-sm">{app.budget}</td>
-                    <td className="px-4 py-3 text-sm">{app.adExperience}</td>
-                    <td className="px-4 py-3">
                       <span className={`admin-badge ${badge.class}`}>{badge.label}</span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(app.createdAt)}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2 flex-wrap">
+                      <span style={{ fontSize: '12px', color: '#6c757d' }}>
+                        {formatDate(app.createdAt)}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '18px', color: '#6c757d' }}>
+                      {isExpanded ? '▼' : '▶'}
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div style={{ padding: '20px', backgroundColor: '#fff', borderTop: '1px solid #dee2e6' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginBottom: '20px' }}>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Pays</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500' }}>{app.country || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>WhatsApp</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontFamily: 'monospace' }}>{app.whatsapp}</span>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); copyWhatsApp(app.whatsapp); }}
+                              className="text-blue-600 hover:text-blue-800 text-xs"
+                              title="Copier"
+                              style={{ cursor: 'pointer', padding: '2px 4px' }}
+                            >
+                              📋
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Email</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500' }}>{app.email || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Ventes/mois</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500' }}>{app.monthlySales || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Budget</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500' }}>{app.budget || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Expérience</div>
+                          <div style={{ fontSize: '14px', fontWeight: '500' }}>{app.adExperience || '—'}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Produit</div>
+                          <span style={{ 
+                            padding: '4px 12px', 
+                            borderRadius: '4px',
+                            backgroundColor: app.hasProduct === 'Oui' ? '#d4edda' : '#f8d7da',
+                            color: app.hasProduct === 'Oui' ? '#155724' : '#721c24',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                            {app.hasProduct}
+                          </span>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Shopify</div>
+                          <span style={{ 
+                            padding: '4px 12px', 
+                            borderRadius: '4px',
+                            backgroundColor: app.hasShopify === 'Oui' ? '#d4edda' : '#f8d7da',
+                            color: app.hasShopify === 'Oui' ? '#155724' : '#721c24',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                            {app.hasShopify}
+                          </span>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Stock</div>
+                          <span style={{ 
+                            padding: '4px 12px', 
+                            borderRadius: '4px',
+                            backgroundColor: app.hasStock === 'Oui' ? '#d4edda' : '#f8d7da',
+                            color: app.hasStock === 'Oui' ? '#155724' : '#721c24',
+                            fontSize: '13px',
+                            fontWeight: '500'
+                          }}>
+                            {app.hasStock}
+                          </span>
+                        </div>
+                      </div>
+
+                      {(app.mainGoal || app.facebookAdsExperience || app.motivation) && (
+                        <div style={{ marginBottom: '20px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px' }}>
+                          {app.mainGoal && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Objectif</div>
+                              <div style={{ fontSize: '14px' }}>{app.mainGoal}</div>
+                            </div>
+                          )}
+                          {app.facebookAdsExperience && (
+                            <div style={{ marginBottom: '12px' }}>
+                              <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Niveau FB Ads</div>
+                              <div style={{ fontSize: '14px' }}>{app.facebookAdsExperience}</div>
+                            </div>
+                          )}
+                          {app.motivation && (
+                            <div>
+                              <div style={{ fontSize: '12px', color: '#6c757d', marginBottom: '4px' }}>Motivation</div>
+                              <div style={{ fontSize: '14px' }}>{app.motivation}</div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
                         {app.status === 'En attente' && (
                           <>
                             <button
-                              onClick={() => handleAccept(app._id)}
+                              onClick={(e) => { e.stopPropagation(); handleAccept(app._id); }}
                               className="admin-btn admin-btn-sm admin-btn-success"
+                              style={{ fontSize: '12px', padding: '6px 12px' }}
                             >
                               ✅ Accepter
                             </button>
                             <button
-                              onClick={() => handleReject(app._id)}
+                              onClick={(e) => { e.stopPropagation(); handleReject(app._id); }}
                               className="admin-btn admin-btn-sm admin-btn-danger"
+                              style={{ fontSize: '12px', padding: '6px 12px' }}
                             >
                               ❌ Refuser
                             </button>
                           </>
                         )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAnalyze(app._id); }}
+                          disabled={analyzingId === app._id}
+                          className="admin-btn admin-btn-sm"
+                          style={{ 
+                            backgroundColor: analyzingId === app._id ? '#ccc' : '#6366f1', 
+                            color: 'white',
+                            fontSize: '12px',
+                            padding: '6px 12px',
+                            cursor: analyzingId === app._id ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {analyzingId === app._id ? '⏳ Analyse...' : '🧠 Analyser avec IA'}
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleGenerateMessage(app._id); }}
+                          disabled={generatingId === app._id || app.status !== 'Accepté'}
+                          className="admin-btn admin-btn-sm"
+                          style={{ 
+                            backgroundColor: generatingId === app._id || app.status !== 'Accepté' ? '#ccc' : '#10b981', 
+                            color: 'white',
+                            fontSize: '12px',
+                            padding: '6px 12px',
+                            cursor: generatingId === app._id || app.status !== 'Accepté' ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          {generatingId === app._id ? '⏳ Génération...' : '✉️ Générer message'}
+                        </button>
                         {app.status === 'Accepté' && (
                           <button
-                            onClick={() => copyWhatsApp(app.whatsapp)}
-                            className="admin-btn admin-btn-sm admin-btn-success"
+                            onClick={(e) => { e.stopPropagation(); handleSendWhatsApp(app.whatsapp, generatedMessages[app._id]); }}
+                            disabled={!generatedMessages[app._id]}
+                            className="admin-btn admin-btn-sm"
+                            style={{ 
+                              backgroundColor: !generatedMessages[app._id] ? '#ccc' : '#25d366', 
+                              color: 'white',
+                              fontSize: '12px',
+                              padding: '6px 12px',
+                              cursor: !generatedMessages[app._id] ? 'not-allowed' : 'pointer'
+                            }}
                           >
-                            📋 Copier WhatsApp
+                            📲 Envoyer sur WhatsApp
                           </button>
                         )}
                       </div>
-                      {(app.mainGoal || app.facebookAdsExperience) && (
-                        <details className="mt-2">
-                          <summary className="text-xs text-gray-500 cursor-pointer">Plus d'infos</summary>
-                          <div className="mt-2 text-xs text-gray-600 space-y-1">
-                            {app.mainGoal && <p><strong>Objectif:</strong> {app.mainGoal}</p>}
-                            {app.facebookAdsExperience && <p><strong>Niveau FB Ads:</strong> {app.facebookAdsExperience}</p>}
-                            {app.motivation && <p><strong>Motivation:</strong> {app.motivation}</p>}
+
+                      {analysisResults[app._id] && (
+                        <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#e7f3ff', borderRadius: '8px', border: '1px solid #b3d9ff' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#004085', marginBottom: '6px' }}>
+                            Score IA: {analysisResults[app._id].score}/100
                           </div>
-                        </details>
+                          <div style={{ fontSize: '13px', color: '#004085', marginBottom: '4px' }}>
+                            Décision: <strong>{analysisResults[app._id].decision}</strong>
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#004085', lineHeight: '1.5' }}>
+                            {analysisResults[app._id].raison}
+                          </div>
+                        </div>
                       )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+
+                      {generatedMessages[app._id] && (
+                        <div style={{ padding: '12px', backgroundColor: '#d4edda', borderRadius: '8px', border: '1px solid #b3e5b3' }}>
+                          <div style={{ fontSize: '13px', fontWeight: '600', color: '#155724', marginBottom: '6px' }}>Message généré:</div>
+                          <div style={{ fontSize: '13px', color: '#155724', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>{generatedMessages[app._id]}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
