@@ -98,7 +98,7 @@ export default function AdminEbooksPage() {
     setFormData({
       title: ebook.title || '',
       description: ebook.description || '',
-      price: ebook.price || 500,
+      price: ebook.price || 100,
       currency: ebook.currency || 'XAF',
       content: ebook.content || '',
       coverImage: ebook.coverImage || '',
