@@ -140,18 +140,19 @@ app.use(cors(corsOptions));
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   
-  // Autoriser www.safitech.shop et safitech.shop
-  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+  // Autoriser www.safitech.shop, safitech.shop et localhost
+  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+    res.setHeader('Access-Control-Expose-Headers', 'Content-Type,Authorization');
   }
   
   // Répondre immédiatement aux requêtes OPTIONS
   if (req.method === 'OPTIONS') {
     console.log(`🔍 CORS Preflight OPTIONS pour: ${origin}`);
-    return res.sendStatus(200);
+    return res.status(200).end();
   }
   
   next();
@@ -161,14 +162,14 @@ app.use((req, res, next) => {
 app.options("*", (req, res) => {
   const origin = req.headers.origin;
   console.log(`🔍 CORS Preflight OPTIONS (explicite) pour: ${origin}`);
-  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost'))) {
-    res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
+  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
   }
-  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
-  res.header('Access-Control-Max-Age', '86400'); // 24 heures
-  res.sendStatus(200);
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+  res.setHeader('Access-Control-Max-Age', '86400'); // 24 heures
+  res.status(200).end();
 });
 
 // Middleware pour logger les requêtes CORS (debug)
