@@ -81,12 +81,13 @@ const corsOptions = {
   origin: function (origin, callback) {
     // Autoriser les requêtes sans origine (ex: Postman, curl)
     if (!origin) {
+      console.log('✅ CORS: Requête sans origine autorisée');
       return callback(null, true);
     }
     
     // Liste des origines autorisées
     const allowedOrigins = [
-    "https://safitech.shop",
+      "https://safitech.shop",
       "https://www.safitech.shop",
       "https://api.safitech.shop",
       "http://localhost:5173",
@@ -95,16 +96,27 @@ const corsOptions = {
       "http://127.0.0.1:3000"
     ];
     
-    // Vérifier si l'origine est dans la liste autorisée
-    if (allowedOrigins.includes(origin)) {
+    // Normaliser l'origine (enlever le slash final si présent)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Vérifier si l'origine exacte est dans la liste autorisée
+    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes(origin)) {
+      console.log(`✅ CORS: Origine autorisée: ${origin}`);
       callback(null, true);
-    } else if (origin.includes('.safitech.shop')) {
-      // Autoriser tous les sous-domaines de safitech.shop
-      callback(null, true);
-    } else {
-      console.log(`⚠️ CORS bloqué pour l'origine: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      return;
     }
+    
+    // Vérifier si c'est un sous-domaine de safitech.shop
+    if (normalizedOrigin.includes('safitech.shop') || origin.includes('safitech.shop')) {
+      console.log(`✅ CORS: Sous-domaine safitech.shop autorisé: ${origin}`);
+      callback(null, true);
+      return;
+    }
+    
+    // Si aucune correspondance, bloquer
+    console.log(`❌ CORS bloqué pour l'origine: ${origin}`);
+    console.log(`   Origines autorisées:`, allowedOrigins);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
@@ -115,6 +127,15 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// Middleware pour logger les requêtes CORS (debug)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && req.method === 'OPTIONS') {
+    console.log(`🔍 CORS Preflight: ${req.method} ${req.path} depuis ${origin}`);
+  }
+  next();
+});
 
 // Log de la configuration CORS au démarrage
 console.log('🔒 Configuration CORS activée');
