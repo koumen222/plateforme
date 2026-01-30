@@ -514,7 +514,7 @@ export default function AdminWhatsAppCampaignsPage() {
             🔄 Campagne de Relance
           </h2>
           <p style={{ fontSize: '13px', color: '#6c757d', marginBottom: '16px' }}>
-            Envoie un message aux utilisateurs <strong>non-actifs</strong> leur indiquant qu'ils peuvent avoir un accès gratuit s'ils partagent un lien d'affiliation.
+            Envoie un message aux utilisateurs <strong>en attente</strong> leur indiquant qu'ils peuvent avoir un accès gratuit s'ils partagent un lien d'affiliation.
           </p>
           
           <div style={{ marginBottom: '12px' }}>
@@ -563,7 +563,7 @@ export default function AdminWhatsAppCampaignsPage() {
                 return
               }
               
-              if (!confirm(`Envoyer le message de relance à ${getTagCount('blocked')} utilisateurs non-actifs ?`)) {
+              if (!confirm(`Envoyer le message de relance à ${getTagCount('pending')} utilisateurs en attente ?`)) {
                 return
               }
               
