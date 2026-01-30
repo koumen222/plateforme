@@ -656,16 +656,42 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
     await performWarmup();
   }
   
-  const totalContacts = contacts.length;
+  // Limite de volume quotidien : 80-100 messages par jour
+  const maxDailyVolume = Math.floor(Math.random() * (100 - 80 + 1)) + 80; // 80-100 aléatoire
+  
+  // Vérifier le nombre de messages envoyés aujourd'hui (via les logs)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  const todayLogs = await WhatsAppLog.countDocuments({
+    sentAt: { $gte: today, $lt: tomorrow },
+    status: { $in: ['sent', 'delivered'] }
+  });
+  
+  if (todayLogs >= maxDailyVolume) {
+    throw new Error(`Limite quotidienne atteinte: ${todayLogs}/${maxDailyVolume} messages envoyés aujourd'hui`);
+  }
+  
+  // Limiter le nombre de contacts à envoyer pour ne pas dépasser la limite quotidienne
+  const remainingQuota = maxDailyVolume - todayLogs;
+  const contactsToProcess = Math.min(contacts.length, remainingQuota);
+  
+  if (contactsToProcess < contacts.length) {
+    console.log(`⚠️ Limite quotidienne: ${contactsToProcess}/${contacts.length} contacts seront traités aujourd'hui`);
+  }
+  
   let sentCount = 0;
   let failedCount = 0;
   let skippedCount = 0;
   
-  for (let i = 0; i < contacts.length; i++) {
-    // Vérifier si on doit faire une pause longue (toutes les 10 personnes)
-    if (i > 0 && i % 10 === 0 && !paused) {
+  for (let i = 0; i < contactsToProcess; i++) {
+    // Vérifier si on doit faire une pause longue (toutes les 15 personnes)
+    if (i > 0 && i % 15 === 0 && !paused) {
       const pauseDuration = getLongPause();
-      console.log(`⏸️ Pause longue de ${Math.round(pauseDuration / 1000 / 60)} minutes après ${i} messages...`);
+      const pauseMinutes = Math.round(pauseDuration / 60000);
+      console.log(`⏸️ Pause longue de ${pauseMinutes} minutes après ${i} messages...`);
       await sleep(pauseDuration);
       paused = false; // Réinitialiser le flag après la pause
     }
@@ -794,12 +820,14 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
   }
   
   return {
-    total: totalContacts,
+    total: contactsToProcess,
     sent: sentCount,
     failed: failedCount,
     skipped: skippedCount,
     quotaReached,
-    results
+    results,
+    dailyLimit: maxDailyVolume,
+    remainingQuota: maxDailyVolume - todayLogs - sentCount
   };
 };
 
