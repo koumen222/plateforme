@@ -1,7 +1,70 @@
 import fetch from 'node-fetch';
+import crypto from 'crypto';
 
 const MONETBIL_API_URL = 'https://api.monetbil.com/payment/v1';
 const MONETBIL_SERVICE_KEY = process.env.MONETBIL_SERVICE_KEY;
+const MONETBIL_SERVICE_SECRET = process.env.MONETBIL_SERVICE_SECRET;
+
+// Adresses IP autorisées pour les notifications Monetbil
+// IMPORTANT: Contactez Monetbil pour obtenir la liste des IPs de leurs serveurs
+// et ajoutez-les ici pour sécuriser le webhook
+// Exemple: ['41.xxx.xxx.xxx', '41.yyy.yyy.yyy']
+const MONETBIL_ALLOWED_IPS = process.env.MONETBIL_ALLOWED_IPS 
+  ? process.env.MONETBIL_ALLOWED_IPS.split(',').map(ip => ip.trim())
+  : [];
+
+/**
+ * Vérifie si l'adresse IP provient de Monetbil
+ * @param {string} ip - Adresse IP à vérifier
+ * @returns {boolean} True si l'IP est autorisée (ou si aucune IP n'est configurée)
+ */
+export function verifyMonetbilIP(ip) {
+  // Si aucune IP n'est configurée, la vérification est optionnelle (retourne true)
+  if (MONETBIL_ALLOWED_IPS.length === 0) {
+    console.warn('⚠️ Aucune IP Monetbil configurée - vérification IP désactivée (optionnel)');
+    return true;
+  }
+  
+  return MONETBIL_ALLOWED_IPS.includes(ip);
+}
+
+/**
+ * Vérifie la signature d'une notification Monetbil
+ * @param {Object} params - Paramètres de la notification
+ * @param {string} receivedSignature - Signature reçue
+ * @returns {boolean} True si la signature est valide
+ */
+export function verifyMonetbilSignature(params, receivedSignature) {
+  if (!MONETBIL_SERVICE_SECRET) {
+    console.warn('⚠️ MONETBIL_SERVICE_SECRET non configurée, vérification signature désactivée');
+    return true; // En développement, on peut accepter sans signature
+  }
+
+  if (!receivedSignature) {
+    return false;
+  }
+
+  // Créer une chaîne avec tous les paramètres sauf 'sign'
+  const paramsToSign = { ...params };
+  delete paramsToSign.sign;
+
+  // Trier les paramètres par ordre alphabétique
+  const sortedKeys = Object.keys(paramsToSign).sort();
+  const signString = sortedKeys
+    .map(key => `${key}=${paramsToSign[key]}`)
+    .join('&');
+
+  // Ajouter le secret
+  const stringToSign = signString + MONETBIL_SERVICE_SECRET;
+
+  // Calculer le hash MD5
+  const calculatedSignature = crypto
+    .createHash('md5')
+    .update(stringToSign)
+    .digest('hex');
+
+  return calculatedSignature.toLowerCase() === receivedSignature.toLowerCase();
+}
 
 /**
  * Initie un paiement via Monetbil

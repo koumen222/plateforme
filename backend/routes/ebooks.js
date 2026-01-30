@@ -89,7 +89,7 @@ router.post('/', authenticate, async (req, res) => {
     const ebook = new Ebook({
       title,
       description,
-      price: price || 500,
+      price: price || 100,
       currency: currency || 'XAF',
       content,
       coverImage: coverImage || '',

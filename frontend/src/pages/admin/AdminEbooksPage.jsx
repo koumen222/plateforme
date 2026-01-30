@@ -13,7 +13,7 @@ export default function AdminEbooksPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    price: 500,
+    price: 100,
     currency: 'XAF',
     content: '',
     coverImage: '',
@@ -133,7 +133,7 @@ export default function AdminEbooksPage() {
     setFormData({
       title: '',
       description: '',
-      price: 500,
+      price: 100,
       currency: 'XAF',
       content: '',
       coverImage: '',
@@ -147,7 +147,7 @@ export default function AdminEbooksPage() {
     const testEbook = {
       title: 'Guide E-commerce Starter 3.0',
       description: 'Un guide complet pour démarrer votre business e-commerce avec succès. Découvrez les stratégies, outils et techniques pour créer une boutique en ligne rentable.',
-      price: 500,
+      price: 100,
       currency: 'XAF',
       content: `
         <h1>Guide E-commerce Starter 3.0</h1>
@@ -266,7 +266,7 @@ export default function AdminEbooksPage() {
                 <input
                   type="number"
                   value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 500 })}
+                  onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 100 })}
                   required
                   min="0"
                   style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}

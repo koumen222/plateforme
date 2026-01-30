@@ -14,7 +14,7 @@ const ebookSchema = new mongoose.Schema({
   price: {
     type: Number,
     required: [true, 'Prix requis'],
-    default: 500,
+    default: 100,
     min: [0, 'Le prix doit être positif']
   },
   currency: {

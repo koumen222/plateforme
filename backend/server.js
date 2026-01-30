@@ -122,6 +122,7 @@ console.log('   - Origines autorisées: safitech.shop et sous-domaines');
 console.log('   - Credentials: activé');
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: true })); // Pour les requêtes POST avec application/x-www-form-urlencoded
 app.use(cookieParser());
 app.use(referralCapture);
 

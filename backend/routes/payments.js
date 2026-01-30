@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticate } from '../middleware/auth.js';
-import { initiatePayment, checkPaymentStatus, mapMonetbilStatus } from '../services/monetbilService.js';
+import { initiatePayment, checkPaymentStatus, mapMonetbilStatus, verifyMonetbilIP, verifyMonetbilSignature } from '../services/monetbilService.js';
 import Ebook from '../models/Ebook.js';
 import PaymentTransaction from '../models/PaymentTransaction.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -50,7 +50,7 @@ router.post('/initiate', authenticate, async (req, res) => {
       lastName: req.user.name?.split(' ').slice(1).join(' ') || null,
       email: req.user.email || null,
       country: 'CM',
-      notifyUrl: `${process.env.BACKEND_URL || 'http://localhost:3000'}/api/payments/webhook`
+      notifyUrl: `${process.env.BACKEND_URL || 'https://infomania.store'}/api/payments/webhook`
     };
 
     // Initier le paiement via Monetbil
@@ -150,51 +150,176 @@ router.post('/check', authenticate, async (req, res) => {
   }
 });
 
-// Webhook pour les notifications Monetbil
+// Webhook pour les notifications Monetbil (GET ou POST)
+router.get('/webhook', async (req, res) => {
+  handleMonetbilWebhook(req, res);
+});
+
 router.post('/webhook', async (req, res) => {
+  handleMonetbilWebhook(req, res);
+});
+
+async function handleMonetbilWebhook(req, res) {
   try {
-    const { paymentId, transaction } = req.body;
+    // Récupérer les paramètres depuis GET ou POST
+    const params = req.method === 'GET' ? req.query : req.body;
+    
+    // Récupérer l'adresse IP du client
+    const clientIP = req.ip || req.connection.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0] || req.socket.remoteAddress;
+    
+    console.log('📥 Notification Monetbil reçue:', {
+      method: req.method,
+      ip: clientIP,
+      params: Object.keys(params)
+    });
 
-    if (!paymentId) {
-      return res.status(400).json({ error: 'paymentId requis' });
+    // 1. Vérifier l'adresse IP (sécurité)
+    if (!verifyMonetbilIP(clientIP)) {
+      console.error('❌ IP non autorisée:', clientIP);
+      return res.status(403).json({ error: 'IP non autorisée' });
     }
 
-    // Récupérer la transaction
-    const paymentTransaction = await PaymentTransaction.findOne({ paymentId });
+    // 2. Vérifier la signature (sécurité)
+    const receivedSignature = params.sign;
+    if (!verifyMonetbilSignature(params, receivedSignature)) {
+      console.error('❌ Signature invalide');
+      return res.status(403).json({ error: 'Signature invalide' });
+    }
+
+    // 3. Extraire les paramètres Monetbil
+    const {
+      service,
+      transaction_id,
+      transaction_uuid,
+      phone,
+      amount,
+      fee,
+      status,
+      message,
+      country_name,
+      country_iso,
+      country_code,
+      mccmnc,
+      operator,
+      operator_code,
+      operator_transaction_id,
+      currency,
+      user,
+      item_ref,
+      payment_ref,
+      first_name,
+      last_name,
+      email
+    } = params;
+
+    // Vérifier que le service correspond
+    if (service !== process.env.MONETBIL_SERVICE_KEY) {
+      console.error('❌ Service key invalide:', service);
+      return res.status(400).json({ error: 'Service key invalide' });
+    }
+
+    // Trouver la transaction par transaction_id ou payment_ref
+    let paymentTransaction = null;
+    
+    if (transaction_id) {
+      // Chercher par paymentId (qui correspond à transaction_id)
+      paymentTransaction = await PaymentTransaction.findOne({ paymentId: transaction_id });
+    }
+    
+    if (!paymentTransaction && payment_ref) {
+      // Chercher par paymentRef
+      paymentTransaction = await PaymentTransaction.findOne({ paymentRef: payment_ref });
+    }
+
     if (!paymentTransaction) {
-      console.error('Transaction non trouvée pour paymentId:', paymentId);
-      return res.status(404).json({ error: 'Transaction non trouvée' });
+      console.error('❌ Transaction non trouvée:', { transaction_id, payment_ref });
+      // Retourner success pour éviter que Monetbil réessaie
+      return res.json({ success: true, message: 'Transaction non trouvée mais notification reçue' });
     }
 
-    // Si la transaction est déjà complétée, ne rien faire
-    if (paymentTransaction.status === 'success') {
+    // Si la transaction est déjà complétée avec succès, ne rien faire
+    if (paymentTransaction.status === 'success' && status === 'success') {
+      console.log('✅ Transaction déjà complétée:', paymentTransaction.paymentId);
       return res.json({ success: true, message: 'Transaction déjà complétée' });
     }
 
+    // Mapper le statut Monetbil (success, cancelled, failed) vers notre statut interne
+    let internalStatus = 'pending';
+    let monetbilStatus = null;
+    
+    if (status === 'success') {
+      internalStatus = 'success';
+      monetbilStatus = 1;
+    } else if (status === 'cancelled') {
+      internalStatus = 'cancelled';
+      monetbilStatus = -1;
+    } else if (status === 'failed') {
+      internalStatus = 'failed';
+      monetbilStatus = 0;
+    }
+
     // Mettre à jour la transaction
-    if (transaction) {
-      const monetbilStatus = transaction.status;
-      paymentTransaction.monetbilStatus = monetbilStatus;
-      paymentTransaction.status = mapMonetbilStatus(monetbilStatus);
-      paymentTransaction.transactionData = transaction;
+    paymentTransaction.status = internalStatus;
+    paymentTransaction.monetbilStatus = monetbilStatus;
+    paymentTransaction.phoneNumber = phone || paymentTransaction.phoneNumber;
+    paymentTransaction.operator = operator || paymentTransaction.operator;
+    
+    // Stocker toutes les données de la transaction
+    paymentTransaction.transactionData = {
+      transaction_id,
+      transaction_uuid,
+      phone,
+      amount: parseFloat(amount) || paymentTransaction.amount,
+      fee: parseFloat(fee) || 0,
+      status,
+      message,
+      country_name,
+      country_iso,
+      country_code,
+      mccmnc,
+      operator,
+      operator_code,
+      operator_transaction_id,
+      currency: currency || paymentTransaction.currency,
+      user,
+      item_ref,
+      payment_ref,
+      first_name,
+      last_name,
+      email
+    };
+
+    // Si le paiement est réussi
+    if (internalStatus === 'success') {
+      paymentTransaction.completedAt = new Date();
       
-      if (paymentTransaction.status === 'success') {
-        paymentTransaction.completedAt = new Date();
-        // Incrémenter le compteur d'achats de l'ebook
-        await Ebook.findByIdAndUpdate(paymentTransaction.ebookId, {
-          $inc: { purchaseCount: 1 }
-        });
-      }
+      // Incrémenter le compteur d'achats de l'ebook
+      await Ebook.findByIdAndUpdate(paymentTransaction.ebookId, {
+        $inc: { purchaseCount: 1 }
+      });
+      
+      console.log('✅ Paiement confirmé:', {
+        paymentId: paymentTransaction.paymentId,
+        ebookId: paymentTransaction.ebookId,
+        userId: paymentTransaction.userId,
+        amount: paymentTransaction.amount
+      });
     }
 
     await paymentTransaction.save();
 
-    res.json({ success: true });
+    // Répondre à Monetbil pour confirmer la réception
+    res.json({ success: true, message: 'Notification reçue et traitée' });
   } catch (error) {
-    console.error('Erreur webhook paiement:', error);
-    res.status(500).json({ error: 'Erreur lors du traitement du webhook' });
+    console.error('❌ Erreur webhook paiement:', error);
+    // Retourner success pour éviter que Monetbil réessaie indéfiniment
+    res.status(500).json({ 
+      success: false,
+      error: 'Erreur lors du traitement du webhook',
+      message: error.message 
+    });
   }
-});
+}
 
 // Récupérer l'historique des paiements de l'utilisateur
 router.get('/history', authenticate, async (req, res) => {
