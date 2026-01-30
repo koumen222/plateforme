@@ -622,7 +622,6 @@ const checkTimeWindow = () => {
  * - Sélection aléatoire d'une variante par contact
  * - Délai de 25-45 secondes entre chaque message
  * - Pause de 2-3 minutes toutes les 15 personnes
- * - Limite quotidienne de 80-100 messages par jour
  * - Vérification de la plage horaire (08h-19h)
  * - Gestion des erreurs 466 (quota) avec pause immédiate
  * 
@@ -656,37 +655,11 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
     await performWarmup();
   }
   
-  // Limite de volume quotidien : 80-100 messages par jour
-  const maxDailyVolume = Math.floor(Math.random() * (100 - 80 + 1)) + 80; // 80-100 aléatoire
-  
-  // Vérifier le nombre de messages envoyés aujourd'hui (via les logs)
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  
-  const todayLogs = await WhatsAppLog.countDocuments({
-    sentAt: { $gte: today, $lt: tomorrow },
-    status: { $in: ['sent', 'delivered'] }
-  });
-  
-  if (todayLogs >= maxDailyVolume) {
-    throw new Error(`Limite quotidienne atteinte: ${todayLogs}/${maxDailyVolume} messages envoyés aujourd'hui`);
-  }
-  
-  // Limiter le nombre de contacts à envoyer pour ne pas dépasser la limite quotidienne
-  const remainingQuota = maxDailyVolume - todayLogs;
-  const contactsToProcess = Math.min(contacts.length, remainingQuota);
-  
-  if (contactsToProcess < contacts.length) {
-    console.log(`⚠️ Limite quotidienne: ${contactsToProcess}/${contacts.length} contacts seront traités aujourd'hui`);
-  }
-  
   let sentCount = 0;
   let failedCount = 0;
   let skippedCount = 0;
   
-  for (let i = 0; i < contactsToProcess; i++) {
+  for (let i = 0; i < contacts.length; i++) {
     // Vérifier si on doit faire une pause longue (toutes les 15 personnes)
     if (i > 0 && i % 15 === 0 && !paused) {
       const pauseDuration = getLongPause();
@@ -786,7 +759,7 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
       
       // Callback de progression
       if (onProgress) {
-        onProgress(i + 1, contactsToProcess, {
+        onProgress(i + 1, contacts.length, {
           sent: sentCount,
           failed: failedCount,
           skipped: skippedCount,
@@ -796,7 +769,7 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
       
       // Délai de 25-45 secondes entre chaque message
       // Sauf pour le dernier message
-      if (i < contactsToProcess - 1 && !quotaReached) {
+      if (i < contacts.length - 1 && !quotaReached) {
         const delay = getHumanDelay();
         const delaySeconds = Math.round(delay / 1000);
         console.log(`   ⏱️ Délai de ${delaySeconds} secondes avant le prochain message...`);
@@ -820,14 +793,12 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
   }
   
   return {
-    total: contactsToProcess,
+    total: contacts.length,
     sent: sentCount,
     failed: failedCount,
     skipped: skippedCount,
     quotaReached,
-    results,
-    dailyLimit: maxDailyVolume,
-    remainingQuota: maxDailyVolume - todayLogs - sentCount
+    results
   };
 };
 
