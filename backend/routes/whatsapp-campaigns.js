@@ -206,8 +206,9 @@ router.post('/:id/send', async (req, res) => {
     
     // Déterminer le lien selon le segment de la campagne
     let linkToUse = null;
-    if (campaign.recipients.type === 'segment' && campaign.recipients.segment === 'blocked') {
-      // Pour les non-actifs : lien vers le profil pour récupérer le lien d'affiliation
+    if (campaign.recipients.type === 'segment' && 
+        (campaign.recipients.segment === 'blocked' || campaign.recipients.segment === 'pending')) {
+      // Pour les non-actifs ou en attente : lien vers le profil pour récupérer le lien d'affiliation
       linkToUse = `${frontendUrl}/profil`;
     } else {
       // Pour les actifs : lien vers la page d'accueil
