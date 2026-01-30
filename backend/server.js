@@ -125,14 +125,15 @@ const corsOptions = {
   optionsSuccessStatus: 200
 };
 
+// Appliquer CORS avant tous les autres middlewares
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // Middleware pour logger les requêtes CORS (debug)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && req.method === 'OPTIONS') {
-    console.log(`🔍 CORS Preflight: ${req.method} ${req.path} depuis ${origin}`);
+  if (origin) {
+    console.log(`🌐 Requête ${req.method} ${req.path} depuis origine: ${origin}`);
   }
   next();
 });
