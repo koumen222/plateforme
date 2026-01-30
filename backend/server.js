@@ -136,14 +136,37 @@ const corsOptions = {
 // Appliquer CORS avant tous les autres middlewares
 app.use(cors(corsOptions));
 
+// Middleware CORS explicite pour toutes les routes (fallback)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  // Autoriser www.safitech.shop et safitech.shop
+  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+  }
+  
+  // Répondre immédiatement aux requêtes OPTIONS
+  if (req.method === 'OPTIONS') {
+    console.log(`🔍 CORS Preflight OPTIONS pour: ${origin}`);
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
+
 // Gérer explicitement les requêtes OPTIONS (preflight)
 app.options("*", (req, res) => {
   const origin = req.headers.origin;
-  console.log(`🔍 CORS Preflight OPTIONS pour: ${origin}`);
-  res.header('Access-Control-Allow-Origin', origin || '*');
+  console.log(`🔍 CORS Preflight OPTIONS (explicite) pour: ${origin}`);
+  if (origin && (origin.includes('safitech.shop') || origin.includes('localhost'))) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
   res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
   res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
-  res.header('Access-Control-Allow-Credentials', 'true');
   res.header('Access-Control-Max-Age', '86400'); // 24 heures
   res.sendStatus(200);
 });
