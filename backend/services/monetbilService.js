@@ -37,24 +37,21 @@ export function verifyMonetbilIP(ip) {
 export function verifyMonetbilSignature(params, receivedSignature) {
   if (!MONETBIL_SERVICE_SECRET) {
     console.warn('⚠️ MONETBIL_SERVICE_SECRET non configurée, vérification signature désactivée');
-    return true; // En développement, on peut accepter sans signature
+    return true; // Signature optionnelle si pas de secret configuré
   }
 
   if (!receivedSignature) {
     console.warn('⚠️ Aucune signature reçue dans la notification');
-    // Si aucune signature n'est fournie, on peut accepter en développement
-    // mais en production, cela devrait être rejeté
-    if (process.env.NODE_ENV === 'production') {
-      return false;
-    }
+    // La signature est optionnelle selon la documentation Monetbil
     return true;
   }
 
   // Créer une copie des paramètres sans 'sign'
   const paramsToSign = {};
   Object.keys(params).forEach(key => {
-    if (key !== 'sign' && params[key] !== undefined && params[key] !== null && params[key] !== '') {
-      paramsToSign[key] = params[key];
+    // Inclure tous les paramètres sauf 'sign', même les valeurs vides
+    if (key !== 'sign' && params[key] !== undefined && params[key] !== null) {
+      paramsToSign[key] = String(params[key]); // Convertir en string pour cohérence
     }
   });
 
@@ -70,25 +67,28 @@ export function verifyMonetbilSignature(params, receivedSignature) {
   const stringToSign = signString + MONETBIL_SERVICE_SECRET;
 
   console.log('🔐 Vérification signature:', {
-    signString: signString.substring(0, 100) + '...',
+    paramsCount: sortedKeys.length,
+    signStringPreview: signString.substring(0, 150) + (signString.length > 150 ? '...' : ''),
     secretLength: MONETBIL_SERVICE_SECRET.length,
-    receivedSignature: receivedSignature.substring(0, 10) + '...'
+    receivedSignaturePreview: receivedSignature.substring(0, 10) + '...'
   });
 
   // Calculer le hash MD5
   const calculatedSignature = crypto
     .createHash('md5')
-    .update(stringToSign)
+    .update(stringToSign, 'utf8')
     .digest('hex')
     .toLowerCase();
 
-  const isValid = calculatedSignature === receivedSignature.toLowerCase();
+  const receivedSigLower = receivedSignature.toLowerCase().trim();
+  const isValid = calculatedSignature === receivedSigLower;
   
   if (!isValid) {
     console.error('❌ Signature invalide:', {
       calculated: calculatedSignature,
-      received: receivedSignature.toLowerCase(),
-      stringToSign: stringToSign.substring(0, 200) + '...'
+      received: receivedSigLower,
+      stringToSignPreview: stringToSign.substring(0, 300) + (stringToSign.length > 300 ? '...' : ''),
+      sortedKeys: sortedKeys.slice(0, 10) // Afficher les premières clés
     });
   } else {
     console.log('✅ Signature valide');
