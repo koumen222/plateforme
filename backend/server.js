@@ -113,9 +113,17 @@ const corsOptions = {
       return;
     }
     
+    // Vérifier aussi avec www. au début
+    if (origin.startsWith('https://www.') && origin.includes('safitech.shop')) {
+      console.log(`✅ CORS: www.safitech.shop autorisé: ${origin}`);
+      callback(null, true);
+      return;
+    }
+    
     // Si aucune correspondance, bloquer
     console.log(`❌ CORS bloqué pour l'origine: ${origin}`);
     console.log(`   Origines autorisées:`, allowedOrigins);
+    console.log(`   Origine normalisée: ${normalizedOrigin}`);
     callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
@@ -127,7 +135,18 @@ const corsOptions = {
 
 // Appliquer CORS avant tous les autres middlewares
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+// Gérer explicitement les requêtes OPTIONS (preflight)
+app.options("*", (req, res) => {
+  const origin = req.headers.origin;
+  console.log(`🔍 CORS Preflight OPTIONS pour: ${origin}`);
+  res.header('Access-Control-Allow-Origin', origin || '*');
+  res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400'); // 24 heures
+  res.sendStatus(200);
+});
 
 // Middleware pour logger les requêtes CORS (debug)
 app.use((req, res, next) => {
