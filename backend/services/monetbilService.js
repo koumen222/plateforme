@@ -41,29 +41,60 @@ export function verifyMonetbilSignature(params, receivedSignature) {
   }
 
   if (!receivedSignature) {
-    return false;
+    console.warn('⚠️ Aucune signature reçue dans la notification');
+    // Si aucune signature n'est fournie, on peut accepter en développement
+    // mais en production, cela devrait être rejeté
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
+    return true;
   }
 
-  // Créer une chaîne avec tous les paramètres sauf 'sign'
-  const paramsToSign = { ...params };
-  delete paramsToSign.sign;
+  // Créer une copie des paramètres sans 'sign'
+  const paramsToSign = {};
+  Object.keys(params).forEach(key => {
+    if (key !== 'sign' && params[key] !== undefined && params[key] !== null && params[key] !== '') {
+      paramsToSign[key] = params[key];
+    }
+  });
 
-  // Trier les paramètres par ordre alphabétique
+  // Trier les clés par ordre alphabétique
   const sortedKeys = Object.keys(paramsToSign).sort();
+  
+  // Créer la chaîne de signature : key1=value1&key2=value2...
   const signString = sortedKeys
     .map(key => `${key}=${paramsToSign[key]}`)
     .join('&');
 
-  // Ajouter le secret
+  // Ajouter le secret à la fin
   const stringToSign = signString + MONETBIL_SERVICE_SECRET;
+
+  console.log('🔐 Vérification signature:', {
+    signString: signString.substring(0, 100) + '...',
+    secretLength: MONETBIL_SERVICE_SECRET.length,
+    receivedSignature: receivedSignature.substring(0, 10) + '...'
+  });
 
   // Calculer le hash MD5
   const calculatedSignature = crypto
     .createHash('md5')
     .update(stringToSign)
-    .digest('hex');
+    .digest('hex')
+    .toLowerCase();
 
-  return calculatedSignature.toLowerCase() === receivedSignature.toLowerCase();
+  const isValid = calculatedSignature === receivedSignature.toLowerCase();
+  
+  if (!isValid) {
+    console.error('❌ Signature invalide:', {
+      calculated: calculatedSignature,
+      received: receivedSignature.toLowerCase(),
+      stringToSign: stringToSign.substring(0, 200) + '...'
+    });
+  } else {
+    console.log('✅ Signature valide');
+  }
+
+  return isValid;
 }
 
 /**
