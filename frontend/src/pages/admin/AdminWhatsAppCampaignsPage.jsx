@@ -30,9 +30,9 @@ export default function AdminWhatsAppCampaignsPage() {
   })
   
   const [relanceCampaign, setRelanceCampaign] = useState({
-    variant1: 'Bonjour ! 👋\n\nNous avons remarqué que vous n\'êtes plus actif sur Ecom Starter 3.0.\n\nBonne nouvelle : vous pouvez obtenir un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
-    variant2: 'Salut ! 😊\n\nVous avez été inactif récemment sur Ecom Starter 3.0, mais nous avons une offre spéciale pour vous !\n\nPartagez votre lien d\'affiliation et obtenez un accès gratuit à toutes les fonctionnalités : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants. C\'est simple et rapide !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
-    variant3: 'Hello ! 🌟\n\nNous aimerions vous revoir sur Ecom Starter 3.0 !\n\nProfitez d\'un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation avec vos proches. Plus vous partagez, plus vous bénéficiez !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant1: 'Bonjour ! 👋\n\nVotre compte Ecom Starter 3.0 est en attente d\'activation.\n\nBonne nouvelle : vous pouvez obtenir un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant2: 'Salut ! 😊\n\nVotre compte Ecom Starter 3.0 est en attente, mais nous avons une offre spéciale pour vous !\n\nPartagez votre lien d\'affiliation et obtenez un accès gratuit à toutes les fonctionnalités : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants. C\'est simple et rapide !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant3: 'Hello ! 🌟\n\nActivez votre compte Ecom Starter 3.0 dès maintenant !\n\nProfitez d\'un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation avec vos proches. Plus vous partagez, plus vous bénéficiez !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
     enabled: false
   })
 
@@ -179,7 +179,7 @@ export default function AdminWhatsAppCampaignsPage() {
           variants: variants,
           recipients: {
             type: 'segment',
-            segment: 'blocked'
+            segment: 'pending'
           }
         })
       })
