@@ -101,9 +101,12 @@ router.post('/check', authenticate, async (req, res) => {
       return res.status(400).json({ error: 'paymentId requis' });
     }
 
+    console.log(`🔍 Vérification statut paiement: ${paymentId}`);
+
     // Récupérer la transaction
     const transaction = await PaymentTransaction.findOne({ paymentId });
     if (!transaction) {
+      console.error(`❌ Transaction non trouvée pour paymentId: ${paymentId}`);
       return res.status(404).json({ error: 'Transaction non trouvée' });
     }
 
@@ -112,25 +115,44 @@ router.post('/check', authenticate, async (req, res) => {
       return res.status(403).json({ error: 'Accès refusé' });
     }
 
+    // Si la transaction est déjà en succès, retourner directement
+    if (transaction.status === 'success') {
+      console.log(`✅ Transaction déjà en succès: ${paymentId}`);
+      return res.json({
+        success: true,
+        status: 'success',
+        message: 'Paiement confirmé',
+        transaction: transaction.transactionData || null
+      });
+    }
+
     // Vérifier le statut via Monetbil
+    console.log(`📞 Appel API Monetbil pour vérifier: ${paymentId}`);
     const monetbilResponse = await checkPaymentStatus(paymentId);
+    console.log(`📥 Réponse Monetbil:`, monetbilResponse);
 
     // Mettre à jour la transaction
     transaction.monetbilResponse = monetbilResponse;
     
     if (monetbilResponse.transaction) {
       const monetbilStatus = monetbilResponse.transaction.status;
+      const oldStatus = transaction.status;
       transaction.monetbilStatus = monetbilStatus;
       transaction.status = mapMonetbilStatus(monetbilStatus);
       transaction.transactionData = monetbilResponse.transaction;
       
-      if (transaction.status === 'success') {
+      console.log(`📊 Statut: ${oldStatus} -> ${transaction.status} (Monetbil: ${monetbilStatus})`);
+      
+      if (transaction.status === 'success' && oldStatus !== 'success') {
         transaction.completedAt = new Date();
         // Incrémenter le compteur d'achats de l'ebook
         await Ebook.findByIdAndUpdate(transaction.ebookId, {
           $inc: { purchaseCount: 1 }
         });
+        console.log(`✅ Paiement confirmé! Ebook ${transaction.ebookId} - Compteur incrémenté`);
       }
+    } else {
+      console.log(`⏳ Pas encore de transaction dans la réponse Monetbil (paiement en attente)`);
     }
 
     await transaction.save();
@@ -138,11 +160,11 @@ router.post('/check', authenticate, async (req, res) => {
     res.json({
       success: true,
       status: transaction.status,
-      message: monetbilResponse.message,
+      message: monetbilResponse.message || 'Vérification en cours',
       transaction: monetbilResponse.transaction || null
     });
   } catch (error) {
-    console.error('Erreur vérification paiement:', error);
+    console.error('❌ Erreur vérification paiement:', error);
     res.status(500).json({ 
       error: 'Erreur lors de la vérification du paiement',
       details: error.message 
@@ -291,18 +313,32 @@ async function handleMonetbilWebhook(req, res) {
 
     // Si le paiement est réussi
     if (internalStatus === 'success') {
+      const wasAlreadySuccess = paymentTransaction.status === 'success';
       paymentTransaction.completedAt = new Date();
       
-      // Incrémenter le compteur d'achats de l'ebook
-      await Ebook.findByIdAndUpdate(paymentTransaction.ebookId, {
-        $inc: { purchaseCount: 1 }
-      });
-      
-      console.log('✅ Paiement confirmé:', {
+      // Incrémenter le compteur d'achats de l'ebook seulement si ce n'était pas déjà en succès
+      if (!wasAlreadySuccess) {
+        await Ebook.findByIdAndUpdate(paymentTransaction.ebookId, {
+          $inc: { purchaseCount: 1 }
+        });
+        
+        console.log('✅ Paiement confirmé via webhook:', {
+          paymentId: paymentTransaction.paymentId,
+          transaction_id,
+          ebookId: paymentTransaction.ebookId,
+          userId: paymentTransaction.userId,
+          amount: paymentTransaction.amount,
+          operator: operator || 'N/A'
+        });
+      } else {
+        console.log('ℹ️ Paiement déjà confirmé précédemment:', paymentTransaction.paymentId);
+      }
+    } else {
+      console.log(`⚠️ Paiement ${status}:`, {
         paymentId: paymentTransaction.paymentId,
-        ebookId: paymentTransaction.ebookId,
-        userId: paymentTransaction.userId,
-        amount: paymentTransaction.amount
+        transaction_id,
+        status,
+        message
       });
     }
 

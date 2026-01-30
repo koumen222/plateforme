@@ -121,15 +121,22 @@ export default function EbookPage() {
 
       const data = await response.json()
 
+      console.log('📊 Statut paiement:', data.status, data)
+
       if (data.status === 'success') {
+        console.log('✅ Paiement confirmé avec succès!')
         setPurchased(true)
         setPaymentId(null)
         setPaymentInfo(null)
         fetchEbook() // Recharger l'ebook pour avoir accès au contenu
       } else if (data.status === 'failed' || data.status === 'cancelled') {
+        console.log('❌ Paiement échoué ou annulé:', data.status)
         setError('Paiement échoué ou annulé')
         setPaymentId(null)
         setPaymentInfo(null)
+      } else {
+        // Statut pending - continuer à vérifier
+        console.log('⏳ Paiement en attente...')
       }
     } catch (err) {
       console.error('Erreur vérification paiement:', err)
