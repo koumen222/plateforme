@@ -775,6 +775,166 @@ const startServer = async () => {
         note: 'Si vous voyez ce message, le serveur fonctionne mais le module n\'est pas encore chargé'
       });
     });
+
+    // Liste des utilisateurs avec numéros pour sélection manuelle
+    app.get("/api/whatsapp-campaigns/users-with-phones", authenticate, requireAdmin, async (req, res) => {
+      try {
+        const { search = '', limit = 1000 } = req.query;
+        const sanitizePhone = (value) => {
+          if (!value) return '';
+          return value.toString().replace(/\D/g, '').trim();
+        };
+
+        let query = {
+          $and: [
+            {
+              $or: [
+                { phone: { $exists: true, $ne: '' } },
+                { phoneNumber: { $exists: true, $ne: '' } }
+              ]
+            },
+            { role: { $ne: 'admin' } }
+          ]
+        };
+
+        if (search && search.trim()) {
+          const searchRegex = { $regex: search.trim(), $options: 'i' };
+          query.$and.push({
+            $or: [
+              { name: searchRegex },
+              { email: searchRegex },
+              { phone: searchRegex },
+              { phoneNumber: searchRegex }
+            ]
+          });
+        }
+
+        const users = await User.find(query)
+          .select('phone phoneNumber name email _id')
+          .limit(parseInt(limit, 10))
+          .lean();
+
+        const contacts = users
+          .map((u) => {
+            const rawPhone = (u.phoneNumber && u.phoneNumber.trim()) || (u.phone && u.phone.trim()) || '';
+            const phone = sanitizePhone(rawPhone);
+            const firstName = u.name ? u.name.toString().trim().split(' ')[0] : '';
+            return {
+              phone,
+              firstName,
+              name: u.name || '',
+              email: u.email || '',
+              userId: u._id,
+              valid: phone.length >= 8 && phone.length <= 15
+            };
+          })
+          .filter((c) => !!c.phone);
+
+        // Dédoublonnage par numéro
+        const seen = new Set();
+        const uniqueContacts = [];
+        for (const c of contacts) {
+          if (seen.has(c.phone)) continue;
+          seen.add(c.phone);
+          uniqueContacts.push(c);
+        }
+
+        res.json({
+          success: true,
+          total: uniqueContacts.length,
+          validCount: uniqueContacts.filter((c) => c.valid).length,
+          contacts: uniqueContacts
+        });
+      } catch (error) {
+        console.error('❌ Erreur récupération utilisateurs avec numéros:', error.message);
+        console.error('   Stack:', error.stack);
+        res.status(500).json({ error: 'Erreur récupération utilisateurs', details: error.message });
+      }
+    });
+
+    // Preview des destinataires WhatsApp (liste de numéros avant envoi)
+    // Permet au frontend d'afficher la liste et cocher/décocher avant l'envoi
+    app.get("/api/whatsapp-campaigns/recipients-preview", authenticate, requireAdmin, async (req, res) => {
+      try {
+        const tag = (req.query.tag || 'active').toString();
+        const allowedTags = ['active', 'pending', 'blocked', 'all'];
+
+        if (!allowedTags.includes(tag)) {
+          return res.status(400).json({ error: 'Tag invalide', allowedTags });
+        }
+
+        const sanitizePhone = (value) => {
+          if (!value) return '';
+          return value.toString().replace(/\D/g, '').trim();
+        };
+
+        // Validation légère côté preview (la validation stricte est faite au moment de l'envoi)
+        const isValidPreviewPhone = (digits) => !!digits && digits.length >= 8 && digits.length <= 15;
+
+        let users = [];
+        if (tag === 'all') {
+          users = await User.find({
+            $and: [
+              {
+                $or: [
+                  { phone: { $exists: true, $ne: '' } },
+                  { phoneNumber: { $exists: true, $ne: '' } }
+                ]
+              },
+              { role: { $ne: 'admin' } }
+            ]
+          }).select('phone phoneNumber name _id').lean();
+        } else {
+          users = await User.find({
+            $and: [
+              {
+                $or: [
+                  { phone: { $exists: true, $ne: '' } },
+                  { phoneNumber: { $exists: true, $ne: '' } }
+                ]
+              },
+              {
+                $or: [
+                  { status: tag },
+                  { accountStatus: tag }
+                ]
+              },
+              { role: { $ne: 'admin' } }
+            ]
+          }).select('phone phoneNumber name _id').lean();
+        }
+
+        const contactsRaw = users
+          .map((u) => {
+            const rawPhone = (u.phoneNumber && u.phoneNumber.trim()) || (u.phone && u.phone.trim()) || '';
+            const phone = sanitizePhone(rawPhone);
+            const firstName = u.name ? u.name.toString().trim().split(' ')[0] : '';
+            return { phone, firstName, userId: u._id, valid: isValidPreviewPhone(phone) };
+          })
+          .filter((c) => !!c.phone);
+
+        // Dédoublonnage par numéro
+        const seen = new Set();
+        const contacts = [];
+        for (const c of contactsRaw) {
+          if (seen.has(c.phone)) continue;
+          seen.add(c.phone);
+          contacts.push(c);
+        }
+
+        res.json({
+          success: true,
+          tag,
+          total: contacts.length,
+          validCount: contacts.filter((c) => c.valid).length,
+          contacts
+        });
+      } catch (error) {
+        console.error('❌ Erreur preview recipients WhatsApp:', error.message);
+        console.error('   Stack:', error.stack);
+        res.status(500).json({ error: 'Erreur récupération destinataires', details: error.message });
+      }
+    });
     
     app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
       try {

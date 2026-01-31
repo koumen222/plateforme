@@ -20,8 +20,21 @@ export default function AdminWhatsAppCampaignsPage() {
     variant2: '',
     variant3: '',
     tag: 'active',
+    recipientMode: 'tag',
+    customPhones: '',
     fromPhone: ''
   })
+
+  // Prévisualisation / sélection des numéros avant envoi
+  const [recipientReviewOpen, setRecipientReviewOpen] = useState(false)
+  const [recipientReviewLoading, setRecipientReviewLoading] = useState(false)
+  const [recipientReviewItems, setRecipientReviewItems] = useState([]) // [{ phone, firstName, valid, selected }]
+  const [pendingSendPayload, setPendingSendPayload] = useState(null) // { message, variants, fromPhone }
+  
+  // Liste des utilisateurs avec numéros pour sélection manuelle
+  const [usersWithPhones, setUsersWithPhones] = useState([])
+  const [loadingUsersWithPhones, setLoadingUsersWithPhones] = useState(false)
+  const [searchUsers, setSearchUsers] = useState('')
   
   const [welcomeCampaign, setWelcomeCampaign] = useState({
     variant1: '[PRENOM], bienvenue sur Ecom Starter 3.0 ! 🎉\n\nNous sommes ravis de vous compter parmi nous. Vous avez maintenant accès à toutes les fonctionnalités de la plateforme : formation e-commerce complète, liste de livreurs et fournisseurs, générateur de produits gagnants, coaching personnalisé et tous les outils essentiels pour créer un business rentable.\n\nExplorez votre espace : https://www.safitech.shop/',
@@ -50,6 +63,30 @@ export default function AdminWhatsAppCampaignsPage() {
       fetchCampaigns()
     }
   }, [token])
+
+  useEffect(() => {
+    if (formData.recipientMode === 'list' && token) {
+      fetchUsersWithPhones()
+    }
+  }, [formData.recipientMode, token])
+
+  const fetchUsersWithPhones = async () => {
+    if (!token) return
+    setLoadingUsersWithPhones(true)
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/users-with-phones?search=${encodeURIComponent(searchUsers)}&limit=1000`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setUsersWithPhones(data.contacts || [])
+      }
+    } catch (error) {
+      console.error('Erreur récupération utilisateurs:', error)
+    } finally {
+      setLoadingUsersWithPhones(false)
+    }
+  }
 
   const fetchStats = async () => {
     if (!token) return
@@ -84,6 +121,22 @@ export default function AdminWhatsAppCampaignsPage() {
   const showNotification = (message, type = 'success') => {
     setNotification({ message, type })
     setTimeout(() => setNotification(null), 5000)
+  }
+
+  const parseCustomPhones = (text) => {
+    if (!text || !text.trim()) return []
+    const parts = text.split(/[\n,;]+/g).map(s => (s || '').toString().trim()).filter(Boolean)
+    const digits = parts.map(s => s.replace(/\D/g, '')).filter(Boolean)
+    return Array.from(new Set(digits))
+  }
+
+  const isValidPreviewPhone = (digits) => {
+    if (!digits) return false
+    return digits.length >= 8 && digits.length <= 15
+  }
+
+  const setAllRecipientsSelected = (selected) => {
+    setRecipientReviewItems(prev => prev.map(item => ({ ...item, selected })))
   }
 
   const sendWelcomeCampaign = async (variants) => {
@@ -360,29 +413,9 @@ export default function AdminWhatsAppCampaignsPage() {
     return 0
   }
 
-  const handleSend = async (e) => {
-    e.preventDefault()
-    
-    // Vérifier qu'au moins un message ou une variante est fourni
-    const hasMessage = formData.message && formData.message.trim()
-    const variants = [
-      formData.variant1?.trim(),
-      formData.variant2?.trim(),
-      formData.variant3?.trim()
-    ].filter(v => v && v.length > 0)
-    
-    if (!hasMessage && variants.length === 0) {
-      showNotification('Au moins un message ou une variante doit être fourni', 'error')
-      return
-    }
-
-    if (!confirm(`Envoyer ce message WhatsApp à ${getTagCount(formData.tag)} utilisateurs avec le tag "${formData.tag}" ?`)) {
-      return
-    }
-
+  const createAndSendCampaign = async ({ message, variants, recipients, fromPhone }) => {
     setSending(true)
     try {
-      // Créer la campagne
       const campaignResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns`, {
         method: 'POST',
         headers: {
@@ -391,25 +424,21 @@ export default function AdminWhatsAppCampaignsPage() {
         },
         body: JSON.stringify({
           name: `Newsletter ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`,
-          message: hasMessage ? formData.message.trim() : null,
-          variants: variants.length > 0 ? variants : null,
-          recipients: {
-            type: formData.tag === 'all' ? 'all' : 'segment',
-            segment: formData.tag === 'all' ? 'active' : formData.tag
-          },
-          fromPhone: formData.fromPhone || ''
+          message: message ? message.trim() : null,
+          variants: variants && Array.isArray(variants) && variants.length > 0 ? variants : null,
+          recipients,
+          fromPhone: fromPhone || ''
         })
       })
 
       if (!campaignResponse.ok) {
-        const errorData = await campaignResponse.json()
+        const errorData = await campaignResponse.json().catch(() => ({}))
         throw new Error(errorData.error || 'Erreur création campagne')
       }
 
       const campaignData = await campaignResponse.json()
       const campaignId = campaignData.campaign._id
 
-      // Envoyer la campagne
       const sendResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/send`, {
         method: 'POST',
         headers: {
@@ -418,85 +447,185 @@ export default function AdminWhatsAppCampaignsPage() {
         }
       })
 
-      if (sendResponse.ok) {
-        const sendData = await sendResponse.json()
-        const results = sendData.details || sendData.stats || {}
-        // Récupérer les numéros des destinataires depuis les détails ou les logs
-        let phoneNumbers = sendData.details?.sentPhones || results.sentPhones || []
-        if (phoneNumbers.length === 0) {
-          try {
-            const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            if (verifyResponse.ok) {
-              const verifyData = await verifyResponse.json()
-              const logs = verifyData.logs || []
-              phoneNumbers = logs
-                .filter(log => log.status === 'sent' || log.status === 'delivered')
-                .map(log => log.phone)
-                .filter(Boolean)
-            }
-          } catch (err) {
-            console.error('Erreur récupération numéros:', err)
-          }
-        }
-        
-        setSendResults({
-          total: results.total || sendData.stats?.total || 0,
-          sent: results.sent || 0,
-          failed: results.failed || 0,
-          skipped: results.skipped || 0,
-          confirmed: results.confirmed || 0,
-          delivered: results.delivered || 0,
-          read: results.read || 0,
-          quotaReached: results.quotaReached || false,
-          failedPhones: results.failedPhones || [],
-          phoneNumbers: phoneNumbers
-        })
-        
-        // Vérification supplémentaire après 2 secondes
-        setTimeout(async () => {
-          try {
-            const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
-              headers: { Authorization: `Bearer ${token}` }
-            })
-            if (verifyResponse.ok) {
-              const verifyData = await verifyResponse.json()
-              setSendResults(prev => ({
-                ...prev,
-                confirmed: verifyData.stats?.confirmed || prev?.confirmed || 0,
-                delivered: verifyData.stats?.delivered || 0,
-                read: verifyData.stats?.read || 0
-              }))
-            }
-          } catch (err) {
-            console.error('Erreur vérification:', err)
-          }
-        }, 2000)
-        
-        const totalSent = results.sent || sendData.stats?.sent || 0
-        const totalDest = results.total || sendData.stats?.total || 0
-        showNotification(`✅ Message WhatsApp envoyé: ${totalSent}/${totalDest} messages`, 'success')
-        setFormData({
-          message: '',
-          variant1: '',
-          variant2: '',
-          variant3: '',
-          tag: 'active',
-          fromPhone: ''
-        })
-        fetchStats()
-        fetchCampaigns()
-      } else {
-        const errorData = await sendResponse.json()
+      if (!sendResponse.ok) {
+        const errorData = await sendResponse.json().catch(() => ({}))
         throw new Error(errorData.error || 'Erreur envoi')
       }
+
+      const sendData = await sendResponse.json()
+      const results = sendData.details || sendData.stats || {}
+
+      let phoneNumbers = sendData.details?.sentPhones || results.sentPhones || []
+      if (phoneNumbers.length === 0) {
+        try {
+          const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json()
+            const logs = verifyData.logs || []
+            phoneNumbers = logs
+              .filter(log => log.status === 'sent' || log.status === 'delivered')
+              .map(log => log.phone)
+              .filter(Boolean)
+          }
+        } catch (err) {
+          console.error('Erreur récupération numéros:', err)
+        }
+      }
+
+      setSendResults({
+        total: results.total || sendData.stats?.total || 0,
+        sent: results.sent || 0,
+        failed: results.failed || 0,
+        skipped: results.skipped || 0,
+        confirmed: results.confirmed || 0,
+        delivered: results.delivered || 0,
+        read: results.read || 0,
+        quotaReached: results.quotaReached || false,
+        failedPhones: results.failedPhones || [],
+        phoneNumbers
+      })
+
+      setTimeout(async () => {
+        try {
+          const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json()
+            setSendResults(prev => ({
+              ...prev,
+              confirmed: verifyData.stats?.confirmed || prev?.confirmed || 0,
+              delivered: verifyData.stats?.delivered || 0,
+              read: verifyData.stats?.read || 0
+            }))
+          }
+        } catch (err) {
+          console.error('Erreur vérification:', err)
+        }
+      }, 2000)
+
+      const totalSent = results.sent || sendData.stats?.sent || 0
+      const totalDest = results.total || sendData.stats?.total || 0
+      showNotification(`✅ Message WhatsApp envoyé: ${totalSent}/${totalDest} messages`, 'success')
+
+      setFormData({
+        message: '',
+        variant1: '',
+        variant2: '',
+        variant3: '',
+        tag: 'active',
+        recipientMode: 'tag',
+        customPhones: '',
+        fromPhone: ''
+      })
+
+      fetchStats()
+      fetchCampaigns()
     } catch (error) {
       console.error('Erreur envoi message WhatsApp:', error)
       showNotification(error.message || 'Erreur lors de l\'envoi', 'error')
     } finally {
       setSending(false)
     }
+  }
+
+  const handleSend = async (e) => {
+    e.preventDefault()
+
+    const hasMessage = formData.message && formData.message.trim()
+    const variants = [
+      formData.variant1?.trim(),
+      formData.variant2?.trim(),
+      formData.variant3?.trim()
+    ].filter(v => v && v.length > 0)
+
+    if (!hasMessage && variants.length === 0) {
+      showNotification('Au moins un message ou une variante doit être fourni', 'error')
+      return
+    }
+
+    setRecipientReviewLoading(true)
+    try {
+      let items = []
+
+      if (formData.recipientMode === 'list') {
+        if (usersWithPhones.length === 0) {
+          showNotification('Aucun utilisateur avec numéro trouvé. Chargez d\'abord la liste.', 'error')
+          return
+        }
+        items = usersWithPhones
+          .filter(u => u.valid !== false)
+          .map(u => ({
+            phone: u.phone,
+            firstName: u.firstName || '',
+            name: u.name || '',
+            email: u.email || '',
+            valid: true,
+            selected: true
+          }))
+      } else {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/recipients-preview?tag=${encodeURIComponent(formData.tag)}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}))
+          throw new Error(errorData.error || 'Erreur récupération destinataires')
+        }
+
+        const data = await response.json()
+        const contacts = data.contacts || []
+        items = contacts.map(c => ({
+          phone: c.phone,
+          firstName: c.firstName || '',
+          name: '',
+          email: '',
+          valid: c.valid !== false,
+          selected: c.valid !== false
+        }))
+      }
+
+      if (!items || items.length === 0) {
+        showNotification('Aucun numéro trouvé pour cette sélection', 'error')
+        return
+      }
+
+      setPendingSendPayload({
+        message: hasMessage ? formData.message.trim() : null,
+        variants: variants.length > 0 ? variants : null,
+        fromPhone: formData.fromPhone || ''
+      })
+
+      setRecipientReviewItems(items)
+      setRecipientReviewOpen(true)
+    } catch (error) {
+      console.error('Erreur préparation destinataires:', error)
+      showNotification(error.message || 'Erreur lors de la préparation', 'error')
+    } finally {
+      setRecipientReviewLoading(false)
+    }
+  }
+
+  const confirmSendSelectedRecipients = async () => {
+    if (!pendingSendPayload) {
+      showNotification('Aucune donnée à envoyer', 'error')
+      return
+    }
+
+    const selectedPhones = (recipientReviewItems || []).filter(i => i.selected).map(i => i.phone)
+    if (selectedPhones.length === 0) {
+      showNotification('Sélectionnez au moins un numéro avant d\'envoyer', 'error')
+      return
+    }
+
+    setRecipientReviewOpen(false)
+    setRecipientReviewItems([])
+
+    const recipients = { type: 'list', customPhones: selectedPhones }
+    await createAndSendCampaign({ ...pendingSendPayload, recipients })
+    setPendingSendPayload(null)
   }
 
   const tagLabels = {
@@ -511,6 +640,137 @@ export default function AdminWhatsAppCampaignsPage() {
       {notification && (
         <div className={`admin-notification ${notification.type}`}>
           {notification.message}
+        </div>
+      )}
+
+      {recipientReviewOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.55)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '16px'
+          }}
+          onClick={() => {
+            if (!sending) {
+              setRecipientReviewOpen(false)
+              setRecipientReviewItems([])
+              setPendingSendPayload(null)
+            }
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '760px',
+              background: '#fff',
+              borderRadius: '12px',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '16px', borderBottom: '1px solid #eee' }}>
+              <h2 style={{ margin: 0, fontSize: '18px' }}>✅ Sélection des numéros avant envoi</h2>
+              <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#6c757d' }}>
+                Sélectionnés : <strong>{recipientReviewItems.filter(i => i.selected).length}</strong> / {recipientReviewItems.length}
+              </p>
+            </div>
+
+            <div style={{ padding: '12px 16px', display: 'flex', gap: '8px', flexWrap: 'wrap', borderBottom: '1px solid #f1f1f1' }}>
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={sending}
+                onClick={() => setAllRecipientsSelected(true)}
+                style={{ padding: '8px 10px', fontSize: '13px' }}
+              >
+                Tout sélectionner
+              </button>
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={sending}
+                onClick={() => setAllRecipientsSelected(false)}
+                style={{ padding: '8px 10px', fontSize: '13px' }}
+              >
+                Tout désélectionner
+              </button>
+            </div>
+
+            <div style={{ padding: '12px 16px', maxHeight: '420px', overflow: 'auto' }}>
+              {recipientReviewItems.map((item) => (
+                <label
+                  key={item.phone}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '10px 8px',
+                    borderBottom: '1px solid #f5f5f5',
+                    cursor: sending ? 'not-allowed' : 'pointer',
+                    opacity: sending ? 0.6 : 1
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={!!item.selected}
+                    disabled={sending}
+                    onChange={() => {
+                      setRecipientReviewItems(prev =>
+                        prev.map(p => (p.phone === item.phone ? { ...p, selected: !p.selected } : p))
+                      )
+                    }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '14px', fontWeight: '600' }}>{item.phone}</span>
+                      {item.name ? (
+                        <span style={{ fontSize: '13px', color: '#333', fontWeight: '500' }}>{item.name}</span>
+                      ) : item.firstName ? (
+                        <span style={{ fontSize: '12px', color: '#6c757d' }}>{item.firstName}</span>
+                      ) : null}
+                      {item.email && (
+                        <span style={{ fontSize: '11px', color: '#999' }}>{item.email}</span>
+                      )}
+                      {item.valid === false ? (
+                        <span style={{ fontSize: '12px', color: '#d9534f', fontWeight: '600' }}>Invalide</span>
+                      ) : null}
+                    </div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div style={{ padding: '16px', borderTop: '1px solid #eee', display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="admin-btn"
+                disabled={sending}
+                onClick={() => {
+                  setRecipientReviewOpen(false)
+                  setRecipientReviewItems([])
+                  setPendingSendPayload(null)
+                }}
+                style={{ padding: '10px 14px', fontSize: '14px' }}
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                className="admin-btn admin-btn-success"
+                disabled={sending || recipientReviewItems.filter(i => i.selected).length === 0}
+                onClick={confirmSendSelectedRecipients}
+                style={{ padding: '10px 14px', fontSize: '14px' }}
+              >
+                {sending ? '⏳ Envoi...' : `📤 Envoyer (${recipientReviewItems.filter(i => i.selected).length})`}
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -748,21 +1008,121 @@ export default function AdminWhatsAppCampaignsPage() {
           <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Nouveau Message WhatsApp</h2>
           <form onSubmit={handleSend}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Tag destinataires *</label>
-              <select
-                value={formData.tag}
-                onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
-                required
-                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
-              >
-                <option value="active">✅ Actifs</option>
-                <option value="pending">⏳ En attente</option>
-                <option value="blocked">❌ Inactifs</option>
-                <option value="all">📱 Tous les utilisateurs</option>
-              </select>
-              <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
-                {getTagCount(formData.tag)} utilisateurs recevront ce message
-              </p>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Destinataires *</label>
+              <div style={{ display: 'flex', gap: '16px', marginBottom: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="recipientMode"
+                    checked={formData.recipientMode === 'tag'}
+                    onChange={() => setFormData({ ...formData, recipientMode: 'tag' })}
+                  />
+                  Par tag
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  <input
+                    type="radio"
+                    name="recipientMode"
+                    checked={formData.recipientMode === 'list'}
+                    onChange={() => setFormData({ ...formData, recipientMode: 'list' })}
+                  />
+                  Par numéros
+                </label>
+              </div>
+              {formData.recipientMode === 'tag' ? (
+                <>
+                  <select
+                    value={formData.tag}
+                    onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  >
+                    <option value="active">✅ Actifs</option>
+                    <option value="pending">⏳ En attente</option>
+                    <option value="blocked">❌ Inactifs</option>
+                    <option value="all">📱 Tous les utilisateurs</option>
+                  </select>
+                  <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                    {getTagCount(formData.tag)} utilisateurs recevront ce message
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '12px' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                      <input
+                        type="text"
+                        value={searchUsers}
+                        onChange={(e) => {
+                          setSearchUsers(e.target.value)
+                          setTimeout(() => fetchUsersWithPhones(), 300)
+                        }}
+                        placeholder="Rechercher par nom, email ou numéro..."
+                        style={{ flex: 1, padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
+                      />
+                      <button
+                        type="button"
+                        onClick={fetchUsersWithPhones}
+                        disabled={loadingUsersWithPhones}
+                        className="admin-btn"
+                        style={{ padding: '8px 12px', fontSize: '13px' }}
+                      >
+                        {loadingUsersWithPhones ? '⏳' : '🔄'}
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6c757d' }}>
+                      {loadingUsersWithPhones ? 'Chargement...' : `${usersWithPhones.length} utilisateur(s) avec numéro trouvé(s)`}
+                    </p>
+                  </div>
+                  
+                  <div style={{ 
+                    maxHeight: '300px', 
+                    overflow: 'auto', 
+                    border: '1px solid #ddd', 
+                    borderRadius: '4px', 
+                    padding: '8px',
+                    backgroundColor: '#f9f9f9'
+                  }}>
+                    {usersWithPhones.length === 0 ? (
+                      <p style={{ textAlign: 'center', color: '#6c757d', padding: '20px' }}>
+                        {loadingUsersWithPhones ? 'Chargement...' : 'Aucun utilisateur avec numéro trouvé'}
+                      </p>
+                    ) : (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        {usersWithPhones.map((user) => (
+                          <div
+                            key={user.phone}
+                            style={{
+                              padding: '6px 8px',
+                              backgroundColor: '#fff',
+                              borderRadius: '4px',
+                              fontSize: '13px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <span style={{ fontFamily: 'monospace', fontWeight: '600', minWidth: '140px' }}>
+                              {user.phone}
+                            </span>
+                            {user.name && (
+                              <span style={{ color: '#6c757d', flex: 1 }}>{user.name}</span>
+                            )}
+                            {user.email && (
+                              <span style={{ color: '#999', fontSize: '12px' }}>{user.email}</span>
+                            )}
+                            {user.valid === false && (
+                              <span style={{ fontSize: '11px', color: '#d9534f', fontWeight: '600' }}>Invalide</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '8px' }}>
+                    💡 Cliquez sur "Choisir les numéros" pour sélectionner les destinataires depuis cette liste
+                  </p>
+                </>
+              )}
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -843,11 +1203,15 @@ export default function AdminWhatsAppCampaignsPage() {
 
             <button
               type="submit"
-              disabled={sending}
+              disabled={recipientReviewLoading || sending || (formData.recipientMode === 'list' && usersWithPhones.length === 0)}
               className="admin-btn admin-btn-success"
               style={{ width: '100%', fontSize: '14px', padding: '10px' }}
             >
-              {sending ? '⏳ Envoi en cours...' : `📤 Envoyer à ${tagLabels[formData.tag]}`}
+              {recipientReviewLoading
+                ? '⏳ Préparation de la liste...'
+                : (sending ? '⏳ Envoi en cours...' : (formData.recipientMode === 'list'
+                  ? `📤 Choisir les numéros (${usersWithPhones.length})`
+                  : `📤 Choisir les numéros (${tagLabels[formData.tag]})`))}
             </button>
           </form>
         </div>
