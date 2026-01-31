@@ -1040,8 +1040,8 @@ const startServer = async () => {
         });
       }
     });
-    
-      app.get("/api/whatsapp-campaigns/:id/stream", authenticate, requireAdmin, async (req, res) => {
+
+    app.get("/api/whatsapp-campaigns/:id/stream", authenticate, requireAdmin, async (req, res) => {
         try {
           const { id } = req.params;
           
@@ -1102,7 +1102,7 @@ const startServer = async () => {
         }
       });
 
-      app.get("/api/whatsapp-campaigns/:id/status", authenticate, requireAdmin, async (req, res) => {
+    app.get("/api/whatsapp-campaigns/:id/status", authenticate, requireAdmin, async (req, res) => {
         try {
           const { id } = req.params;
           
@@ -1170,7 +1170,7 @@ const startServer = async () => {
         }
       });
 
-      app.post("/api/whatsapp-campaigns/:id/send", authenticate, requireAdmin, async (req, res) => {
+    app.post("/api/whatsapp-campaigns/:id/send", authenticate, requireAdmin, async (req, res) => {
       try {
         const { id } = req.params;
         
