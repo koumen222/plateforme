@@ -656,8 +656,8 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
   let skippedCount = 0;
   
   for (let i = 0; i < contacts.length; i++) {
-    // Vérifier si on doit faire une pause longue (toutes les 15 personnes)
-    if (i > 0 && i % 15 === 0 && !paused) {
+    // Vérifier si on doit faire une pause longue (toutes les 10 personnes)
+    if (i > 0 && i % 10 === 0 && !paused) {
       const pauseDuration = getLongPause();
       const pauseMinutes = Math.round(pauseDuration / 60000);
       console.log(`⏸️ Pause longue de ${pauseMinutes} minutes après ${i} messages...`);
