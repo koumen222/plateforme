@@ -1,5 +1,6 @@
 import express from 'express';
 import Visit from '../models/Visit.js';
+import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
 
 const router = express.Router();
@@ -67,7 +68,7 @@ router.post('/track', async (req, res) => {
  * GET /api/visits/stats
  * Requiert authentification admin
  */
-router.get('/stats', requireAdmin, async (req, res) => {
+router.get('/stats', authenticate, requireAdmin, async (req, res) => {
   try {
     const { period = '30' } = req.query; // Par défaut 30 derniers jours
     const days = parseInt(period, 10);
@@ -160,7 +161,7 @@ router.get('/stats', requireAdmin, async (req, res) => {
  * GET /api/visits/recent
  * Requiert authentification admin
  */
-router.get('/recent', requireAdmin, async (req, res) => {
+router.get('/recent', authenticate, requireAdmin, async (req, res) => {
   try {
     const { limit = 100, page = 1 } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
