@@ -579,39 +579,51 @@ const sendBulkWhatsApp = async (messages) => {
  * 5. Partie 3 (fin du message)
  */
 const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }) => {
+  // Remplacer [PRENOM] dans le message complet d'abord
+  let fullMessage = message;
+  if (firstName) {
+    fullMessage = fullMessage.replace(/\[PRENOM\]/g, firstName);
+  }
+  
   // Diviser le message en 3 parties approximativement égales
-  const lines = message.split('\n').filter(l => l.trim());
+  const lines = fullMessage.split('\n').filter(l => l.trim());
   const totalLines = lines.length;
   
   let part1 = '';
   let part2 = '';
   let part3 = '';
   
-  if (totalLines <= 3) {
-    // Message court : première ligne, puis le reste
-    part1 = lines[0] || '';
-    part2 = lines.slice(1, Math.ceil(totalLines / 2) + 1).join('\n');
-    part3 = lines.slice(Math.ceil(totalLines / 2) + 1).join('\n');
+  if (totalLines <= 2) {
+    // Message très court : tout dans la première partie avec "Bonjour"
+    part1 = firstName ? `Bonjour ${firstName} !\n\n${fullMessage}` : fullMessage;
+    part2 = '';
+    part3 = '';
+  } else if (totalLines <= 4) {
+    // Message court : première ligne avec "Bonjour", puis diviser le reste
+    const greeting = firstName ? `Bonjour ${firstName} !` : lines[0];
+    part1 = greeting;
+    const remaining = lines.slice(1);
+    const midPoint = Math.ceil(remaining.length / 2);
+    part2 = remaining.slice(0, midPoint).join('\n');
+    part3 = remaining.slice(midPoint).join('\n');
   } else {
     // Message long : diviser en 3 parties égales
     const partSize = Math.ceil(totalLines / 3);
-    part1 = lines.slice(0, partSize).join('\n');
+    const firstPartLines = lines.slice(0, partSize);
+    
+    // S'assurer que part1 commence par "Bonjour [PRENOM]"
+    if (firstName && !firstPartLines[0]?.toLowerCase().includes('bonjour')) {
+      part1 = `Bonjour ${firstName} !\n\n${firstPartLines.join('\n')}`;
+    } else {
+      part1 = firstPartLines.join('\n');
+      // Remplacer [PRENOM] si présent
+      if (firstName) {
+        part1 = part1.replace(/\[PRENOM\]/g, firstName);
+      }
+    }
+    
     part2 = lines.slice(partSize, partSize * 2).join('\n');
     part3 = lines.slice(partSize * 2).join('\n');
-  }
-  
-  // S'assurer que part1 commence par "Bonjour [PRENOM]" si le prénom est disponible
-  if (firstName && part1 && !part1.toLowerCase().includes('bonjour')) {
-    part1 = `Bonjour ${firstName} !\n\n${part1}`;
-  } else if (firstName && part1) {
-    // Remplacer [PRENOM] dans part1 si présent
-    part1 = part1.replace(/\[PRENOM\]/g, firstName);
-  }
-  
-  // Remplacer [PRENOM] dans les autres parties aussi
-  if (firstName) {
-    part2 = part2.replace(/\[PRENOM\]/g, firstName);
-    part3 = part3.replace(/\[PRENOM\]/g, firstName);
   }
   
   const results = [];
@@ -996,6 +1008,9 @@ export {
   sendWhatsAppMessage,
   sendBulkWhatsApp,
   sendNewsletterCampaign,
+  sendMessageInParts,
+  emitCampaignEvent,
+  addSSEConnection,
   sanitizePhoneNumber,
   isValidPhoneNumber,
   checkWhatsappNumber,
