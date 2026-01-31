@@ -13,6 +13,11 @@ export default function AdminWhatsAppCampaignsPage() {
   const [stats, setStats] = useState(null)
   const [sendResults, setSendResults] = useState(null)
   const [campaigns, setCampaigns] = useState([])
+  const [trackingCampaignId, setTrackingCampaignId] = useState(null)
+  const [campaignDetails, setCampaignDetails] = useState(null)
+  const [trackingInterval, setTrackingInterval] = useState(null)
+  const [realtimeMessages, setRealtimeMessages] = useState([])
+  const [sseConnection, setSseConnection] = useState(null)
   
   const [formData, setFormData] = useState({
     message: '',
