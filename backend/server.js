@@ -1142,22 +1142,31 @@ const startServer = async () => {
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {
       console.log('📦 Tentative de chargement routes subscribers...');
-      const subscribersModule = await import("./routes/subscribers.js");
-      console.log('📦 Module subscribers importé:', !!subscribersModule);
-      console.log('📦 subscribersModule.default:', !!subscribersModule?.default);
-      if (subscribersModule && subscribersModule.default) {
-        app.use("/api/subscribers", subscribersModule.default);
-        console.log('✅ Routes subscribers chargées sur /api/subscribers');
-        // Route de test pour vérifier que le router fonctionne
-        app.get("/api/subscribers/test", (req, res) => {
-          res.json({ success: true, message: 'Route subscribers fonctionnelle', timestamp: new Date().toISOString() });
-        });
-      } else {
-        console.error('❌ subscribersModule.default est null ou undefined');
-        console.error('   subscribersModule:', subscribersModule);
+      try {
+        const subscribersModule = await import("./routes/subscribers.js");
+        console.log('📦 Module subscribers importé:', !!subscribersModule);
+        console.log('📦 subscribersModule.default:', !!subscribersModule?.default);
+        if (subscribersModule && subscribersModule.default) {
+          app.use("/api/subscribers", subscribersModule.default);
+          console.log('✅ Routes subscribers chargées sur /api/subscribers');
+          // Route de test pour vérifier que le router fonctionne
+          app.get("/api/subscribers/test", (req, res) => {
+            res.json({ success: true, message: 'Route subscribers fonctionnelle', timestamp: new Date().toISOString() });
+          });
+        } else {
+          console.error('❌ subscribersModule.default est null ou undefined');
+          console.error('   subscribersModule:', subscribersModule);
+          // Route de fallback pour diagnostiquer
+          app.get("/api/subscribers/test", (req, res) => {
+            res.status(503).json({ error: 'Module subscribers non chargé', subscribersModule: !!subscribersModule });
+          });
+        }
+      } catch (importError) {
+        console.error('❌ Erreur lors de l\'import du module subscribers:', importError.message);
+        console.error('   Stack:', importError.stack);
         // Route de fallback pour diagnostiquer
         app.get("/api/subscribers/test", (req, res) => {
-          res.status(503).json({ error: 'Module subscribers non chargé', subscribersModule: !!subscribersModule });
+          res.status(503).json({ error: 'Erreur import module subscribers', details: importError.message });
         });
       }
       
@@ -1190,25 +1199,34 @@ const startServer = async () => {
       }
       
       console.log('📦 Tentative de chargement routes whatsapp-campaigns...');
-      const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
-      console.log('📦 Module whatsapp-campaigns importé:', !!whatsappCampaignsModule);
-      console.log('📦 whatsappCampaignsModule.default:', !!whatsappCampaignsModule?.default);
-      if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
-        app.use("/api/whatsapp-campaigns", whatsappCampaignsModule.default);
-        console.log('✅ Routes WhatsApp campaigns chargées sur /api/whatsapp-campaigns');
-        console.log('   POST /api/whatsapp-campaigns - Créer une campagne');
-        console.log('   GET  /api/whatsapp-campaigns - Lister les campagnes');
-        console.log('   POST /api/whatsapp-campaigns/:id/send - Envoyer une campagne');
-        // Route de test pour vérifier que le router fonctionne
-        app.get("/api/whatsapp-campaigns/test", (req, res) => {
-          res.json({ success: true, message: 'Route whatsapp-campaigns fonctionnelle', timestamp: new Date().toISOString() });
-        });
-      } else {
-        console.error('❌ whatsappCampaignsModule.default est null ou undefined');
-        console.error('   whatsappCampaignsModule:', whatsappCampaignsModule);
+      try {
+        const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+        console.log('📦 Module whatsapp-campaigns importé:', !!whatsappCampaignsModule);
+        console.log('📦 whatsappCampaignsModule.default:', !!whatsappCampaignsModule?.default);
+        if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
+          app.use("/api/whatsapp-campaigns", whatsappCampaignsModule.default);
+          console.log('✅ Routes WhatsApp campaigns chargées sur /api/whatsapp-campaigns');
+          console.log('   POST /api/whatsapp-campaigns - Créer une campagne');
+          console.log('   GET  /api/whatsapp-campaigns - Lister les campagnes');
+          console.log('   POST /api/whatsapp-campaigns/:id/send - Envoyer une campagne');
+          // Route de test pour vérifier que le router fonctionne
+          app.get("/api/whatsapp-campaigns/test", (req, res) => {
+            res.json({ success: true, message: 'Route whatsapp-campaigns fonctionnelle', timestamp: new Date().toISOString() });
+          });
+        } else {
+          console.error('❌ whatsappCampaignsModule.default est null ou undefined');
+          console.error('   whatsappCampaignsModule:', whatsappCampaignsModule);
+          // Route de fallback pour diagnostiquer
+          app.get("/api/whatsapp-campaigns/test", (req, res) => {
+            res.status(503).json({ error: 'Module whatsapp-campaigns non chargé', whatsappCampaignsModule: !!whatsappCampaignsModule });
+          });
+        }
+      } catch (importError) {
+        console.error('❌ Erreur lors de l\'import du module whatsapp-campaigns:', importError.message);
+        console.error('   Stack:', importError.stack);
         // Route de fallback pour diagnostiquer
         app.get("/api/whatsapp-campaigns/test", (req, res) => {
-          res.status(503).json({ error: 'Module whatsapp-campaigns non chargé', whatsappCampaignsModule: !!whatsappCampaignsModule });
+          res.status(503).json({ error: 'Erreur import module whatsapp-campaigns', details: importError.message });
         });
       }
     } catch (error) {
