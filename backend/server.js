@@ -1420,15 +1420,31 @@ const startServer = async () => {
       }
       
       // Routes de tracking des visites
-      const visitsModule = await import("./routes/visits.js");
-      if (visitsModule && visitsModule.default) {
-        app.use("/api/visits", visitsModule.default);
-        console.log('✅ Routes visits chargées');
-        console.log('   POST /api/visits/track - Enregistrer une visite');
-        console.log('   GET  /api/visits/stats - Statistiques par pays (admin)');
-        console.log('   GET  /api/visits/recent - Visites récentes (admin)');
-      } else {
-        console.error('❌ visitsModule.default est null ou undefined');
+      try {
+        const visitsModule = await import("./routes/visits.js");
+        console.log('📦 Module visits importé:', !!visitsModule);
+        console.log('📦 visitsModule.default:', !!visitsModule?.default);
+        if (visitsModule && visitsModule.default) {
+          app.use("/api/visits", visitsModule.default);
+          console.log('✅ Routes visits chargées');
+          console.log('   POST /api/visits/track - Enregistrer une visite');
+          console.log('   GET  /api/visits/stats - Statistiques par pays (admin)');
+          console.log('   GET  /api/visits/recent - Visites récentes (admin)');
+        } else {
+          console.error('❌ visitsModule.default est null ou undefined');
+          console.error('   Module:', visitsModule);
+          // Route de fallback pour diagnostiquer
+          app.get("/api/visits/test", (req, res) => {
+            res.status(503).json({ error: 'Module visits non chargé', visitsModule: !!visitsModule });
+          });
+        }
+      } catch (importError) {
+        console.error('❌ Erreur lors de l\'import du module visits:', importError.message);
+        console.error('   Stack:', importError.stack);
+        // Route de fallback pour diagnostiquer
+        app.get("/api/visits/test", (req, res) => {
+          res.status(503).json({ error: 'Erreur import module visits', details: importError.message });
+        });
       }
       
       console.log('📦 Tentative de chargement routes whatsapp-campaigns...');
@@ -1471,6 +1487,9 @@ const startServer = async () => {
       });
       app.get("/api/whatsapp-campaigns/test", (req, res) => {
         res.status(503).json({ error: 'Erreur chargement module whatsapp-campaigns', details: error.message });
+      });
+      app.get("/api/visits/test", (req, res) => {
+        res.status(503).json({ error: 'Erreur chargement module visits', details: error.message });
       });
       // Routes de fallback temporaires pour permettre le fonctionnement
       app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, (req, res) => {
