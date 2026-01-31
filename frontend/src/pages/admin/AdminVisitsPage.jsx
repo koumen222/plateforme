@@ -83,6 +83,17 @@ export default function AdminVisitsPage() {
 
   return (
     <div className="space-y-6">
+      {/* Comment vérifier que le tracking fonctionne */}
+      <div className="bg-accent/10 border border-accent/30 rounded-xl p-4 text-sm">
+        <p className="font-semibold text-primary mb-2">Comment vérifier que les visites sont trackées ?</p>
+        <ul className="list-disc list-inside text-secondary space-y-1">
+          <li>Ouvrez le site dans un autre onglet ou navigateur (ou en navigation privée) et naviguez sur une page.</li>
+          <li>Attendez 1 à 2 secondes puis actualisez cette page admin : une nouvelle ligne doit apparaître dans « Visites récentes ».</li>
+          <li>En dev : ouvrez la console (F12) et cherchez le message <code className="bg-secondary px-1 rounded">✅ Visite enregistrée</code>.</li>
+          <li>Si vous voyez des données dans « Top Pays » et « Visites récentes », le tracking fonctionne.</li>
+        </ul>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>

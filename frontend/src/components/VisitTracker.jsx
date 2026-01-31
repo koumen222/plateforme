@@ -90,18 +90,18 @@ function VisitTracker() {
         });
 
         if (!response.ok) {
-          throw new Error('Erreur enregistrement visite');
+          const errText = await response.text();
+          throw new Error(`Erreur enregistrement visite: ${response.status} ${errText}`);
         }
 
-        // Ne pas logger en production pour éviter le spam
+        const result = await response.json();
+        // Log court en dev pour vérifier que le tracking fonctionne
         if (import.meta.env.DEV) {
-          console.log('✅ Visite enregistrée:', visitData);
+          console.log('✅ Visite enregistrée:', visitData.country, visitData.path, result.visitId);
         }
       } catch (error) {
-        // Erreur silencieuse pour ne pas perturber l'expérience utilisateur
-        if (import.meta.env.DEV) {
-          console.warn('Erreur tracking visite:', error);
-        }
+        // Toujours logger l'erreur pour diagnostiquer si le tracking échoue
+        console.warn('[VisitTracker] Erreur tracking visite:', error.message);
       }
     };
 

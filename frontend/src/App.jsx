@@ -155,6 +155,7 @@ function App() {
               v7_relativeSplatPath: true
             }}
           >
+            <VisitTracker />
             <CleanUrlRedirect />
             <ReferralCapture />
             <Routes>
