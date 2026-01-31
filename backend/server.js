@@ -77,128 +77,23 @@ const FRONTEND_URL = process.env.FRONTEND_URL || 'https://www.safitech.shop';
 
 const app = express();
 
-// Configuration CORS simplifiée et permissive pour safitech.shop
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Autoriser les requêtes sans origine (ex: Postman, curl, mobile apps)
-    if (!origin) {
-      console.log('✅ CORS: Requête sans origine autorisée');
-      return callback(null, true);
-    }
-    
-    // Liste des origines autorisées
-    const allowedOrigins = [
-      "https://safitech.shop",
-      "https://www.safitech.shop",
-      "https://api.safitech.shop",
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "http://127.0.0.1:5173",
-      "http://127.0.0.1:3000"
-    ];
-    
-    // Normaliser l'origine (enlever le slash final si présent)
-    const normalizedOrigin = origin.replace(/\/$/, '').toLowerCase();
-    const originLower = origin.toLowerCase();
-    
-    // Vérifier si l'origine exacte est dans la liste autorisée
-    const exactMatch = allowedOrigins.some(allowed => 
-      allowed.toLowerCase() === normalizedOrigin || allowed.toLowerCase() === originLower
-    );
-    
-    if (exactMatch) {
-      console.log(`✅ CORS: Origine exacte autorisée: ${origin}`);
-      callback(null, true);
-      return;
-    }
-    
-    // Vérifier si c'est un sous-domaine de safitech.shop (plus permissif)
-    if (originLower.includes('safitech.shop')) {
-      console.log(`✅ CORS: Domaine safitech.shop autorisé: ${origin}`);
-      callback(null, true);
-      return;
-    }
-    
-    // Autoriser localhost pour développement
-    if (originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
-      console.log(`✅ CORS: Localhost autorisé: ${origin}`);
-      callback(null, true);
-      return;
-    }
-    
-    // Si aucune correspondance, bloquer
-    console.log(`❌ CORS bloqué pour l'origine: ${origin}`);
-    console.log(`   Origines autorisées:`, allowedOrigins);
-    callback(new Error('Not allowed by CORS'));
-  },
+// ⚠️ Configuration CORS - DOIT être AVANT toutes les routes
+// ✅ Solution propre et sécurisée
+app.use(cors({
+  origin: [
+    "https://www.safitech.shop",
+    "http://localhost:5173"
+  ],
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
-  methods: ["GET","POST","PUT","DELETE","OPTIONS","PATCH"],
-  allowedHeaders: ["Content-Type","Authorization","X-Requested-With","X-Referral-Code"],
-  exposedHeaders: ["Content-Type","Authorization"],
-  optionsSuccessStatus: 200,
-  preflightContinue: false
-};
+  optionsSuccessStatus: 204 // Répondre avec 204 No Content pour les requêtes OPTIONS
+}));
 
-// Appliquer CORS en PREMIER, avant tous les autres middlewares
-app.use(cors(corsOptions));
-
-// Middleware CORS explicite supplémentaire (fallback absolu)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  // Autoriser toutes les origines safitech.shop (case-insensitive)
-  if (origin) {
-    const originLower = origin.toLowerCase();
-    if (originLower.includes('safitech.shop') || originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
-      res.setHeader('Access-Control-Expose-Headers', 'Content-Type,Authorization');
-      
-      // Répondre immédiatement aux requêtes OPTIONS
-      if (req.method === 'OPTIONS') {
-        console.log(`🔍 CORS Preflight OPTIONS (middleware) pour: ${origin}`);
-        return res.status(200).end();
-      }
-    }
-  }
-  
-  next();
-});
-
-// Gérer explicitement TOUTES les requêtes OPTIONS (preflight) - doit être avant les routes
-app.options("*", (req, res) => {
-  const origin = req.headers.origin;
-  console.log(`🔍 CORS Preflight OPTIONS (route explicite) pour: ${origin} - ${req.path}`);
-  
-  if (origin) {
-    const originLower = origin.toLowerCase();
-    if (originLower.includes('safitech.shop') || originLower.includes('localhost') || originLower.includes('127.0.0.1')) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-  }
-  
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS,PATCH');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type,Authorization,X-Requested-With,X-Referral-Code');
-  res.setHeader('Access-Control-Max-Age', '86400'); // 24 heures
-  res.status(200).end();
-});
-
-// Middleware pour logger les requêtes CORS (debug)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin) {
-    console.log(`🌐 Requête ${req.method} ${req.path} depuis origine: ${origin}`);
-  }
-  next();
-});
-
-// Log de la configuration CORS au démarrage
 console.log('🔒 Configuration CORS activée');
-console.log('   - Origines autorisées: safitech.shop et sous-domaines');
-console.log('   - Credentials: activé');
+console.log('   - Origines autorisées: https://www.safitech.shop, http://localhost:5173');
+console.log('   - Méthodes: GET, POST, PUT, DELETE, OPTIONS');
+console.log('   - Headers: Content-Type, Authorization');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Pour les requêtes POST avec application/x-www-form-urlencoded
