@@ -1026,7 +1026,7 @@ router.get('/partenaires', async (req, res) => {
     }
 
     const partenaires = await Partenaire.find(filter)
-      .sort({ created_at: -1 })
+      .sort({ is_sponsored: -1, created_at: -1 })
       .lean();
 
     res.json({
@@ -1107,7 +1107,11 @@ router.put('/partenaires/:id', async (req, res) => {
       partenaire.logo_url = payload.logo_url.toString().trim();
     }
     if (payload.is_sponsored !== undefined) {
-      partenaire.is_sponsored = Boolean(payload.is_sponsored);
+      const newSponsoredStatus = Boolean(payload.is_sponsored);
+      if (partenaire.is_sponsored !== newSponsoredStatus) {
+        console.log(`⭐ Statut sponsorisé mis à jour pour "${partenaire.nom}": ${partenaire.is_sponsored} → ${newSponsoredStatus}`);
+      }
+      partenaire.is_sponsored = newSponsoredStatus;
     }
     if (payload.plan !== undefined) {
       partenaire.monetisation = partenaire.monetisation || {};

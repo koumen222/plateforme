@@ -246,7 +246,7 @@ router.get('/', async (req, res) => {
     }
 
     const partenaires = await Partenaire.find(filter)
-      .sort({ approved_at: -1, created_at: -1 })
+      .sort({ is_sponsored: -1, approved_at: -1, created_at: -1 })
       .lean();
 
     res.json({

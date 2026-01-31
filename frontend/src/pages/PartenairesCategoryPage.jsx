@@ -506,8 +506,8 @@ export default function PartenairesCategoryPage() {
                               </span>
                             )}
                             {partenaire.is_sponsored && (
-                              <span className="inline-flex items-center rounded-full border border-accent bg-secondary px-2 py-0.5 text-[11px] text-accent">
-                                Sponsorisé
+                              <span className="inline-flex items-center rounded-full border-2 border-yellow-500 bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-1 text-[11px] font-semibold text-yellow-700 dark:text-yellow-400">
+                                ⭐ Sponsorisé
                               </span>
                             )}
                           </div>

@@ -767,13 +767,22 @@ export default function AdminPartenairesPage() {
               />
             </>
           )}
-          <label className="flex items-center gap-2 text-sm text-secondary">
+          <label className="flex items-start gap-3 p-3 rounded-lg border-2 border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 cursor-pointer hover:bg-yellow-100 dark:hover:bg-yellow-900/30 transition-colors">
             <input
               type="checkbox"
               checked={Boolean(formData.is_sponsored)}
               onChange={(e) => updateFormValue('is_sponsored', e.target.checked)}
+              className="mt-0.5"
             />
-            Sponsoriser ce partenaire
+            <div className="flex-1">
+              <div className="flex items-center gap-2 text-sm font-semibold text-yellow-700 dark:text-yellow-400">
+                <span>⭐</span>
+                <span>Sponsoriser ce partenaire</span>
+              </div>
+              <p className="text-xs text-yellow-600 dark:text-yellow-500 mt-1">
+                Les partenaires sponsorisés apparaissent en premier dans les listes et bénéficient d'une meilleure visibilité.
+              </p>
+            </div>
           </label>
           <label className="flex items-center gap-2 text-sm text-secondary">
             <input
@@ -1037,8 +1046,8 @@ export default function AdminPartenairesPage() {
                           {isVerified(partenaire) ? 'Vérifié' : 'Non vérifié'}
                         </span>
                         {partenaire.is_sponsored && (
-                          <span className="inline-flex items-center rounded-full border border-accent bg-secondary px-2 py-0.5 text-accent">
-                            Sponsorisé
+                          <span className="inline-flex items-center rounded-full border-2 border-yellow-500 bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-1 text-[11px] font-semibold text-yellow-700 dark:text-yellow-400">
+                            ⭐ Sponsorisé
                           </span>
                         )}
                       </div>
@@ -1061,9 +1070,10 @@ export default function AdminPartenairesPage() {
                         </button>
                         <button
                           onClick={() => toggleSponsored(partenaire)}
-                          className="admin-btn admin-btn-sm admin-btn-primary"
+                          className={`admin-btn admin-btn-sm ${partenaire.is_sponsored ? 'admin-btn-warning' : 'admin-btn-primary'}`}
+                          title={partenaire.is_sponsored ? 'Retirer le statut sponsorisé' : 'Mettre ce partenaire en avant (sponsorisé)'}
                         >
-                          {partenaire.is_sponsored ? 'Retirer sponsor' : 'Sponsoriser'}
+                          {partenaire.is_sponsored ? '⭐ Retirer sponsor' : '⭐ Sponsoriser'}
                         </button>
                         <button
                           onClick={() => toggleVerification(partenaire)}

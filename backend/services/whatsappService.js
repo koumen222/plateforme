@@ -587,6 +587,11 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
   let fullMessage = message;
   if (firstName) {
     fullMessage = fullMessage.replace(/\[PRENOM\]/g, firstName);
+    console.log(`📝 [sendMessageInParts] Prénom remplacé pour ${to}: ${firstName}`);
+  } else if (fullMessage && fullMessage.includes('[PRENOM]')) {
+    // Si pas de prénom mais [PRENOM] présent, le supprimer
+    fullMessage = fullMessage.replace(/\[PRENOM\]/g, '');
+    console.log(`⚠️ [sendMessageInParts] Pas de prénom pour ${to}, [PRENOM] supprimé`);
   }
   
   // Diviser le message en 3 parties approximativement égales
@@ -610,6 +615,12 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
     const midPoint = Math.ceil(remaining.length / 2);
     part2 = remaining.slice(0, midPoint).join('\n');
     part3 = remaining.slice(midPoint).join('\n');
+    
+    // Remplacer [PRENOM] dans les parties 2 et 3 si nécessaire
+    if (firstName) {
+      part2 = part2.replace(/\[PRENOM\]/g, firstName);
+      part3 = part3.replace(/\[PRENOM\]/g, firstName);
+    }
   } else {
     // Message long : diviser en 3 parties égales
     const partSize = Math.ceil(totalLines / 3);
@@ -628,6 +639,12 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
     
     part2 = lines.slice(partSize, partSize * 2).join('\n');
     part3 = lines.slice(partSize * 2).join('\n');
+    
+    // Remplacer [PRENOM] dans les parties 2 et 3 si nécessaire
+    if (firstName) {
+      part2 = part2.replace(/\[PRENOM\]/g, firstName);
+      part3 = part3.replace(/\[PRENOM\]/g, firstName);
+    }
   }
   
   const results = [];
@@ -895,11 +912,14 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
     }
     
     // Remplacer [PRENOM] par le prénom de l'utilisateur
-    if (contact.firstName && selectedVariant.includes('[PRENOM]')) {
+    if (contact.firstName) {
+      // Toujours remplacer [PRENOM] si un prénom est disponible
       selectedVariant = selectedVariant.replace(/\[PRENOM\]/g, contact.firstName);
+      console.log(`✅ Prénom remplacé pour ${cleanedPhone}: ${contact.firstName}`);
     } else if (selectedVariant.includes('[PRENOM]')) {
-      // Si pas de prénom disponible, remplacer par un message générique ou supprimer
+      // Si pas de prénom disponible, remplacer par une chaîne vide
       selectedVariant = selectedVariant.replace(/\[PRENOM\]/g, '');
+      console.log(`⚠️ Pas de prénom disponible pour ${cleanedPhone}, [PRENOM] supprimé`);
     }
     
     // Remplacer aussi les liens directs si présents dans les messages pré-définis
