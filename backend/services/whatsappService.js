@@ -571,6 +571,121 @@ const sendBulkWhatsApp = async (messages) => {
 };
 
 /**
+ * Divise un message en 3 parties et les envoie séquentiellement
+ * 1. "Bonjour [PRENOM]" (ou début du message)
+ * 2. Attendre 4 secondes
+ * 3. Partie 2 (milieu du message)
+ * 4. Attendre 4 secondes
+ * 5. Partie 3 (fin du message)
+ */
+const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }) => {
+  // Diviser le message en 3 parties approximativement égales
+  const lines = message.split('\n').filter(l => l.trim());
+  const totalLines = lines.length;
+  
+  let part1 = '';
+  let part2 = '';
+  let part3 = '';
+  
+  if (totalLines <= 3) {
+    // Message court : première ligne, puis le reste
+    part1 = lines[0] || '';
+    part2 = lines.slice(1, Math.ceil(totalLines / 2) + 1).join('\n');
+    part3 = lines.slice(Math.ceil(totalLines / 2) + 1).join('\n');
+  } else {
+    // Message long : diviser en 3 parties égales
+    const partSize = Math.ceil(totalLines / 3);
+    part1 = lines.slice(0, partSize).join('\n');
+    part2 = lines.slice(partSize, partSize * 2).join('\n');
+    part3 = lines.slice(partSize * 2).join('\n');
+  }
+  
+  // S'assurer que part1 commence par "Bonjour [PRENOM]" si le prénom est disponible
+  if (firstName && part1 && !part1.toLowerCase().includes('bonjour')) {
+    part1 = `Bonjour ${firstName} !\n\n${part1}`;
+  } else if (firstName && part1) {
+    // Remplacer [PRENOM] dans part1 si présent
+    part1 = part1.replace(/\[PRENOM\]/g, firstName);
+  }
+  
+  // Remplacer [PRENOM] dans les autres parties aussi
+  if (firstName) {
+    part2 = part2.replace(/\[PRENOM\]/g, firstName);
+    part3 = part3.replace(/\[PRENOM\]/g, firstName);
+  }
+  
+  const results = [];
+  
+  // Envoyer la partie 1
+  if (part1.trim()) {
+    try {
+      const result1 = await sendWhatsAppMessage({
+        to,
+        message: part1.trim(),
+        campaignId,
+        userId,
+        firstName,
+        attemptNumber: 1
+      });
+      results.push({ part: 1, ...result1 });
+      
+      // Attendre 4 secondes avant la partie 2
+      await sleep(4000);
+    } catch (error) {
+      results.push({ part: 1, success: false, error: error.message });
+      return { success: false, results, error: 'Erreur envoi partie 1' };
+    }
+  }
+  
+  // Envoyer la partie 2
+  if (part2.trim()) {
+    try {
+      const result2 = await sendWhatsAppMessage({
+        to,
+        message: part2.trim(),
+        campaignId,
+        userId,
+        firstName,
+        attemptNumber: 1
+      });
+      results.push({ part: 2, ...result2 });
+      
+      // Attendre 4 secondes avant la partie 3
+      await sleep(4000);
+    } catch (error) {
+      results.push({ part: 2, success: false, error: error.message });
+      return { success: false, results, error: 'Erreur envoi partie 2' };
+    }
+  }
+  
+  // Envoyer la partie 3
+  if (part3.trim()) {
+    try {
+      const result3 = await sendWhatsAppMessage({
+        to,
+        message: part3.trim(),
+        campaignId,
+        userId,
+        firstName,
+        attemptNumber: 1
+      });
+      results.push({ part: 3, ...result3 });
+    } catch (error) {
+      results.push({ part: 3, success: false, error: error.message });
+      return { success: false, results, error: 'Erreur envoi partie 3' };
+    }
+  }
+  
+  // Succès si toutes les parties ont été envoyées
+  const allSuccess = results.every(r => r.success);
+  return { 
+    success: allSuccess, 
+    results,
+    message: allSuccess ? 'Message envoyé en 3 parties' : 'Erreur lors de l\'envoi de certaines parties'
+  };
+};
+
+/**
  * Sélectionne une variante aléatoire parmi les variantes disponibles
  * @param {string[]} variants - Tableau de variantes de messages
  * @returns {string} - Une variante aléatoire
@@ -785,30 +900,31 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
     };
     
     try {
-      // Envoyer le message (avec retry intelligent pour HTTP 466)
-      const result = await sendMessageWithDelay(messageData, false);
+      // Envoyer le message en 3 parties séparées avec délai de 4 secondes
+      const result = await sendMessageInParts(messageData);
+      
+      // Émettre un événement SSE pour chaque partie envoyée
+      if (result.results && result.results.length > 0) {
+        result.results.forEach((partResult, idx) => {
+          emitCampaignEvent(contact.campaignId, 'message', {
+            phone: cleanedPhone,
+            firstName: contact.firstName || '',
+            message: idx === 0 ? 'Bonjour ' + (contact.firstName || '') + '...' : `Partie ${idx + 1}...`,
+            status: partResult.success ? 'sent' : 'failed',
+            error: partResult.error || null,
+            timestamp: new Date().toISOString(),
+            part: idx + 1
+          });
+        });
+      }
+      
       results.push({
         ...result,
         variant: selectedVariant.substring(0, 50) + '...' // Stocker un aperçu de la variante
       });
       
-      // Émettre un événement SSE pour ce message
-      const { emitCampaignEvent } = await import('./whatsappService.js');
-      if (emitCampaignEvent) {
-        emitCampaignEvent(contact.campaignId, 'message', {
-          phone: cleanedPhone,
-          firstName: contact.firstName || '',
-          message: selectedVariant.substring(0, 200),
-          status: result.success ? 'sent' : (result.skipped ? 'skipped' : 'failed'),
-          error: result.error || null,
-          timestamp: new Date().toISOString()
-        });
-      }
-      
       if (result.success) {
         sentCount++;
-      } else if (result.skipped) {
-        skippedCount++;
       } else {
         failedCount++;
         
