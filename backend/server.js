@@ -1041,6 +1041,67 @@ const startServer = async () => {
       }
     });
     
+      app.get("/api/whatsapp-campaigns/:id/stream", authenticate, requireAdmin, async (req, res) => {
+        try {
+          const { id } = req.params;
+          
+          let WhatsAppCampaign, addSSEConnection;
+          try {
+            const campaignModule = await import("./models/WhatsAppCampaign.js");
+            WhatsAppCampaign = campaignModule.default;
+          } catch (err) {
+            return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
+          }
+          
+          try {
+            const serviceModule = await import("./services/whatsappService.js");
+            addSSEConnection = serviceModule.addSSEConnection;
+          } catch (err) {
+            return res.status(500).json({ error: 'Service WhatsApp non disponible', details: err.message });
+          }
+          
+          const campaign = await WhatsAppCampaign.findById(id).lean();
+          
+          if (!campaign) {
+            return res.status(404).json({ error: 'Campagne non trouvée' });
+          }
+          
+          // Configurer les headers SSE
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+          res.setHeader('X-Accel-Buffering', 'no');
+          res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://www.safitech.shop');
+          res.setHeader('Access-Control-Allow-Credentials', 'true');
+          
+          // Envoyer un message initial
+          res.write(`event: connected\ndata: ${JSON.stringify({ campaignId: id, campaignName: campaign.name })}\n\n`);
+          
+          // Ajouter cette connexion au système SSE
+          if (addSSEConnection) {
+            addSSEConnection(id, res);
+          }
+          
+          // Envoyer un heartbeat toutes les 30 secondes
+          const heartbeatInterval = setInterval(() => {
+            try {
+              res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+            } catch (error) {
+              clearInterval(heartbeatInterval);
+            }
+          }, 30000);
+          
+          // Nettoyer quand la connexion se ferme
+          req.on('close', () => {
+            clearInterval(heartbeatInterval);
+            res.end();
+          });
+        } catch (error) {
+          console.error('❌ Erreur stream campagne:', error.message);
+          res.status(500).json({ error: 'Erreur lors de la connexion au stream', details: error.message });
+        }
+      });
+
       app.get("/api/whatsapp-campaigns/:id/status", authenticate, requireAdmin, async (req, res) => {
         try {
           const { id } = req.params;
