@@ -1433,17 +1433,59 @@ const startServer = async () => {
         } else {
           console.error('❌ visitsModule.default est null ou undefined');
           console.error('   Module:', visitsModule);
-          // Route de fallback pour diagnostiquer
+          // Routes de fallback pour diagnostiquer
           app.get("/api/visits/test", (req, res) => {
             res.status(503).json({ error: 'Module visits non chargé', visitsModule: !!visitsModule });
+          });
+          app.post("/api/visits/track", async (req, res) => {
+            res.status(503).json({ 
+              error: 'Module visits non chargé', 
+              details: 'visitsModule.default est null ou undefined',
+              suggestion: 'Vérifier les logs du serveur pour plus de détails'
+            });
+          });
+          app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
+            res.status(503).json({ 
+              error: 'Module visits non chargé', 
+              details: 'visitsModule.default est null ou undefined',
+              suggestion: 'Vérifier les logs du serveur pour plus de détails'
+            });
+          });
+          app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
+            res.status(503).json({ 
+              error: 'Module visits non chargé', 
+              details: 'visitsModule.default est null ou undefined',
+              suggestion: 'Vérifier les logs du serveur pour plus de détails'
+            });
           });
         }
       } catch (importError) {
         console.error('❌ Erreur lors de l\'import du module visits:', importError.message);
         console.error('   Stack:', importError.stack);
-        // Route de fallback pour diagnostiquer
+        // Routes de fallback pour diagnostiquer
         app.get("/api/visits/test", (req, res) => {
           res.status(503).json({ error: 'Erreur import module visits', details: importError.message });
+        });
+        app.post("/api/visits/track", async (req, res) => {
+          res.status(503).json({ 
+            error: 'Module visits non chargé', 
+            details: importError.message,
+            suggestion: 'Vérifier les logs du serveur pour plus de détails'
+          });
+        });
+        app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
+          res.status(503).json({ 
+            error: 'Module visits non chargé', 
+            details: importError.message,
+            suggestion: 'Vérifier les logs du serveur pour plus de détails'
+          });
+        });
+        app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
+          res.status(503).json({ 
+            error: 'Module visits non chargé', 
+            details: importError.message,
+            suggestion: 'Vérifier les logs du serveur pour plus de détails'
+          });
         });
       }
       
@@ -1492,6 +1534,27 @@ const startServer = async () => {
         res.status(503).json({ error: 'Erreur chargement module visits', details: error.message });
       });
       // Routes de fallback temporaires pour permettre le fonctionnement
+      app.post("/api/visits/track", async (req, res) => {
+        res.status(503).json({ 
+          error: 'Module visits non chargé', 
+          details: error.message,
+          suggestion: 'Vérifier les logs du serveur pour plus de détails'
+        });
+      });
+      app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
+        res.status(503).json({ 
+          error: 'Module visits non chargé', 
+          details: error.message,
+          suggestion: 'Vérifier les logs du serveur pour plus de détails'
+        });
+      });
+      app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
+        res.status(503).json({ 
+          error: 'Module visits non chargé', 
+          details: error.message,
+          suggestion: 'Vérifier les logs du serveur pour plus de détails'
+        });
+      });
       app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, (req, res) => {
         res.status(503).json({ 
           error: 'Module whatsapp-campaigns non chargé', 
