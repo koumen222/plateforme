@@ -56,6 +56,7 @@ import VideoShowcasePage from './pages/VideoShowcasePage'
 import TestNotificationsPage from './pages/TestNotificationsPage'
 import LiveReplaysPage from './pages/LiveReplaysPage'
 import EbookPage from './pages/EbookPage'
+import CoachingScale7Page from './pages/CoachingScale7Page'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
@@ -196,6 +197,14 @@ function App() {
             element={
               <PlatformLayout>
                 <LiveReplaysPage />
+              </PlatformLayout>
+            }
+          />
+          <Route
+            path="/coaching-scale-7"
+            element={
+              <PlatformLayout>
+                <CoachingScale7Page />
               </PlatformLayout>
             }
           />
