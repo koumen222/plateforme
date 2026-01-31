@@ -861,6 +861,15 @@ const PORT = process.env.PORT || 3000;
 // Démarrer le serveur après la connexion MongoDB
 const startServer = async () => {
   try {
+    // Route de test simple pour vérifier que le serveur répond
+    app.get("/api/whatsapp-campaigns/health", (req, res) => {
+      res.json({ 
+        success: true, 
+        message: 'Serveur actif - Route whatsapp-campaigns en cours de chargement',
+        timestamp: new Date().toISOString()
+      });
+    });
+    
     // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
     console.log('📦 Chargement dynamique de tous les modules...');
     
@@ -1232,6 +1241,13 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement routes marketing:', error.message);
       console.error('   Stack:', error.stack);
+      // Routes de fallback pour diagnostiquer
+      app.get("/api/subscribers/test", (req, res) => {
+        res.status(503).json({ error: 'Erreur chargement module subscribers', details: error.message });
+      });
+      app.get("/api/whatsapp-campaigns/test", (req, res) => {
+        res.status(503).json({ error: 'Erreur chargement module whatsapp-campaigns', details: error.message });
+      });
     }
     
     console.log('📦 Chargement dynamique terminé\n');
