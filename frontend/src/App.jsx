@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ThemeProvider } from './contexts/ThemeContext'
 import { NotificationsProvider } from './contexts/NotificationsContext'
 import Layout from './components/Layout'
+import VisitTracker from './components/VisitTracker'
 import PlatformLayout from './components/PlatformLayout'
 import AdminLayout from './components/admin/AdminLayout'
 import PrivateRoute from './components/PrivateRoute'
@@ -26,6 +27,7 @@ import AdminSubscribersPage from './pages/admin/AdminSubscribersPage'
 import AdminEmailCampaignsPage from './pages/admin/AdminEmailCampaignsPage'
 import AdminEmailTemplatesPage from './pages/admin/AdminEmailTemplatesPage'
 import AdminEbooksPage from './pages/admin/AdminEbooksPage'
+import AdminVisitsPage from './pages/admin/AdminVisitsPage'
 import CoachingApplicationForm from './pages/CoachingApplicationForm'
 import CommentsPage from './pages/CommentsPage'
 import LandingPage from './pages/LandingPage'
@@ -241,6 +243,7 @@ function App() {
             <Route path="email-campaigns" element={<AdminEmailCampaignsPage />} />
             <Route path="email-templates" element={<AdminEmailTemplatesPage />} />
             <Route path="ebooks" element={<AdminEbooksPage />} />
+            <Route path="visits" element={<AdminVisitsPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />

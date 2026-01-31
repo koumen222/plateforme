@@ -1419,6 +1419,18 @@ const startServer = async () => {
         console.error('❌ emailTrackingModule.default est null ou undefined');
       }
       
+      // Routes de tracking des visites
+      const visitsModule = await import("./routes/visits.js");
+      if (visitsModule && visitsModule.default) {
+        app.use("/api/visits", visitsModule.default);
+        console.log('✅ Routes visits chargées');
+        console.log('   POST /api/visits/track - Enregistrer une visite');
+        console.log('   GET  /api/visits/stats - Statistiques par pays (admin)');
+        console.log('   GET  /api/visits/recent - Visites récentes (admin)');
+      } else {
+        console.error('❌ visitsModule.default est null ou undefined');
+      }
+      
       console.log('📦 Tentative de chargement routes whatsapp-campaigns...');
       try {
         const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");

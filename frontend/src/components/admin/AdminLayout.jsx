@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
 import Chatbot from '../Chatbot'
 import Footer from '../Footer'
-import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar, FiBriefcase, FiMail, FiSend, FiPhone, FiBookOpen } from 'react-icons/fi'
+import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar, FiBriefcase, FiMail, FiSend, FiPhone, FiBookOpen, FiGlobe } from 'react-icons/fi'
 
 export default function AdminLayout() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -39,6 +39,7 @@ export default function AdminLayout() {
     { path: '/admin/coaching-applications', label: 'Candidatures', icon: FiCalendar },
     { path: '/admin/ressources-pdf', label: 'Ressources PDF', icon: FiFileText },
     { path: '/admin/ebooks', label: 'Ebooks', icon: FiBookOpen },
+    { path: '/admin/visits', label: 'Visites', icon: FiGlobe },
     { path: '/admin/partenaires', label: 'Partenaires', icon: FiBriefcase },
     { path: '/admin/newsletter', label: 'Newsletter', icon: FiSend },
     { path: '/admin/whatsapp-campaigns', label: 'WhatsApp', icon: FiPhone },
