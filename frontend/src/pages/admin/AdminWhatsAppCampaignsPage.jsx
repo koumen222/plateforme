@@ -58,6 +58,87 @@ export default function AdminWhatsAppCampaignsPage() {
   })
 
   const startTracking = (campaignId) => {
+    // Fermer la connexion SSE existante si elle existe
+    if (sseConnection) {
+      sseConnection.close()
+    }
+    
+    // Réinitialiser les messages en temps réel
+    setRealtimeMessages([])
+    
+    // Créer une connexion SSE pour le suivi en temps réel
+    const eventSource = new EventSource(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/stream`, {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+    
+    eventSource.addEventListener('connected', (e) => {
+      const data = JSON.parse(e.data)
+      console.log('✅ Connecté au stream:', data)
+    })
+    
+    eventSource.addEventListener('message', (e) => {
+      const data = JSON.parse(e.data)
+      setRealtimeMessages(prev => [...prev, data])
+      console.log('📨 Message envoyé:', data)
+    })
+    
+    eventSource.addEventListener('progress', (e) => {
+      const data = JSON.parse(e.data)
+      // Mettre à jour les stats en temps réel
+      setCampaignDetails(prev => ({
+        ...prev,
+        stats: {
+          ...prev?.stats,
+          sent: data.sent,
+          failed: data.failed,
+          skipped: data.skipped,
+          total: data.total,
+          pending: data.total - data.sent - data.failed - data.skipped
+        }
+      }))
+    })
+    
+    eventSource.addEventListener('heartbeat', (e) => {
+      // Connexion toujours active
+    })
+    
+    eventSource.onerror = (error) => {
+      console.error('Erreur SSE:', error)
+      // En cas d'erreur, utiliser le polling comme fallback
+      if (trackingInterval) {
+        clearInterval(trackingInterval)
+      }
+      
+      const fetchCampaignStatus = async () => {
+        try {
+          const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/status`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setCampaignDetails(data)
+            
+            // Si la campagne est terminée, arrêter le suivi
+            if (data.campaign.status === 'sent' || data.campaign.status === 'failed') {
+              stopTracking()
+              localStorage.removeItem('trackingWhatsAppCampaignId')
+            }
+          }
+        } catch (error) {
+          console.error('Erreur suivi campagne:', error)
+        }
+      }
+      
+      fetchCampaignStatus()
+      const interval = setInterval(fetchCampaignStatus, 3000)
+      setTrackingInterval(interval)
+    }
+    
+    setSseConnection(eventSource)
+    
+    // Aussi utiliser le polling comme backup
     if (trackingInterval) {
       clearInterval(trackingInterval)
     }
@@ -82,17 +163,22 @@ export default function AdminWhatsAppCampaignsPage() {
       }
     }
     
-    fetchCampaignStatus() // Appel immédiat
-    const interval = setInterval(fetchCampaignStatus, 3000) // Toutes les 3 secondes
+    fetchCampaignStatus()
+    const interval = setInterval(fetchCampaignStatus, 5000) // Polling toutes les 5 secondes comme backup
     setTrackingInterval(interval)
   }
   
   const stopTracking = () => {
+    if (sseConnection) {
+      sseConnection.close()
+      setSseConnection(null)
+    }
     if (trackingInterval) {
       clearInterval(trackingInterval)
       setTrackingInterval(null)
     }
     setTrackingCampaignId(null)
+    setRealtimeMessages([])
   }
 
   useEffect(() => {
@@ -1333,6 +1419,60 @@ export default function AdminWhatsAppCampaignsPage() {
                     <strong>{msg.phone}</strong>
                     {msg.firstName && <span style={{ color: '#666' }}> ({msg.firstName})</span>}
                     : <span style={{ color: '#c62828' }}>{msg.error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {/* Messages en temps réel */}
+          {realtimeMessages.length > 0 && (
+            <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '2px solid #2196f3', maxHeight: '500px', overflowY: 'auto' }}>
+              <div style={{ fontWeight: '600', marginBottom: '12px', color: '#1565c0', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                🔴 Envoi en temps réel ({realtimeMessages.length} message{realtimeMessages.length > 1 ? 's' : ''})
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {realtimeMessages.slice().reverse().map((msg, idx) => (
+                  <div 
+                    key={idx} 
+                    style={{ 
+                      padding: '10px', 
+                      backgroundColor: msg.status === 'sent' ? '#e8f5e9' : msg.status === 'failed' ? '#ffebee' : '#fff3e0',
+                      borderRadius: '4px', 
+                      border: `1px solid ${msg.status === 'sent' ? '#4caf50' : msg.status === 'failed' ? '#f44336' : '#ff9800'}`,
+                      animation: 'fadeIn 0.3s ease-in'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '600', fontSize: '13px' }}>{msg.phone}</span>
+                      {msg.firstName && (
+                        <span style={{ fontSize: '12px', color: '#666' }}>({msg.firstName})</span>
+                      )}
+                      <span style={{ 
+                        marginLeft: 'auto', 
+                        fontSize: '11px', 
+                        padding: '2px 6px',
+                        borderRadius: '3px',
+                        backgroundColor: msg.status === 'sent' ? '#4caf50' : msg.status === 'failed' ? '#f44336' : '#ff9800',
+                        color: 'white',
+                        fontWeight: '600'
+                      }}>
+                        {msg.status === 'sent' ? '✅ Envoyé' : msg.status === 'failed' ? '❌ Échec' : '⏳ En attente'}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#999' }}>
+                        {new Date(msg.timestamp).toLocaleTimeString('fr-FR')}
+                      </span>
+                    </div>
+                    {msg.message && (
+                      <div style={{ fontSize: '12px', color: '#555', marginTop: '6px', whiteSpace: 'pre-wrap', maxHeight: '80px', overflow: 'hidden' }}>
+                        {msg.message}
+                      </div>
+                    )}
+                    {msg.error && (
+                      <div style={{ fontSize: '11px', color: '#c62828', marginTop: '4px' }}>
+                        Erreur: {msg.error}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

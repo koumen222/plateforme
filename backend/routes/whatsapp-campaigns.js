@@ -3,7 +3,7 @@ import WhatsAppCampaign from '../models/WhatsAppCampaign.js';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
-import { sendWhatsAppMessage, sendBulkWhatsApp, sendNewsletterCampaign } from '../services/whatsappService.js';
+import { sendWhatsAppMessage, sendBulkWhatsApp, sendNewsletterCampaign, addSSEConnection } from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -353,6 +353,47 @@ router.post('/:id/send', async (req, res) => {
   } catch (error) {
     console.error('Erreur envoi campagne WhatsApp:', error);
     res.status(500).json({ error: 'Erreur lors de l\'envoi' });
+  }
+});
+
+router.get('/:id/stream', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await WhatsAppCampaign.findById(id).lean();
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campagne non trouvée' });
+    }
+    
+    // Configurer les headers SSE
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Désactiver le buffering pour Nginx
+    
+    // Envoyer un message initial
+    res.write(`event: connected\ndata: ${JSON.stringify({ campaignId: id, campaignName: campaign.name })}\n\n`);
+    
+    // Ajouter cette connexion au système SSE
+    addSSEConnection(id, res);
+    
+    // Envoyer un heartbeat toutes les 30 secondes pour maintenir la connexion
+    const heartbeatInterval = setInterval(() => {
+      try {
+        res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+      } catch (error) {
+        clearInterval(heartbeatInterval);
+      }
+    }, 30000);
+    
+    // Nettoyer quand la connexion se ferme
+    req.on('close', () => {
+      clearInterval(heartbeatInterval);
+      res.end();
+    });
+  } catch (error) {
+    console.error('Erreur stream campagne:', error);
+    res.status(500).json({ error: 'Erreur lors de la connexion au stream' });
   }
 });
 

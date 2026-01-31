@@ -615,6 +615,50 @@ const checkTimeWindow = () => {
   return hour >= 8 && hour < 19;
 };
 
+// Map pour stocker les connexions SSE par campaignId
+const sseConnections = new Map();
+
+/**
+ * Émet un événement SSE pour une campagne
+ */
+export const emitCampaignEvent = (campaignId, event, data) => {
+  const connections = sseConnections.get(campaignId);
+  if (connections && connections.length > 0) {
+    const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+    connections.forEach(res => {
+      try {
+        res.write(message);
+      } catch (error) {
+        console.error('Erreur envoi SSE:', error);
+      }
+    });
+  }
+};
+
+/**
+ * Ajoute une connexion SSE pour une campagne
+ */
+export const addSSEConnection = (campaignId, res) => {
+  if (!sseConnections.has(campaignId)) {
+    sseConnections.set(campaignId, []);
+  }
+  sseConnections.get(campaignId).push(res);
+  
+  // Nettoyer la connexion quand elle se ferme
+  res.on('close', () => {
+    const connections = sseConnections.get(campaignId);
+    if (connections) {
+      const index = connections.indexOf(res);
+      if (index > -1) {
+        connections.splice(index, 1);
+      }
+      if (connections.length === 0) {
+        sseConnections.delete(campaignId);
+      }
+    }
+  });
+};
+
 /**
  * Envoie une newsletter WhatsApp avec variantes et rythme humain
  * - Sélection aléatoire d'une variante par contact
@@ -748,6 +792,19 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
         variant: selectedVariant.substring(0, 50) + '...' // Stocker un aperçu de la variante
       });
       
+      // Émettre un événement SSE pour ce message
+      const { emitCampaignEvent } = await import('./whatsappService.js');
+      if (emitCampaignEvent) {
+        emitCampaignEvent(contact.campaignId, 'message', {
+          phone: cleanedPhone,
+          firstName: contact.firstName || '',
+          message: selectedVariant.substring(0, 200),
+          status: result.success ? 'sent' : (result.skipped ? 'skipped' : 'failed'),
+          error: result.error || null,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       if (result.success) {
         sentCount++;
       } else if (result.skipped) {
@@ -763,6 +820,15 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
           // Ne pas arrêter complètement, mais continuer avec prudence
         }
       }
+      
+      // Émettre un événement de progression
+      emitCampaignEvent(contact.campaignId, 'progress', {
+        current: i + 1,
+        total: contacts.length,
+        sent: sentCount,
+        failed: failedCount,
+        skipped: skippedCount
+      });
       
       // Callback de progression
       if (onProgress) {
