@@ -1115,7 +1115,42 @@ const startServer = async () => {
             }).select('phone phoneNumber name _id').lean();
           }
         } else if (campaign.recipients.type === 'list' && campaign.recipients.customPhones?.length) {
-          users = campaign.recipients.customPhones.map(phone => ({ phone, phoneNumber: phone, _id: null, name: null }));
+          // Pour les listes personnalisées, chercher les utilisateurs correspondants dans la base
+          const sanitizePhone = (phone) => {
+            if (!phone) return '';
+            return phone.toString().replace(/\D/g, '').trim();
+          };
+          
+          const cleanedPhones = campaign.recipients.customPhones.map(p => sanitizePhone(p));
+          
+          // Chercher les utilisateurs avec ces numéros
+          const foundUsers = await User.find({
+            $or: [
+              { phone: { $in: cleanedPhones } },
+              { phoneNumber: { $in: cleanedPhones } }
+            ],
+            role: { $ne: 'admin' }
+          }).select('phone phoneNumber name _id').lean();
+          
+          // Créer un map pour retrouver rapidement les utilisateurs par numéro
+          const userMap = new Map();
+          foundUsers.forEach(user => {
+            const userPhone = sanitizePhone(user.phoneNumber || user.phone);
+            if (userPhone) {
+              userMap.set(userPhone, user);
+            }
+          });
+          
+          // Créer la liste des utilisateurs avec les numéros fournis
+          users = campaign.recipients.customPhones.map(phone => {
+            const cleaned = sanitizePhone(phone);
+            const foundUser = userMap.get(cleaned);
+            if (foundUser) {
+              return foundUser;
+            }
+            // Si pas trouvé, créer un objet minimal avec le numéro
+            return { phone: cleaned, phoneNumber: cleaned, name: null, _id: null };
+          });
         }
         
         // Normaliser les numéros
