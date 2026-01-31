@@ -587,21 +587,19 @@ const getRandomVariant = (variants) => {
 };
 
 /**
- * Génère un délai de 15 secondes entre chaque message
- * @returns {number} - Délai en millisecondes (15000ms)
+ * Génère un délai de 30 secondes entre chaque message
+ * @returns {number} - Délai en millisecondes (30000ms)
  */
 const getHumanDelay = () => {
-  return 15 * 1000; // 15 secondes
+  return 30 * 1000; // 30 secondes
 };
 
 /**
- * Génère une pause longue de 2 à 5 minutes
- * @returns {number} - Délai en millisecondes (120000-300000ms)
+ * Génère une pause longue de 5 minutes
+ * @returns {number} - Délai en millisecondes (300000ms)
  */
 const getLongPause = () => {
-  const minPause = 2 * 60 * 1000; // 2 minutes
-  const maxPause = 5 * 60 * 1000; // 5 minutes
-  return Math.floor(Math.random() * (maxPause - minPause + 1)) + minPause;
+  return 5 * 60 * 1000; // 5 minutes (fixe)
 };
 
 /**
@@ -618,8 +616,8 @@ const checkTimeWindow = () => {
 /**
  * Envoie une newsletter WhatsApp avec variantes et rythme humain
  * - Sélection aléatoire d'une variante par contact
- * - Délai de 15 secondes entre chaque message
- * - Pause de 2-5 minutes toutes les 15 personnes
+ * - Délai de 30 secondes entre chaque message
+ * - Pause de 5 minutes toutes les 10 personnes
  * - Vérification de la plage horaire (08h-19h)
  * - Gestion des erreurs 466 (quota) avec pause immédiate
  * 
@@ -773,7 +771,7 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
         });
       }
       
-      // Délai de 15 secondes entre chaque message
+      // Délai de 30 secondes entre chaque message
       // Sauf pour le dernier message
       if (i < contacts.length - 1 && !quotaReached) {
         const delay = getHumanDelay();
