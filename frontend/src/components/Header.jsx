@@ -4,7 +4,6 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import ThemeToggle from './ThemeToggle'
 import MobileMenu from './MobileMenu'
-import PushNotificationButton from './PushNotificationButton'
 import NotificationsDropdown from './NotificationsDropdown'
 import { FiBell, FiMenu, FiMessageCircle, FiUser } from 'react-icons/fi'
 
@@ -218,11 +217,6 @@ export default function Header() {
                 <NotificationsDropdown />
               )}
               
-              {/* Bouton notifications push (uniquement si authentifié et actif) */}
-              {isAuthenticated && user?.status === 'active' && (
-                <PushNotificationButton />
-              )}
-              
               {isAuthenticated ? (
                 <div className="relative" ref={profileMenuRef}>
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-secondary transition-colors">
@@ -341,11 +335,6 @@ export default function Header() {
                   </div>
 
                   <div className="flex items-center gap-2">
-                    {/* Bouton notifications push */}
-                    {isAuthenticated && user?.status === 'active' && (
-                      <PushNotificationButton />
-                    )}
-                    
                     {/* Bouton notifications commentaires */}
                     <div ref={notificationRef} className="relative">
                       <button
