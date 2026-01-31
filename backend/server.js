@@ -938,38 +938,46 @@ const startServer = async () => {
     
     app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
       try {
-        // Essayer d'importer le module dynamiquement
-        const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+        let WhatsAppCampaign;
+        try {
+          const campaignModule = await import("./models/WhatsAppCampaign.js");
+          WhatsAppCampaign = campaignModule.default;
+        } catch (err) {
+          console.error('❌ Erreur import WhatsAppCampaign:', err.message);
+          return res.status(500).json({ 
+            error: 'Modèle WhatsAppCampaign non disponible', 
+            details: err.message 
+          });
+        }
         
-        if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
-          // Si le module est chargé, utiliser sa route POST
-          // Mais comme on ne peut pas facilement appeler le handler directement,
-          // on va créer la campagne manuellement
-          const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
-          
-          const {
-            name,
-            message,
-            variants,
-            recipients,
-            scheduledAt,
-            fromPhone
-          } = req.body;
-          
-          // Générer un nom automatique si non fourni
-          const campaignName = name || `Newsletter ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-          
-          // Vérifier qu'au moins un message ou une variante est fourni
-          const hasMessage = message && message.trim();
-          const hasVariants = variants && Array.isArray(variants) && variants.some(v => v && v.trim());
-          
-          if (!hasMessage && !hasVariants) {
-            return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
-          }
-          
-          let recipientCount = 0;
-          
-          if (recipients?.type === 'all') {
+        const {
+          name,
+          message,
+          variants,
+          recipients,
+          scheduledAt,
+          fromPhone
+        } = req.body;
+        
+        // Générer un nom automatique si non fourni
+        const campaignName = name || `Newsletter ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+        
+        // Vérifier qu'au moins un message ou une variante est fourni
+        const hasMessage = message && message.trim();
+        const hasVariants = variants && Array.isArray(variants) && variants.some(v => v && v.trim());
+        
+        if (!hasMessage && !hasVariants) {
+          return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
+        }
+        
+        if (!recipients || !recipients.type) {
+          return res.status(400).json({ error: 'Type de destinataires requis (all, segment, list)' });
+        }
+        
+        let recipientCount = 0;
+        
+        try {
+          if (recipients.type === 'all') {
             recipientCount = await User.countDocuments({ 
               $and: [
                 {
@@ -981,7 +989,7 @@ const startServer = async () => {
                 { role: { $ne: 'admin' } }
               ]
             });
-          } else if (recipients?.type === 'segment') {
+          } else if (recipients.type === 'segment') {
             if (['pending', 'active', 'blocked'].includes(recipients.segment)) {
               recipientCount = await User.countDocuments({ 
                 $and: [
@@ -1001,40 +1009,38 @@ const startServer = async () => {
                 ]
               });
             }
-          } else if (recipients?.type === 'list' && recipients.customPhones?.length) {
+          } else if (recipients.type === 'list' && recipients.customPhones?.length) {
             recipientCount = recipients.customPhones.length;
           }
-          
-          const campaign = new WhatsAppCampaign({
-            name: campaignName,
-            message: hasMessage ? message.trim() : null,
-            variants: hasVariants ? variants.filter(v => v && v.trim()) : [],
-            recipients: {
-              ...recipients,
-              count: recipientCount
-            },
-            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-            fromPhone: fromPhone || process.env.WHATSAPP_FROM_PHONE || '',
-            createdBy: req.user._id
-          });
-          
-          await campaign.save();
-          
-          res.status(201).json({
-            success: true,
-            campaign: campaign.toObject()
-          });
-        } else {
-          res.status(503).json({ 
-            error: 'Module whatsapp-campaigns non chargé',
-            message: 'Le module est en cours de chargement. Veuillez réessayer dans quelques instants.',
-            suggestion: 'Vérifier les logs du serveur pour voir les erreurs de chargement'
-          });
+        } catch (countError) {
+          console.error('❌ Erreur comptage destinataires:', countError.message);
+          // Continuer avec recipientCount = 0 si erreur de comptage
         }
+        
+        const campaign = new WhatsAppCampaign({
+          name: campaignName,
+          message: hasMessage ? message.trim() : null,
+          variants: hasVariants ? variants.filter(v => v && v.trim()) : [],
+          recipients: {
+            ...recipients,
+            count: recipientCount
+          },
+          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+          status: scheduledAt ? 'scheduled' : 'draft',
+          fromPhone: fromPhone || process.env.WHATSAPP_FROM_PHONE || '',
+          createdBy: req.user._id
+        });
+        
+        await campaign.save();
+        
+        res.status(201).json({
+          success: true,
+          campaign: campaign.toObject()
+        });
       } catch (error) {
         console.error('❌ Erreur création campagne WhatsApp:', error.message);
         console.error('   Stack:', error.stack);
-          res.status(500).json({ 
+        res.status(500).json({ 
           error: 'Erreur lors de la création de la campagne',
           details: error.message
         });
