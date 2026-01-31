@@ -331,6 +331,82 @@ export default function AdminWhatsAppCampaignsPage() {
     return 0
   }
 
+  const handleReloadCampaign = async (campaign) => {
+    setRecipientReviewLoading(true)
+    try {
+      // Récupérer les logs de la campagne pour obtenir les numéros
+      const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaign._id}/verify`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!verifyResponse.ok) {
+        const errorData = await verifyResponse.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erreur récupération campagne')
+      }
+
+      const verifyData = await verifyResponse.json()
+      const logs = verifyData.logs || []
+      
+      // Extraire les numéros uniques depuis les logs
+      const phoneSet = new Set()
+      logs.forEach(log => {
+        if (log.phone) {
+          phoneSet.add(log.phone)
+        }
+      })
+
+      if (phoneSet.size === 0) {
+        showNotification('Aucun numéro trouvé pour cette campagne', 'error')
+        return
+      }
+
+      // Récupérer les détails des utilisateurs depuis l'API
+      const phonesArray = Array.from(phoneSet)
+      const usersResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/users-with-phones?limit=10000`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      let usersMap = new Map()
+      if (usersResponse.ok) {
+        const usersData = await usersResponse.json()
+        const users = usersData.contacts || []
+        users.forEach(u => {
+          if (u.phone) {
+            usersMap.set(u.phone, u)
+          }
+        })
+      }
+
+      // Créer les items avec les informations des utilisateurs
+      const items = phonesArray.map(phone => {
+        const user = usersMap.get(phone)
+        return {
+          phone,
+          firstName: user?.firstName || '',
+          name: user?.name || '',
+          email: user?.email || '',
+          valid: true,
+          selected: true
+        }
+      })
+
+      // Préparer le payload avec les variantes/message de la campagne originale
+      setPendingSendPayload({
+        message: campaign.message || null,
+        variants: campaign.variants && campaign.variants.length > 0 ? campaign.variants : null,
+        fromPhone: campaign.fromPhone || ''
+      })
+
+      setRecipientReviewItems(items)
+      setRecipientReviewOpen(true)
+    } catch (error) {
+      console.error('Erreur rechargement campagne:', error)
+      showNotification(error.message || 'Erreur lors du rechargement', 'error')
+    } finally {
+      setRecipientReviewLoading(false)
+    }
+  }
+
   const createAndSendCampaign = async ({ message, variants, recipients, fromPhone }) => {
     setSending(true)
     try {
@@ -1266,6 +1342,7 @@ export default function AdminWhatsAppCampaignsPage() {
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Statut</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Envoyés</th>
                   <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Date</th>
+                  <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
@@ -1286,6 +1363,16 @@ export default function AdminWhatsAppCampaignsPage() {
                     <td style={{ padding: '12px' }}>{campaign.stats?.sent || 0}</td>
                     <td style={{ padding: '12px', fontSize: '12px', color: '#6c757d' }}>
                       {campaign.sentAt ? new Date(campaign.sentAt).toLocaleDateString('fr-FR') : new Date(campaign.createdAt).toLocaleDateString('fr-FR')}
+                    </td>
+                    <td style={{ padding: '12px' }}>
+                      <button
+                        onClick={() => handleReloadCampaign(campaign)}
+                        disabled={recipientReviewLoading}
+                        className="admin-btn"
+                        style={{ padding: '6px 12px', fontSize: '12px', backgroundColor: '#2196f3', color: 'white', border: 'none', borderRadius: '4px', cursor: recipientReviewLoading ? 'not-allowed' : 'pointer', opacity: recipientReviewLoading ? 0.6 : 1 }}
+                      >
+                        {recipientReviewLoading ? '⏳' : '🔄 Relancer'}
+                      </button>
                     </td>
                   </tr>
                 ))}
