@@ -113,6 +113,7 @@ export default function Header() {
     if (pathname.startsWith('/analyseur-ia')) return 'Analyseur IA'
     if (pathname.startsWith('/replays-lives')) return 'Replays Lives'
     if (pathname.startsWith('/communaute')) return 'Communauté'
+    if (pathname.startsWith('/partenaires')) return 'Partenaires'
     if (pathname.startsWith('/profil')) return 'Profil'
     if (pathname.startsWith('/commentaires')) return 'Commentaires'
     if (pathname.startsWith('/chat')) return 'Messages'
@@ -196,6 +197,16 @@ export default function Header() {
                 }`}
               >
                 Communauté
+              </Link>
+              <Link 
+                to="/partenaires" 
+                className={`px-3 py-2 rounded-lg text-xs xl:text-sm font-medium transition-all whitespace-nowrap flex-shrink-0 ${
+                  isActive('/partenaires') 
+                    ? 'bg-accent text-white' 
+                    : 'text-primary hover:bg-secondary'
+                }`}
+              >
+                Partenaires
               </Link>
             </nav>
 
