@@ -525,7 +525,10 @@ export default function AdminWhatsAppCampaignsPage() {
 
       if (!campaignResponse.ok) {
         const errorData = await campaignResponse.json().catch(() => ({}))
-        throw new Error(errorData.error || 'Erreur création campagne')
+        const errorMessage = errorData.details 
+          ? `${errorData.error || 'Erreur création campagne'}: ${errorData.details}`
+          : errorData.error || 'Erreur création campagne'
+        throw new Error(errorMessage)
       }
 
       const campaignData = await campaignResponse.json()

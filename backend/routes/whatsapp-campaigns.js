@@ -63,6 +63,19 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
     }
     
+    if (!recipients || !recipients.type) {
+      return res.status(400).json({ error: 'Type de destinataires requis (all, segment, list)' });
+    }
+    
+    // Valider la structure des recipients selon le type
+    if (recipients.type === 'list' && (!recipients.customPhones || !Array.isArray(recipients.customPhones))) {
+      return res.status(400).json({ error: 'customPhones doit être un tableau pour le type "list"' });
+    }
+    
+    if (recipients.type === 'segment' && !recipients.segment) {
+      return res.status(400).json({ error: 'segment est requis pour le type "segment"' });
+    }
+    
     let recipientCount = 0;
     
     if (recipients?.type === 'all') {
@@ -102,10 +115,25 @@ router.post('/', async (req, res) => {
       recipientCount = recipients.customPhones.length;
     }
     
+    // Vérifier que req.user existe
+    if (!req.user || !req.user._id) {
+      return res.status(401).json({ error: 'Utilisateur non authentifié' });
+    }
+
+    // Préparer les variants - s'assurer que c'est un tableau
+    const finalVariants = hasVariants && Array.isArray(variants) 
+      ? variants.filter(v => v && v.trim()) 
+      : [];
+
+    // Vérifier à nouveau qu'au moins un message ou une variante existe après filtrage
+    if (!hasMessage && finalVariants.length === 0) {
+      return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
+    }
+    
     const campaign = new WhatsAppCampaign({
       name: campaignName,
       message: hasMessage ? message.trim() : null,
-      variants: hasVariants ? variants.filter(v => v && v.trim()) : [],
+      variants: finalVariants,
       recipients: {
         ...recipients,
         count: recipientCount
@@ -123,8 +151,29 @@ router.post('/', async (req, res) => {
       campaign: campaign.toObject()
     });
   } catch (error) {
-    console.error('Erreur création campagne WhatsApp:', error);
-    res.status(500).json({ error: 'Erreur lors de la création' });
+    console.error('Erreur création campagne WhatsApp:', error.message);
+    console.error('   Stack:', error.stack);
+    console.error('   Données reçues:', {
+      name: req.body.name,
+      hasMessage: !!(req.body.message && req.body.message.trim()),
+      hasVariants: !!(req.body.variants && Array.isArray(req.body.variants) && req.body.variants.some(v => v && v.trim())),
+      recipientsType: req.body.recipients?.type,
+      userId: req.user?._id
+    });
+    
+    // Si c'est une erreur de validation Mongoose, retourner les détails
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors || {}).map(err => err.message).join(', ');
+      return res.status(400).json({ 
+        error: 'Erreur de validation',
+        details: validationErrors || error.message
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Erreur lors de la création de la campagne',
+      details: error.message
+    });
   }
 });
 
@@ -253,7 +302,14 @@ router.post('/:id/send', async (req, res) => {
     const contacts = users.map(user => {
       const phone = (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim());
       // Extraire le prénom du nom complet (premier mot)
-      const firstName = user.name ? user.name.split(' ')[0] : null;
+      let firstName = '';
+      if (user.name && user.name.trim()) {
+        // Prendre le premier mot et capitaliser la première lettre
+        const nameParts = user.name.trim().split(/\s+/);
+        if (nameParts.length > 0 && nameParts[0]) {
+          firstName = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1).toLowerCase();
+        }
+      }
       
       return {
         to: phone,

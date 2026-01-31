@@ -17,14 +17,18 @@ const initWhatsAppService = async () => {
       apiTokenInstance: greenApiToken,
       apiUrl: greenApiUrl || `https://${greenApiId}.api.greenapi.com`
     };
-    // Service configuré silencieusement
+    
+    console.log('✅ Service WhatsApp Green API configuré');
+    console.log(`   - Instance ID: ${greenApiId}`);
+    console.log(`   - API URL: ${whatsappProvider.apiUrl}`);
     
     // Warm-up automatique pour Green API
     warmupCompleted = false;
     return;
   }
   
-  // Green API non configuré (erreur silencieuse)
+  // Green API non configuré
+  throw new Error('Variables d\'environnement GREEN_API_ID_INSTANCE et GREEN_API_TOKEN_INSTANCE requises');
 };
 
 /**
@@ -748,7 +752,7 @@ const sseConnections = new Map();
 /**
  * Émet un événement SSE pour une campagne
  */
-export const emitCampaignEvent = (campaignId, event, data) => {
+const emitCampaignEvent = (campaignId, event, data) => {
   const connections = sseConnections.get(campaignId);
   if (connections && connections.length > 0) {
     const message = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -765,7 +769,7 @@ export const emitCampaignEvent = (campaignId, event, data) => {
 /**
  * Ajoute une connexion SSE pour une campagne
  */
-export const addSSEConnection = (campaignId, res) => {
+const addSSEConnection = (campaignId, res) => {
   if (!sseConnections.has(campaignId)) {
     sseConnections.set(campaignId, []);
   }
