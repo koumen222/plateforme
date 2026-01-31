@@ -61,8 +61,59 @@ export default function AdminWhatsAppCampaignsPage() {
     if (token) {
       fetchStats()
       fetchCampaigns()
+      
+      // Vérifier s'il y a une campagne en cours de suivi
+      const savedCampaignId = localStorage.getItem('trackingWhatsAppCampaignId')
+      if (savedCampaignId) {
+        setTrackingCampaignId(savedCampaignId)
+        startTracking(savedCampaignId)
+      }
+    }
+    
+    return () => {
+      if (trackingInterval) {
+        clearInterval(trackingInterval)
+      }
     }
   }, [token])
+  
+  const startTracking = (campaignId) => {
+    if (trackingInterval) {
+      clearInterval(trackingInterval)
+    }
+    
+    const fetchCampaignStatus = async () => {
+      try {
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setCampaignDetails(data)
+          
+          // Si la campagne est terminée, arrêter le suivi
+          if (data.campaign.status === 'sent' || data.campaign.status === 'failed') {
+            stopTracking()
+            localStorage.removeItem('trackingWhatsAppCampaignId')
+          }
+        }
+      } catch (error) {
+        console.error('Erreur suivi campagne:', error)
+      }
+    }
+    
+    fetchCampaignStatus() // Appel immédiat
+    const interval = setInterval(fetchCampaignStatus, 3000) // Toutes les 3 secondes
+    setTrackingInterval(interval)
+  }
+  
+  const stopTracking = () => {
+    if (trackingInterval) {
+      clearInterval(trackingInterval)
+      setTrackingInterval(null)
+    }
+    setTrackingCampaignId(null)
+  }
 
   useEffect(() => {
     if (formData.recipientMode === 'list' && token) {
@@ -390,6 +441,11 @@ export default function AdminWhatsAppCampaignsPage() {
 
       const campaignData = await campaignResponse.json()
       const campaignId = campaignData.campaign._id
+      
+      // Démarrer le suivi de la campagne
+      setTrackingCampaignId(campaignId)
+      localStorage.setItem('trackingWhatsAppCampaignId', campaignId)
+      startTracking(campaignId)
 
       const sendResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/send`, {
         method: 'POST',
@@ -1204,7 +1260,88 @@ export default function AdminWhatsAppCampaignsPage() {
         </div>
       </div>
 
-      {sendResults && (
+      {trackingCampaignId && campaignDetails && (
+        <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#fff3cd', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '2px solid #ffc107' }}>
+          <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            ⏳ Campagne en cours : {campaignDetails.campaign.name}
+            <button 
+              onClick={() => {
+                stopTracking()
+                setCampaignDetails(null)
+                localStorage.removeItem('trackingWhatsAppCampaignId')
+              }}
+              style={{ marginLeft: 'auto', padding: '4px 8px', fontSize: '12px', backgroundColor: '#f0f0f0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+            >
+              ✕ Arrêter le suivi
+            </button>
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #4caf50' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#2e7d32' }}>{campaignDetails.stats.sent || 0}</div>
+              <div style={{ fontSize: '12px', color: '#2e7d32' }}>✅ Envoyés</div>
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #f44336' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#c62828' }}>{campaignDetails.stats.failed || 0}</div>
+              <div style={{ fontSize: '12px', color: '#c62828' }}>❌ Échecs</div>
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ff9800' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#e65100' }}>{campaignDetails.stats.pending || 0}</div>
+              <div style={{ fontSize: '12px', color: '#e65100' }}>⏳ En attente</div>
+            </div>
+            <div style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #2196f3' }}>
+              <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#1565c0' }}>{campaignDetails.stats.total || 0}</div>
+              <div style={{ fontSize: '12px', color: '#1565c0' }}>📱 Total</div>
+            </div>
+          </div>
+          
+          {campaignDetails.sentMessages && campaignDetails.sentMessages.length > 0 && (
+            <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #4caf50', maxHeight: '400px', overflowY: 'auto' }}>
+              <div style={{ fontWeight: '600', marginBottom: '12px', color: '#2e7d32', fontSize: '14px' }}>
+                📤 Messages envoyés ({campaignDetails.sentMessages.length}) :
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {campaignDetails.sentMessages.map((msg, idx) => (
+                  <div key={idx} style={{ padding: '10px', backgroundColor: '#f1f8e9', borderRadius: '4px', border: '1px solid #c8e6c9' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                      <span style={{ fontFamily: 'monospace', fontWeight: '600', fontSize: '13px' }}>{msg.phone}</span>
+                      {msg.firstName && (
+                        <span style={{ fontSize: '12px', color: '#666' }}>({msg.firstName})</span>
+                      )}
+                      <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#999' }}>
+                        {new Date(msg.sentAt).toLocaleTimeString('fr-FR')}
+                      </span>
+                    </div>
+                    {msg.message && (
+                      <div style={{ fontSize: '12px', color: '#555', marginTop: '4px', whiteSpace: 'pre-wrap', maxHeight: '60px', overflow: 'hidden' }}>
+                        {msg.message.substring(0, 150)}{msg.message.length > 150 ? '...' : ''}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {campaignDetails.failedMessages && campaignDetails.failedMessages.length > 0 && (
+            <div style={{ marginTop: '16px', padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #f44336', maxHeight: '200px', overflowY: 'auto' }}>
+              <div style={{ fontWeight: '600', marginBottom: '8px', color: '#c62828', fontSize: '14px' }}>
+                ❌ Messages en échec ({campaignDetails.failedMessages.length}) :
+              </div>
+              <div style={{ fontSize: '12px' }}>
+                {campaignDetails.failedMessages.map((msg, idx) => (
+                  <div key={idx} style={{ padding: '6px 0', borderBottom: '1px solid #ffcdd2' }}>
+                    <strong>{msg.phone}</strong>
+                    {msg.firstName && <span style={{ color: '#666' }}> ({msg.firstName})</span>}
+                    : <span style={{ color: '#c62828' }}>{msg.error}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {sendResults && !trackingCampaignId && (
         <div style={{ marginTop: '20px', padding: '20px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <h3 style={{ marginBottom: '16px', fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             📊 Résultats d'envoi

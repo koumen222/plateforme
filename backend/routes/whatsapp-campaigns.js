@@ -356,6 +356,59 @@ router.post('/:id/send', async (req, res) => {
   }
 });
 
+router.get('/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await WhatsAppCampaign.findById(id).lean();
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campagne non trouvée' });
+    }
+    
+    const WhatsAppLog = (await import('../models/WhatsAppLog.js')).default;
+    const logs = await WhatsAppLog.find({ campaignId: id })
+      .select('phone firstName messageSent status sentAt error')
+      .sort({ sentAt: -1 })
+      .lean();
+    
+    const sentLogs = logs.filter(log => log.status === 'sent' || log.status === 'delivered');
+    const failedLogs = logs.filter(log => log.status === 'failed');
+    const pendingLogs = logs.filter(log => log.status === 'pending');
+    
+    res.json({
+      success: true,
+      campaign: {
+        _id: campaign._id,
+        name: campaign.name,
+        status: campaign.status,
+        sentAt: campaign.sentAt,
+        createdAt: campaign.createdAt
+      },
+      stats: {
+        total: logs.length,
+        sent: sentLogs.length,
+        failed: failedLogs.length,
+        pending: pendingLogs.length
+      },
+      sentMessages: sentLogs.map(log => ({
+        phone: log.phone,
+        firstName: log.firstName || '',
+        message: log.messageSent || '',
+        sentAt: log.sentAt
+      })),
+      failedMessages: failedLogs.map(log => ({
+        phone: log.phone,
+        firstName: log.firstName || '',
+        error: log.error || 'Erreur inconnue',
+        sentAt: log.sentAt
+      }))
+    });
+  } catch (error) {
+    console.error('Erreur récupération statut campagne:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération' });
+  }
+});
+
 router.get('/:id/verify', async (req, res) => {
   try {
     const { id } = req.params;

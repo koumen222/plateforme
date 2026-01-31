@@ -225,7 +225,7 @@ const performWarmup = async () => {
  * Cette fonction ne gère PAS le retry, elle fait juste un essai unique
  * ⚠️ IMPORTANT: Cette fonction REJETTE immédiatement les numéros mal formatés
  */
-const sendWhatsAppMessage = async ({ to, message, campaignId, userId, attemptNumber = 1 }) => {
+const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName, attemptNumber = 1 }) => {
   if (!whatsappProvider || providerType !== 'green_api') {
     throw new Error('Service WhatsApp Green API non configuré');
   }
@@ -251,6 +251,8 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, attemptNum
     campaignId,
     userId,
     phone: cleanedPhone,
+    firstName: firstName || null,
+    messageSent: message || null,
     status: 'pending'
   });
   
@@ -734,7 +736,8 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
       to: cleanedPhone,
       message: selectedVariant,
       campaignId: contact.campaignId,
-      userId: contact.userId || null
+      userId: contact.userId || null,
+      firstName: contact.firstName || null
     };
     
     try {
