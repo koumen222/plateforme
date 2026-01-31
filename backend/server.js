@@ -1041,7 +1041,75 @@ const startServer = async () => {
       }
     });
     
-    app.post("/api/whatsapp-campaigns/:id/send", authenticate, requireAdmin, async (req, res) => {
+      app.get("/api/whatsapp-campaigns/:id/status", authenticate, requireAdmin, async (req, res) => {
+        try {
+          const { id } = req.params;
+          
+          let WhatsAppCampaign, WhatsAppLog;
+          try {
+            const campaignModule = await import("./models/WhatsAppCampaign.js");
+            WhatsAppCampaign = campaignModule.default;
+          } catch (err) {
+            return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
+          }
+          
+          try {
+            const logModule = await import("./models/WhatsAppLog.js");
+            WhatsAppLog = logModule.default;
+          } catch (err) {
+            return res.status(500).json({ error: 'Modèle WhatsAppLog non disponible', details: err.message });
+          }
+          
+          const campaign = await WhatsAppCampaign.findById(id).lean();
+          
+          if (!campaign) {
+            return res.status(404).json({ error: 'Campagne non trouvée' });
+          }
+          
+          const logs = await WhatsAppLog.find({ campaignId: id })
+            .select('phone firstName messageSent status sentAt error')
+            .sort({ sentAt: -1 })
+            .lean();
+          
+          const sentLogs = logs.filter(log => log.status === 'sent' || log.status === 'delivered');
+          const failedLogs = logs.filter(log => log.status === 'failed');
+          const pendingLogs = logs.filter(log => log.status === 'pending');
+          
+          res.json({
+            success: true,
+            campaign: {
+              _id: campaign._id,
+              name: campaign.name,
+              status: campaign.status,
+              sentAt: campaign.sentAt,
+              createdAt: campaign.createdAt
+            },
+            stats: {
+              total: logs.length,
+              sent: sentLogs.length,
+              failed: failedLogs.length,
+              pending: pendingLogs.length
+            },
+            sentMessages: sentLogs.map(log => ({
+              phone: log.phone,
+              firstName: log.firstName || '',
+              message: log.messageSent || '',
+              sentAt: log.sentAt
+            })),
+            failedMessages: failedLogs.map(log => ({
+              phone: log.phone,
+              firstName: log.firstName || '',
+              error: log.error || 'Erreur inconnue',
+              sentAt: log.sentAt
+            }))
+          });
+        } catch (error) {
+          console.error('❌ Erreur récupération statut campagne:', error.message);
+          res.status(500).json({ error: 'Erreur lors de la récupération', details: error.message });
+        }
+      });
+
+      app.post("/api/whatsapp-campaigns/:id/send", authenticate, requireAdmin, async (req, res) => {
       try {
         const { id } = req.params;
         
