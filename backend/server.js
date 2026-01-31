@@ -1420,13 +1420,16 @@ const startServer = async () => {
       }
       
       // Routes de tracking des visites
+      console.log('📦 Tentative de chargement routes visits...');
       try {
         const visitsModule = await import("./routes/visits.js");
         console.log('📦 Module visits importé:', !!visitsModule);
+        console.log('📦 visitsModule:', Object.keys(visitsModule || {}));
         console.log('📦 visitsModule.default:', !!visitsModule?.default);
+        console.log('📦 Type de visitsModule.default:', typeof visitsModule?.default);
         if (visitsModule && visitsModule.default) {
           app.use("/api/visits", visitsModule.default);
-          console.log('✅ Routes visits chargées');
+          console.log('✅ Routes visits chargées sur /api/visits');
           console.log('   POST /api/visits/track - Enregistrer une visite');
           console.log('   GET  /api/visits/stats - Statistiques par pays (admin)');
           console.log('   GET  /api/visits/recent - Visites récentes (admin)');
