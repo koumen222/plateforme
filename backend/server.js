@@ -1248,6 +1248,28 @@ const startServer = async () => {
       app.get("/api/whatsapp-campaigns/test", (req, res) => {
         res.status(503).json({ error: 'Erreur chargement module whatsapp-campaigns', details: error.message });
       });
+      // Routes de fallback temporaires pour permettre le fonctionnement
+      try {
+        const { authenticate: authMiddleware, requireAdmin: adminMiddleware } = await import("./middleware/auth.js");
+        const { requireAdmin } = await import("./middleware/admin.js");
+        
+        app.get("/api/whatsapp-campaigns", authMiddleware, adminMiddleware, (req, res) => {
+          res.status(503).json({ 
+            error: 'Module whatsapp-campaigns non chargé', 
+            details: error.message,
+            suggestion: 'Vérifier les logs du serveur pour plus de détails'
+          });
+        });
+        app.post("/api/whatsapp-campaigns", authMiddleware, adminMiddleware, (req, res) => {
+          res.status(503).json({ 
+            error: 'Module whatsapp-campaigns non chargé', 
+            details: error.message,
+            suggestion: 'Vérifier les logs du serveur pour plus de détails'
+          });
+        });
+      } catch (middlewareError) {
+        console.error('❌ Erreur chargement middlewares pour routes de fallback:', middlewareError.message);
+      }
     }
     
     console.log('📦 Chargement dynamique terminé\n');
