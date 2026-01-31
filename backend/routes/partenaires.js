@@ -2,6 +2,7 @@ import express from 'express';
 import Partenaire from '../models/Partenaire.js';
 import PartenaireAvis from '../models/PartenaireAvis.js';
 import PartenaireContact from '../models/PartenaireContact.js';
+import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
 

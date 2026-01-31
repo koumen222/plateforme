@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { FiCheckCircle } from 'react-icons/fi'
 import { CONFIG } from '../config/config'
 import { getImageUrl, handleImageError } from '../utils/imageUtils'
+import { useAuth } from '../contexts/AuthContext'
 
 const domaineOptions = [
   { value: 'all', label: 'Tous les domaines' },
@@ -65,6 +66,7 @@ const getExcerpt = (partenaire) => {
 export default function PartenairesCategoryPage() {
   const { domaine } = useParams()
   const navigate = useNavigate()
+  const { user, token, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [basePartenaires, setBasePartenaires] = useState([])
   const [partenaires, setPartenaires] = useState([])
@@ -120,7 +122,13 @@ export default function PartenairesCategoryPage() {
       if (domaine && domaine !== 'all') {
         params.append('domaine', domaine)
       }
-      const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires?${params.toString()}`)
+      const headers = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires?${params.toString()}`, {
+        headers
+      })
       const data = await response.json()
       if (response.ok) {
         setBasePartenaires(data.partenaires || [])
@@ -136,7 +144,13 @@ export default function PartenairesCategoryPage() {
     setLoading(true)
     try {
       const query = buildQuery()
-      const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires?${query}`)
+      const headers = {}
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+      }
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires?${query}`, {
+        headers
+      })
       const data = await response.json()
       if (response.ok) {
         setPartenaires(data.partenaires || [])
@@ -332,8 +346,32 @@ export default function PartenairesCategoryPage() {
     </div>
   )
 
+  const isAuthenticated = !authLoading && token && user
+
   return (
-    <div className="bg-secondary min-h-screen">
+    <div className="bg-secondary min-h-screen relative">
+      {/* Overlay flou avec message de connexion centré pour les non-connectés */}
+      {!isAuthenticated && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20">
+          <div className="bg-card rounded-2xl border border-theme shadow-xl p-8 max-w-md mx-4">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="text-5xl">🔒</div>
+              <div>
+                <h2 className="text-xl font-bold text-primary mb-2">Accès réservé aux membres</h2>
+                <p className="text-sm text-secondary">Connectez-vous pour accéder à tous les partenaires</p>
+              </div>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-6 py-3 bg-accent text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full"
+              >
+                Se connecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div>
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-6">
         <div className="rounded-3xl border border-theme bg-card p-6 shadow-sm">
           <Link to="/partenaires" className="text-sm text-secondary hover:text-primary">
@@ -362,19 +400,21 @@ export default function PartenairesCategoryPage() {
                 </option>
               ))}
             </select>
-            <div className="relative flex-1">
+            <div className={`relative flex-1 ${!isAuthenticated ? 'blur-sm pointer-events-none' : ''}`}>
               <input
                 type="text"
                 className="w-full rounded-full border border-theme bg-card px-4 py-2 text-sm text-primary placeholder:text-secondary/70"
                 placeholder="Rechercher un livreur ou une agence"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                disabled={!isAuthenticated}
               />
             </div>
             <button
               type="button"
-              className="btn-secondary px-4 py-2 text-sm md:hidden"
+              className={`btn-secondary px-4 py-2 text-sm md:hidden ${!isAuthenticated ? 'blur-sm pointer-events-none' : ''}`}
               onClick={() => setIsFiltersOpen(true)}
+              disabled={!isAuthenticated}
             >
               Filtres
             </button>
@@ -382,19 +422,20 @@ export default function PartenairesCategoryPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6">
-          <aside className="hidden lg:block rounded-3xl border border-theme bg-card p-5 shadow-sm h-fit">
+          <aside className={`hidden lg:block rounded-3xl border border-theme bg-card p-5 shadow-sm h-fit ${!isAuthenticated ? 'blur-sm pointer-events-none select-none' : ''}`}>
             <div className="text-sm font-semibold text-primary mb-4">Filtres</div>
             {FiltersPanel}
             <button
               type="button"
               className="btn-secondary mt-4 w-full text-sm px-4 py-2"
               onClick={resetFilters}
+              disabled={!isAuthenticated}
             >
               Réinitialiser
             </button>
           </aside>
 
-          <div>
+          <div className={!isAuthenticated ? 'blur-sm pointer-events-none select-none' : ''}>
             {loading ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, idx) => (
@@ -544,6 +585,7 @@ export default function PartenairesCategoryPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   )
 }

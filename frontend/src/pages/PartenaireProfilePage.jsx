@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, Link, useNavigate } from 'react-router-dom'
 import { FiCalendar, FiCheckCircle, FiClock, FiCompass, FiGlobe, FiMail, FiMapPin, FiMessageCircle, FiPhone } from 'react-icons/fi'
 import { CONFIG } from '../config/config'
 import { getImageUrl, handleImageError } from '../utils/imageUtils'
+import { useAuth } from '../contexts/AuthContext'
 
 const domaineLabel = (value) => {
   const labels = {
@@ -46,6 +47,8 @@ const getProfileBadge = (value) => {
 
 export default function PartenaireProfilePage() {
   const { id } = useParams()
+  const navigate = useNavigate()
+  const { user, token, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [partenaire, setPartenaire] = useState(null)
   const [avis, setAvis] = useState([])
@@ -72,7 +75,13 @@ export default function PartenaireProfilePage() {
       setLoading(true)
       setError('')
       try {
-        const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires/${id}`)
+        const headers = {}
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`
+        }
+        const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires/${id}`, {
+          headers
+        })
         const data = await response.json()
         if (!response.ok) {
           throw new Error(data.error || 'Erreur de chargement')
@@ -86,7 +95,7 @@ export default function PartenaireProfilePage() {
       }
     }
     load()
-  }, [id])
+  }, [id, token])
 
   const getContactLink = (record) => {
     if (record?.lien_contact) return record.lien_contact
@@ -103,10 +112,14 @@ export default function PartenaireProfilePage() {
   }
 
   const trackContact = async (type, message) => {
+    if (!token) return
     try {
       await fetch(`${CONFIG.BACKEND_URL}/api/partenaires/${id}/contact`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ type, message })
       })
     } catch (error) {
@@ -154,7 +167,10 @@ export default function PartenaireProfilePage() {
       }
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/partenaires/${id}/avis`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(payload)
       })
       const data = await response.json().catch(() => ({}))
@@ -298,8 +314,63 @@ export default function PartenaireProfilePage() {
       : [])
   ].filter((item) => !item.hidden)
 
+  const isAuthenticated = !authLoading && token && user
+
+  if (loading) {
+    return (
+      <div className="bg-secondary min-h-screen pb-20 md:pb-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="summary-card-lesson">
+            <div className="flex items-center justify-center py-12">
+              <div className="text-2xl">⏳</div>
+              <p className="ml-3 text-secondary">Chargement...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-secondary min-h-screen pb-20 md:pb-10">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+          <div className="summary-card-lesson">
+            <div className="flex flex-col items-center justify-center text-center py-12 px-4">
+              <div className="text-4xl mb-4">❌</div>
+              <p className="text-secondary">{error}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-secondary min-h-screen pb-20 md:pb-10">
+    <div className="bg-secondary min-h-screen pb-20 md:pb-10 relative">
+      {/* Overlay flou avec message de connexion centré pour les non-connectés */}
+      {!isAuthenticated && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20">
+          <div className="bg-card rounded-2xl border border-theme shadow-xl p-8 max-w-md mx-4">
+            <div className="flex flex-col items-center text-center gap-4">
+              <div className="text-5xl">🔒</div>
+              <div>
+                <h2 className="text-xl font-bold text-primary mb-2">Accès réservé aux membres</h2>
+                <p className="text-sm text-secondary">Connectez-vous pour accéder à tous les partenaires</p>
+              </div>
+              <button
+                onClick={() => navigate('/login')}
+                className="px-6 py-3 bg-accent text-white rounded-lg font-semibold hover:opacity-90 transition-opacity w-full"
+              >
+                Se connecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      <div>
+      <div className={!isAuthenticated ? 'blur-sm pointer-events-none select-none' : ''}>
       <header className="bg-card border-b border-theme sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-4">
           <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
@@ -628,6 +699,8 @@ export default function PartenaireProfilePage() {
           </div>
         </div>
       )}
+      </div>
+      </div>
     </div>
   )
 }

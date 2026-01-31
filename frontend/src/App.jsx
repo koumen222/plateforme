@@ -174,14 +174,14 @@ function App() {
           <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
-          <Route path="/partenaires" element={<PlatformLayout><PrivateRoute><PartenairesPage /></PrivateRoute></PlatformLayout>} />
-          <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PrivateRoute><PartenairesCategoryPage /></PrivateRoute></PlatformLayout>} />
+          <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
+          <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PartenairesCategoryPage /></PlatformLayout>} />
           <Route path="/coaching-application" element={<PlatformLayout><CoachingApplicationForm /></PlatformLayout>} />
           <Route
             path="/partenaires/:id"
             element={
               <PlatformLayout showHeader={false} showFooter={false} showChatbot={false}>
-                <PrivateRoute><PartenaireProfilePage /></PrivateRoute>
+                <PartenaireProfilePage />
               </PlatformLayout>
             }
           />

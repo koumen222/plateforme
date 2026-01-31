@@ -35,10 +35,10 @@ export default function PrivateRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
   
-  // Vérifier si l'utilisateur a le statut "active" pour certaines pages
-  // Si la route nécessite un compte actif (comme /partenaires), vérifier le statut
-  if (location.pathname.startsWith('/partenaires') && user.status !== 'active') {
-    console.log('🛡️ Accès refusé - Compte non actif pour la page partenaires')
+  // Vérifier si l'utilisateur a le statut "active" ou "pending" pour certaines pages
+  // Si la route nécessite un compte actif ou en attente (comme /partenaires), vérifier le statut
+  if (location.pathname.startsWith('/partenaires') && user.status !== 'active' && user.status !== 'pending') {
+    console.log('🛡️ Accès refusé - Compte non autorisé pour la page partenaires (statut:', user.status, ')')
     return <Navigate to="/profil" replace />
   }
   
