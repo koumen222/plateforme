@@ -959,7 +959,10 @@ router.post('/partenaires', async (req, res) => {
     const autorisationAffichage = payload.autorisation_affichage !== undefined
       ? Boolean(payload.autorisation_affichage)
       : statut === 'approuve';
-    const isSponsored = payload.is_sponsored !== undefined ? Boolean(payload.is_sponsored) : false;
+    // Sponsoriser automatiquement si le partenaire est approuvé (sauf si explicitement désactivé)
+    const isSponsored = payload.is_sponsored !== undefined 
+      ? Boolean(payload.is_sponsored) 
+      : (statut === 'approuve'); // Auto-sponsoriser si approuvé
 
     const partenaire = new Partenaire({
       nom: payload.nom.toString().trim(),
@@ -989,6 +992,11 @@ router.post('/partenaires', async (req, res) => {
     });
 
     await partenaire.save();
+    
+    if (statut === 'approuve' && isSponsored) {
+      console.log(`⭐ Partenaire "${partenaire.nom}" créé et automatiquement sponsorisé (statut: approuvé)`);
+    }
+    
     res.status(201).json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
   } catch (error) {
     console.error('Erreur création partenaire:', error);
@@ -1050,6 +1058,7 @@ router.put('/partenaires/:id', async (req, res) => {
     }
 
     const payload = req.body || {};
+    console.log(`📝 Mise à jour partenaire "${partenaire.nom}" (ID: ${id}):`, Object.keys(payload));
     const domaines = parseListParam(payload.domaines_activite || payload.domaines || payload.domaine)
       .map(normalizeDomaine);
 
@@ -1108,10 +1117,17 @@ router.put('/partenaires/:id', async (req, res) => {
     }
     if (payload.is_sponsored !== undefined) {
       const newSponsoredStatus = Boolean(payload.is_sponsored);
-      if (partenaire.is_sponsored !== newSponsoredStatus) {
-        console.log(`⭐ Statut sponsorisé mis à jour pour "${partenaire.nom}": ${partenaire.is_sponsored} → ${newSponsoredStatus}`);
+      const oldSponsoredStatus = Boolean(partenaire.is_sponsored);
+      if (oldSponsoredStatus !== newSponsoredStatus) {
+        partenaire.is_sponsored = newSponsoredStatus;
+        if (newSponsoredStatus) {
+          console.log(`⭐ Partenaire "${partenaire.nom}" sponsorisé avec succès`);
+        } else {
+          console.log(`❌ Sponsor retiré pour "${partenaire.nom}"`);
+        }
+      } else {
+        console.log(`ℹ️ Statut sponsorisé inchangé pour "${partenaire.nom}": ${newSponsoredStatus}`);
       }
-      partenaire.is_sponsored = newSponsoredStatus;
     }
     if (payload.plan !== undefined) {
       partenaire.monetisation = partenaire.monetisation || {};
@@ -1134,10 +1150,24 @@ router.put('/partenaires/:id', async (req, res) => {
     }
 
     await partenaire.save();
-    res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
+    
+    // Vérifier que la sauvegarde a bien fonctionné
+    const updatedPartenaire = await Partenaire.findById(id).lean();
+    if (!updatedPartenaire) {
+      return res.status(500).json({ error: 'Erreur lors de la sauvegarde' });
+    }
+    
+    const sponsoredStatus = updatedPartenaire.is_sponsored ? '⭐ SPONSORISÉ' : 'non sponsorisé';
+    console.log(`✅ Partenaire "${updatedPartenaire.nom}" mis à jour avec succès. Statut: ${sponsoredStatus}`);
+    
+    res.json({ success: true, partenaire: shapePartenaire(updatedPartenaire) });
   } catch (error) {
-    console.error('Erreur mise à jour partenaire:', error);
-    res.status(500).json({ error: 'Erreur lors de la mise à jour du partenaire' });
+    console.error('❌ Erreur mise à jour partenaire:', error.message);
+    console.error('   Stack:', error.stack);
+    res.status(500).json({ 
+      error: 'Erreur lors de la mise à jour du partenaire',
+      details: error.message 
+    });
   }
 });
 
@@ -1152,6 +1182,11 @@ router.put('/partenaires/:id/approve', async (req, res) => {
     partenaire.statut = 'approuve';
     partenaire.autorisation_affichage = true;
     partenaire.approved_at = new Date();
+    // Sponsoriser automatiquement lors de l'approbation
+    if (!partenaire.is_sponsored) {
+      partenaire.is_sponsored = true;
+      console.log(`⭐ Partenaire "${partenaire.nom}" automatiquement sponsorisé lors de l'approbation`);
+    }
     await partenaire.save();
     res.json({ success: true, partenaire: shapePartenaire(partenaire.toObject()) });
   } catch (error) {

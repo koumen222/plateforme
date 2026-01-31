@@ -251,7 +251,14 @@ export default function AdminPartenairesPage() {
           resetForm()
         }
   const toggleSponsored = async (partenaire) => {
-    if (!token) return
+    if (!token) {
+      showNotification('Token manquant', 'error')
+      return
+    }
+    
+    const newStatus = !partenaire.is_sponsored
+    console.log(`🔄 Toggle sponsor pour "${partenaire.nom}": ${partenaire.is_sponsored} → ${newStatus}`)
+    
     try {
       const response = await fetch(
         `${CONFIG.BACKEND_URL}/api/admin/partenaires/${partenaire._id}`,
@@ -261,20 +268,74 @@ export default function AdminPartenairesPage() {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ is_sponsored: !partenaire.is_sponsored })
+          body: JSON.stringify({ is_sponsored: newStatus })
         }
       )
+      
       if (response.ok) {
-        showNotification(
-          partenaire.is_sponsored ? 'Sponsor retiré' : 'Partenaire sponsorisé'
-        )
-        fetchPartenaires()
-      } else {
         const data = await response.json().catch(() => ({}))
-        showNotification(data.error || 'Erreur mise à jour', 'error')
+        const updatedPartenaire = data.partenaire
+        
+        if (updatedPartenaire) {
+          const actualStatus = Boolean(updatedPartenaire.is_sponsored)
+          if (actualStatus === newStatus) {
+            showNotification(
+              newStatus 
+                ? `✅ Partenaire "${partenaire.nom}" sponsorisé avec succès ⭐` 
+                : `✅ Sponsor retiré pour "${partenaire.nom}" - Le badge a été supprimé`
+            )
+            // Mettre à jour le texte du bouton immédiatement
+            const buttonId = `sponsor-btn-${partenaire._id}`
+            const button = document.getElementById(buttonId)
+            if (button) {
+              button.textContent = actualStatus ? '⭐ Retirer sponsor' : '⭐ Sponsoriser'
+            }
+            // Rafraîchir immédiatement pour voir le changement
+            fetchPartenaires()
+          } else {
+            console.warn('⚠️ Statut inattendu:', { 
+              expected: newStatus, 
+              received: actualStatus,
+              partenaire: updatedPartenaire 
+            })
+            showNotification(
+              `⚠️ Statut mis à jour mais inattendu. Attendu: ${newStatus ? 'sponsorisé' : 'non sponsorisé'}, Reçu: ${actualStatus ? 'sponsorisé' : 'non sponsorisé'}`,
+              'error'
+            )
+            // Restaurer le texte du bouton
+            const buttonId = `sponsor-btn-${partenaire._id}`
+            const button = document.getElementById(buttonId)
+            if (button) {
+              button.textContent = partenaire.is_sponsored ? '⭐ Retirer sponsor' : '⭐ Sponsoriser'
+            }
+            fetchPartenaires()
+          }
+        } else {
+          console.warn('⚠️ Réponse inattendue:', data)
+          showNotification('Mise à jour effectuée, veuillez rafraîchir', 'success')
+          // Restaurer le texte du bouton
+          const buttonId = `sponsor-btn-${partenaire._id}`
+          const button = document.getElementById(buttonId)
+          if (button) {
+            button.textContent = partenaire.is_sponsored ? '⭐ Retirer sponsor' : '⭐ Sponsoriser'
+          }
+          fetchPartenaires()
+        }
+      } else {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('❌ Erreur API:', errorData)
+        showNotification(errorData.error || errorData.details || 'Erreur mise à jour', 'error')
       }
     } catch (error) {
-      showNotification('Erreur mise à jour', 'error')
+      console.error('❌ Erreur toggle sponsor:', error)
+      showNotification(`Erreur: ${error.message || 'Erreur mise à jour'}`, 'error')
+    } finally {
+      // Réactiver le bouton (le texte sera mis à jour dans le bloc if/else ci-dessus)
+      const buttonId = `sponsor-btn-${partenaire._id}`
+      const button = document.getElementById(buttonId)
+      if (button && button.disabled) {
+        button.disabled = false
+      }
     }
   }
 
@@ -1069,6 +1130,7 @@ export default function AdminPartenairesPage() {
                           Modifier
                         </button>
                         <button
+                          id={`sponsor-btn-${partenaire._id}`}
                           onClick={() => toggleSponsored(partenaire)}
                           className={`admin-btn admin-btn-sm ${partenaire.is_sponsored ? 'admin-btn-warning' : 'admin-btn-primary'}`}
                           title={partenaire.is_sponsored ? 'Retirer le statut sponsorisé' : 'Mettre ce partenaire en avant (sponsorisé)'}
@@ -1084,8 +1146,9 @@ export default function AdminPartenairesPage() {
                         <button
                           onClick={() => updateStatus(partenaire._id, 'approve')}
                           className="admin-btn admin-btn-sm admin-btn-success"
+                          title="Approuver le partenaire (sera automatiquement sponsorisé)"
                         >
-                          Approuver
+                          ✅ Approuver
                         </button>
                         <button
                           onClick={() => updateStatus(partenaire._id, 'suspend')}

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import SubscriptionButton from './SubscriptionButton'
 
 export default function VideoPlayer({ video, title, isFirstVideo = false, isFreeCourse = false }) {
-  const { isAuthenticated, user } = useAuth()
+  const { isAuthenticated, user, loading } = useAuth()
   const navigate = useNavigate()
 
   if (!video) return null
@@ -23,6 +23,9 @@ export default function VideoPlayer({ video, title, isFirstVideo = false, isFree
   }
 
   const isActive = () => {
+    // Pendant le chargement, considérer comme actif pour éviter l'affichage "vidéo bloquée"
+    if (loading) return true
+    
     if (!isAuthenticated || !user) return false
     
     if (user.subscriptionExpiry) {
@@ -34,7 +37,8 @@ export default function VideoPlayer({ video, title, isFirstVideo = false, isFree
     return user.status === 'active'
   }
   
-  const isInactive = !isFirstVideo && !isActive() && !isFreeCourse
+  // Ne pas afficher "vidéo bloquée" pendant le chargement
+  const isInactive = !loading && !isFirstVideo && !isActive() && !isFreeCourse
 
   return (
     <div className="w-full max-w-full mb-6 sm:mb-8 overflow-x-hidden">
@@ -44,7 +48,14 @@ export default function VideoPlayer({ video, title, isFirstVideo = false, isFree
         </h3>
       )}
       <div className="relative w-full aspect-video rounded-xl sm:rounded-2xl overflow-hidden bg-neutral-900 shadow-lg">
-        {isInactive ? (
+        {loading ? (
+          <div className="absolute inset-0 bg-neutral-900 flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-sm text-neutral-300">Chargement de la vidéo...</p>
+            </div>
+          </div>
+        ) : isInactive ? (
           <div className="absolute inset-0 bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-900 flex items-center justify-center">
             <div className="absolute inset-0 opacity-30" style={{
               background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px)'

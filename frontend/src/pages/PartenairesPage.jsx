@@ -62,7 +62,8 @@ export default function PartenairesPage() {
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 relative">
       {/* Overlay flou avec message de connexion centré pour les non-connectés */}
-      {!isAuthenticated && (
+      {/* Ne pas afficher pendant le chargement pour éviter la latence */}
+      {!loading && !isAuthenticated && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20">
           <div className="bg-card rounded-2xl border border-theme shadow-xl p-8 max-w-md mx-4">
             <div className="flex flex-col items-center text-center gap-4">

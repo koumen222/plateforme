@@ -16,7 +16,9 @@ export default function ProtectedVideo({ video, title, isFirstVideo = false, isF
     )
   }
 
-  if (!isFirstVideo && (!isAuthenticated || !user)) {
+  // Ne pas afficher le message "accès réservé" pendant le chargement
+  // Attendre que le chargement soit terminé avant de vérifier l'authentification
+  if (!loading && !isFirstVideo && (!isAuthenticated || !user)) {
     return (
       <div className="card-startup flex flex-col items-center justify-center min-h-[300px] sm:min-h-[400px] gap-4 sm:gap-6 p-4 sm:p-8 text-center my-6 sm:my-8">
         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-accent rounded-full flex items-center justify-center mb-3 sm:mb-4">

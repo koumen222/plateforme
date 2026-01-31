@@ -351,7 +351,8 @@ export default function PartenairesCategoryPage() {
   return (
     <div className="bg-secondary min-h-screen relative">
       {/* Overlay flou avec message de connexion centré pour les non-connectés */}
-      {!isAuthenticated && (
+      {/* Ne pas afficher pendant le chargement pour éviter la latence */}
+      {!authLoading && !isAuthenticated && (
         <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-sm bg-black/20">
           <div className="bg-card rounded-2xl border border-theme shadow-xl p-8 max-w-md mx-4">
             <div className="flex flex-col items-center text-center gap-4">

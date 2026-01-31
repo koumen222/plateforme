@@ -24,18 +24,20 @@ export function AuthProvider({ children }) {
       console.log('   - Token length:', storedToken.length)
       setToken(storedToken)
       
-      // Si on a aussi l'utilisateur en cache, l'utiliser temporairement
+      // Si on a aussi l'utilisateur en cache, l'utiliser immédiatement pour éviter la latence
       if (storedUser) {
         try {
           const userData = JSON.parse(storedUser)
           setUser(userData)
           console.log('✅ Utilisateur chargé depuis localStorage:', userData.email)
+          // Mettre loading à false IMMÉDIATEMENT pour éviter l'affichage "accès bloqué"
+          setLoading(false)
         } catch (e) {
           console.error('❌ Erreur parsing user depuis localStorage:', e)
         }
       }
       
-      // Vérifier le token avec le backend
+      // Vérifier le token avec le backend en arrière-plan (sans bloquer l'UI)
       axios.get(`${CONFIG.BACKEND_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${storedToken}`
@@ -53,11 +55,13 @@ export function AuthProvider({ children }) {
           console.log('   - Role:', userData.role)
         } else {
           console.error('❌ Réponse invalide du serveur')
-          // Token invalide, nettoyer
-          localStorage.removeItem('token')
-          localStorage.removeItem('user')
-          setToken(null)
-          setUser(null)
+          // Token invalide, nettoyer seulement si pas d'utilisateur en cache
+          if (!storedUser) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('user')
+            setToken(null)
+            setUser(null)
+          }
         }
       })
       .catch(error => {
@@ -88,6 +92,7 @@ export function AuthProvider({ children }) {
         }
       })
       .finally(() => {
+        // Ne mettre loading à false que si on ne l'a pas déjà fait
         setLoading(false)
         console.log('🔐 ========== FIN AUTH CONTEXT INIT ==========')
       })
