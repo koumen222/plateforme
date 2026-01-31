@@ -1465,30 +1465,178 @@ const startServer = async () => {
       } catch (importError) {
         console.error('❌ Erreur lors de l\'import du module visits:', importError.message);
         console.error('   Stack:', importError.stack);
-        // Routes de fallback pour diagnostiquer
-        app.get("/api/visits/test", (req, res) => {
-          res.status(503).json({ error: 'Erreur import module visits', details: importError.message });
-        });
+        // Routes de fallback complètes avec logique intégrée
+        console.log('⚠️ Utilisation des routes de fallback pour visits');
+        
         app.post("/api/visits/track", async (req, res) => {
-          res.status(503).json({ 
-            error: 'Module visits non chargé', 
-            details: importError.message,
-            suggestion: 'Vérifier les logs du serveur pour plus de détails'
-          });
+          try {
+            const Visit = (await import("./models/Visit.js")).default;
+            const { 
+              country, 
+              countryCode, 
+              city, 
+              region, 
+              path,
+              referrer,
+              sessionId 
+            } = req.body;
+
+            const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                       req.headers['x-real-ip'] || 
+                       req.connection?.remoteAddress || 
+                       req.socket?.remoteAddress ||
+                       'unknown';
+
+            const userAgent = req.headers['user-agent'] || 'unknown';
+            const userId = req.user?._id || null;
+
+            const visit = new Visit({
+              ip,
+              country: country || 'Unknown',
+              countryCode: countryCode || null,
+              city: city || null,
+              region: region || null,
+              userAgent,
+              referrer: referrer || null,
+              path: path || '/',
+              userId,
+              sessionId: sessionId || null
+            });
+
+            await visit.save();
+
+            res.status(201).json({ 
+              success: true, 
+              message: 'Visite enregistrée',
+              visitId: visit._id 
+            });
+          } catch (error) {
+            console.error('Erreur enregistrement visite (fallback):', error);
+            res.status(500).json({ 
+              error: 'Erreur lors de l\'enregistrement de la visite',
+              details: error.message 
+            });
+          }
         });
-        app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
-          res.status(503).json({ 
-            error: 'Module visits non chargé', 
-            details: importError.message,
-            suggestion: 'Vérifier les logs du serveur pour plus de détails'
-          });
+        
+        app.get("/api/visits/stats", authenticate, requireAdmin, async (req, res) => {
+          try {
+            const Visit = (await import("./models/Visit.js")).default;
+            const { period = '30' } = req.query;
+            const days = parseInt(period, 10);
+
+            const startDate = new Date();
+            startDate.setDate(startDate.getDate() - days);
+
+            const statsByCountry = await Visit.aggregate([
+              {
+                $match: {
+                  createdAt: { $gte: startDate }
+                }
+              },
+              {
+                $group: {
+                  _id: '$country',
+                  countryCode: { $first: '$countryCode' },
+                  count: { $sum: 1 },
+                  uniqueIPs: { $addToSet: '$ip' }
+                }
+              },
+              {
+                $project: {
+                  country: '$_id',
+                  countryCode: 1,
+                  visits: '$count',
+                  uniqueVisitors: { $size: '$uniqueIPs' }
+                }
+              },
+              {
+                $sort: { visits: -1 }
+              }
+            ]);
+
+            const totalVisits = await Visit.countDocuments({
+              createdAt: { $gte: startDate }
+            });
+
+            const uniqueVisitors = await Visit.distinct('ip', {
+              createdAt: { $gte: startDate }
+            });
+
+            const visitsByDay = await Visit.aggregate([
+              {
+                $match: {
+                  createdAt: { $gte: startDate }
+                }
+              },
+              {
+                $group: {
+                  _id: {
+                    $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+                  },
+                  count: { $sum: 1 }
+                }
+              },
+              {
+                $sort: { _id: 1 }
+              },
+              {
+                $project: {
+                  date: '$_id',
+                  visits: '$count'
+                }
+              }
+            ]);
+
+            res.json({
+              success: true,
+              period: days,
+              totalVisits,
+              uniqueVisitors: uniqueVisitors.length,
+              statsByCountry,
+              visitsByDay
+            });
+          } catch (error) {
+            console.error('Erreur récupération statistiques (fallback):', error);
+            res.status(500).json({ 
+              error: 'Erreur lors de la récupération des statistiques',
+              details: error.message 
+            });
+          }
         });
-        app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
-          res.status(503).json({ 
-            error: 'Module visits non chargé', 
-            details: importError.message,
-            suggestion: 'Vérifier les logs du serveur pour plus de détails'
-          });
+        
+        app.get("/api/visits/recent", authenticate, requireAdmin, async (req, res) => {
+          try {
+            const Visit = (await import("./models/Visit.js")).default;
+            const { limit = 100, page = 1 } = req.query;
+            const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+            const visits = await Visit.find()
+              .sort({ createdAt: -1 })
+              .limit(parseInt(limit, 10))
+              .skip(skip)
+              .select('ip country countryCode city path createdAt userAgent')
+              .lean();
+
+            const total = await Visit.countDocuments();
+
+            res.json({
+              success: true,
+              visits,
+              pagination: {
+                page: parseInt(page, 10),
+                limit: parseInt(limit, 10),
+                total,
+                pages: Math.ceil(total / parseInt(limit, 10))
+              }
+            });
+          } catch (error) {
+            console.error('Erreur récupération visites récentes (fallback):', error);
+            res.status(500).json({ 
+              error: 'Erreur lors de la récupération des visites',
+              details: error.message 
+            });
+          }
         });
       }
       
@@ -1536,27 +1684,178 @@ const startServer = async () => {
       app.get("/api/visits/test", (req, res) => {
         res.status(503).json({ error: 'Erreur chargement module visits', details: error.message });
       });
-      // Routes de fallback temporaires pour permettre le fonctionnement
+      // Routes de fallback complètes avec logique intégrée
+      console.log('⚠️ Utilisation des routes de fallback pour visits (bloc marketing)');
+      
       app.post("/api/visits/track", async (req, res) => {
-        res.status(503).json({ 
-          error: 'Module visits non chargé', 
-          details: error.message,
-          suggestion: 'Vérifier les logs du serveur pour plus de détails'
-        });
+        try {
+          const Visit = (await import("./models/Visit.js")).default;
+          const { 
+            country, 
+            countryCode, 
+            city, 
+            region, 
+            path,
+            referrer,
+            sessionId 
+          } = req.body;
+
+          const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+                     req.headers['x-real-ip'] || 
+                     req.connection?.remoteAddress || 
+                     req.socket?.remoteAddress ||
+                     'unknown';
+
+          const userAgent = req.headers['user-agent'] || 'unknown';
+          const userId = req.user?._id || null;
+
+          const visit = new Visit({
+            ip,
+            country: country || 'Unknown',
+            countryCode: countryCode || null,
+            city: city || null,
+            region: region || null,
+            userAgent,
+            referrer: referrer || null,
+            path: path || '/',
+            userId,
+            sessionId: sessionId || null
+          });
+
+          await visit.save();
+
+          res.status(201).json({ 
+            success: true, 
+            message: 'Visite enregistrée',
+            visitId: visit._id 
+          });
+        } catch (error) {
+          console.error('Erreur enregistrement visite (fallback):', error);
+          res.status(500).json({ 
+            error: 'Erreur lors de l\'enregistrement de la visite',
+            details: error.message 
+          });
+        }
       });
-      app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
-        res.status(503).json({ 
-          error: 'Module visits non chargé', 
-          details: error.message,
-          suggestion: 'Vérifier les logs du serveur pour plus de détails'
-        });
+      
+      app.get("/api/visits/stats", authenticate, requireAdmin, async (req, res) => {
+        try {
+          const Visit = (await import("./models/Visit.js")).default;
+          const { period = '30' } = req.query;
+          const days = parseInt(period, 10);
+
+          const startDate = new Date();
+          startDate.setDate(startDate.getDate() - days);
+
+          const statsByCountry = await Visit.aggregate([
+            {
+              $match: {
+                createdAt: { $gte: startDate }
+              }
+            },
+            {
+              $group: {
+                _id: '$country',
+                countryCode: { $first: '$countryCode' },
+                count: { $sum: 1 },
+                uniqueIPs: { $addToSet: '$ip' }
+              }
+            },
+            {
+              $project: {
+                country: '$_id',
+                countryCode: 1,
+                visits: '$count',
+                uniqueVisitors: { $size: '$uniqueIPs' }
+              }
+            },
+            {
+              $sort: { visits: -1 }
+            }
+          ]);
+
+          const totalVisits = await Visit.countDocuments({
+            createdAt: { $gte: startDate }
+          });
+
+          const uniqueVisitors = await Visit.distinct('ip', {
+            createdAt: { $gte: startDate }
+          });
+
+          const visitsByDay = await Visit.aggregate([
+            {
+              $match: {
+                createdAt: { $gte: startDate }
+              }
+            },
+            {
+              $group: {
+                _id: {
+                  $dateToString: { format: '%Y-%m-%d', date: '$createdAt' }
+                },
+                count: { $sum: 1 }
+              }
+            },
+            {
+              $sort: { _id: 1 }
+            },
+            {
+              $project: {
+                date: '$_id',
+                visits: '$count'
+              }
+            }
+          ]);
+
+          res.json({
+            success: true,
+            period: days,
+            totalVisits,
+            uniqueVisitors: uniqueVisitors.length,
+            statsByCountry,
+            visitsByDay
+          });
+        } catch (error) {
+          console.error('Erreur récupération statistiques (fallback):', error);
+          res.status(500).json({ 
+            error: 'Erreur lors de la récupération des statistiques',
+            details: error.message 
+          });
+        }
       });
-      app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
-        res.status(503).json({ 
-          error: 'Module visits non chargé', 
-          details: error.message,
-          suggestion: 'Vérifier les logs du serveur pour plus de détails'
-        });
+      
+      app.get("/api/visits/recent", authenticate, requireAdmin, async (req, res) => {
+        try {
+          const Visit = (await import("./models/Visit.js")).default;
+          const { limit = 100, page = 1 } = req.query;
+          const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
+
+          const visits = await Visit.find()
+            .sort({ createdAt: -1 })
+            .limit(parseInt(limit, 10))
+            .skip(skip)
+            .select('ip country countryCode city path createdAt userAgent')
+            .lean();
+
+          const total = await Visit.countDocuments();
+
+          res.json({
+            success: true,
+            visits,
+            pagination: {
+              page: parseInt(page, 10),
+              limit: parseInt(limit, 10),
+              total,
+              pages: Math.ceil(total / parseInt(limit, 10))
+            }
+          });
+        } catch (error) {
+          console.error('Erreur récupération visites récentes (fallback):', error);
+          res.status(500).json({ 
+            error: 'Erreur lors de la récupération des visites',
+            details: error.message 
+          });
+        }
       });
       app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, (req, res) => {
         res.status(503).json({ 
