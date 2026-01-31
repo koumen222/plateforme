@@ -19,6 +19,11 @@ export const authenticate = async (req, res, next) => {
       token = req.headers.authorization.substring(7);
       console.log('🔐 Token récupéré depuis header Authorization');
     }
+    // 3. Sinon, essayer depuis les query params (pour SSE qui ne supporte pas les headers)
+    else if (req.query && req.query.token) {
+      token = req.query.token;
+      console.log('🔐 Token récupéré depuis query params');
+    }
 
     if (!token) {
       console.log('❌ Aucun token trouvé dans la requête');

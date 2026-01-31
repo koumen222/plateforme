@@ -356,7 +356,7 @@ router.post('/:id/send', async (req, res) => {
   }
 });
 
-router.get('/:id/stream', async (req, res) => {
+router.get('/:id/stream', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const campaign = await WhatsAppCampaign.findById(id).lean();
@@ -370,6 +370,8 @@ router.get('/:id/stream', async (req, res) => {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no'); // Désactiver le buffering pour Nginx
+    res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://www.safitech.shop');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
     
     // Envoyer un message initial
     res.write(`event: connected\ndata: ${JSON.stringify({ campaignId: id, campaignName: campaign.name })}\n\n`);

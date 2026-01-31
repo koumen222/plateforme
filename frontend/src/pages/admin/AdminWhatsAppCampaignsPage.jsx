@@ -72,11 +72,9 @@ export default function AdminWhatsAppCampaignsPage() {
     setRealtimeMessages([])
     
     // Créer une connexion SSE pour le suivi en temps réel
-    const eventSource = new EventSource(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/stream`, {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    })
+    // Note: EventSource ne supporte pas les headers personnalisés
+    // L'authentification se fait via le middleware authenticate qui lit le token depuis les cookies ou query params
+    const eventSource = new EventSource(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/stream?token=${encodeURIComponent(token)}`)
     
     eventSource.addEventListener('connected', (e) => {
       const data = JSON.parse(e.data)
