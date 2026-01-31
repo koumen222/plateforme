@@ -35,6 +35,13 @@ export default function PrivateRoute({ children }) {
     return <Navigate to="/login" state={{ from: location }} replace />
   }
   
+  // Vérifier si l'utilisateur a le statut "active" pour certaines pages
+  // Si la route nécessite un compte actif (comme /partenaires), vérifier le statut
+  if (location.pathname.startsWith('/partenaires') && user.status !== 'active') {
+    console.log('🛡️ Accès refusé - Compte non actif pour la page partenaires')
+    return <Navigate to="/profil" replace />
+  }
+  
   // Si l'utilisateur est en pending, afficher le dashboard normalement
   // Le composant enfant (LessonPage) gérera l'affichage du message pending
   return children
