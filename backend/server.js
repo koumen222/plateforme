@@ -990,42 +990,158 @@ const startServer = async () => {
       try {
         const { id } = req.params;
         
-        // Essayer d'importer le module dynamiquement
-        const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+        // Importer les modèles et services nécessaires
+        const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
+        const { sendNewsletterCampaign } = await import("./services/whatsappService.js");
+        const frontendUrl = process.env.FRONTEND_URL || 'https://safitech.shop';
         
-        if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
-          // Si le module est chargé, essayer d'utiliser sa logique
-          const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
-          const { sendNewsletterCampaign } = await import("./services/whatsappService.js");
-          
-          const campaign = await WhatsAppCampaign.findById(id);
-          
-          if (!campaign) {
-            return res.status(404).json({ error: 'Campagne non trouvée' });
+        const campaign = await WhatsAppCampaign.findById(id);
+        
+        if (!campaign) {
+          return res.status(404).json({ error: 'Campagne non trouvée' });
+        }
+        
+        if (campaign.status === 'sent') {
+          return res.status(400).json({ error: 'Campagne déjà envoyée' });
+        }
+        
+        let users = [];
+        
+        if (campaign.recipients.type === 'all') {
+          users = await User.find({ 
+            $or: [
+              { phone: { $exists: true, $ne: '' } },
+              { phoneNumber: { $exists: true, $ne: '' } }
+            ],
+            role: { $ne: 'admin' }
+          }).select('phone phoneNumber name _id').lean();
+        } else if (campaign.recipients.type === 'segment') {
+          if (['pending', 'active', 'blocked'].includes(campaign.recipients.segment)) {
+            users = await User.find({ 
+              $and: [
+                {
+                  $or: [
+                    { phone: { $exists: true, $ne: '' } },
+                    { phoneNumber: { $exists: true, $ne: '' } }
+                  ]
+                },
+                {
+                  $or: [
+                    { status: campaign.recipients.segment },
+                    { accountStatus: campaign.recipients.segment }
+                  ]
+                },
+                { role: { $ne: 'admin' } }
+              ]
+            }).select('phone phoneNumber name _id').lean();
           }
-          
-          if (campaign.status === 'sent') {
-            return res.status(400).json({ error: 'Campagne déjà envoyée' });
-          }
-          
-          // Logique simplifiée pour envoyer la campagne
-          // Note: Cette route devrait normalement utiliser la logique complète du module
-          res.status(503).json({ 
-            error: 'Module whatsapp-campaigns partiellement chargé',
-            message: 'La fonctionnalité d\'envoi nécessite le module complet. Veuillez vérifier les logs du serveur.',
-            campaignId: id
-          });
-        } else {
-          res.status(503).json({ 
-            error: 'Module whatsapp-campaigns non chargé',
-            message: 'Le module est en cours de chargement. Veuillez réessayer dans quelques instants.',
-            suggestion: 'Vérifier les logs du serveur pour voir les erreurs de chargement',
-            campaignId: id
+        } else if (campaign.recipients.type === 'list' && campaign.recipients.customPhones?.length) {
+          users = campaign.recipients.customPhones.map(phone => ({ phone, phoneNumber: phone, _id: null, name: null }));
+        }
+        
+        // Normaliser les numéros
+        users = users
+          .map(user => ({
+            ...user,
+            phone: (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim()) || null
+          }))
+          .filter(u => u.phone && u.phone.trim() !== '');
+        
+        if (users.length === 0) {
+          return res.status(400).json({ 
+            error: 'Aucun destinataire trouvé',
+            details: 'Aucun utilisateur avec le tag sélectionné n\'a de numéro de téléphone valide.'
           });
         }
+        
+        console.log(`🚀 Démarrage envoi campagne WhatsApp "${campaign.name}" à ${users.length} destinataires`);
+        
+        campaign.status = 'sending';
+        await campaign.save();
+        
+        // Déterminer les variantes
+        const useVariants = campaign.variants && campaign.variants.length > 0;
+        const variants = useVariants ? campaign.variants : (campaign.message ? [campaign.message] : []);
+        
+        // Déterminer le lien selon le segment
+        let linkToUse = null;
+        if (campaign.recipients.type === 'segment' && 
+            (campaign.recipients.segment === 'blocked' || campaign.recipients.segment === 'pending')) {
+          linkToUse = `${frontendUrl}/profil`;
+        } else {
+          linkToUse = `${frontendUrl}/`;
+        }
+        
+        // Préparer les contacts avec le prénom
+        const contacts = users.map(user => {
+          const phone = (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim());
+          const firstName = user.name ? user.name.split(' ')[0] : null;
+          
+          return {
+            to: phone,
+            campaignId: campaign._id,
+            userId: user._id || null,
+            profileLink: linkToUse,
+            firstName: firstName || ''
+          };
+        });
+        
+        // Envoyer la campagne
+        const newsletterResults = await sendNewsletterCampaign(contacts, variants);
+        
+        const results = newsletterResults.results || [];
+        const sent = results.filter(r => r.success);
+        const failed = results.filter(r => !r.success && !r.skipped);
+        const skipped = results.filter(r => r.skipped);
+        
+        // Vérification des logs
+        const WhatsAppLog = (await import("./models/WhatsAppLog.js")).default;
+        const logs = await WhatsAppLog.find({ campaignId: campaign._id }).lean();
+        const confirmedSent = logs.filter(log => log.status === 'sent' || log.status === 'delivered').length;
+        
+        const stats = {
+          total: newsletterResults.total || users.length,
+          sent: newsletterResults.sent || sent.length,
+          failed: newsletterResults.failed || failed.length,
+          skipped: newsletterResults.skipped || skipped.length,
+          confirmed: confirmedSent,
+          quotaReached: newsletterResults.quotaReached || false,
+          failedPhones: failed.map(f => ({ phone: f.phone, error: f.error }))
+        };
+        
+        // Mettre à jour la campagne
+        campaign.status = (newsletterResults.sent > 0 && !newsletterResults.quotaReached) ? 'sent' : 
+                          (newsletterResults.quotaReached ? 'sending' : 'failed');
+        campaign.sentAt = campaign.status === 'sent' ? new Date() : null;
+        campaign.stats = {
+          sent: stats.sent,
+          failed: stats.failed,
+          delivered: stats.confirmed,
+          read: 0
+        };
+        campaign.error = newsletterResults.quotaReached ? 'Quota atteint' : null;
+        await campaign.save();
+        
+        res.json({
+          success: true,
+          message: `Campagne "${campaign.name}" ${campaign.status === 'sent' ? 'envoyée' : 'en cours'}`,
+          stats
+        });
       } catch (error) {
         console.error('❌ Erreur envoi campagne WhatsApp:', error.message);
         console.error('   Stack:', error.stack);
+        
+        // Mettre à jour le statut de la campagne en cas d'erreur
+        try {
+          const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
+          await WhatsAppCampaign.findByIdAndUpdate(req.params.id, { 
+            status: 'failed',
+            error: error.message 
+          });
+        } catch (updateError) {
+          console.error('❌ Erreur mise à jour campagne:', updateError.message);
+        }
+        
         res.status(500).json({ 
           error: 'Erreur lors de l\'envoi de la campagne',
           details: error.message,
