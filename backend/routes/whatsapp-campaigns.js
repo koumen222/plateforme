@@ -217,12 +217,15 @@ router.post('/:id/send', async (req, res) => {
     
     const contacts = users.map(user => {
       const phone = (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim());
+      // Extraire le prénom du nom complet (premier mot)
+      const firstName = user.name ? user.name.split(' ')[0] : null;
       
       return {
         to: phone,
         campaignId: campaign._id,
         userId: user._id || null,
-        profileLink: linkToUse
+        profileLink: linkToUse,
+        firstName: firstName || ''
       };
     });
     

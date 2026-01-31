@@ -587,22 +587,20 @@ const getRandomVariant = (variants) => {
 };
 
 /**
- * Génère un délai aléatoire entre 25 et 45 secondes entre chaque message
- * @returns {number} - Délai en millisecondes (25000-45000ms)
+ * Génère un délai de 15 secondes entre chaque message
+ * @returns {number} - Délai en millisecondes (15000ms)
  */
 const getHumanDelay = () => {
-  const minDelay = 25 * 1000; // 25 secondes
-  const maxDelay = 45 * 1000; // 45 secondes
-  return Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+  return 15 * 1000; // 15 secondes
 };
 
 /**
- * Génère une pause longue de 2 à 3 minutes
- * @returns {number} - Délai en millisecondes (120000-180000ms)
+ * Génère une pause longue de 2 à 5 minutes
+ * @returns {number} - Délai en millisecondes (120000-300000ms)
  */
 const getLongPause = () => {
   const minPause = 2 * 60 * 1000; // 2 minutes
-  const maxPause = 3 * 60 * 1000; // 3 minutes
+  const maxPause = 5 * 60 * 1000; // 5 minutes
   return Math.floor(Math.random() * (maxPause - minPause + 1)) + minPause;
 };
 
@@ -620,8 +618,8 @@ const checkTimeWindow = () => {
 /**
  * Envoie une newsletter WhatsApp avec variantes et rythme humain
  * - Sélection aléatoire d'une variante par contact
- * - Délai de 25-45 secondes entre chaque message
- * - Pause de 2-3 minutes toutes les 15 personnes
+ * - Délai de 15 secondes entre chaque message
+ * - Pause de 2-5 minutes toutes les 15 personnes
  * - Vérification de la plage horaire (08h-19h)
  * - Gestion des erreurs 466 (quota) avec pause immédiate
  * 
@@ -721,6 +719,14 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
       selectedVariant = selectedVariant.replace(/\[LIEN_PROFIL\]/g, contact.profileLink);
     }
     
+    // Remplacer [PRENOM] par le prénom de l'utilisateur
+    if (contact.firstName && selectedVariant.includes('[PRENOM]')) {
+      selectedVariant = selectedVariant.replace(/\[PRENOM\]/g, contact.firstName);
+    } else if (selectedVariant.includes('[PRENOM]')) {
+      // Si pas de prénom disponible, remplacer par un message générique ou supprimer
+      selectedVariant = selectedVariant.replace(/\[PRENOM\]/g, '');
+    }
+    
     // Remplacer aussi les liens directs si présents dans les messages pré-définis
     // (pour les campagnes de bienvenue qui ont déjà le lien dans le message)
     // Pas besoin de modification supplémentaire car les messages sont déjà complets
@@ -767,7 +773,7 @@ const sendNewsletterCampaign = async (contacts, variants, onProgress = null) => 
         });
       }
       
-      // Délai de 25-45 secondes entre chaque message
+      // Délai de 15 secondes entre chaque message
       // Sauf pour le dernier message
       if (i < contacts.length - 1 && !quotaReached) {
         const delay = getHumanDelay();

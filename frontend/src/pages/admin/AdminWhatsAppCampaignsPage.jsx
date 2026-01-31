@@ -8,6 +8,7 @@ export default function AdminWhatsAppCampaignsPage() {
   const [sending, setSending] = useState(false)
   const [sendingWelcome, setSendingWelcome] = useState(false)
   const [sendingRelance, setSendingRelance] = useState(false)
+  const [sendingPartenaires, setSendingPartenaires] = useState(false)
   const [notification, setNotification] = useState(null)
   const [stats, setStats] = useState(null)
   const [sendResults, setSendResults] = useState(null)
@@ -23,16 +24,23 @@ export default function AdminWhatsAppCampaignsPage() {
   })
   
   const [welcomeCampaign, setWelcomeCampaign] = useState({
-    variant1: 'Bienvenue sur Ecom Starter 3.0 ! 🎉\n\nNous sommes ravis de vous compter parmi nous. Vous avez maintenant accès à toutes les fonctionnalités de la plateforme : formation e-commerce complète, liste de livreurs et fournisseurs, générateur de produits gagnants, coaching personnalisé et tous les outils essentiels pour créer un business rentable.\n\nExplorez votre espace : https://www.safitech.shop/',
-    variant2: 'Salut ! 👋\n\nBienvenue dans Ecom Starter 3.0 ! Vous avez maintenant accès à toutes nos fonctionnalités premium : formation e-commerce complète, liste de livreurs et fournisseurs, générateur de produits gagnants, accompagnement personnalisé et ressources exclusives.\n\nDécouvrez la plateforme : https://www.safitech.shop/',
-    variant3: 'Bonjour et bienvenue sur Ecom Starter 3.0 ! 🌟\n\nFélicitations pour votre inscription ! Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants, coaching et support dédié.\n\nAccédez à votre espace : https://www.safitech.shop/',
+    variant1: '[PRENOM], bienvenue sur Ecom Starter 3.0 ! 🎉\n\nNous sommes ravis de vous compter parmi nous. Vous avez maintenant accès à toutes les fonctionnalités de la plateforme : formation e-commerce complète, liste de livreurs et fournisseurs, générateur de produits gagnants, coaching personnalisé et tous les outils essentiels pour créer un business rentable.\n\nExplorez votre espace : https://www.safitech.shop/',
+    variant2: 'Salut [PRENOM] ! 👋\n\nBienvenue dans Ecom Starter 3.0 ! Vous avez maintenant accès à toutes nos fonctionnalités premium : formation e-commerce complète, liste de livreurs et fournisseurs, générateur de produits gagnants, accompagnement personnalisé et ressources exclusives.\n\nDécouvrez la plateforme : https://www.safitech.shop/',
+    variant3: 'Bonjour [PRENOM] et bienvenue sur Ecom Starter 3.0 ! 🌟\n\nFélicitations pour votre inscription ! Vous pouvez maintenant accéder à toutes les fonctionnalités de la plateforme : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants, coaching et support dédié.\n\nAccédez à votre espace : https://www.safitech.shop/',
     enabled: false
   })
   
   const [relanceCampaign, setRelanceCampaign] = useState({
-    variant1: 'Bonjour ! 👋\n\nVotre compte Ecom Starter 3.0 est en attente d\'activation.\n\nBonne nouvelle : vous pouvez obtenir un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
-    variant2: 'Salut ! 😊\n\nVotre compte Ecom Starter 3.0 est en attente, mais nous avons une offre spéciale pour vous !\n\nPartagez votre lien d\'affiliation et obtenez un accès gratuit à toutes les fonctionnalités : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants. C\'est simple et rapide !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
-    variant3: 'Hello ! 🌟\n\nActivez votre compte Ecom Starter 3.0 dès maintenant !\n\nProfitez d\'un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation avec vos proches. Plus vous partagez, plus vous bénéficiez !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant1: 'Bonjour [PRENOM] ! 👋\n\nVotre compte Ecom Starter 3.0 est en attente d\'activation.\n\nBonne nouvelle : vous pouvez obtenir un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant2: 'Salut [PRENOM] ! 😊\n\nVotre compte Ecom Starter 3.0 est en attente, mais nous avons une offre spéciale pour vous !\n\nPartagez votre lien d\'affiliation et obtenez un accès gratuit à toutes les fonctionnalités : formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants. C\'est simple et rapide !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    variant3: 'Hello [PRENOM] ! 🌟\n\nActivez votre compte Ecom Starter 3.0 dès maintenant !\n\nProfitez d\'un accès gratuit à toutes les fonctionnalités (formation e-commerce, liste de livreurs et fournisseurs, générateur de produits gagnants) en partageant votre lien d\'affiliation avec vos proches. Plus vous partagez, plus vous bénéficiez !\n\nRécupérez votre lien dans votre profil : https://www.safitech.shop/profil',
+    enabled: false
+  })
+  
+  const [partenairesCampaign, setPartenairesCampaign] = useState({
+    variant1: 'Bonjour [PRENOM] ! 👋\n\nDécouvrez notre réseau de partenaires fiables sur Ecom Starter 3.0 !\n\nAccédez à une liste complète de livreurs, fournisseurs et agences vérifiés pour développer votre activité e-commerce.\n\nConsultez les partenaires : https://www.safitech.shop/partenaires',
+    variant2: 'Salut [PRENOM] ! 🚀\n\nBesoin de partenaires pour votre e-commerce ?\n\nExplorez notre annuaire de partenaires professionnels : livreurs, fournisseurs, agences de livraison. Tous vérifiés et notés par la communauté.\n\nVoir les partenaires : https://www.safitech.shop/partenaires',
+    variant3: 'Hello [PRENOM] ! 💼\n\nTrouvez les meilleurs partenaires pour votre business e-commerce !\n\nNotre plateforme regroupe des centaines de partenaires fiables : livreurs, fournisseurs, agences. Filtrez par catégorie, localisation et note.\n\nDécouvrir les partenaires : https://www.safitech.shop/partenaires',
     enabled: false
   })
 
@@ -252,6 +260,94 @@ export default function AdminWhatsAppCampaignsPage() {
     }
   }
 
+  const sendPartenairesCampaign = async (variants) => {
+    setSendingPartenaires(true)
+    try {
+      const campaignResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: `Campagne Partenaires ${new Date().toLocaleDateString('fr-FR')}`,
+          variants: variants,
+          recipients: {
+            type: 'all',
+            count: getTagCount('all')
+          },
+          fromPhone: ''
+        })
+      })
+
+      if (!campaignResponse.ok) {
+        const errorData = await campaignResponse.json()
+        throw new Error(errorData.error || 'Erreur création campagne')
+      }
+
+      const campaignData = await campaignResponse.json()
+      const campaignId = campaignData.campaign._id
+
+      const sendResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/send`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+
+      if (sendResponse.ok) {
+        const sendData = await sendResponse.json()
+        const sentCount = sendData.stats?.sent || 0
+        const totalCount = sendData.stats?.total || 0
+        
+        // Récupérer les numéros des destinataires depuis les logs
+        try {
+          const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+          if (verifyResponse.ok) {
+            const verifyData = await verifyResponse.json()
+            const logs = verifyData.logs || []
+            const phoneNumbers = logs
+              .filter(log => log.status === 'sent' || log.status === 'delivered')
+              .map(log => log.phone)
+              .filter(Boolean)
+            
+            if (phoneNumbers.length > 0) {
+              showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
+              setSendResults({
+                total: totalCount,
+                sent: sentCount,
+                failed: sendData.stats?.failed || 0,
+                skipped: sendData.stats?.skipped || 0,
+                confirmed: verifyData.stats?.confirmed || 0,
+                phoneNumbers: phoneNumbers
+              })
+            } else {
+              showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
+            }
+          } else {
+            showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
+          }
+        } catch (err) {
+          showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
+        }
+        
+        fetchStats()
+        fetchCampaigns()
+      } else {
+        const errorData = await sendResponse.json()
+        throw new Error(errorData.error || 'Erreur envoi')
+      }
+    } catch (error) {
+      console.error('Erreur campagne partenaires:', error)
+      showNotification(error.message || 'Erreur lors de l\'envoi', 'error')
+    } finally {
+      setSendingPartenaires(false)
+    }
+  }
+
   const getTagCount = (tag) => {
     if (!stats) return 0
     if (tag === 'active') return stats.byUserStatus?.active || 0
@@ -438,7 +534,7 @@ export default function AdminWhatsAppCampaignsPage() {
       </div>
 
       {/* Campagnes automatiques */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         {/* Campagne de Bienvenue */}
         <div style={{ padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '2px solid #4caf50' }}>
           <h2 style={{ marginBottom: '16px', fontSize: '18px', color: '#2e7d32', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -576,6 +672,75 @@ export default function AdminWhatsAppCampaignsPage() {
             {sendingRelance ? '⏳ Envoi en cours...' : '📤 Envoyer'}
           </button>
         </div>
+
+        {/* Campagne Partenaires */}
+        <div style={{ padding: '20px', backgroundColor: '#e3f2fd', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '2px solid #2196f3' }}>
+          <h2 style={{ marginBottom: '16px', fontSize: '18px', color: '#1565c0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🤝 Campagne Partenaires
+          </h2>
+          <p style={{ fontSize: '13px', color: '#6c757d', marginBottom: '16px' }}>
+            Envoie un message à <strong>tous les utilisateurs</strong> pour les inviter à consulter la liste des partenaires disponibles sur la plateforme.
+          </p>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>Variante 1 *</label>
+            <textarea
+              value={partenairesCampaign.variant1}
+              onChange={(e) => setPartenairesCampaign({ ...partenairesCampaign, variant1: e.target.value })}
+              rows="3"
+              placeholder="Message partenaires variante 1..."
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
+            />
+          </div>
+          
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>Variante 2 (optionnel)</label>
+            <textarea
+              value={partenairesCampaign.variant2}
+              onChange={(e) => setPartenairesCampaign({ ...partenairesCampaign, variant2: e.target.value })}
+              rows="3"
+              placeholder="Message partenaires variante 2..."
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
+            />
+          </div>
+          
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>Variante 3 (optionnel)</label>
+            <textarea
+              value={partenairesCampaign.variant3}
+              onChange={(e) => setPartenairesCampaign({ ...partenairesCampaign, variant3: e.target.value })}
+              rows="3"
+              placeholder="Message partenaires variante 3..."
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
+            />
+          </div>
+          
+          <button
+            onClick={async () => {
+              const variants = [
+                partenairesCampaign.variant1?.trim(),
+                partenairesCampaign.variant2?.trim(),
+                partenairesCampaign.variant3?.trim()
+              ].filter(v => v && v.length > 0)
+              
+              if (variants.length === 0) {
+                showNotification('Au moins une variante doit être fournie', 'error')
+                return
+              }
+              
+              if (!confirm(`Envoyer le message partenaires à ${getTagCount('all')} utilisateurs ?`)) {
+                return
+              }
+              
+              await sendPartenairesCampaign(variants)
+            }}
+            disabled={sendingPartenaires}
+            className="admin-btn"
+            style={{ width: '100%', fontSize: '14px', padding: '10px', backgroundColor: '#2196f3', color: 'white', border: 'none', opacity: sendingPartenaires ? 0.6 : 1 }}
+          >
+            {sendingPartenaires ? '⏳ Envoi en cours...' : '📤 Envoyer'}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
@@ -608,9 +773,12 @@ export default function AdminWhatsAppCampaignsPage() {
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
                 rows="4"
-                placeholder="Message unique si vous n'utilisez pas les variantes..."
+                placeholder="Message unique si vous n'utilisez pas les variantes... Utilisez [PRENOM] pour personnaliser avec le prénom de l'utilisateur."
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
               />
+              <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                💡 Utilisez <strong>[PRENOM]</strong> pour inclure automatiquement le prénom de chaque destinataire
+              </p>
             </div>
 
             <div style={{ marginBottom: '16px', padding: '12px', backgroundColor: '#f0f7ff', borderRadius: '6px', border: '1px solid #b3d9ff' }}>
@@ -627,7 +795,7 @@ export default function AdminWhatsAppCampaignsPage() {
                   value={formData.variant1}
                   onChange={(e) => setFormData({ ...formData, variant1: e.target.value })}
                   rows="4"
-                  placeholder="Première variante du message..."
+                  placeholder="Première variante du message... Utilisez [PRENOM] pour personnaliser."
                   style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
                 />
               </div>
@@ -638,7 +806,7 @@ export default function AdminWhatsAppCampaignsPage() {
                   value={formData.variant2}
                   onChange={(e) => setFormData({ ...formData, variant2: e.target.value })}
                   rows="4"
-                  placeholder="Deuxième variante du message..."
+                  placeholder="Deuxième variante du message... Utilisez [PRENOM] pour personnaliser."
                   style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
                 />
               </div>
@@ -649,13 +817,13 @@ export default function AdminWhatsAppCampaignsPage() {
                   value={formData.variant3}
                   onChange={(e) => setFormData({ ...formData, variant3: e.target.value })}
                   rows="4"
-                  placeholder="Troisième variante du message..."
+                  placeholder="Troisième variante du message... Utilisez [PRENOM] pour personnaliser."
                   style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
                 />
               </div>
               
               <p style={{ fontSize: '11px', color: '#6c757d', marginTop: '8px' }}>
-                💡 Astuce: Utilisez au moins 2 variantes pour un envoi plus naturel et moins détectable comme spam.
+                💡 Astuce: Utilisez au moins 2 variantes pour un envoi plus naturel et moins détectable comme spam. Utilisez <strong>[PRENOM]</strong> pour personnaliser chaque message avec le prénom du destinataire.
               </p>
             </div>
 

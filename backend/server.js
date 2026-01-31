@@ -1141,12 +1141,24 @@ const startServer = async () => {
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {
+      console.log('📦 Tentative de chargement routes subscribers...');
       const subscribersModule = await import("./routes/subscribers.js");
+      console.log('📦 Module subscribers importé:', !!subscribersModule);
+      console.log('📦 subscribersModule.default:', !!subscribersModule?.default);
       if (subscribersModule && subscribersModule.default) {
         app.use("/api/subscribers", subscribersModule.default);
-        console.log('✅ Routes subscribers chargées');
+        console.log('✅ Routes subscribers chargées sur /api/subscribers');
+        // Route de test pour vérifier que le router fonctionne
+        app.get("/api/subscribers/test", (req, res) => {
+          res.json({ success: true, message: 'Route subscribers fonctionnelle', timestamp: new Date().toISOString() });
+        });
       } else {
         console.error('❌ subscribersModule.default est null ou undefined');
+        console.error('   subscribersModule:', subscribersModule);
+        // Route de fallback pour diagnostiquer
+        app.get("/api/subscribers/test", (req, res) => {
+          res.status(503).json({ error: 'Module subscribers non chargé', subscribersModule: !!subscribersModule });
+        });
       }
       
       const emailCampaignsModule = await import("./routes/email-campaigns.js");
@@ -1177,15 +1189,27 @@ const startServer = async () => {
         console.error('❌ emailTrackingModule.default est null ou undefined');
       }
       
+      console.log('📦 Tentative de chargement routes whatsapp-campaigns...');
       const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+      console.log('📦 Module whatsapp-campaigns importé:', !!whatsappCampaignsModule);
+      console.log('📦 whatsappCampaignsModule.default:', !!whatsappCampaignsModule?.default);
       if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
         app.use("/api/whatsapp-campaigns", whatsappCampaignsModule.default);
-        console.log('✅ Routes WhatsApp campaigns chargées');
+        console.log('✅ Routes WhatsApp campaigns chargées sur /api/whatsapp-campaigns');
         console.log('   POST /api/whatsapp-campaigns - Créer une campagne');
         console.log('   GET  /api/whatsapp-campaigns - Lister les campagnes');
         console.log('   POST /api/whatsapp-campaigns/:id/send - Envoyer une campagne');
+        // Route de test pour vérifier que le router fonctionne
+        app.get("/api/whatsapp-campaigns/test", (req, res) => {
+          res.json({ success: true, message: 'Route whatsapp-campaigns fonctionnelle', timestamp: new Date().toISOString() });
+        });
       } else {
         console.error('❌ whatsappCampaignsModule.default est null ou undefined');
+        console.error('   whatsappCampaignsModule:', whatsappCampaignsModule);
+        // Route de fallback pour diagnostiquer
+        app.get("/api/whatsapp-campaigns/test", (req, res) => {
+          res.status(503).json({ error: 'Module whatsapp-campaigns non chargé', whatsappCampaignsModule: !!whatsappCampaignsModule });
+        });
       }
     } catch (error) {
       console.error('⚠️ Erreur chargement routes marketing:', error.message);
