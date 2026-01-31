@@ -882,12 +882,108 @@ const startServer = async () => {
     });
     
     app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
-      // Route temporaire pour diagnostiquer
-      res.status(503).json({ 
-        error: 'Module whatsapp-campaigns non chargé',
-        message: 'Le module est en cours de chargement. Veuillez réessayer dans quelques instants.',
-        suggestion: 'Vérifier les logs du serveur pour voir les erreurs de chargement'
-      });
+      try {
+        // Essayer d'importer le module dynamiquement
+        const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
+        
+        if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
+          // Si le module est chargé, utiliser sa route POST
+          // Mais comme on ne peut pas facilement appeler le handler directement,
+          // on va créer la campagne manuellement
+          const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
+          
+          const {
+            name,
+            message,
+            variants,
+            recipients,
+            scheduledAt,
+            fromPhone
+          } = req.body;
+          
+          // Générer un nom automatique si non fourni
+          const campaignName = name || `Newsletter ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
+          
+          // Vérifier qu'au moins un message ou une variante est fourni
+          const hasMessage = message && message.trim();
+          const hasVariants = variants && Array.isArray(variants) && variants.some(v => v && v.trim());
+          
+          if (!hasMessage && !hasVariants) {
+            return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
+          }
+          
+          let recipientCount = 0;
+          
+          if (recipients?.type === 'all') {
+            recipientCount = await User.countDocuments({ 
+              $and: [
+                {
+                  $or: [
+                    { phone: { $exists: true, $ne: '' } },
+                    { phoneNumber: { $exists: true, $ne: '' } }
+                  ]
+                },
+                { role: { $ne: 'admin' } }
+              ]
+            });
+          } else if (recipients?.type === 'segment') {
+            if (['pending', 'active', 'blocked'].includes(recipients.segment)) {
+              recipientCount = await User.countDocuments({ 
+                $and: [
+                  {
+                    $or: [
+                      { phone: { $exists: true, $ne: '' } },
+                      { phoneNumber: { $exists: true, $ne: '' } }
+                    ]
+                  },
+                  {
+                    $or: [
+                      { status: recipients.segment },
+                      { accountStatus: recipients.segment }
+                    ]
+                  },
+                  { role: { $ne: 'admin' } }
+                ]
+              });
+            }
+          } else if (recipients?.type === 'list' && recipients.customPhones?.length) {
+            recipientCount = recipients.customPhones.length;
+          }
+          
+          const campaign = new WhatsAppCampaign({
+            name: campaignName,
+            message: hasMessage ? message.trim() : null,
+            variants: hasVariants ? variants.filter(v => v && v.trim()) : [],
+            recipients: {
+              ...recipients,
+              count: recipientCount
+            },
+            scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+            fromPhone: fromPhone || process.env.WHATSAPP_FROM_PHONE || '',
+            createdBy: req.user._id
+          });
+          
+          await campaign.save();
+          
+          res.status(201).json({
+            success: true,
+            campaign: campaign.toObject()
+          });
+        } else {
+          res.status(503).json({ 
+            error: 'Module whatsapp-campaigns non chargé',
+            message: 'Le module est en cours de chargement. Veuillez réessayer dans quelques instants.',
+            suggestion: 'Vérifier les logs du serveur pour voir les erreurs de chargement'
+          });
+        }
+      } catch (error) {
+        console.error('❌ Erreur création campagne WhatsApp:', error.message);
+        console.error('   Stack:', error.stack);
+        res.status(500).json({ 
+          error: 'Erreur lors de la création de la campagne',
+          details: error.message
+        });
+      }
     });
     
     // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
