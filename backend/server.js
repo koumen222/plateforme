@@ -861,12 +861,31 @@ const PORT = process.env.PORT || 3000;
 // Démarrer le serveur après la connexion MongoDB
 const startServer = async () => {
   try {
-    // Route de test simple pour vérifier que le serveur répond
+    // Routes de test simples pour vérifier que le serveur répond (AVANT le chargement des modules)
     app.get("/api/whatsapp-campaigns/health", (req, res) => {
       res.json({ 
         success: true, 
         message: 'Serveur actif - Route whatsapp-campaigns en cours de chargement',
         timestamp: new Date().toISOString()
+      });
+    });
+    
+    app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
+      // Route temporaire pour diagnostiquer
+      res.json({ 
+        success: true, 
+        message: 'Route whatsapp-campaigns accessible - Module en cours de chargement',
+        campaigns: [],
+        note: 'Si vous voyez ce message, le serveur fonctionne mais le module n\'est pas encore chargé'
+      });
+    });
+    
+    app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
+      // Route temporaire pour diagnostiquer
+      res.status(503).json({ 
+        error: 'Module whatsapp-campaigns non chargé',
+        message: 'Le module est en cours de chargement. Veuillez réessayer dans quelques instants.',
+        suggestion: 'Vérifier les logs du serveur pour voir les erreurs de chargement'
       });
     });
     
