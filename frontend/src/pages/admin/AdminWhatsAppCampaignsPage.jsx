@@ -231,91 +231,49 @@ export default function AdminWhatsAppCampaignsPage() {
     }
   }
 
-  const sendPartenairesCampaign = async (variants) => {
+  const preparePartenairesCampaign = async (variants) => {
     setSendingPartenaires(true)
+    setRecipientReviewLoading(true)
     try {
-      const campaignResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          name: `Campagne Partenaires ${new Date().toLocaleDateString('fr-FR')}`,
-          variants: variants,
-          recipients: {
-            type: 'all',
-            count: getTagCount('all')
-          },
-          fromPhone: ''
-        })
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/recipients-preview?tag=all`, {
+        headers: { Authorization: `Bearer ${token}` }
       })
 
-      if (!campaignResponse.ok) {
-        const errorData = await campaignResponse.json()
-        throw new Error(errorData.error || 'Erreur création campagne')
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erreur récupération destinataires')
       }
 
-      const campaignData = await campaignResponse.json()
-      const campaignId = campaignData.campaign._id
+      const data = await response.json()
+      const contacts = data.contacts || []
+      const items = contacts.map(c => ({
+        phone: c.phone,
+        firstName: c.firstName || '',
+        name: '',
+        email: '',
+        valid: c.valid !== false,
+        selected: c.valid !== false
+      }))
 
-      const sendResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/send`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
+      if (!items || items.length === 0) {
+        showNotification('Aucun utilisateur avec numéro trouvé', 'error')
+        return
+      }
+
+      setPendingSendPayload({
+        message: null,
+        variants: variants,
+        fromPhone: ''
       })
 
-      if (sendResponse.ok) {
-        const sendData = await sendResponse.json()
-        const sentCount = sendData.stats?.sent || 0
-        const totalCount = sendData.stats?.total || 0
-        
-        // Récupérer les numéros des destinataires depuis les logs
-        try {
-          const verifyResponse = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/${campaignId}/verify`, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
-          if (verifyResponse.ok) {
-            const verifyData = await verifyResponse.json()
-            const logs = verifyData.logs || []
-            const phoneNumbers = logs
-              .filter(log => log.status === 'sent' || log.status === 'delivered')
-              .map(log => log.phone)
-              .filter(Boolean)
-            
-            if (phoneNumbers.length > 0) {
-              showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
-              setSendResults({
-                total: totalCount,
-                sent: sentCount,
-                failed: sendData.stats?.failed || 0,
-                skipped: sendData.stats?.skipped || 0,
-                confirmed: verifyData.stats?.confirmed || 0,
-                phoneNumbers: phoneNumbers
-              })
-            } else {
-              showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
-            }
-          } else {
-            showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
-          }
-        } catch (err) {
-          showNotification(`✅ Campagne partenaires envoyée: ${sentCount}/${totalCount} messages`, 'success')
-        }
-        
-        fetchStats()
-        fetchCampaigns()
-      } else {
-        const errorData = await sendResponse.json()
-        throw new Error(errorData.error || 'Erreur envoi')
-      }
+      setRecipientReviewItems(items)
+      setRecipientReviewOpen(true)
     } catch (error) {
-      console.error('Erreur campagne partenaires:', error)
-      showNotification(error.message || 'Erreur lors de l\'envoi', 'error')
+      console.error('Erreur préparation campagne partenaires:', error)
+      showNotification(error.message || 'Erreur lors de la préparation', 'error')
     } finally {
       setSendingPartenaires(false)
+      setRecipientReviewLoading(false)
     }
   }
 
@@ -979,11 +937,7 @@ export default function AdminWhatsAppCampaignsPage() {
                 return
               }
               
-              if (!confirm(`Envoyer le message partenaires à ${getTagCount('all')} utilisateurs ?`)) {
-                return
-              }
-              
-              await sendPartenairesCampaign(variants)
+              await preparePartenairesCampaign(variants)
             }}
             disabled={sendingPartenaires || recipientReviewLoading}
             className="admin-btn"
