@@ -57,26 +57,6 @@ export default function AdminWhatsAppCampaignsPage() {
     enabled: false
   })
 
-  useEffect(() => {
-    if (token) {
-      fetchStats()
-      fetchCampaigns()
-      
-      // Vérifier s'il y a une campagne en cours de suivi
-      const savedCampaignId = localStorage.getItem('trackingWhatsAppCampaignId')
-      if (savedCampaignId) {
-        setTrackingCampaignId(savedCampaignId)
-        startTracking(savedCampaignId)
-      }
-    }
-    
-    return () => {
-      if (trackingInterval) {
-        clearInterval(trackingInterval)
-      }
-    }
-  }, [token])
-  
   const startTracking = (campaignId) => {
     if (trackingInterval) {
       clearInterval(trackingInterval)
@@ -114,6 +94,26 @@ export default function AdminWhatsAppCampaignsPage() {
     }
     setTrackingCampaignId(null)
   }
+
+  useEffect(() => {
+    if (token) {
+      fetchStats()
+      fetchCampaigns()
+      
+      // Vérifier s'il y a une campagne en cours de suivi
+      const savedCampaignId = localStorage.getItem('trackingWhatsAppCampaignId')
+      if (savedCampaignId) {
+        setTrackingCampaignId(savedCampaignId)
+        startTracking(savedCampaignId)
+      }
+    }
+    
+    return () => {
+      if (trackingInterval) {
+        clearInterval(trackingInterval)
+      }
+    }
+  }, [token])
 
   useEffect(() => {
     if (formData.recipientMode === 'list' && token) {
