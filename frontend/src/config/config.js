@@ -22,17 +22,17 @@ const getBackendUrl = () => {
     return cleanUrl(localBackendUrl)
   }
   
-  // En production, utiliser VITE_API_BASE_URL depuis .env
+  // En production, utiliser VITE_API_BASE_URL depuis .env ou URL Railway par défaut
   if (import.meta.env.VITE_API_BASE_URL) {
     const backendUrl = cleanUrl(import.meta.env.VITE_API_BASE_URL)
     logger.log('🌐 MODE PRODUCTION - BACKEND_URL depuis VITE_API_BASE_URL:', backendUrl)
     return backendUrl
   }
   
-  // ⚠️ ERREUR : VITE_API_BASE_URL n'est pas défini en production
-  logger.error('❌ VITE_API_BASE_URL n\'est pas défini dans .env')
-  logger.error('⚠️  Créez un fichier .env dans frontend/ avec VITE_API_BASE_URL')
-  throw new Error('VITE_API_BASE_URL n\'est pas défini. Créez un fichier .env avec VITE_API_BASE_URL.')
+  // Fallback : utiliser l'URL Railway en production si VITE_API_BASE_URL n'est pas défini
+  const railwayBackendUrl = 'https://plateforme-backend-production-2ec6.up.railway.app'
+  logger.warn('⚠️ VITE_API_BASE_URL n\'est pas défini, utilisation de l\'URL Railway par défaut:', railwayBackendUrl)
+  return cleanUrl(railwayBackendUrl)
 }
 
 export const CONFIG = {

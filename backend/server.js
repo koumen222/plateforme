@@ -990,9 +990,33 @@ const startServer = async () => {
       try {
         const { id } = req.params;
         
-        // Importer les modèles et services nécessaires
-        const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
-        const { sendNewsletterCampaign } = await import("./services/whatsappService.js");
+        // Importer les modèles et services nécessaires avec gestion d'erreur
+        let WhatsAppCampaign, sendNewsletterCampaign, WhatsAppLog;
+        
+        try {
+          const campaignModule = await import("./models/WhatsAppCampaign.js");
+          WhatsAppCampaign = campaignModule.default;
+        } catch (err) {
+          console.error('❌ Erreur import WhatsAppCampaign:', err.message);
+          return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
+        }
+        
+        try {
+          const serviceModule = await import("./services/whatsappService.js");
+          sendNewsletterCampaign = serviceModule.sendNewsletterCampaign;
+        } catch (err) {
+          console.error('❌ Erreur import whatsappService:', err.message);
+          return res.status(500).json({ error: 'Service WhatsApp non disponible', details: err.message });
+        }
+        
+        try {
+          const logModule = await import("./models/WhatsAppLog.js");
+          WhatsAppLog = logModule.default;
+        } catch (err) {
+          console.error('❌ Erreur import WhatsAppLog:', err.message);
+          // Ne pas bloquer si WhatsAppLog n'est pas disponible, on continuera sans logs
+        }
+        
         const frontendUrl = process.env.FRONTEND_URL || 'https://safitech.shop';
         
         const campaign = await WhatsAppCampaign.findById(id);
@@ -1087,6 +1111,13 @@ const startServer = async () => {
         });
         
         // Envoyer la campagne
+        if (!sendNewsletterCampaign) {
+          return res.status(500).json({ 
+            error: 'Service WhatsApp non disponible',
+            details: 'Le service sendNewsletterCampaign n\'a pas pu être chargé'
+          });
+        }
+        
         const newsletterResults = await sendNewsletterCampaign(contacts, variants);
         
         const results = newsletterResults.results || [];
@@ -1095,9 +1126,15 @@ const startServer = async () => {
         const skipped = results.filter(r => r.skipped);
         
         // Vérification des logs
-        const WhatsAppLog = (await import("./models/WhatsAppLog.js")).default;
-        const logs = await WhatsAppLog.find({ campaignId: campaign._id }).lean();
-        const confirmedSent = logs.filter(log => log.status === 'sent' || log.status === 'delivered').length;
+        let confirmedSent = 0;
+        if (WhatsAppLog) {
+          try {
+            const logs = await WhatsAppLog.find({ campaignId: campaign._id }).lean();
+            confirmedSent = logs.filter(log => log.status === 'sent' || log.status === 'delivered').length;
+          } catch (logError) {
+            console.warn('⚠️ Erreur récupération logs WhatsApp:', logError.message);
+          }
+        }
         
         const stats = {
           total: newsletterResults.total || users.length,
