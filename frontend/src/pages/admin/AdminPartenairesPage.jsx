@@ -836,7 +836,7 @@ export default function AdminPartenairesPage() {
               className="mt-0.5"
             />
             <div className="flex-1">
-              <div className="flex items-center gap-2 text-sm font-semibold text-yellow-700 dark:text-yellow-400">
+              <div className="flex items-center gap-2 text-xs font-semibold text-yellow-700 dark:text-yellow-400">
                 <span>⭐</span>
                 <span>Sponsoriser ce partenaire</span>
               </div>
@@ -1107,7 +1107,7 @@ export default function AdminPartenairesPage() {
                           {isVerified(partenaire) ? 'Vérifié' : 'Non vérifié'}
                         </span>
                         {partenaire.is_sponsored && (
-                          <span className="inline-flex items-center rounded-full border-2 border-yellow-500 bg-yellow-100 dark:bg-yellow-900/30 px-2.5 py-1 text-[11px] font-semibold text-yellow-700 dark:text-yellow-400">
+                          <span className="inline-flex items-center rounded-full border-2 border-yellow-500 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-0.5 text-[10px] font-semibold text-yellow-700 dark:text-yellow-400">
                             ⭐ Sponsorisé
                           </span>
                         )}
@@ -1132,7 +1132,7 @@ export default function AdminPartenairesPage() {
                         <button
                           id={`sponsor-btn-${partenaire._id}`}
                           onClick={() => toggleSponsored(partenaire)}
-                          className={`admin-btn admin-btn-sm ${partenaire.is_sponsored ? 'admin-btn-warning' : 'admin-btn-primary'}`}
+                          className={`admin-btn admin-btn-sm text-xs ${partenaire.is_sponsored ? 'admin-btn-warning' : 'admin-btn-primary'}`}
                           title={partenaire.is_sponsored ? 'Retirer le statut sponsorisé' : 'Mettre ce partenaire en avant (sponsorisé)'}
                         >
                           {partenaire.is_sponsored ? '⭐ Retirer sponsor' : '⭐ Sponsoriser'}
