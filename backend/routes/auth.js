@@ -90,6 +90,38 @@ router.post('/admin/register', async (req, res) => {
     });
     await user.save();
 
+    // Abonnement automatique à la newsletter pour l'admin aussi
+    try {
+      const Subscriber = (await import('../models/Subscriber.js')).default;
+      const existingSubscriber = await Subscriber.findOne({ email: trimmedEmail });
+      
+      if (!existingSubscriber) {
+        const subscriber = new Subscriber({
+          email: trimmedEmail,
+          name: trimmedName,
+          source: 'manual',
+          status: 'active',
+          subscribedAt: new Date()
+        });
+        await subscriber.save();
+        console.log(`✅ Admin automatiquement abonné à la newsletter: ${trimmedName} (${trimmedEmail})`);
+      } else if (existingSubscriber.status === 'unsubscribed') {
+        // Réabonner si désabonné précédemment
+        existingSubscriber.status = 'active';
+        existingSubscriber.name = trimmedName;
+        existingSubscriber.unsubscribedAt = null;
+        existingSubscriber.subscribedAt = new Date();
+        await existingSubscriber.save();
+        console.log(`✅ Admin réabonné à la newsletter: ${trimmedName} (${trimmedEmail})`);
+      } else if (!existingSubscriber.name || existingSubscriber.name !== trimmedName) {
+        // Mettre à jour le nom si différent
+        existingSubscriber.name = trimmedName;
+        await existingSubscriber.save();
+      }
+    } catch (subscriberError) {
+      console.warn('⚠️ Abonnement newsletter ignoré:', subscriberError.message);
+    }
+
     // Recharger l'utilisateur depuis la base pour s'assurer d'avoir toutes les données
     const savedUser = await User.findById(user._id);
     
@@ -202,6 +234,38 @@ router.post('/register', async (req, res) => {
       await createReferralFromRequest({ userId: user._id, req });
     } catch (referralError) {
       console.warn('⚠️ Parrainage ignoré (register):', referralError.message);
+    }
+
+    // Abonnement automatique à la newsletter (même pour les utilisateurs en attente)
+    try {
+      const Subscriber = (await import('../models/Subscriber.js')).default;
+      const existingSubscriber = await Subscriber.findOne({ email: trimmedEmail });
+      
+      if (!existingSubscriber) {
+        const subscriber = new Subscriber({
+          email: trimmedEmail,
+          name: trimmedName,
+          source: 'website',
+          status: 'active',
+          subscribedAt: new Date()
+        });
+        await subscriber.save();
+        console.log(`✅ Utilisateur automatiquement abonné à la newsletter: ${trimmedName} (${trimmedEmail})`);
+      } else if (existingSubscriber.status === 'unsubscribed') {
+        // Réabonner si désabonné précédemment
+        existingSubscriber.status = 'active';
+        existingSubscriber.name = trimmedName;
+        existingSubscriber.unsubscribedAt = null;
+        existingSubscriber.subscribedAt = new Date();
+        await existingSubscriber.save();
+        console.log(`✅ Utilisateur réabonné à la newsletter: ${trimmedName} (${trimmedEmail})`);
+      } else if (!existingSubscriber.name || existingSubscriber.name !== trimmedName) {
+        // Mettre à jour le nom si différent
+        existingSubscriber.name = trimmedName;
+        await existingSubscriber.save();
+      }
+    } catch (subscriberError) {
+      console.warn('⚠️ Abonnement newsletter ignoré:', subscriberError.message);
     }
     
     // Recharger l'utilisateur depuis la base pour s'assurer d'avoir toutes les données
