@@ -11,6 +11,8 @@ export default function AdminEmailCampaignsPage() {
   const [showCreate, setShowCreate] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [notification, setNotification] = useState(null)
+  const defaultFromEmail = 'contact@infomania.store'
+  const defaultReplyTo = 'contact@infomania.store'
   
   const [formData, setFormData] = useState({
     name: '',
@@ -19,9 +21,9 @@ export default function AdminEmailCampaignsPage() {
     content: { html: '', text: '' },
     recipients: { type: 'all', segment: 'active', customEmails: [] },
     scheduledAt: '',
-    fromEmail: process.env.EMAIL_FROM || 'contact@infomania.store',
+    fromEmail: defaultFromEmail,
     fromName: 'Infomania',
-    replyTo: process.env.EMAIL_REPLY_TO || 'contact@infomania.store'
+    replyTo: defaultReplyTo
   })
 
   useEffect(() => {
@@ -171,9 +173,9 @@ export default function AdminEmailCampaignsPage() {
       content: { html: '', text: '' },
       recipients: { type: 'all', segment: 'active', customEmails: [], email: '', name: '' },
       scheduledAt: '',
-      fromEmail: process.env.EMAIL_FROM || 'noreply@infomania.store',
+      fromEmail: defaultFromEmail,
       fromName: 'Infomania',
-      replyTo: process.env.EMAIL_REPLY_TO || 'contact@infomania.store'
+      replyTo: defaultReplyTo
     })
   }
 

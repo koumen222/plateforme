@@ -9,17 +9,26 @@ export default function AdminNewsletterPage() {
   const [notification, setNotification] = useState(null)
   const [stats, setStats] = useState(null)
   const [sendResults, setSendResults] = useState(null)
+  const [templates, setTemplates] = useState([])
+  const defaultFromEmail = 'contact@infomania.store'
+  const defaultReplyTo = 'contact@infomania.store'
   
   const [formData, setFormData] = useState({
+    name: '',
     subject: '',
-    content: '',
+    templateId: '',
+    content: { html: '', text: '' },
     recipients: { type: 'segment', segment: 'active', customEmails: [], email: '', name: '' },
-    fromName: 'Infomania'
+    scheduledAt: '',
+    fromEmail: defaultFromEmail,
+    fromName: 'Infomania',
+    replyTo: defaultReplyTo
   })
 
   useEffect(() => {
     if (token) {
       fetchStats()
+      fetchTemplates()
     }
   }, [token])
 
@@ -35,6 +44,41 @@ export default function AdminNewsletterPage() {
       }
     } catch (error) {
       console.error('Erreur stats:', error)
+    }
+  }
+
+  const fetchTemplates = async () => {
+    if (!token) return
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/email-templates`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setTemplates(data.templates || [])
+      }
+    } catch (error) {
+      console.error('Erreur templates:', error)
+    }
+  }
+
+  const handleTemplateSelect = async (templateId) => {
+    if (!templateId) return
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/email-templates/${templateId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setFormData(prev => ({
+          ...prev,
+          templateId,
+          subject: data.template.subject,
+          content: data.template.content
+        }))
+      }
+    } catch (error) {
+      console.error('Erreur chargement template:', error)
     }
   }
 
@@ -61,8 +105,8 @@ export default function AdminNewsletterPage() {
   const handleSend = async (e) => {
     e.preventDefault()
     
-    if (!formData.subject || !formData.content) {
-      showNotification('Sujet et contenu requis', 'error')
+    if (!formData.name || !formData.subject || !formData.content?.html) {
+      showNotification('Nom, sujet et contenu requis', 'error')
       return
     }
 
@@ -76,7 +120,12 @@ export default function AdminNewsletterPage() {
       return
     }
 
-    if (!confirm(`Envoyer cette newsletter à ${getRecipientCount(formData.recipients)} destinataire(s) ?`)) {
+    const isScheduled = !!(formData.scheduledAt && formData.scheduledAt.trim())
+    const confirmationText = isScheduled
+      ? `Programmer cette newsletter pour ${new Date(formData.scheduledAt).toLocaleString('fr-FR')} à ${getRecipientCount(formData.recipients)} destinataire(s) ?`
+      : `Envoyer cette newsletter à ${getRecipientCount(formData.recipients)} destinataire(s) maintenant ?`
+
+    if (!confirm(confirmationText)) {
       return
     }
 
@@ -90,16 +139,18 @@ export default function AdminNewsletterPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: `Newsletter ${formData.recipients.type}${formData.recipients.type === 'segment' ? `:${formData.recipients.segment}` : ''}${formData.recipients.type === 'single' && formData.recipients.email ? `:${formData.recipients.email}` : ''} - ${new Date().toLocaleDateString('fr-FR')}`,
+          name: formData.name,
           subject: formData.subject,
+          templateId: formData.templateId || undefined,
           content: {
-            html: formData.content,
-            text: formData.content.replace(/<[^>]*>/g, '')
+            html: formData.content.html,
+            text: formData.content.text || formData.content.html.replace(/<[^>]*>/g, '')
           },
           recipients: formData.recipients,
-          fromEmail: 'contact@infomania.store',
+          scheduledAt: isScheduled ? formData.scheduledAt : null,
+          fromEmail: formData.fromEmail,
           fromName: formData.fromName,
-          replyTo: 'contact@infomania.store'
+          replyTo: formData.replyTo
         })
       })
 
@@ -110,6 +161,23 @@ export default function AdminNewsletterPage() {
 
       const campaignData = await campaignResponse.json()
       const campaignId = campaignData.campaign._id
+
+      if (isScheduled) {
+        showNotification('✅ Newsletter programmée avec succès', 'success')
+        setFormData({
+          name: '',
+          subject: '',
+          templateId: '',
+          content: { html: '', text: '' },
+          recipients: { type: 'segment', segment: 'active', customEmails: [], email: '', name: '' },
+          scheduledAt: '',
+          fromEmail: defaultFromEmail,
+          fromName: 'Infomania',
+          replyTo: defaultReplyTo
+        })
+        fetchStats()
+        return
+      }
 
       // Envoyer la campagne
       const sendResponse = await fetch(`${CONFIG.BACKEND_URL}/api/email-campaigns/${campaignId}/send`, {
@@ -157,10 +225,15 @@ export default function AdminNewsletterPage() {
         const totalDest = results.total || sendData.stats?.total || 0
         showNotification(`✅ Newsletter envoyée: ${totalSent}/${totalDest} emails`, 'success')
         setFormData({
+          name: '',
           subject: '',
-          content: '',
+          templateId: '',
+          content: { html: '', text: '' },
           recipients: { type: 'segment', segment: 'active', customEmails: [], email: '', name: '' },
-          fromName: 'Infomania'
+          scheduledAt: '',
+          fromEmail: defaultFromEmail,
+          fromName: 'Infomania',
+          replyTo: defaultReplyTo
         })
         fetchStats()
       } else {
@@ -186,7 +259,7 @@ export default function AdminNewsletterPage() {
     if (formData.recipients.type === 'all') return tagLabels.all
     if (formData.recipients.type === 'segment') return tagLabels[formData.recipients.segment] || 'Segment'
     if (formData.recipients.type === 'list') return '🧾 Liste personnalisée'
-    if (formData.recipients.type === 'single') return '� Une seule personne'
+    if (formData.recipients.type === 'single') return '👤 Une seule personne'
     return 'Destinataires'
   }
 
@@ -221,6 +294,33 @@ export default function AdminNewsletterPage() {
         <div style={{ padding: '20px', backgroundColor: '#fff', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
           <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Nouvelle Newsletter</h2>
           <form onSubmit={handleSend}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Nom de la campagne *</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  placeholder="Ex: Newsletter du lundi"
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Template</label>
+                <select
+                  value={formData.templateId}
+                  onChange={(e) => handleTemplateSelect(e.target.value)}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                >
+                  <option value="">Sélectionner un template</option>
+                  {templates.map(t => (
+                    <option key={t._id} value={t._id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Destinataires *</label>
               <select
@@ -317,13 +417,58 @@ export default function AdminNewsletterPage() {
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Contenu HTML *</label>
               <textarea
-                value={formData.content}
-                onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                value={formData.content.html}
+                onChange={(e) => setFormData({ ...formData, content: { ...formData.content, html: e.target.value } })}
                 required
                 rows="12"
                 placeholder="<h1>Bonjour</h1><p>Votre contenu ici...</p>"
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontFamily: 'monospace', fontSize: '13px' }}
               />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Contenu texte (optionnel)</label>
+              <textarea
+                value={formData.content.text}
+                onChange={(e) => setFormData({ ...formData, content: { ...formData.content, text: e.target.value } })}
+                rows="6"
+                placeholder="Version texte (sinon auto-générée depuis le HTML)"
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontFamily: 'monospace', fontSize: '13px' }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Programmer l'envoi (optionnel)</label>
+              <input
+                type="datetime-local"
+                value={formData.scheduledAt}
+                onChange={(e) => setFormData({ ...formData, scheduledAt: e.target.value })}
+                style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+              />
+              <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+                Si renseigné, la newsletter sera seulement programmée (pas envoyée immédiatement).
+              </p>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Email expéditeur</label>
+                <input
+                  type="email"
+                  value={formData.fromEmail}
+                  onChange={(e) => setFormData({ ...formData, fromEmail: e.target.value })}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Email réponse</label>
+                <input
+                  type="email"
+                  value={formData.replyTo}
+                  onChange={(e) => setFormData({ ...formData, replyTo: e.target.value })}
+                  style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                />
+              </div>
             </div>
 
             <div style={{ marginBottom: '16px' }}>

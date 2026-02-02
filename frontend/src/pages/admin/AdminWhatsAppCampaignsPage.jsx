@@ -9,6 +9,7 @@ export default function AdminWhatsAppCampaignsPage() {
   const [sendingWelcome, setSendingWelcome] = useState(false)
   const [sendingRelance, setSendingRelance] = useState(false)
   const [sendingPartenaires, setSendingPartenaires] = useState(false)
+  const [sendingTraining, setSendingTraining] = useState(false)
   const [notification, setNotification] = useState(null)
   const [stats, setStats] = useState(null)
   const [sendResults, setSendResults] = useState(null)
@@ -59,6 +60,11 @@ export default function AdminWhatsAppCampaignsPage() {
     variant1: 'Bonjour [PRENOM] ! 👋\n\nDécouvrez notre réseau de partenaires fiables sur Ecom Starter 3.0 !\n\nAccédez à une liste complète de livreurs, fournisseurs et agences vérifiés pour développer votre activité e-commerce.\n\nConsultez les partenaires : https://www.safitech.shop/partenaires',
     variant2: 'Salut [PRENOM] ! 🚀\n\nBesoin de partenaires pour votre e-commerce ?\n\nExplorez notre annuaire de partenaires professionnels : livreurs, fournisseurs, agences de livraison. Tous vérifiés et notés par la communauté.\n\nVoir les partenaires : https://www.safitech.shop/partenaires',
     variant3: 'Hello [PRENOM] ! 💼\n\nTrouvez les meilleurs partenaires pour votre business e-commerce !\n\nNotre plateforme regroupe des centaines de partenaires fiables : livreurs, fournisseurs, agences. Filtrez par catégorie, localisation et note.\n\nDécouvrir les partenaires : https://www.safitech.shop/partenaires',
+    enabled: false
+  })
+
+  const [trainingCampaign, setTrainingCampaign] = useState({
+    variant1: 'Salut [PRENOM],\n\nTu veux te lancer dans l’e-commerce en Afrique en 2026, mais tu ne sais pas par où commencer ?\n\nBonne nouvelle : une formation 100% gratuite est disponible dès maintenant.\n\n✅ Comprendre les bases pour démarrer correctement\n\n✅ Éviter les erreurs classiques quand on débute\n\n✅ Passer à l’action avec une méthode claire\n\n👉 Accès direct à la formation gratuite :\n\nhttps://www.safitech.shop/course/se-lancer-en-e-commerce-en-afrique-en-2026---formation-gratuite/lesson/6968e00944195fcebab7847b\n\nSi tu connais quelqu’un que ça peut aider, transfère-lui ce message 🙌\n\nÀ bientôt,\n\nKounen Morgan',
     enabled: false
   })
 
@@ -225,6 +231,52 @@ export default function AdminWhatsAppCampaignsPage() {
       console.error('Erreur récupération utilisateurs:', error)
     } finally {
       setLoadingUsersWithPhones(false)
+    }
+  }
+
+  const prepareTrainingCampaign = async (variants) => {
+    setSendingTraining(true)
+    setRecipientReviewLoading(true)
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/recipients-preview?tag=active`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Erreur récupération destinataires')
+      }
+
+      const data = await response.json()
+      const contacts = data.contacts || []
+      const items = contacts.map(c => ({
+        phone: c.phone,
+        firstName: c.firstName || '',
+        name: '',
+        email: '',
+        valid: c.valid !== false,
+        selected: c.valid !== false
+      }))
+
+      if (!items || items.length === 0) {
+        showNotification('Aucun utilisateur actif avec numéro trouvé', 'error')
+        return
+      }
+
+      setPendingSendPayload({
+        message: null,
+        variants: variants,
+        fromPhone: ''
+      })
+
+      setRecipientReviewItems(items)
+      setRecipientReviewOpen(true)
+    } catch (error) {
+      console.error('Erreur préparation campagne formation:', error)
+      showNotification(error.message || 'Erreur lors de la préparation', 'error')
+    } finally {
+      setSendingTraining(false)
+      setRecipientReviewLoading(false)
     }
   }
 
@@ -731,6 +783,7 @@ export default function AdminWhatsAppCampaignsPage() {
     setSendingWelcome(false)
     setSendingRelance(false)
     setSendingPartenaires(false)
+    setSendingTraining(false)
   }
 
   const tagLabels = {
@@ -899,7 +952,7 @@ export default function AdminWhatsAppCampaignsPage() {
       </div>
 
       {/* Campagnes automatiques */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
         {/* Campagne de Bienvenue */}
         <div style={{ padding: '20px', backgroundColor: '#e8f5e9', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '2px solid #4caf50' }}>
           <h2 style={{ marginBottom: '16px', fontSize: '18px', color: '#2e7d32', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1092,6 +1145,43 @@ export default function AdminWhatsAppCampaignsPage() {
             style={{ width: '100%', fontSize: '14px', padding: '10px', backgroundColor: '#2196f3', color: 'white', border: 'none', opacity: (sendingPartenaires || recipientReviewLoading) ? 0.6 : 1 }}
           >
             {sendingPartenaires || recipientReviewLoading ? '⏳ Préparation...' : '📤 Choisir les numéros'}
+          </button>
+        </div>
+
+        {/* Campagne Formation */}
+        <div style={{ padding: '20px', backgroundColor: '#f3e5f5', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '2px solid #9c27b0' }}>
+          <h2 style={{ marginBottom: '16px', fontSize: '18px', color: '#6a1b9a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            🎓 Campagne Formation
+          </h2>
+          <p style={{ fontSize: '13px', color: '#6c757d', marginBottom: '16px' }}>
+            Envoie ce message à tous les utilisateurs <strong>actifs</strong> pour la formation gratuite.
+          </p>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', fontWeight: '500' }}>Message *</label>
+            <textarea
+              value={trainingCampaign.variant1}
+              onChange={(e) => setTrainingCampaign({ ...trainingCampaign, variant1: e.target.value })}
+              rows="6"
+              placeholder="Message de formation..."
+              style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
+            />
+          </div>
+
+          <button
+            onClick={async () => {
+              const variants = [trainingCampaign.variant1?.trim()].filter(v => v && v.length > 0)
+              if (variants.length === 0) {
+                showNotification('Le message est requis', 'error')
+                return
+              }
+              await prepareTrainingCampaign(variants)
+            }}
+            disabled={sendingTraining || recipientReviewLoading}
+            className="admin-btn"
+            style={{ width: '100%', fontSize: '14px', padding: '10px', backgroundColor: '#9c27b0', color: 'white', border: 'none', opacity: (sendingTraining || recipientReviewLoading) ? 0.6 : 1 }}
+          >
+            {sendingTraining || recipientReviewLoading ? '⏳ Préparation...' : '📤 Choisir les numéros'}
           </button>
         </div>
       </div>

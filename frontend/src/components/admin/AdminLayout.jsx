@@ -45,6 +45,7 @@ export default function AdminLayout() {
     { path: '/admin/whatsapp-campaigns', label: 'WhatsApp', icon: FiPhone },
     { path: '/admin/subscribers', label: 'Abonnés', icon: FiMail },
     { path: '/admin/email-campaigns', label: 'Campagnes', icon: FiMail },
+    { path: '/admin/email-logs', label: 'Tracking Emails', icon: FiBarChart2 },
     { path: '/admin/email-templates', label: 'Templates', icon: FiMail },
     { path: '/admin/users', label: 'Utilisateurs', icon: FiUsers },
     { path: '/admin/comments', label: 'Commentaires', icon: FiMessageSquare },
