@@ -64,7 +64,7 @@ export default function AdminWhatsAppCampaignsPage() {
   })
 
   const [trainingCampaign, setTrainingCampaign] = useState({
-    variant1: 'Salut [PRENOM],\n\nTu veux te lancer dans l’e-commerce en Afrique en 2026, mais tu ne sais pas par où commencer ?\n\nBonne nouvelle : une formation 100% gratuite est disponible dès maintenant.\n\n✅ Comprendre les bases pour démarrer correctement\n\n✅ Éviter les erreurs classiques quand on débute\n\n✅ Passer à l’action avec une méthode claire\n\n👉 Accès direct à la formation gratuite :\n\nhttps://www.safitech.shop/course/se-lancer-en-e-commerce-en-afrique-en-2026---formation-gratuite/lesson/6968e00944195fcebab7847b\n\nSi tu connais quelqu’un que ça peut aider, transfère-lui ce message 🙌\n\nÀ bientôt,\n\nKounen Morgan',
+    variant1: 'Salut [PRENOM],\n\nTu veux te lancer dans l’e-commerce en Afrique en 2026, mais tu ne sais pas par où commencer ?\n\nBonne nouvelle : une formation 100% gratuite est disponible dès maintenant.\n\n✅ Comprendre les bases pour démarrer correctement\n✅ Éviter les erreurs classiques quand on débute\n✅ Passer à l’action avec une méthode claire\n\n👉 Accès direct à la formation gratuite :\nhttps://www.safitech.shop/course/se-lancer-en-e-commerce-en-afrique-en-2026---formation-gratuite/lesson/6968e00944195fcebab7847b\n\nSi tu connais quelqu’un que ça peut aider, transfère-lui ce message 🙌\n\nÀ bientôt,\nKounen Morgan',
     enabled: false
   })
 
