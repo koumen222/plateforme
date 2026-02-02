@@ -203,9 +203,7 @@ function App() {
           <Route
             path="/coaching-scale-7"
             element={
-              <PlatformLayout>
-                <CoachingScale7Page />
-              </PlatformLayout>
+              <CoachingScale7Page />
             }
           />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
