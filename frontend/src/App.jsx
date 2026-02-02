@@ -26,6 +26,7 @@ import AdminWhatsAppCampaignsPage from './pages/admin/AdminWhatsAppCampaignsPage
 import AdminSubscribersPage from './pages/admin/AdminSubscribersPage'
 import AdminEmailCampaignsPage from './pages/admin/AdminEmailCampaignsPage'
 import AdminEmailTemplatesPage from './pages/admin/AdminEmailTemplatesPage'
+import AdminEmailLogsPage from './pages/admin/AdminEmailLogsPage'
 import AdminEbooksPage from './pages/admin/AdminEbooksPage'
 import AdminVisitsPage from './pages/admin/AdminVisitsPage'
 import CoachingApplicationForm from './pages/CoachingApplicationForm'
@@ -202,9 +203,7 @@ function App() {
           />
           <Route
             path="/coaching-scale-7"
-            element={
-              <CoachingScale7Page />
-            }
+            element={<CoachingScale7Page />}
           />
           <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
@@ -250,6 +249,7 @@ function App() {
             <Route path="subscribers" element={<AdminSubscribersPage />} />
             <Route path="email-campaigns" element={<AdminEmailCampaignsPage />} />
             <Route path="email-templates" element={<AdminEmailTemplatesPage />} />
+            <Route path="email-logs" element={<AdminEmailLogsPage />} />
             <Route path="ebooks" element={<AdminEbooksPage />} />
             <Route path="visits" element={<AdminVisitsPage />} />
             <Route path="users" element={<AdminUsersPage />} />

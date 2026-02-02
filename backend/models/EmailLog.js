@@ -18,7 +18,7 @@ const emailLogSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed', 'unsubscribed', 'complained'],
+    enum: ['pending', 'sent', 'delivered', 'opened', 'clicked', 'bounced', 'failed', 'unsubscribed', 'complained', 'spam'],
     default: 'pending'
   },
   sentAt: {
@@ -34,7 +34,13 @@ const emailLogSchema = new mongoose.Schema({
   clickedAt: {
     type: Date
   },
+  markedAsSpamAt: {
+    type: Date
+  },
   error: {
+    type: String
+  },
+  spamReason: {
     type: String
   },
   providerResponse: {
@@ -53,6 +59,16 @@ const emailLogSchema = new mongoose.Schema({
       unique: true,
       sparse: true
     }
+  },
+  resendHistory: [{
+    attemptedAt: { type: Date, default: Date.now },
+    status: { type: String },
+    error: { type: String }
+  }],
+  unsubscribeToken: {
+    type: String,
+    unique: true,
+    sparse: true
   }
 }, {
   timestamps: true

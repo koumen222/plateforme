@@ -106,6 +106,8 @@ router.post('/', async (req, res) => {
       }
     } else if (recipients?.type === 'list' && recipients.customEmails?.length) {
       recipientCount = recipients.customEmails.length;
+    } else if (recipients?.type === 'single' && recipients.email) {
+      recipientCount = 1;
     }
     
     const campaign = new EmailCampaign({
@@ -188,6 +190,8 @@ router.put('/:id', async (req, res) => {
         }
       } else if (recipients.type === 'list' && recipients.customEmails?.length) {
         recipientCount = recipients.customEmails.length;
+      } else if (recipients.type === 'single' && recipients.email) {
+        recipientCount = 1;
       }
       campaign.recipients = { ...recipients, count: recipientCount };
     }
@@ -301,6 +305,9 @@ router.post('/:id/send', async (req, res) => {
       }
     } else if (campaign.recipients.type === 'list' && campaign.recipients.customEmails?.length) {
       subscribers = campaign.recipients.customEmails.map(email => ({ email, _id: null }));
+    } else if (campaign.recipients.type === 'single' && campaign.recipients.email) {
+      // Envoi à une seule personne
+      subscribers = [{ email: campaign.recipients.email, _id: null, name: campaign.recipients.name || '' }];
     }
     
     if (subscribers.length === 0) {

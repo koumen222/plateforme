@@ -169,7 +169,7 @@ export default function AdminEmailCampaignsPage() {
       subject: '',
       templateId: '',
       content: { html: '', text: '' },
-      recipients: { type: 'all', segment: 'active', customEmails: [] },
+      recipients: { type: 'all', segment: 'active', customEmails: [], email: '', name: '' },
       scheduledAt: '',
       fromEmail: process.env.EMAIL_FROM || 'noreply@infomania.store',
       fromName: 'Infomania',
@@ -286,6 +286,7 @@ export default function AdminEmailCampaignsPage() {
                   <option value="all">Tous les abonnés actifs</option>
                   <option value="segment">Segment</option>
                   <option value="list">Liste personnalisée</option>
+                  <option value="single">Une seule personne</option>
                 </select>
               </div>
               <div>
@@ -298,6 +299,32 @@ export default function AdminEmailCampaignsPage() {
                 />
               </div>
             </div>
+
+            {formData.recipients.type === 'single' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px', padding: '16px', backgroundColor: '#f0f9ff', borderRadius: '8px', border: '1px solid #bae6fd' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Email du destinataire *</label>
+                  <input
+                    type="email"
+                    value={formData.recipients.email || ''}
+                    onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, email: e.target.value } })}
+                    required={formData.recipients.type === 'single'}
+                    placeholder="email@exemple.com"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Nom du destinataire</label>
+                  <input
+                    type="text"
+                    value={formData.recipients.name || ''}
+                    onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, name: e.target.value } })}
+                    placeholder="Prénom Nom"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+              </div>
+            )}
 
             <div style={{ display: 'flex', gap: '10px' }}>
               <button type="submit" className="admin-btn admin-btn-success">

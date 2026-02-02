@@ -1812,6 +1812,21 @@ const startServer = async () => {
         console.error('❌ emailTrackingModule.default est null ou undefined');
       }
       
+      // Routes email-logs (tracking détaillé des emails envoyés)
+      try {
+        const emailLogsModule = await import("./routes/email-logs.js");
+        if (emailLogsModule && emailLogsModule.default) {
+          app.use("/api/email-logs", emailLogsModule.default);
+          console.log('✅ Routes email-logs chargées');
+          console.log('   GET /api/email-logs - Lister tous les emails avec filtres');
+          console.log('   GET /api/email-logs/stats - Statistiques globales');
+          console.log('   POST /api/email-logs/resend - Renvoyer les emails en échec');
+          console.log('   POST /api/email-logs/:id/resend-single - Renvoyer un email spécifique');
+        }
+      } catch (error) {
+        console.error('⚠️ Erreur chargement email-logs.js:', error.message);
+      }
+      
       // Routes de tracking des visites
       console.log('📦 Tentative de chargement routes visits...');
       try {

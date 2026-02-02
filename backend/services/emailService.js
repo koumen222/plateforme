@@ -1,6 +1,13 @@
 import { Resend } from 'resend';
 import { v4 as uuidv4 } from 'uuid';
 import EmailLog from '../models/EmailLog.js';
+import { 
+  createEmailTemplate, 
+  generateAntiSpamHeaders, 
+  validateSpamScore,
+  formatSubject,
+  htmlToText 
+} from './emailFormatterService.js';
 
 let resend = null;
 
@@ -20,10 +27,28 @@ const initEmailService = () => {
   }
 };
 
-const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo, campaignId, subscriberId }) => {
+const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo, campaignId, subscriberId, recipientName = '', unsubscribeUrl = '' }) => {
   if (!resend) {
     throw new Error('Service email Resend non configuré');
   }
+  
+  // Formater le sujet pour éviter le spam
+  const formattedSubject = formatSubject(subject);
+  
+  // Valider le score spam
+  const spamCheck = validateSpamScore(html);
+  if (spamCheck.risk === 'high') {
+    console.warn('⚠️ Alerte: Contenu email avec risque spam élevé:', spamCheck.warnings);
+  }
+  
+  // Créer le template complet avec footer et structure anti-spam
+  const emailTemplate = createEmailTemplate({
+    subject: formattedSubject,
+    content: html,
+    recipientName,
+    unsubscribeUrl,
+    previewText: text?.substring(0, 150) || formattedSubject
+  });
   
   const emailLog = new EmailLog({
     campaignId,
@@ -33,20 +58,23 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
     tracking: {
       openToken: uuidv4(),
       clickToken: uuidv4()
-    }
+    },
+    unsubscribeToken: unsubscribeUrl ? uuidv4() : null
   });
   
   try {
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+    
+    // Ajouter le pixel de tracking au HTML formaté
     const trackingPixel = `<img src="${backendUrl}/api/email/track/open/${emailLog.tracking.openToken}" width="1" height="1" style="display:none;" />`;
-    const htmlWithTracking = html.replace('</body>', `${trackingPixel}</body>`);
+    const htmlWithTracking = emailTemplate.html.replace('</body>', `${trackingPixel}</body>`);
     
     // Remplacer les liens par des liens de tracking
     const clickTrackingUrl = `${backendUrl}/api/email/track/click/${emailLog.tracking.clickToken}?url=`;
     const htmlWithClickTracking = htmlWithTracking.replace(
       /href=["']([^"']+)["']/g,
       (match, url) => {
-        if (url.startsWith('http') && !url.includes('/api/email/track/')) {
+        if (url.startsWith('http') && !url.includes('/api/email/track/') && !url.includes('unsubscribe')) {
           return `href="${clickTrackingUrl}${encodeURIComponent(url)}"`;
         }
         return match;
@@ -54,6 +82,13 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
     );
     
     const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+    
+    // Générer les headers anti-spam
+    const antiSpamHeaders = generateAntiSpamHeaders({
+      campaignId,
+      subscriberId,
+      listId: 'newsletter-main'
+    });
     
     let retries = 0;
     const maxRetries = 3;
@@ -65,11 +100,12 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
         const result = await resend.emails.send({
           from,
           to,
-          subject,
+          subject: formattedSubject,
           html: htmlWithClickTracking,
-          text: text || html.replace(/<[^>]*>/g, ''),
+          text: emailTemplate.text,
           reply_to: replyTo || fromEmail,
           headers: {
+            ...antiSpamHeaders,
             'X-Campaign-ID': campaignId?.toString() || '',
             'X-Open-Token': emailLog.tracking.openToken,
             'X-Click-Token': emailLog.tracking.clickToken
@@ -296,10 +332,206 @@ const trackEmailClick = async (clickToken, url) => {
   return url || '#';
 };
 
+/**
+ * Récupère la liste des emails envoyés avec filtres et statistiques
+ */
+const getEmailLogs = async ({
+  campaignId,
+  status,
+  email,
+  page = 1,
+  limit = 50,
+  sortBy = 'createdAt',
+  sortOrder = 'desc'
+}) => {
+  try {
+    const filter = {};
+    
+    if (campaignId) filter.campaignId = campaignId;
+    if (status) filter.status = status;
+    if (email) filter.email = { $regex: email, $options: 'i' };
+    
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+    
+    const [logs, total] = await Promise.all([
+      EmailLog.find(filter)
+        .populate('campaignId', 'name subject')
+        .populate('subscriberId', 'name')
+        .sort(sort)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      EmailLog.countDocuments(filter)
+    ]);
+    
+    // Calculer les statistiques par statut
+    const stats = await EmailLog.aggregate([
+      { $match: filter },
+      { $group: {
+        _id: '$status',
+        count: { $sum: 1 }
+      }}
+    ]);
+    
+    const statsMap = stats.reduce((acc, curr) => {
+      acc[curr._id] = curr.count;
+      return acc;
+    }, {});
+    
+    return {
+      logs,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total,
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      stats: {
+        total,
+        sent: statsMap.sent || 0,
+        delivered: statsMap.delivered || 0,
+        opened: statsMap.opened || 0,
+        clicked: statsMap.clicked || 0,
+        failed: statsMap.failed || 0,
+        bounced: statsMap.bounced || 0,
+        spam: statsMap.spam || 0,
+        pending: statsMap.pending || 0
+      }
+    };
+  } catch (error) {
+    console.error('Erreur récupération logs:', error);
+    throw error;
+  }
+};
+
+/**
+ * Renvoie les emails en échec ou en attente
+ */
+const resendFailedEmails = async (campaignId, options = {}) => {
+  const { maxAge = 24, limit = 100 } = options; // maxAge en heures
+  
+  try {
+    const cutoffDate = new Date(Date.now() - maxAge * 60 * 60 * 1000);
+    
+    // Récupérer les emails en échec ou en attente
+    const failedLogs = await EmailLog.find({
+      campaignId,
+      status: { $in: ['failed', 'pending', 'bounced'] },
+      createdAt: { $gte: cutoffDate },
+      $or: [
+        { resendHistory: { $size: 0 } },
+        { resendHistory: { $exists: false } },
+        { 'resendHistory.2': { $exists: false } } // Max 3 tentatives
+      ]
+    }).populate('campaignId').limit(parseInt(limit));
+    
+    if (failedLogs.length === 0) {
+      return { message: 'Aucun email à renvoyer', resent: 0 };
+    }
+    
+    const results = [];
+    
+    for (const log of failedLogs) {
+      try {
+        const campaign = log.campaignId;
+        
+        // Préparer les données pour le renvoi
+        const emailData = {
+          to: log.email,
+          subject: campaign.subject,
+          html: campaign.content.html,
+          text: campaign.content.text,
+          fromEmail: campaign.fromEmail,
+          fromName: campaign.fromName,
+          replyTo: campaign.replyTo,
+          campaignId: campaign._id,
+          subscriberId: log.subscriberId,
+          recipientName: log.subscriberId?.name || ''
+        };
+        
+        // Tenter le renvoi
+        const result = await sendEmail(emailData);
+        
+        // Mettre à jour l'historique
+        log.resendHistory.push({
+          attemptedAt: new Date(),
+          status: 'success',
+          error: null
+        });
+        await log.save();
+        
+        results.push({ email: log.email, success: true, logId: result.logId });
+        
+      } catch (error) {
+        // Mettre à jour l'historique avec l'échec
+        log.resendHistory.push({
+          attemptedAt: new Date(),
+          status: 'failed',
+          error: error.message
+        });
+        await log.save();
+        
+        results.push({ email: log.email, success: false, error: error.message });
+      }
+      
+      // Petit délai entre chaque envoi
+      await new Promise(resolve => setTimeout(resolve, 300));
+    }
+    
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    return {
+      message: `Renvoi terminé: ${successful}/${results.length} emails`,
+      resent: successful,
+      failed,
+      results
+    };
+    
+  } catch (error) {
+    console.error('Erreur renvoi emails:', error);
+    throw error;
+  }
+};
+
+/**
+ * Marque un email comme spam
+ */
+const markAsSpam = async (emailLogId, reason = '') => {
+  try {
+    const log = await EmailLog.findByIdAndUpdate(
+      emailLogId,
+      {
+        status: 'spam',
+        markedAsSpamAt: new Date(),
+        spamReason: reason
+      },
+      { new: true }
+    );
+    
+    // Mettre à jour les stats de la campagne
+    if (log && log.campaignId) {
+      const Campaign = (await import('../models/EmailCampaign.js')).default;
+      await Campaign.findByIdAndUpdate(log.campaignId, {
+        $inc: { 'stats.complained': 1 }
+      });
+    }
+    
+    return log;
+  } catch (error) {
+    console.error('Erreur marquage spam:', error);
+    throw error;
+  }
+};
+
 export {
   initEmailService,
   sendEmail,
   sendBulkEmails,
   trackEmailOpen,
-  trackEmailClick
+  trackEmailClick,
+  getEmailLogs,
+  resendFailedEmails,
+  markAsSpam
 };
