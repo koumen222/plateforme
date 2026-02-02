@@ -33,7 +33,7 @@ const emailCampaignSchema = new mongoose.Schema({
     },
     segment: {
       type: String,
-      enum: ['active', 'unsubscribed', 'bounced', 'custom'],
+      enum: ['active', 'pending', 'unsubscribed', 'bounced', 'custom'],
       default: 'active'
     },
     customEmails: [{
