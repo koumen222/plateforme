@@ -28,7 +28,7 @@ const emailCampaignSchema = new mongoose.Schema({
   recipients: {
     type: {
       type: String,
-      enum: ['all', 'segment', 'list'],
+      enum: ['all', 'segment', 'list', 'single'],
       default: 'all'
     },
     segment: {
@@ -41,6 +41,15 @@ const emailCampaignSchema = new mongoose.Schema({
       lowercase: true,
       trim: true
     }],
+    email: {
+      type: String,
+      lowercase: true,
+      trim: true
+    },
+    name: {
+      type: String,
+      trim: true
+    },
     count: {
       type: Number,
       default: 0
@@ -48,7 +57,7 @@ const emailCampaignSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['draft', 'scheduled', 'sending', 'sent', 'paused', 'cancelled'],
+    enum: ['draft', 'scheduled', 'sending', 'sent', 'paused', 'cancelled', 'failed'],
     default: 'draft'
   },
   scheduledAt: {
@@ -75,6 +84,10 @@ const emailCampaignSchema = new mongoose.Schema({
       default: 0
     },
     bounced: {
+      type: Number,
+      default: 0
+    },
+    failed: {
       type: Number,
       default: 0
     },

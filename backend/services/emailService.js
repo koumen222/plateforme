@@ -59,7 +59,7 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
       openToken: uuidv4(),
       clickToken: uuidv4()
     },
-    unsubscribeToken: unsubscribeUrl ? uuidv4() : null
+    unsubscribeToken: uuidv4() // Always generate a unique token
   });
   
   try {

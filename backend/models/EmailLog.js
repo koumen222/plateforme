@@ -68,7 +68,8 @@ const emailLogSchema = new mongoose.Schema({
   unsubscribeToken: {
     type: String,
     unique: true,
-    sparse: true
+    sparse: true,
+    default: null
   }
 }, {
   timestamps: true

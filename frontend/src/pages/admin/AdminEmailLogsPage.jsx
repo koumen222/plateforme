@@ -61,7 +61,7 @@ export default function AdminEmailLogsPage() {
       queryParams.append('limit', filters.limit);
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-logs?${queryParams}`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-logs?${queryParams}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -80,7 +80,7 @@ export default function AdminEmailLogsPage() {
   const fetchStats = async () => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-logs/stats`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-logs/stats`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -96,7 +96,7 @@ export default function AdminEmailLogsPage() {
   const fetchCampaigns = async () => {
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-campaigns`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-campaigns`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
@@ -115,7 +115,7 @@ export default function AdminEmailLogsPage() {
     setResending(true);
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-logs/resend`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-logs/resend`,
         {
           method: 'POST',
           headers: {
@@ -145,7 +145,7 @@ export default function AdminEmailLogsPage() {
     
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-logs/${logId}/resend-single`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-logs/${logId}/resend-single`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
@@ -168,7 +168,7 @@ export default function AdminEmailLogsPage() {
     
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/api/email-logs/${logId}/mark-spam`,
+        `${import.meta.env.VITE_API_BASE_URL}/api/email-logs/${logId}/mark-spam`,
         {
           method: 'POST',
           headers: { Authorization: `Bearer ${token}` }
@@ -291,6 +291,7 @@ export default function AdminEmailLogsPage() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Statut</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Envoyé le</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ouvert le</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Cliqué le</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 </tr>
               </thead>
@@ -322,6 +323,9 @@ export default function AdminEmailLogsPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-500">
                       {formatDate(log.openedAt)}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-500">
+                      {formatDate(log.clickedAt)}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
