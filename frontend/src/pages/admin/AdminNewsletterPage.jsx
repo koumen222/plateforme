@@ -13,7 +13,7 @@ export default function AdminNewsletterPage() {
   const [formData, setFormData] = useState({
     subject: '',
     content: '',
-    tag: 'active',
+    recipients: { type: 'segment', segment: 'active', customEmails: [], email: '', name: '' },
     fromName: 'Infomania'
   })
 
@@ -43,12 +43,18 @@ export default function AdminNewsletterPage() {
     setTimeout(() => setNotification(null), 5000)
   }
 
-  const getTagCount = (tag) => {
+  const getRecipientCount = (recipients) => {
     if (!stats) return 0
-    if (tag === 'active') return stats.byUserStatus?.active || 0
-    if (tag === 'pending') return stats.byUserStatus?.pending || 0
-    if (tag === 'blocked') return stats.byUserStatus?.blocked || 0
-    if (tag === 'all') return stats.active || 0
+    if (!recipients || !recipients.type) return 0
+    if (recipients.type === 'all') return stats.active || 0
+    if (recipients.type === 'segment') {
+      if (recipients.segment === 'active') return stats.byUserStatus?.active || 0
+      if (recipients.segment === 'pending') return stats.byUserStatus?.pending || 0
+      if (recipients.segment === 'blocked') return stats.byUserStatus?.blocked || 0
+      return 0
+    }
+    if (recipients.type === 'list') return recipients.customEmails?.length || 0
+    if (recipients.type === 'single') return recipients.email ? 1 : 0
     return 0
   }
 
@@ -60,7 +66,17 @@ export default function AdminNewsletterPage() {
       return
     }
 
-    if (!confirm(`Envoyer cette newsletter à ${getTagCount(formData.tag)} abonnés avec le tag "${formData.tag}" ?`)) {
+    if (formData.recipients.type === 'single' && !formData.recipients.email) {
+      showNotification('Email du destinataire requis', 'error')
+      return
+    }
+
+    if (formData.recipients.type === 'list' && (!formData.recipients.customEmails || formData.recipients.customEmails.length === 0)) {
+      showNotification('Ajoute au moins un email dans la liste personnalisée', 'error')
+      return
+    }
+
+    if (!confirm(`Envoyer cette newsletter à ${getRecipientCount(formData.recipients)} destinataire(s) ?`)) {
       return
     }
 
@@ -74,16 +90,13 @@ export default function AdminNewsletterPage() {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          name: `Newsletter ${formData.tag} - ${new Date().toLocaleDateString('fr-FR')}`,
+          name: `Newsletter ${formData.recipients.type}${formData.recipients.type === 'segment' ? `:${formData.recipients.segment}` : ''}${formData.recipients.type === 'single' && formData.recipients.email ? `:${formData.recipients.email}` : ''} - ${new Date().toLocaleDateString('fr-FR')}`,
           subject: formData.subject,
           content: {
             html: formData.content,
             text: formData.content.replace(/<[^>]*>/g, '')
           },
-          recipients: {
-            type: formData.tag === 'all' ? 'all' : 'segment',
-            segment: formData.tag === 'all' ? 'active' : formData.tag
-          },
+          recipients: formData.recipients,
           fromEmail: 'contact@infomania.store',
           fromName: formData.fromName,
           replyTo: 'contact@infomania.store'
@@ -146,7 +159,7 @@ export default function AdminNewsletterPage() {
         setFormData({
           subject: '',
           content: '',
-          tag: 'active',
+          recipients: { type: 'segment', segment: 'active', customEmails: [], email: '', name: '' },
           fromName: 'Infomania'
         })
         fetchStats()
@@ -163,10 +176,18 @@ export default function AdminNewsletterPage() {
   }
 
   const tagLabels = {
+    all: '📧 Tous les abonnés actifs',
     active: '✅ Actifs',
     pending: '⏳ En attente',
-    blocked: '❌ Inactifs',
-    all: '📧 Tous'
+    blocked: '❌ Inactifs'
+  }
+
+  const getRecipientsButtonLabel = () => {
+    if (formData.recipients.type === 'all') return tagLabels.all
+    if (formData.recipients.type === 'segment') return tagLabels[formData.recipients.segment] || 'Segment'
+    if (formData.recipients.type === 'list') return '🧾 Liste personnalisée'
+    if (formData.recipients.type === 'single') return '� Une seule personne'
+    return 'Destinataires'
   }
 
   return (
@@ -201,20 +222,83 @@ export default function AdminNewsletterPage() {
           <h2 style={{ marginBottom: '20px', fontSize: '18px' }}>Nouvelle Newsletter</h2>
           <form onSubmit={handleSend}>
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Tag destinataires *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Destinataires *</label>
               <select
-                value={formData.tag}
-                onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                value={formData.recipients.type}
+                onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, type: e.target.value } })}
                 required
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
               >
-                <option value="active">✅ Actifs</option>
-                <option value="pending">⏳ En attente</option>
-                <option value="blocked">❌ Inactifs</option>
-                <option value="all">📧 Tous les abonnés</option>
+                <option value="all">📧 Tous les abonnés actifs</option>
+                <option value="segment">🏷️ Segment</option>
+                <option value="list">🧾 Liste personnalisée</option>
+                <option value="single">👤 Une seule personne</option>
               </select>
+              {formData.recipients.type === 'segment' && (
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Segment *</label>
+                  <select
+                    value={formData.recipients.segment}
+                    onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, segment: e.target.value } })}
+                    required
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  >
+                    <option value="active">✅ Actifs</option>
+                    <option value="pending">⏳ En attente</option>
+                    <option value="blocked">❌ Inactifs</option>
+                  </select>
+                </div>
+              )}
+
+              {formData.recipients.type === 'list' && (
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Liste d'emails (un par ligne) *</label>
+                  <textarea
+                    value={(formData.recipients.customEmails || []).join('\n')}
+                    onChange={(e) => {
+                      const raw = e.target.value
+                      const emails = raw
+                        .split(/\r?\n|,|;/g)
+                        .map(v => v.trim().toLowerCase())
+                        .filter(Boolean)
+                      const unique = Array.from(new Set(emails))
+                      setFormData({ ...formData, recipients: { ...formData.recipients, customEmails: unique } })
+                    }}
+                    rows="6"
+                    placeholder="email1@exemple.com\nemail2@exemple.com"
+                    style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontFamily: 'monospace', fontSize: '13px' }}
+                  />
+                </div>
+              )}
+
+              {formData.recipients.type === 'single' && (
+                <div style={{ marginTop: '10px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Email *</label>
+                    <input
+                      type="email"
+                      value={formData.recipients.email}
+                      onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, email: e.target.value } })}
+                      required
+                      placeholder="email@exemple.com"
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Nom</label>
+                    <input
+                      type="text"
+                      value={formData.recipients.name}
+                      onChange={(e) => setFormData({ ...formData, recipients: { ...formData.recipients, name: e.target.value } })}
+                      placeholder="Prénom Nom"
+                      style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+                </div>
+              )}
+
               <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
-                {getTagCount(formData.tag)} abonnés recevront cette newsletter
+                {getRecipientCount(formData.recipients)} destinataire(s) recevront cette newsletter
               </p>
             </div>
 
@@ -258,7 +342,7 @@ export default function AdminNewsletterPage() {
               className="admin-btn admin-btn-success"
               style={{ width: '100%', fontSize: '14px', padding: '10px' }}
             >
-              {sending ? '⏳ Envoi en cours...' : `📤 Envoyer à ${tagLabels[formData.tag]}`}
+              {sending ? '⏳ Envoi en cours...' : `📤 Envoyer à ${getRecipientsButtonLabel()}`}
             </button>
           </form>
         </div>
