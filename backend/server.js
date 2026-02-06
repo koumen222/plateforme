@@ -57,6 +57,12 @@ let notificationsRoutes = null;
 let coachingApplicationsRoutes = null;
 let ebooksRoutes = null;
 let paymentsRoutes = null;
+// Module E-commerce - Routes isolées
+let ecomAuthRoutes = null;
+let ecomProductsRoutes = null;
+let ecomReportsRoutes = null;
+let ecomStockRoutes = null;
+let ecomDecisionsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -1752,6 +1758,121 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement payments.js:', error.message);
     }
+
+    // ===== MODULE E-COMMERCE ISOLÉ =====
+    console.log('🛒 Chargement du module E-commerce Cockpit...');
+    
+    // Routes E-commerce Authentification
+    try {
+      const ecomAuthModule = await import("./ecom/routes/auth.js");
+      ecomAuthRoutes = ecomAuthModule.default;
+      app.use("/api/ecom/auth", ecomAuthRoutes);
+      console.log('✅ Routes E-commerce Auth chargées');
+      console.log('   POST /api/ecom/auth/login - Connexion e-commerce');
+      console.log('   POST /api/ecom/auth/register - Inscription e-commerce');
+      console.log('   GET  /api/ecom/auth/me - Profil utilisateur e-commerce');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
+    }
+
+    // Routes E-commerce Produits
+    try {
+      const ecomProductsModule = await import("./ecom/routes/products.js");
+      ecomProductsRoutes = ecomProductsModule.default;
+      app.use("/api/ecom/products", ecomProductsRoutes);
+      console.log('✅ Routes E-commerce Produits chargées');
+      console.log('   GET    /api/ecom/products - Liste produits');
+      console.log('   POST   /api/ecom/products - Créer produit');
+      console.log('   GET    /api/ecom/products/:id - Détail produit');
+      console.log('   PUT    /api/ecom/products/:id - Modifier produit');
+      console.log('   DELETE /api/ecom/products/:id - Supprimer produit');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/products.js:', error.message);
+    }
+
+    // Routes E-commerce Rapports
+    try {
+      const ecomReportsModule = await import("./ecom/routes/reports.js");
+      ecomReportsRoutes = ecomReportsModule.default;
+      app.use("/api/ecom/reports", ecomReportsRoutes);
+      console.log('✅ Routes E-commerce Rapports chargées');
+      console.log('   GET  /api/ecom/reports - Liste rapports quotidiens');
+      console.log('   POST /api/ecom/reports - Créer rapport quotidien');
+      console.log('   GET  /api/ecom/reports/stats/financial - Stats financières');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/reports.js:', error.message);
+    }
+
+    // Routes E-commerce Stock
+    try {
+      const ecomStockModule = await import("./ecom/routes/stock.js");
+      ecomStockRoutes = ecomStockModule.default;
+      app.use("/api/ecom/stock", ecomStockRoutes);
+      console.log('✅ Routes E-commerce Stock chargées');
+      console.log('   GET  /api/ecom/stock/orders - Commandes stock');
+      console.log('   POST /api/ecom/stock/orders - Créer commande stock');
+      console.log('   GET  /api/ecom/stock/alerts - Alertes stock');
+      console.log('   GET  /api/ecom/stock/overview - Vue ensemble stock');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/stock.js:', error.message);
+    }
+
+    // Routes E-commerce Décisions
+    try {
+      const ecomDecisionsModule = await import("./ecom/routes/decisions.js");
+      ecomDecisionsRoutes = ecomDecisionsModule.default;
+      app.use("/api/ecom/decisions", ecomDecisionsRoutes);
+      console.log('✅ Routes E-commerce Décisions chargées');
+      console.log('   GET  /api/ecom/decisions - Liste décisions');
+      console.log('   POST /api/ecom/decisions - Créer décision');
+      console.log('   GET  /api/ecom/decisions/dashboard/overview - Dashboard décisions');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/decisions.js:', error.message);
+    }
+
+    // Routes E-commerce Transactions (Comptabilité)
+    try {
+      const ecomTransactionsModule = await import("./ecom/routes/transactions.js");
+      const ecomTransactionsRoutes = ecomTransactionsModule.default;
+      app.use("/api/ecom/transactions", ecomTransactionsRoutes);
+      console.log('✅ Routes E-commerce Transactions chargées');
+      console.log('   GET  /api/ecom/transactions - Liste transactions');
+      console.log('   GET  /api/ecom/transactions/summary - Résumé financier');
+      console.log('   POST /api/ecom/transactions - Créer transaction');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/transactions.js:', error.message);
+    }
+
+    // Routes E-commerce Utilisateurs (Admin)
+    try {
+      const ecomUsersModule = await import("./ecom/routes/users.js");
+      const ecomUsersRoutes = ecomUsersModule.default;
+      app.use("/api/ecom/users", ecomUsersRoutes);
+      console.log('✅ Routes E-commerce Utilisateurs chargées');
+      console.log('   GET  /api/ecom/users - Liste utilisateurs');
+      console.log('   POST /api/ecom/users - Créer utilisateur');
+      console.log('   PUT  /api/ecom/users/:id - Modifier utilisateur');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/users.js:', error.message);
+    }
+
+    // Routes E-commerce Super Admin
+    try {
+      const ecomSuperAdminModule = await import("./ecom/routes/superAdmin.js");
+      const ecomSuperAdminRoutes = ecomSuperAdminModule.default;
+      app.use("/api/ecom/super-admin", ecomSuperAdminRoutes);
+      console.log('✅ Routes E-commerce Super Admin chargées');
+      console.log('   GET  /api/ecom/super-admin/users - Tous les utilisateurs');
+      console.log('   GET  /api/ecom/super-admin/workspaces - Toutes les workspaces');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
+    }
+
+    console.log('🛒 Module E-commerce Cockpit chargé avec succès!');
+    console.log('   Accès frontend: /ecom/*');
+    console.log('   API Base URL: /api/ecom/*');
+    console.log('   Rôles: super_admin, ecom_admin, ecom_closeuse, ecom_compta');
+    console.log('=====================================');
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {

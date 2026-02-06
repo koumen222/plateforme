@@ -130,8 +130,11 @@ router.get('/', async (req, res) => {
     // Enrichir les abonnés avec le statut et le numéro de téléphone de l'utilisateur
     const enrichedSubscribers = subscribers.map(subscriber => {
       const userStatus = userStatusMap[subscriber.email.toLowerCase()];
+      const rawName = (subscriber.name || '').trim();
+      const firstName = rawName ? rawName.split(/\s+/)[0] : '';
       return {
         ...subscriber,
+        firstName,
         userStatus: userStatus?.status || null,
         userAccountStatus: userStatus?.accountStatus || null,
         userPhone: userStatus?.phone || null

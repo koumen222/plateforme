@@ -575,12 +575,10 @@ const sendBulkWhatsApp = async (messages) => {
 };
 
 /**
- * Divise un message en 3 parties et les envoie séquentiellement
- * 1. "Bonjour [PRENOM]" (ou début du message)
+ * Envoie un message en 2 parties et les envoie séquentiellement
+ * 1. "Salut [PRENOM]"
  * 2. Attendre 4 secondes
- * 3. Partie 2 (milieu du message)
- * 4. Attendre 4 secondes
- * 5. Partie 3 (fin du message)
+ * 3. Suite du message + lien
  */
 const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }) => {
   // Remplacer [PRENOM] dans le message complet d'abord
@@ -594,58 +592,8 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
     console.log(`⚠️ [sendMessageInParts] Pas de prénom pour ${to}, [PRENOM] supprimé`);
   }
   
-  // Diviser le message en 3 parties approximativement égales
-  const lines = fullMessage.split('\n').filter(l => l.trim());
-  const totalLines = lines.length;
-  
-  let part1 = '';
-  let part2 = '';
-  let part3 = '';
-  
-  if (totalLines <= 2) {
-    // Message très court : tout dans la première partie avec "Bonjour"
-    part1 = firstName ? `Bonjour ${firstName} !\n\n${fullMessage}` : fullMessage;
-    part2 = '';
-    part3 = '';
-  } else if (totalLines <= 4) {
-    // Message court : première ligne avec "Bonjour", puis diviser le reste
-    const greeting = firstName ? `Bonjour ${firstName} !` : lines[0];
-    part1 = greeting;
-    const remaining = lines.slice(1);
-    const midPoint = Math.ceil(remaining.length / 2);
-    part2 = remaining.slice(0, midPoint).join('\n');
-    part3 = remaining.slice(midPoint).join('\n');
-    
-    // Remplacer [PRENOM] dans les parties 2 et 3 si nécessaire
-    if (firstName) {
-      part2 = part2.replace(/\[PRENOM\]/g, firstName);
-      part3 = part3.replace(/\[PRENOM\]/g, firstName);
-    }
-  } else {
-    // Message long : diviser en 3 parties égales
-    const partSize = Math.ceil(totalLines / 3);
-    const firstPartLines = lines.slice(0, partSize);
-    
-    // S'assurer que part1 commence par "Bonjour [PRENOM]"
-    if (firstName && !firstPartLines[0]?.toLowerCase().includes('bonjour')) {
-      part1 = `Bonjour ${firstName} !\n\n${firstPartLines.join('\n')}`;
-    } else {
-      part1 = firstPartLines.join('\n');
-      // Remplacer [PRENOM] si présent
-      if (firstName) {
-        part1 = part1.replace(/\[PRENOM\]/g, firstName);
-      }
-    }
-    
-    part2 = lines.slice(partSize, partSize * 2).join('\n');
-    part3 = lines.slice(partSize * 2).join('\n');
-    
-    // Remplacer [PRENOM] dans les parties 2 et 3 si nécessaire
-    if (firstName) {
-      part2 = part2.replace(/\[PRENOM\]/g, firstName);
-      part3 = part3.replace(/\[PRENOM\]/g, firstName);
-    }
-  }
+  const part1 = firstName ? `Salut ${firstName}` : 'Salut';
+  const part2 = fullMessage.trim();
   
   const results = [];
   
@@ -671,41 +619,20 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
   }
   
   // Envoyer la partie 2
-  if (part2.trim()) {
+  if (part2) {
     try {
       const result2 = await sendWhatsAppMessage({
         to,
-        message: part2.trim(),
+        message: part2,
         campaignId,
         userId,
         firstName,
         attemptNumber: 1
       });
       results.push({ part: 2, ...result2 });
-      
-      // Attendre 4 secondes avant la partie 3
-      await sleep(4000);
     } catch (error) {
       results.push({ part: 2, success: false, error: error.message });
       return { success: false, results, error: 'Erreur envoi partie 2' };
-    }
-  }
-  
-  // Envoyer la partie 3
-  if (part3.trim()) {
-    try {
-      const result3 = await sendWhatsAppMessage({
-        to,
-        message: part3.trim(),
-        campaignId,
-        userId,
-        firstName,
-        attemptNumber: 1
-      });
-      results.push({ part: 3, ...result3 });
-    } catch (error) {
-      results.push({ part: 3, success: false, error: error.message });
-      return { success: false, results, error: 'Erreur envoi partie 3' };
     }
   }
   
@@ -714,7 +641,7 @@ const sendMessageInParts = async ({ to, message, campaignId, userId, firstName }
   return { 
     success: allSuccess, 
     results,
-    message: allSuccess ? 'Message envoyé en 3 parties' : 'Erreur lors de l\'envoi de certaines parties'
+    message: allSuccess ? 'Message envoyé en 2 parties' : 'Erreur lors de l\'envoi de certaines parties'
   };
 };
 

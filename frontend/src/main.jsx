@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App.jsx'
 import './styles/tailwind.css'
+import './ecom/index.css' // Styles du module e-commerce
 
 // Enregistrer le Service Worker pour les notifications push
 if ('serviceWorker' in navigator) {

@@ -37,5 +37,10 @@ export default function MobileBottomNav() {
     return null
   }
 
+  // Masquer sur les pages ecom (elles ont leur propre bottom nav)
+  if (location.pathname.startsWith('/ecom')) {
+    return null
+  }
+
   return <BottomNav items={navItems} activeId={activeId} />
 }

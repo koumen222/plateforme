@@ -25,7 +25,7 @@ export default function AdminWhatsAppCampaignsPage() {
     variant1: '',
     variant2: '',
     variant3: '',
-    tag: 'active',
+    tag: 'all',
     recipientMode: 'tag',
     customPhones: '',
     fromPhone: ''
@@ -64,7 +64,7 @@ export default function AdminWhatsAppCampaignsPage() {
   })
 
   const [trainingCampaign, setTrainingCampaign] = useState({
-    variant1: 'Salut [PRENOM],\n\nTu veux te lancer dans l’e-commerce en Afrique en 2026, mais tu ne sais pas par où commencer ?\n\nBonne nouvelle : une formation 100% gratuite est disponible dès maintenant.\n\n✅ Comprendre les bases pour démarrer correctement\n✅ Éviter les erreurs classiques quand on débute\n✅ Passer à l’action avec une méthode claire\n\n👉 Accès direct à la formation gratuite :\nhttps://www.safitech.shop/course/se-lancer-en-e-commerce-en-afrique-en-2026---formation-gratuite/lesson/6968e00944195fcebab7847b\n\nSi tu connais quelqu’un que ça peut aider, transfère-lui ce message 🙌\n\nÀ bientôt,\nKounen Morgan',
+    variant1: 'Salut [PRENOM],\n\nTu veux te lancer dans l’e-commerce en Afrique en 2026, mais tu ne sais pas par où commencer ?\n\nBonne nouvelle : une formation 100% gratuite est disponible dès maintenant.\n\n✅ Comprendre les bases pour démarrer correctement\n✅ Éviter les erreurs classiques quand on débute\n✅ Passer à l’action avec une méthode claire\n\n👉 Accès direct à la formation gratuite :\nhttps://www.safitech.shop/course/se-lancer-en-e-commerce-en-afrique-en-2026---formation-gratuite/lesson/6968e00944195fcebab7847b\n\nSi tu connais quelqu’un que ça peut aider, transfère-lui ce message 🙌\n\nTu veux que Morgan t’accompagne personnellement ?\n\nÀ bientôt,\nKounen Morgan',
     enabled: false
   })
 
@@ -238,7 +238,7 @@ export default function AdminWhatsAppCampaignsPage() {
     setSendingTraining(true)
     setRecipientReviewLoading(true)
     try {
-      const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/recipients-preview?tag=active`, {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/whatsapp-campaigns/recipients-preview?tag=all`, {
         headers: { Authorization: `Bearer ${token}` }
       })
 
@@ -259,7 +259,7 @@ export default function AdminWhatsAppCampaignsPage() {
       }))
 
       if (!items || items.length === 0) {
-        showNotification('Aucun utilisateur actif avec numéro trouvé', 'error')
+        showNotification('Aucun utilisateur avec numéro trouvé', 'error')
         return
       }
 
@@ -667,7 +667,7 @@ export default function AdminWhatsAppCampaignsPage() {
         variant1: '',
         variant2: '',
         variant3: '',
-        tag: 'active',
+        tag: 'all',
         recipientMode: 'tag',
         customPhones: '',
         fromPhone: ''
@@ -1154,7 +1154,7 @@ export default function AdminWhatsAppCampaignsPage() {
             🎓 Campagne Formation
           </h2>
           <p style={{ fontSize: '13px', color: '#6c757d', marginBottom: '16px' }}>
-            Envoie ce message à tous les utilisateurs <strong>actifs</strong> pour la formation gratuite.
+            Envoie ce message à tous les utilisateurs pour la formation gratuite.
           </p>
 
           <div style={{ marginBottom: '16px' }}>

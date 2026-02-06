@@ -58,9 +58,13 @@ import TestNotificationsPage from './pages/TestNotificationsPage'
 import LiveReplaysPage from './pages/LiveReplaysPage'
 import EbookPage from './pages/EbookPage'
 import CoachingScale7Page from './pages/CoachingScale7Page'
+import EcomApp from './ecom/App.jsx'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
+
+// Import des styles E-commerce
+import './ecom/index.css'
 
 // Composant pour nettoyer l'URL des anciens paramètres token/user
 function CleanUrlRedirect() {
@@ -212,6 +216,9 @@ function App() {
           <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
           <Route path="/test-notifications" element={<PlatformLayout><PrivateRoute><TestNotificationsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
+          
+          {/* Routes E-commerce */}
+          <Route path="/ecom/*" element={<EcomApp />} />
           
           {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
           <Route
