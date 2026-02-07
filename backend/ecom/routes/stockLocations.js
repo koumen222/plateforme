@@ -108,12 +108,16 @@ router.get('/summary',
             totalValue: { $sum: { $multiply: ['$quantity', '$unitCost'] } },
             totalEntries: { $sum: 1 },
             uniqueCities: { $addToSet: '$city' },
-            uniqueAgencies: { $addToSet: { $cond: [{ $eq: ['$agency', ''] }, '$$REMOVE', '$agency'] } }
+            uniqueAgencies: { $addToSet: '$agency' }
           }
         }
       ]);
 
-      const total = totals[0] || { totalQuantity: 0, totalValue: 0, totalEntries: 0, uniqueCities: [], uniqueAgencies: [] };
+      const raw = totals[0] || { totalQuantity: 0, totalValue: 0, totalEntries: 0, uniqueCities: [], uniqueAgencies: [] };
+      const total = {
+        ...raw,
+        uniqueAgencies: (raw.uniqueAgencies || []).filter(a => a && a !== '')
+      };
 
       res.json({
         success: true,

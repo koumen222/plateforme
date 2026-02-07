@@ -77,10 +77,10 @@ const authReducer = (state, action) => {
         error: null
       };
     
-    case 'CLEAR_ERROR':
+    case 'UPDATE_USER':
       return {
         ...state,
-        error: null
+        user: { ...state.user, ...action.payload },
       };
     
     default:
@@ -217,6 +217,21 @@ export const EcomAuthProvider = ({ children }) => {
     }
   };
 
+  // Changer la devise
+  const changeCurrency = async (currency) => {
+    try {
+      const response = await authApi.changeCurrency({ currency });
+      dispatch({
+        type: 'UPDATE_USER',
+        payload: { currency }
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Erreur lors du changement de devise';
+      throw new Error(errorMessage);
+    }
+  };
+
   // Vérifier les permissions de l'utilisateur
   const hasPermission = (permission) => {
     if (!state.user) return false;
@@ -254,6 +269,7 @@ export const EcomAuthProvider = ({ children }) => {
     logout,
     register,
     changePassword,
+    changeCurrency,
     hasPermission,
     hasRole,
     clearError,

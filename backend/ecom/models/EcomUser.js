@@ -41,6 +41,24 @@ const ecomUserSchema = new mongoose.Schema({
   lastLogin: {
     type: Date
   },
+  currency: {
+    type: String,
+    default: 'XAF',
+    enum: [
+      // Afrique Centrale
+      'XAF', 'CDF',
+      // Afrique de l'Ouest
+      'XOF', 'NGN', 'GHS', 'GNF', 'SLL',
+      // Afrique du Nord
+      'MAD', 'TND', 'DZD', 'EGP', 'LYD',
+      // Afrique de l'Est
+      'KES', 'UGX', 'TZS', 'RWF', 'BIF', 'ETB', 'SOS', 'SDG', 'SSP', 'ERN', 'DJF',
+      // Afrique Australe
+      'ZAR', 'BWP', 'NAD', 'ZMW', 'MZN', 'MWK', 'SZL', 'LSL', 'AOA', 'ZWL',
+      // Internationales
+      'USD', 'EUR', 'GBP', 'CAD', 'CNY'
+    ]
+  },
   createdAt: {
     type: Date,
     default: Date.now

@@ -248,7 +248,8 @@ router.get('/me', async (req, res) => {
           isActive: user.isActive,
           lastLogin: user.lastLogin,
           createdAt: user.createdAt,
-          workspaceId: user.workspaceId
+          workspaceId: user.workspaceId,
+          currency: user.currency
         },
         workspace: workspace ? {
           id: workspace._id,
@@ -319,6 +320,71 @@ router.put('/change-password', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur change password e-commerce:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// PUT /api/ecom/auth/currency - Changer la devise de l'utilisateur
+router.put('/currency', async (req, res) => {
+  try {
+    const { currency } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const user = await EcomUser.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé ou inactif'
+      });
+    }
+
+    // Valider la devise
+    const allowedCurrencies = [
+      // Afrique Centrale
+      'XAF', 'CDF',
+      // Afrique de l'Ouest
+      'XOF', 'NGN', 'GHS', 'GNF', 'SLL',
+      // Afrique du Nord
+      'MAD', 'TND', 'DZD', 'EGP', 'LYD',
+      // Afrique de l'Est
+      'KES', 'UGX', 'TZS', 'RWF', 'BIF', 'ETB', 'SOS', 'SDG', 'SSP', 'ERN', 'DJF',
+      // Afrique Australe
+      'ZAR', 'BWP', 'NAD', 'ZMW', 'MZN', 'MWK', 'SZL', 'LSL', 'AOA', 'ZWL',
+      // Internationales
+      'USD', 'EUR', 'GBP', 'CAD', 'CNY'
+    ];
+    if (!currency || !allowedCurrencies.includes(currency)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Devise non valide'
+      });
+    }
+
+    // Mettre à jour la devise
+    user.currency = currency;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Devise mise à jour avec succès',
+      data: { currency }
+    });
+  } catch (error) {
+    console.error('Erreur change currency e-commerce:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur'

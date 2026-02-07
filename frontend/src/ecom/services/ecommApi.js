@@ -63,7 +63,10 @@ export const authApi = {
   getProfile: () => ecomApi.get('/auth/me'),
   
   // Changer le mot de passe
-  changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords)
+  changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords),
+  
+  // Changer la devise
+  changeCurrency: (data) => ecomApi.put('/auth/currency', data)
 };
 
 export const productsApi = {

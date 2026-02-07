@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { EcomAuthProvider, EcomAuthDebug } from './hooks/useEcomAuth.jsx';
+import { CurrencyProvider } from './contexts/CurrencyContext.jsx';
 import { useEcomAuth } from './hooks/useEcomAuth.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
@@ -117,85 +118,88 @@ const LayoutRoute = ({ children, requiredRole }) => {
 const EcomApp = () => {
   return (
     <EcomAuthProvider>
-      <div className="ecom-app">
-        <Routes>
-          {/* Route racine - landing page */}
-          <Route path="/" element={<EcomLandingPage />} />
-          
-          {/* Routes publiques (sans layout) */}
-          <Route path="landing" element={<EcomLandingPage />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-          <Route path="setup-admin" element={<SetupSuperAdmin />} />
-          
-          {/* Routes produits */}
-          <Route path="products" element={<LayoutRoute requiredRole="ecom_admin"><ProductsList /></LayoutRoute>} />
-          <Route path="products/new" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
-          <Route path="products/:id" element={<LayoutRoute><ProductDetail /></LayoutRoute>} />
-          <Route path="products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
-          
-          {/* Routes rapports */}
-          <Route path="reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
-          <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
-          <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
-          <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
-          
-          {/* Routes stock */}
-          <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
-          <Route path="stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
-          <Route path="stock/orders/new" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
-          <Route path="stock/orders/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
-          <Route path="stock-locations" element={<LayoutRoute requiredRole="ecom_admin"><StockManagement /></LayoutRoute>} />
-          
-          {/* Routes transactions (compta + admin) */}
-          <Route path="transactions" element={<LayoutRoute><TransactionsList /></LayoutRoute>} />
-          <Route path="transactions/new" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
-          <Route path="transactions/:id" element={<LayoutRoute><TransactionDetail /></LayoutRoute>} />
-          <Route path="transactions/:id/edit" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
-          
-          {/* Routes décisions */}
-          <Route path="decisions" element={<LayoutRoute requiredRole="ecom_admin"><DecisionsList /></LayoutRoute>} />
-          <Route path="decisions/new" element={<LayoutRoute requiredRole="ecom_admin"><DecisionForm /></LayoutRoute>} />
-          
-          {/* Routes clients (admin + closeuse) */}
-          <Route path="clients" element={<LayoutRoute><ClientsList /></LayoutRoute>} />
-          <Route path="clients/new" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
-          <Route path="clients/:id/edit" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
-          
-          {/* Routes prospects */}
-          <Route path="prospects" element={<LayoutRoute><ProspectsList /></LayoutRoute>} />
-          
-          {/* Routes commandes (admin + closeuse) */}
-          <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
-          <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
-          
-          {/* Routes campagnes marketing (admin) */}
-          <Route path="campaigns" element={<LayoutRoute requiredRole="ecom_admin"><CampaignsList /></LayoutRoute>} />
-          <Route path="campaigns/new" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
-          <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
-          
-          {/* Routes gestion utilisateurs (admin) */}
-          <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
-          
-          {/* Routes Super Admin */}
-          <Route path="super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />
-          <Route path="super-admin/users" element={<LayoutRoute requiredRole="super_admin"><SuperAdminUsers /></LayoutRoute>} />
-          <Route path="super-admin/workspaces" element={<LayoutRoute requiredRole="super_admin"><SuperAdminWorkspaces /></LayoutRoute>} />
-          <Route path="super-admin/activity" element={<LayoutRoute requiredRole="super_admin"><SuperAdminActivity /></LayoutRoute>} />
-          <Route path="super-admin/settings" element={<LayoutRoute requiredRole="super_admin"><SuperAdminSettings /></LayoutRoute>} />
-          
-          {/* Route de redirection automatique */}
-          <Route path="dashboard" element={<DashboardRedirect />} />
-          
-          {/* Dashboards protégés par rôle */}
-          <Route path="dashboard/admin" element={<LayoutRoute requiredRole="ecom_admin"><AdminDashboard /></LayoutRoute>} />
-          <Route path="dashboard/closeuse" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseDashboard /></LayoutRoute>} />
-          <Route path="dashboard/compta" element={<LayoutRoute requiredRole="ecom_compta"><ComptaDashboard /></LayoutRoute>} />
-          
-          {/* Route catch-all */}
-          <Route path="*" element={<Navigate to="/ecom/login" replace />} />
-        </Routes>
-      </div>
+      <CurrencyProvider>
+        <div className="min-h-screen bg-gray-50">
+          {process.env.NODE_ENV === 'development' && <EcomAuthDebug />}
+          <Routes>
+            {/* Route racine - landing page */}
+            <Route path="/" element={<EcomLandingPage />} />
+            
+            {/* Routes publiques (sans layout) */}
+            <Route path="landing" element={<EcomLandingPage />} />
+            <Route path="login" element={<Login />} />
+            <Route path="register" element={<Register />} />
+            <Route path="setup-admin" element={<SetupSuperAdmin />} />
+            
+            {/* Routes produits */}
+            <Route path="products" element={<LayoutRoute requiredRole="ecom_admin"><ProductsList /></LayoutRoute>} />
+            <Route path="products/new" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
+            <Route path="products/:id" element={<LayoutRoute><ProductDetail /></LayoutRoute>} />
+            <Route path="products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
+            
+            {/* Routes rapports */}
+            <Route path="reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
+            <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
+            <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
+            <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
+            
+            {/* Routes stock */}
+            <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
+            <Route path="stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
+            <Route path="stock/orders/new" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
+            <Route path="stock/orders/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
+            <Route path="stock-locations" element={<LayoutRoute requiredRole="ecom_admin"><StockManagement /></LayoutRoute>} />
+            
+            {/* Routes transactions (compta + admin) */}
+            <Route path="transactions" element={<LayoutRoute><TransactionsList /></LayoutRoute>} />
+            <Route path="transactions/new" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
+            <Route path="transactions/:id" element={<LayoutRoute><TransactionDetail /></LayoutRoute>} />
+            <Route path="transactions/:id/edit" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
+            
+            {/* Routes décisions */}
+            <Route path="decisions" element={<LayoutRoute requiredRole="ecom_admin"><DecisionsList /></LayoutRoute>} />
+            <Route path="decisions/new" element={<LayoutRoute requiredRole="ecom_admin"><DecisionForm /></LayoutRoute>} />
+            
+            {/* Routes clients (admin + closeuse) */}
+            <Route path="clients" element={<LayoutRoute><ClientsList /></LayoutRoute>} />
+            <Route path="clients/new" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+            <Route path="clients/:id/edit" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+            
+            {/* Routes prospects */}
+            <Route path="prospects" element={<LayoutRoute><ProspectsList /></LayoutRoute>} />
+            
+            {/* Routes commandes (admin + closeuse) */}
+            <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
+            <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
+            
+            {/* Routes campagnes marketing (admin) */}
+            <Route path="campaigns" element={<LayoutRoute requiredRole="ecom_admin"><CampaignsList /></LayoutRoute>} />
+            <Route path="campaigns/new" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
+            <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
+            
+            {/* Routes gestion utilisateurs (admin) */}
+            <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
+            
+            {/* Routes Super Admin */}
+            <Route path="super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />
+            <Route path="super-admin/users" element={<LayoutRoute requiredRole="super_admin"><SuperAdminUsers /></LayoutRoute>} />
+            <Route path="super-admin/workspaces" element={<LayoutRoute requiredRole="super_admin"><SuperAdminWorkspaces /></LayoutRoute>} />
+            <Route path="super-admin/activity" element={<LayoutRoute requiredRole="super_admin"><SuperAdminActivity /></LayoutRoute>} />
+            <Route path="super-admin/settings" element={<LayoutRoute requiredRole="super_admin"><SuperAdminSettings /></LayoutRoute>} />
+            
+            {/* Route de redirection automatique */}
+            <Route path="dashboard" element={<DashboardRedirect />} />
+            
+            {/* Dashboards protégés par rôle */}
+            <Route path="dashboard/admin" element={<LayoutRoute requiredRole="ecom_admin"><AdminDashboard /></LayoutRoute>} />
+            <Route path="dashboard/closeuse" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseDashboard /></LayoutRoute>} />
+            <Route path="dashboard/compta" element={<LayoutRoute requiredRole="ecom_compta"><ComptaDashboard /></LayoutRoute>} />
+            
+            {/* Route catch-all */}
+            <Route path="*" element={<Navigate to="/ecom/login" replace />} />
+          </Routes>
+        </div>
+      </CurrencyProvider>
     </EcomAuthProvider>
   );
 };

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import CurrencySelector from './CurrencySelector.jsx';
 
 const EcomLayout = ({ children }) => {
   const { user, workspace, logout } = useEcomAuth();
@@ -348,6 +349,7 @@ const EcomLayout = ({ children }) => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <CurrencySelector compact />
               <span className="hidden sm:inline text-sm text-gray-500 truncate max-w-[120px] lg:max-w-none">{user?.email}</span>
               <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full whitespace-nowrap">
                 {roleLabel[user?.role] || user?.role}
