@@ -83,7 +83,7 @@ router.get('/super-admin-exists', async (req, res) => {
 // POST /api/ecom/auth/register - Création d'un compte + workspace
 router.post('/register', validateEmail, validatePassword, async (req, res) => {
   try {
-    const { email, password, workspaceName, inviteCode, superAdmin } = req.body;
+    const { email, password, workspaceName, inviteCode, superAdmin, selectedRole } = req.body;
 
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await EcomUser.findOne({ email });
@@ -142,7 +142,9 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
           message: 'Code d\'invitation invalide ou espace inactif'
         });
       }
-      role = 'ecom_closeuse'; // Par défaut closeuse quand on rejoint
+      // Permettre de choisir un rôle lors de l'inscription (closeuse par défaut)
+      const allowedJoinRoles = ['ecom_closeuse', 'ecom_compta', 'ecom_livreur'];
+      role = (selectedRole && allowedJoinRoles.includes(selectedRole)) ? selectedRole : 'ecom_closeuse';
     } else {
       // Créer un nouveau workspace
       if (!workspaceName || workspaceName.trim().length < 2) {

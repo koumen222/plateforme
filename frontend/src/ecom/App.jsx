@@ -14,6 +14,7 @@ import ReportForm from './pages/ReportForm.jsx';
 import ReportDetail from './pages/ReportDetail.jsx';
 import StockOrdersList from './pages/StockOrdersList.jsx';
 import StockOrderForm from './pages/StockOrderForm.jsx';
+import StockManagement from './pages/StockManagement.jsx';
 import DecisionsList from './pages/DecisionsList.jsx';
 import DecisionForm from './pages/DecisionForm.jsx';
 import TransactionsList from './pages/TransactionsList.jsx';
@@ -144,6 +145,7 @@ const EcomApp = () => {
           <Route path="stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
           <Route path="stock/orders/new" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
           <Route path="stock/orders/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
+          <Route path="stock-locations" element={<LayoutRoute requiredRole="ecom_admin"><StockManagement /></LayoutRoute>} />
           
           {/* Routes transactions (compta + admin) */}
           <Route path="transactions" element={<LayoutRoute><TransactionsList /></LayoutRoute>} />

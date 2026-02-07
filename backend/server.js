@@ -1817,6 +1817,15 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/stock.js:', error.message);
     }
 
+    // Routes E-commerce Stock Locations (gestion stock par ville/agence)
+    try {
+      const ecomStockLocationsModule = await import("./ecom/routes/stockLocations.js");
+      app.use("/api/ecom/stock-locations", ecomStockLocationsModule.default);
+      console.log('✅ Routes E-commerce Stock Locations chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/stockLocations.js:', error.message);
+    }
+
     // Routes E-commerce Décisions
     try {
       const ecomDecisionsModule = await import("./ecom/routes/decisions.js");

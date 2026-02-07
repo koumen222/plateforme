@@ -81,6 +81,19 @@ const EcomLayout = ({ children }) => {
       primary: false
     },
     {
+      name: 'Gestion Stock',
+      shortName: 'G.Stock',
+      href: '/ecom/stock-locations',
+      icon: (
+        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+        </svg>
+      ),
+      roles: ['ecom_admin'],
+      primary: false
+    },
+    {
       name: 'Transactions',
       shortName: 'Compta',
       href: '/ecom/transactions',
@@ -454,6 +467,7 @@ const getPageTitle = (pathname) => {
   if (pathname.includes('/reports')) return 'Rapports';
   if (pathname.includes('/stock/orders/new')) return 'Nouvelle commande';
   if (pathname.includes('/stock/orders') && pathname.includes('/edit')) return 'Modifier commande';
+  if (pathname.includes('/stock-locations')) return 'Gestion Stock';
   if (pathname.includes('/stock')) return 'Stock';
   if (pathname.includes('/transactions/new')) return 'Nouvelle transaction';
   if (pathname.includes('/transactions') && pathname.includes('/edit')) return 'Modifier transaction';

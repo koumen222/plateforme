@@ -11,7 +11,8 @@ const Register = () => {
     password: '',
     confirmPassword: '',
     workspaceName: '',
-    inviteCode: ''
+    inviteCode: '',
+    selectedRole: 'ecom_closeuse'
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -55,6 +56,7 @@ const Register = () => {
         payload.workspaceName = formData.workspaceName.trim();
       } else {
         payload.inviteCode = formData.inviteCode.trim();
+        payload.selectedRole = formData.selectedRole;
       }
 
       await register(payload);
@@ -161,6 +163,25 @@ const Register = () => {
                   className="block w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono tracking-wider transition"
                 />
                 <p className="mt-1.5 text-xs text-gray-500">Demandez le code à l'administrateur de l'espace</p>
+              </div>
+            )}
+
+            {mode === 'join' && (
+              <div>
+                <label htmlFor="selectedRole" className="block text-sm font-medium text-gray-300 mb-1.5">
+                  Votre rôle
+                </label>
+                <select
+                  id="selectedRole"
+                  name="selectedRole"
+                  value={formData.selectedRole}
+                  onChange={handleInputChange}
+                  className="block w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition"
+                >
+                  <option value="ecom_closeuse">Closeuse</option>
+                  <option value="ecom_compta">Comptable</option>
+                  <option value="ecom_livreur">Livreur</option>
+                </select>
               </div>
             )}
 
@@ -271,8 +292,8 @@ const Register = () => {
               <ul className="space-y-2">
                 {[
                   'Demandez le code d\'invitation à votre admin',
-                  'Vous serez ajouté(e) comme closeuse par défaut',
-                  'L\'admin pourra changer votre rôle ensuite'
+                  'Choisissez votre rôle : Closeuse, Comptable ou Livreur',
+                  'Vous aurez accès aux fonctionnalités de votre rôle'
                 ].map((text, i) => (
                   <li key={i} className="flex items-center gap-2.5 text-xs text-gray-400">
                     <span className="w-5 h-5 bg-blue-500/20 text-blue-400 rounded-md flex items-center justify-center text-[10px] font-bold flex-shrink-0">{i + 1}</span>
