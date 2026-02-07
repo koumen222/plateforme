@@ -14,9 +14,19 @@ const ecomUserSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  name: {
+    type: String,
+    trim: true,
+    default: ''
+  },
+  phone: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   role: {
     type: String,
-    enum: ['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta'],
+    enum: ['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'],
     default: 'ecom_closeuse'
   },
   workspaceId: {
@@ -63,7 +73,8 @@ ecomUserSchema.methods.getPermissions = function() {
     super_admin: ['admin:read', 'admin:write'],
     ecom_admin: ['*'],
     ecom_closeuse: ['orders:read', 'orders:write'],
-    ecom_compta: ['finance:read']
+    ecom_compta: ['finance:read'],
+    ecom_livreur: ['orders:read']
   };
   
   return permissions[this.role] || [];

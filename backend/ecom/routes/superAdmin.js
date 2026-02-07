@@ -114,7 +114,7 @@ router.put('/users/:id/role',
   async (req, res) => {
     try {
       const { role } = req.body;
-      if (!['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta'].includes(role)) {
+      if (!['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'].includes(role)) {
         return res.status(400).json({ success: false, message: 'Rôle invalide' });
       }
 

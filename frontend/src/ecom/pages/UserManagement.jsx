@@ -5,13 +5,15 @@ import ecomApi from '../services/ecommApi.js';
 const roleLabels = {
   ecom_admin: 'Admin',
   ecom_closeuse: 'Closeuse',
-  ecom_compta: 'Comptable'
+  ecom_compta: 'Comptable',
+  ecom_livreur: 'Livreur'
 };
 
 const roleColors = {
   ecom_admin: 'bg-purple-100 text-purple-800',
   ecom_closeuse: 'bg-blue-100 text-blue-800',
-  ecom_compta: 'bg-green-100 text-green-800'
+  ecom_compta: 'bg-green-100 text-green-800',
+  ecom_livreur: 'bg-orange-100 text-orange-800'
 };
 
 const UserManagement = () => {
@@ -30,7 +32,7 @@ const UserManagement = () => {
   const [selectedUser, setSelectedUser] = useState(null);
 
   // Form state
-  const [createForm, setCreateForm] = useState({ email: '', password: '', role: 'ecom_closeuse' });
+  const [createForm, setCreateForm] = useState({ email: '', password: '', role: 'ecom_closeuse', name: '', phone: '' });
   const [editForm, setEditForm] = useState({ role: '', isActive: true });
   const [newPassword, setNewPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -63,7 +65,7 @@ const UserManagement = () => {
       await ecomApi.post('/users', createForm);
       setSuccess('Utilisateur créé avec succès');
       setShowCreateModal(false);
-      setCreateForm({ email: '', password: '', role: 'ecom_closeuse' });
+      setCreateForm({ email: '', password: '', role: 'ecom_closeuse', name: '', phone: '' });
       loadUsers();
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de la création');
@@ -220,6 +222,10 @@ const UserManagement = () => {
           <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-medium mt-1">Comptables</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 sm:p-4 text-center">
+          <p className="text-2xl sm:text-3xl font-bold text-orange-600">{stats.livreurs || 0}</p>
+          <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-medium mt-1">Livreurs</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 text-center">
           <p className="text-2xl sm:text-3xl font-bold text-purple-600">{stats.admins || 0}</p>
           <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-medium mt-1">Admins</p>
         </div>
@@ -239,6 +245,10 @@ const UserManagement = () => {
           <button onClick={() => setFilterRole('ecom_compta')}
             className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${filterRole === 'ecom_compta' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
             Comptables
+          </button>
+          <button onClick={() => setFilterRole('ecom_livreur')}
+            className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${filterRole === 'ecom_livreur' ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+            Livreurs
           </button>
           <button onClick={() => setFilterRole('ecom_admin')}
             className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition ${filterRole === 'ecom_admin' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
@@ -260,10 +270,10 @@ const UserManagement = () => {
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   {/* Avatar */}
                   <div className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                    u.role === 'ecom_admin' ? 'bg-purple-100' : u.role === 'ecom_compta' ? 'bg-green-100' : 'bg-blue-100'
+                    u.role === 'ecom_admin' ? 'bg-purple-100' : u.role === 'ecom_compta' ? 'bg-green-100' : u.role === 'ecom_livreur' ? 'bg-orange-100' : 'bg-blue-100'
                   }`}>
                     <span className={`text-sm font-bold ${
-                      u.role === 'ecom_admin' ? 'text-purple-700' : u.role === 'ecom_compta' ? 'text-green-700' : 'text-blue-700'
+                      u.role === 'ecom_admin' ? 'text-purple-700' : u.role === 'ecom_compta' ? 'text-green-700' : u.role === 'ecom_livreur' ? 'text-orange-700' : 'text-blue-700'
                     }`}>
                       {u.email?.charAt(0).toUpperCase()}
                     </span>
@@ -363,9 +373,28 @@ const UserManagement = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="ecom_closeuse">Closeuse</option>
                   <option value="ecom_compta">Comptable</option>
+                  <option value="ecom_livreur">Livreur</option>
                   <option value="ecom_admin">Admin</option>
                 </select>
               </div>
+              {createForm.role === 'ecom_livreur' && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <input type="text" value={createForm.name}
+                      onChange={(e) => setCreateForm(p => ({ ...p, name: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Nom du livreur" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone (WhatsApp) *</label>
+                    <input type="tel" value={createForm.phone}
+                      onChange={(e) => setCreateForm(p => ({ ...p, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Ex: 237676778377" />
+                  </div>
+                </>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowCreateModal(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm">
@@ -395,6 +424,7 @@ const UserManagement = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
                   <option value="ecom_closeuse">Closeuse</option>
                   <option value="ecom_compta">Comptable</option>
+                  <option value="ecom_livreur">Livreur</option>
                   <option value="ecom_admin">Admin</option>
                 </select>
               </div>

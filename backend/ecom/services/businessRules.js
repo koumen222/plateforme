@@ -30,22 +30,10 @@ export const checkBusinessRules = async (action, context) => {
   }
 };
 
-// Règle: max 3 produits actifs
+// Règle: vérifier le rôle pour créer un produit
 const checkCreateProductRules = async (user, productData) => {
   if (user.role !== 'ecom_admin') {
     return { allowed: false, message: 'Seul un admin peut créer des produits' };
-  }
-
-  const activeProductsCount = await Product.countDocuments({ 
-    isActive: true,
-    status: { $in: ['test', 'stable', 'winner'] }
-  });
-
-  if (activeProductsCount >= 3) {
-    return { 
-      allowed: false, 
-      message: 'Maximum de 3 produits actifs atteint. Désactivez un produit existant avant d\'en créer un nouveau.' 
-    };
   }
 
   return { allowed: true };
@@ -55,22 +43,6 @@ const checkCreateProductRules = async (user, productData) => {
 const checkUpdateProductRules = async (user, product, updateData) => {
   if (user.role !== 'ecom_admin') {
     return { allowed: false, message: 'Seul un admin peut modifier des produits' };
-  }
-
-  // Si on tente de réactiver un produit
-  if (updateData?.isActive && !product.isActive) {
-    const activeProductsCount = await Product.countDocuments({ 
-      _id: { $ne: product._id },
-      isActive: true,
-      status: { $in: ['test', 'stable', 'winner'] }
-    });
-
-    if (activeProductsCount >= 3) {
-      return { 
-        allowed: false, 
-        message: 'Maximum de 3 produits actifs atteint. Désactivez un autre produit d\'abord.' 
-      };
-    }
   }
 
   return { allowed: true };

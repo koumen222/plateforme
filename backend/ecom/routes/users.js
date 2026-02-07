@@ -25,6 +25,7 @@ router.get('/',
         admins: users.filter(u => u.role === 'ecom_admin').length,
         closeuses: users.filter(u => u.role === 'ecom_closeuse').length,
         comptas: users.filter(u => u.role === 'ecom_compta').length,
+        livreurs: users.filter(u => u.role === 'ecom_livreur').length,
         active: users.filter(u => u.isActive).length,
         inactive: users.filter(u => !u.isActive).length
       };
@@ -35,6 +36,25 @@ router.get('/',
       });
     } catch (error) {
       console.error('Erreur liste utilisateurs ecom:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// GET /api/ecom/users/livreurs/list - Liste des livreurs actifs (accessible par tous les authés)
+router.get('/livreurs/list',
+  requireEcomAuth,
+  async (req, res) => {
+    try {
+      const livreurs = await EcomUser.find({
+        workspaceId: req.workspaceId,
+        role: 'ecom_livreur',
+        isActive: true
+      }).select('name email phone');
+
+      res.json({ success: true, data: livreurs });
+    } catch (error) {
+      console.error('Erreur liste livreurs:', error);
       res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
   }
@@ -70,7 +90,7 @@ router.post('/',
         return res.status(400).json({ success: false, message: 'Email et mot de passe requis' });
       }
 
-      if (!['ecom_admin', 'ecom_closeuse', 'ecom_compta'].includes(role)) {
+      if (!['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'].includes(role)) {
         return res.status(400).json({ success: false, message: 'Rôle invalide' });
       }
 
@@ -79,7 +99,8 @@ router.post('/',
         return res.status(400).json({ success: false, message: 'Cet email est déjà utilisé' });
       }
 
-      const user = new EcomUser({ email, password, role, workspaceId: req.workspaceId });
+      const { name, phone } = req.body;
+      const user = new EcomUser({ email, password, role, workspaceId: req.workspaceId, name: name || '', phone: phone || '' });
       await user.save();
 
       res.status(201).json({
@@ -118,9 +139,11 @@ router.put('/:id',
         return res.status(400).json({ success: false, message: 'Vous ne pouvez pas vous désactiver vous-même' });
       }
 
-      if (role && ['ecom_admin', 'ecom_closeuse', 'ecom_compta'].includes(role)) {
+      if (role && ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'].includes(role)) {
         user.role = role;
       }
+      if (req.body.name !== undefined) user.name = req.body.name;
+      if (req.body.phone !== undefined) user.phone = req.body.phone;
       if (isActive !== undefined) {
         user.isActive = isActive;
       }

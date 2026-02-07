@@ -33,6 +33,8 @@ const OrderDetail = () => {
   const [copied, setCopied] = useState(false);
   const [sendingWhatsApp, setSendingWhatsApp] = useState(false);
   const [whatsAppSent, setWhatsAppSent] = useState(false);
+  const [livreurs, setLivreurs] = useState([]);
+  const [selectedLivreur, setSelectedLivreur] = useState('');
 
   const fetchOrder = async () => {
     try {
@@ -46,7 +48,14 @@ const OrderDetail = () => {
     }
   };
 
-  useEffect(() => { fetchOrder(); }, [id]);
+  const fetchLivreurs = async () => {
+    try {
+      const res = await ecomApi.get('/users/livreurs/list');
+      setLivreurs(res.data.data || []);
+    } catch { /* ignore */ }
+  };
+
+  useEffect(() => { fetchOrder(); fetchLivreurs(); }, [id]);
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t); } }, [success]);
 
   const handleStatusChange = async (newStatus) => {
@@ -119,9 +128,12 @@ const OrderDetail = () => {
   const handleSendWhatsApp = async () => {
     setSendingWhatsApp(true);
     try {
-      await ecomApi.post(`/orders/${id}/send-whatsapp`, { phone: '237676778377', message: deliveryMessage });
+      const livreur = livreurs.find(l => l._id === selectedLivreur);
+      const phone = livreur?.phone || '';
+      if (!phone) { setError('Ce livreur n\'a pas de numéro de téléphone'); setSendingWhatsApp(false); return; }
+      await ecomApi.post(`/orders/${id}/send-whatsapp`, { phone, message: deliveryMessage });
       setWhatsAppSent(true);
-      setSuccess('Message envoyé au livreur via WhatsApp');
+      setSuccess(`Message envoyé à ${livreur.name || livreur.email} via WhatsApp`);
       setTimeout(() => setWhatsAppSent(false), 3000);
     } catch (err) {
       setError(err.response?.data?.message || err.message || 'Erreur envoi WhatsApp');
@@ -132,15 +144,19 @@ const OrderDetail = () => {
 
   const handleSendToDelivery = async () => {
     try {
-      // Envoyer via Green API (backend) automatiquement
-      await ecomApi.post(`/orders/${id}/send-whatsapp`, { phone: '237676778377', message: deliveryMessage });
+      const livreur = livreurs.find(l => l._id === selectedLivreur);
+      const phone = livreur?.phone || '';
+      if (phone) {
+        await ecomApi.post(`/orders/${id}/send-whatsapp`, { phone, message: deliveryMessage });
+      }
       await ecomApi.put(`/orders/${id}`, {
         status: 'shipped',
+        assignedLivreur: selectedLivreur || null,
         notes: deliveryNote ? `${order.notes ? order.notes + ' | ' : ''}Livraison: ${deliveryNote}` : order.notes,
         deliveryLocation: editData.deliveryLocation || order.deliveryLocation || '',
         deliveryTime: editData.deliveryTime || order.deliveryTime || ''
       });
-      setSuccess('Commande envoyée au livreur + WhatsApp envoyé');
+      setSuccess(`Commande envoyée${livreur ? ' à ' + (livreur.name || livreur.email) : ''} + statut expédié`);
       setShowDeliveryModal(false);
       setDeliveryNote('');
       fetchOrder();
@@ -534,6 +550,27 @@ const OrderDetail = () => {
                 <h3 className="text-sm font-bold text-gray-900">Envoyer au livreur</h3>
                 <p className="text-[11px] text-gray-400">Le statut passera à "Expédié"</p>
               </div>
+            </div>
+
+            {/* Sélection du livreur */}
+            <div className="mb-3">
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Assigner un livreur</label>
+              {livreurs.length > 0 ? (
+                <select
+                  value={selectedLivreur}
+                  onChange={e => setSelectedLivreur(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">-- Choisir un livreur --</option>
+                  {livreurs.map(l => (
+                    <option key={l._id} value={l._id}>
+                      {l.name || l.email} {l.phone ? `(${l.phone})` : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-xs text-gray-400 italic py-2">Aucun livreur dans l'équipe. Ajoutez-en un dans Gestion Équipe.</p>
+              )}
             </div>
 
             <div className="grid sm:grid-cols-2 gap-3 mb-3">

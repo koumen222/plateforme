@@ -65,6 +65,11 @@ const orderSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  assignedLivreur: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'EcomUser',
+    default: null
+  },
   notes: {
     type: String,
     trim: true,

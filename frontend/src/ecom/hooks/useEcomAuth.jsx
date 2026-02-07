@@ -224,7 +224,8 @@ export const EcomAuthProvider = ({ children }) => {
     const permissions = {
       'ecom_admin': ['*'],
       'ecom_closeuse': ['orders:read', 'orders:write'],
-      'ecom_compta': ['finance:read']
+      'ecom_compta': ['finance:read'],
+      'ecom_livreur': ['orders:read']
     };
 
     const userPermissions = permissions[state.user.role] || [];

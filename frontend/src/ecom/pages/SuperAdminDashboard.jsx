@@ -6,14 +6,16 @@ const roleLabels = {
   super_admin: 'Super Admin',
   ecom_admin: 'Admin',
   ecom_closeuse: 'Closeuse',
-  ecom_compta: 'Comptable'
+  ecom_compta: 'Comptable',
+  ecom_livreur: 'Livreur'
 };
 
 const roleColors = {
   super_admin: 'bg-red-100 text-red-800',
   ecom_admin: 'bg-purple-100 text-purple-800',
   ecom_closeuse: 'bg-blue-100 text-blue-800',
-  ecom_compta: 'bg-green-100 text-green-800'
+  ecom_compta: 'bg-green-100 text-green-800',
+  ecom_livreur: 'bg-orange-100 text-orange-800'
 };
 
 const SuperAdminDashboard = () => {
@@ -272,6 +274,7 @@ const SuperAdminDashboard = () => {
                             <option value="ecom_admin">Admin</option>
                             <option value="ecom_closeuse">Closeuse</option>
                             <option value="ecom_compta">Comptable</option>
+                            <option value="ecom_livreur">Livreur</option>
                           </select>
                         </td>
                         <td className="px-3 py-3 hidden sm:table-cell">

@@ -122,7 +122,8 @@ export const validateEcomAccess = (resource, action) => {
       'super_admin': ['admin:read', 'admin:write'],
       'ecom_admin': ['*'],
       'ecom_closeuse': ['orders:read', 'orders:write', 'reports:read', 'reports:write', 'products:read'],
-      'ecom_compta': ['finance:read', 'finance:write', 'reports:read', 'reports:write', 'products:read']
+      'ecom_compta': ['finance:read', 'finance:write', 'reports:read', 'reports:write', 'products:read'],
+      'ecom_livreur': ['orders:read']
     };
 
     const userPermissions = accessRules[userRole] || [];

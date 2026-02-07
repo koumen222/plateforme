@@ -37,6 +37,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     }
 
     const orders = await Order.find(filter)
+      .populate('assignedLivreur', 'name email phone')
       .sort({ date: -1, createdAt: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
@@ -566,7 +567,7 @@ router.post('/backfill-clients', requireEcomAuth, validateEcomAccess('products',
 // GET /api/ecom/orders/:id - Détail d'une commande
 router.get('/:id', requireEcomAuth, async (req, res) => {
   try {
-    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
+    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId }).populate('assignedLivreur', 'name email phone');
     if (!order) {
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
@@ -585,7 +586,7 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
 
-    const allowedFields = ['status', 'notes', 'clientName', 'clientPhone', 'city', 'product', 'quantity', 'price', 'deliveryLocation', 'deliveryTime', 'tags'];
+    const allowedFields = ['status', 'notes', 'clientName', 'clientPhone', 'city', 'product', 'quantity', 'price', 'deliveryLocation', 'deliveryTime', 'tags', 'assignedLivreur'];
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) order[field] = req.body[field];
     });
