@@ -37,6 +37,7 @@ import SuperAdminActivity from './pages/SuperAdminActivity.jsx';
 import SuperAdminSettings from './pages/SuperAdminSettings.jsx';
 import SetupSuperAdmin from './pages/SetupSuperAdmin.jsx';
 import Settings from './pages/Settings.jsx';
+import Data from './pages/Data.jsx';
 import EcomLandingPage from './pages/LandingPage.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
@@ -190,6 +191,9 @@ const EcomApp = () => {
               <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
+
+              {/* Route Data */}
+              <Route path="data" element={<LayoutRoute><Data /></LayoutRoute>} />
               
               {/* Routes stock */}
               <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />

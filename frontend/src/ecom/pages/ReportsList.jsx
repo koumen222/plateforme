@@ -23,6 +23,7 @@ const ReportsList = () => {
   const loadData = async () => {
     try {
       setLoading(true);
+      setError('');
       const params = {};
       if (filter.date) params.date = filter.date;
       if (filter.status) params.status = filter.status;

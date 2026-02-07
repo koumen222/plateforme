@@ -83,11 +83,6 @@ const ProductForm = () => {
     setError('');
 
     try {
-      if (!isEditing && !user?._id) {
-        setError('Utilisateur non trouvé. Veuillez vous reconnecter.');
-        return;
-      }
-
       const productData = {
         ...formData,
         sellingPrice: parseFloat(formData.sellingPrice),
@@ -101,7 +96,6 @@ const ProductForm = () => {
       if (isEditing) {
         await ecomApi.put(`/products/${id}`, productData);
       } else {
-        productData.createdBy = user._id;
         await ecomApi.post('/products', productData);
       }
       

@@ -1,12 +1,217 @@
 import express from 'express';
 import mongoose from 'mongoose';
+import fetch from 'node-fetch';
 import DailyReport from '../models/DailyReport.js';
 import Product from '../models/Product.js';
+import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateDailyReport } from '../middleware/validation.js';
 import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
 
 const router = express.Router();
+
+function buildDateMatchFromQuery({ date, startDate, endDate }) {
+  if (date) {
+    const dayStart = new Date(date);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setHours(23, 59, 59, 999);
+    return { $gte: dayStart, $lte: dayEnd };
+  }
+
+  if (startDate || endDate) {
+    const range = {};
+    if (startDate) range.$gte = new Date(startDate);
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      range.$lte = end;
+    }
+    return range;
+  }
+
+  return null;
+}
+
+async function getGlobalOverview({ workspaceId, date, startDate, endDate }) {
+  const dateMatch = buildDateMatchFromQuery({ date, startDate, endDate });
+
+  const reportsFilter = { workspaceId: new mongoose.Types.ObjectId(workspaceId) };
+  if (dateMatch) reportsFilter.date = dateMatch;
+
+  const ordersMatchStage = { workspaceId: new mongoose.Types.ObjectId(workspaceId) };
+  if (dateMatch) ordersMatchStage.date = dateMatch;
+
+  const [orderStatusAgg, kpiAgg, productAgg, dailyAgg] = await Promise.all([
+    Order.aggregate([
+      { $match: ordersMatchStage },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+      { $sort: { count: -1 } }
+    ]),
+    DailyReport.aggregate([
+      { $match: reportsFilter },
+      {
+        $lookup: {
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $group: {
+          _id: null,
+          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
+          totalProductCost: { $sum: { $multiply: ['$ordersDelivered', '$product.productCost'] } },
+          totalDeliveryCost: { $sum: { $multiply: ['$ordersDelivered', '$product.deliveryCost'] } },
+          totalAdSpend: { $sum: '$adSpend' },
+          totalOrdersReceived: { $sum: '$ordersReceived' },
+          totalOrdersDelivered: { $sum: '$ordersDelivered' },
+          reportsCount: { $sum: 1 }
+        }
+      },
+      {
+        $addFields: {
+          totalCost: { $add: ['$totalProductCost', '$totalDeliveryCost', '$totalAdSpend'] },
+          totalProfit: {
+            $subtract: [
+              '$totalRevenue',
+              { $add: ['$totalProductCost', '$totalDeliveryCost', '$totalAdSpend'] }
+            ]
+          },
+          deliveryRate: {
+            $cond: [
+              { $eq: ['$totalOrdersReceived', 0] },
+              0,
+              { $divide: ['$totalOrdersDelivered', '$totalOrdersReceived'] }
+            ]
+          },
+          roas: {
+            $cond: [
+              { $eq: ['$totalAdSpend', 0] },
+              0,
+              { $divide: ['$totalRevenue', '$totalAdSpend'] }
+            ]
+          }
+        }
+      }
+    ]),
+    DailyReport.aggregate([
+      { $match: reportsFilter },
+      {
+        $lookup: {
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $group: {
+          _id: '$productId',
+          name: { $first: '$product.name' },
+          ordersReceived: { $sum: '$ordersReceived' },
+          ordersDelivered: { $sum: '$ordersDelivered' },
+          adSpend: { $sum: '$adSpend' },
+          revenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
+          productCost: { $sum: { $multiply: ['$ordersDelivered', '$product.productCost'] } },
+          deliveryCost: { $sum: { $multiply: ['$ordersDelivered', '$product.deliveryCost'] } }
+        }
+      },
+      {
+        $addFields: {
+          totalCost: { $add: ['$productCost', '$deliveryCost', '$adSpend'] },
+          profit: { $subtract: ['$revenue', { $add: ['$productCost', '$deliveryCost', '$adSpend'] }] },
+          deliveryRate: {
+            $cond: [
+              { $eq: ['$ordersReceived', 0] },
+              0,
+              { $divide: ['$ordersDelivered', '$ordersReceived'] }
+            ]
+          },
+          roas: {
+            $cond: [
+              { $eq: ['$adSpend', 0] },
+              0,
+              { $divide: ['$revenue', '$adSpend'] }
+            ]
+          }
+        }
+      },
+      { $sort: { profit: -1 } },
+      { $limit: 10 }
+    ]),
+    DailyReport.aggregate([
+      { $match: reportsFilter },
+      {
+        $lookup: {
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+          ordersReceived: { $sum: '$ordersReceived' },
+          ordersDelivered: { $sum: '$ordersDelivered' },
+          adSpend: { $sum: '$adSpend' },
+          revenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
+          productCost: { $sum: { $multiply: ['$ordersDelivered', '$product.productCost'] } },
+          deliveryCost: { $sum: { $multiply: ['$ordersDelivered', '$product.deliveryCost'] } }
+        }
+      },
+      {
+        $addFields: {
+          totalCost: { $add: ['$productCost', '$deliveryCost', '$adSpend'] },
+          profit: { $subtract: ['$revenue', { $add: ['$productCost', '$deliveryCost', '$adSpend'] }] },
+          roas: {
+            $cond: [
+              { $eq: ['$adSpend', 0] },
+              0,
+              { $divide: ['$revenue', '$adSpend'] }
+            ]
+          },
+          deliveryRate: {
+            $cond: [
+              { $eq: ['$ordersReceived', 0] },
+              0,
+              { $divide: ['$ordersDelivered', '$ordersReceived'] }
+            ]
+          }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ])
+  ]);
+
+  const kpis = kpiAgg[0] || {
+    totalRevenue: 0,
+    totalProductCost: 0,
+    totalDeliveryCost: 0,
+    totalAdSpend: 0,
+    totalCost: 0,
+    totalProfit: 0,
+    totalOrdersReceived: 0,
+    totalOrdersDelivered: 0,
+    deliveryRate: 0,
+    roas: 0,
+    reportsCount: 0
+  };
+
+  const orderStatus = (orderStatusAgg || []).map(s => ({ status: s._id, count: s.count }));
+
+  return {
+    kpis,
+    orders: { byStatus: orderStatus },
+    topProducts: productAgg || [],
+    daily: dailyAgg || []
+  };
+}
 
 // GET /api/ecom/reports - Liste des rapports quotidiens
 router.get('/', requireEcomAuth, async (req, res) => {
@@ -57,6 +262,79 @@ router.get('/', requireEcomAuth, async (req, res) => {
     });
   }
 });
+router.get('/overview',
+  requireEcomAuth,
+  validateEcomAccess('finance', 'read'),
+  async (req, res) => {
+    try {
+      const { date, startDate, endDate } = req.query;
+      const overview = await getGlobalOverview({ workspaceId: req.workspaceId, date, startDate, endDate });
+      res.json({ success: true, data: overview });
+    } catch (error) {
+      console.error('Erreur reports overview:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+router.post('/analyze-global',
+  requireEcomAuth,
+  validateEcomAccess('finance', 'read'),
+  async (req, res) => {
+    try {
+      if (!process.env.OPENAI_API_KEY) {
+        return res.status(500).json({ success: false, message: 'OPENAI_API_KEY manquant' });
+      }
+
+      const { date, startDate, endDate } = req.body || {};
+      const overview = await getGlobalOverview({ workspaceId: req.workspaceId, date, startDate, endDate });
+
+      const payload = {
+        kpis: overview.kpis,
+        orders: overview.orders,
+        topProducts: overview.topProducts,
+        daily: (overview.daily || []).slice(-14)
+      };
+
+      const prompt = `Tu es un analyste e-commerce senior. Analyse les performances globales et propose des actions concrètes.
+
+Données (JSON):\n${JSON.stringify(payload)}\n
+Contraintes:
+- Réponds en français
+- Format: 1) Diagnostic global 2) Points forts 3) Points faibles 4) Top opportunités (3-5) 5) Plan d'action (5 actions max) 6) Alertes risques
+- Réponse courte et actionnable (max ~350 mots)`;
+
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Tu analyses des KPI e-commerce et tu fournis une synthèse ultra actionnable.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.3,
+          max_tokens: 700
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        return res.status(response.status).json({ success: false, message: errorData.error?.message || 'Erreur OpenAI' });
+      }
+
+      const data = await response.json();
+      const analysis = data.choices?.[0]?.message?.content?.trim() || '';
+
+      res.json({ success: true, data: { analysis, overview } });
+    } catch (error) {
+      console.error('Erreur analyze-global:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
 
 // GET /api/ecom/reports/stats/financial - Statistiques financières (compta et admin)
 router.get('/stats/financial', 

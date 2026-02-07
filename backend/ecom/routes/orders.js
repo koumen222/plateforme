@@ -346,10 +346,17 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
         rawData
       };
 
+      const insertDoc = {
+        ...doc,
+        workspaceId: req.workspaceId,
+        sheetRowId: rowId,
+        source: 'google_sheets'
+      };
+
       bulkOps.push({
         updateOne: {
           filter: { workspaceId: req.workspaceId, sheetRowId: rowId },
-          update: { $set: doc, $setOnInsert: { workspaceId: req.workspaceId, sheetRowId: rowId, source: 'google_sheets' } },
+          update: { $setOnInsert: insertDoc },
           upsert: true
         }
       });
