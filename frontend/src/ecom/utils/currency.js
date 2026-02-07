@@ -8,6 +8,7 @@ export const currencies = {
   NGN: { code: 'NGN', name: 'Naira Nigérian', symbol: '₦', locale: 'en-NG', flag: '🇳🇬', region: 'Afrique de l\'Ouest' },
   GHS: { code: 'GHS', name: 'Cedi Ghanéen', symbol: 'GH₵', locale: 'en-GH', flag: '🇬🇭', region: 'Afrique de l\'Ouest' },
   GNF: { code: 'GNF', name: 'Franc Guinéen', symbol: 'FG', locale: 'fr-GN', flag: '🇬🇳', region: 'Afrique de l\'Ouest' },
+  LRD: { code: 'LRD', name: 'Dollar Libérien', symbol: 'L$', locale: 'en-LR', flag: '🇱🇷', region: 'Afrique de l\'Ouest' },
   SLL: { code: 'SLL', name: 'Leone Sierra-Léonais', symbol: 'Le', locale: 'en-SL', flag: '🇸🇱', region: 'Afrique de l\'Ouest' },
   
   // Afrique du Nord
@@ -67,8 +68,8 @@ export const formatMoney = (amount, currencyCode = 'XAF') => {
   const num = parseFloat(amount);
   if (isNaN(num)) return '-';
   
-  // For XAF and NGN, use no decimal places
-  const fractionDigits = ['XAF', 'NGN'].includes(currency.code) ? 0 : 2;
+  // Use no decimal places for all currencies (whole numbers only)
+  const fractionDigits = 0;
   
   try {
     return new Intl.NumberFormat(currency.locale, {
@@ -90,18 +91,36 @@ export const formatNumber = (amount, currencyCode = 'XAF') => {
   const num = parseFloat(amount);
   if (isNaN(num)) return '-';
   
-  return new Intl.NumberFormat('fr-FR').format(num);
+  return new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0
+  }).format(num);
 };
 
-// Hook to use currency from auth context
-export const useCurrency = (user) => {
-  const currencyCode = user?.currency || 'XAF';
-  const currencyInfo = getCurrencyInfo(currencyCode);
+import { useCurrency } from '../contexts/CurrencyContext.jsx';
+
+// ... existing currency config ...
+
+// Hook to use currency from auth context - AUTO CONVERT
+export const useUserCurrency = () => {
+  const currencyContext = useCurrency?.();
   
-  return {
-    code: currencyCode,
-    ...currencyInfo,
-    format: (amount) => formatMoney(amount, currencyCode),
-    formatNumber: (amount) => formatNumber(amount, currencyCode)
-  };
+  if (!currencyContext) {
+    // Fallback si pas dans le provider
+    return {
+      code: 'XAF',
+      symbol: 'FCFA',
+      format: (amount) => formatMoney(amount, 'XAF'),
+      formatNumber: (amount) => formatNumber(amount, 'XAF'),
+      convert: (amount) => parseFloat(amount || 0)
+    };
+  }
+  
+  return currencyContext;
+};
+
+// Format global qui convertit automatiquement depuis XAF (devise par défaut du backend)
+export const useFormatMoney = () => {
+  const { format } = useUserCurrency();
+  return (amount, fromCurrency = 'XAF') => format(amount, fromCurrency);
 };

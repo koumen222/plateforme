@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useMoney } from '../hooks/useMoney.js';
 
 const StockAlert = ({ alerts, onDismiss }) => {
+  const { fmt } = useMoney();
   const getUrgencyColor = (urgency) => {
     const colors = {
       critical: {
@@ -49,12 +51,7 @@ const StockAlert = ({ alerts, onDismiss }) => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF'
-    }).format(amount || 0);
-  };
+  // Utilise fmt de useMoney pour la conversion dynamique
 
   if (!alerts || alerts.length === 0) {
     return (
@@ -106,7 +103,7 @@ const StockAlert = ({ alerts, onDismiss }) => {
                         <span className="font-medium">Seuil:</span> {alert.product.reorderThreshold} unités
                       </div>
                       <div>
-                        <span className="font-medium">Valeur stock:</span> {formatCurrency(alert.product.stock * alert.product.sellingPrice)}
+                        <span className="font-medium">Valeur stock:</span> {fmt(alert.product.stock * alert.product.sellingPrice)}
                       </div>
                       <div>
                         <span className="font-medium">Statut:</span> 

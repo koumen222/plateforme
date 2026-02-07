@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const StockOrdersList = () => {
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -137,16 +139,16 @@ const StockOrdersList = () => {
                       )}
                     </td>
                     <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatCurrency(order.purchasePrice)}</div>
+                      <div className="text-xs sm:text-sm text-gray-900">{fmt(order.purchasePrice)}</div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap hidden md:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatCurrency(order.sellingPrice)}</div>
+                      <div className="text-xs sm:text-sm text-gray-900">{fmt(order.sellingPrice)}</div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap hidden lg:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatCurrency(order.transportCost)}</div>
+                      <div className="text-xs sm:text-sm text-gray-900">{fmt(order.transportCost)}</div>
                     </td>
                     <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm font-semibold text-gray-900">{formatCurrency(totalCostCalc)}</div>
+                      <div className="text-xs sm:text-sm font-semibold text-gray-900">{fmt(totalCostCalc)}</div>
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${

@@ -1,7 +1,9 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useMoney } from '../hooks/useMoney.js';
 
 const ProductCard = ({ product, showActions = true, onEdit, onDelete }) => {
+  const { fmt } = useMoney();
   const getStatusColor = (status) => {
     const colors = {
       test: 'bg-yellow-100 text-yellow-800',
@@ -20,12 +22,7 @@ const ProductCard = ({ product, showActions = true, onEdit, onDelete }) => {
     return 'text-green-600';
   };
 
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF'
-    }).format(amount || 0);
-  };
+  // Utilise fmt de useMoney pour la conversion dynamique
 
   const calculateMargin = () => {
     if (!product.sellingPrice || !product.productCost || !product.deliveryCost || !product.avgAdsCost) {
@@ -60,7 +57,7 @@ const ProductCard = ({ product, showActions = true, onEdit, onDelete }) => {
         <div className="grid grid-cols-2 gap-4 mb-4">
           <div>
             <p className="text-sm text-gray-500">Prix de vente</p>
-            <p className="font-semibold text-gray-900">{formatCurrency(product.sellingPrice)}</p>
+            <p className="font-semibold text-gray-900">{fmt(product.sellingPrice)}</p>
           </div>
           <div>
             <p className="text-sm text-gray-500">Stock</p>
@@ -75,20 +72,20 @@ const ProductCard = ({ product, showActions = true, onEdit, onDelete }) => {
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p className="text-gray-500">Coût produit</p>
-              <p className="font-medium">{formatCurrency(product.productCost)}</p>
+              <p className="font-medium">{fmt(product.productCost)}</p>
             </div>
             <div>
               <p className="text-gray-500">Coût livraison</p>
-              <p className="font-medium">{formatCurrency(product.deliveryCost)}</p>
+              <p className="font-medium">{fmt(product.deliveryCost)}</p>
             </div>
             <div>
               <p className="text-gray-500">Coût pub moyen</p>
-              <p className="font-medium">{formatCurrency(product.avgAdsCost)}</p>
+              <p className="font-medium">{fmt(product.avgAdsCost)}</p>
             </div>
             <div>
               <p className="text-gray-500">Marge/unité</p>
               <p className={`font-medium ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {formatCurrency(margin)}
+                {fmt(margin)}
               </p>
             </div>
           </div>

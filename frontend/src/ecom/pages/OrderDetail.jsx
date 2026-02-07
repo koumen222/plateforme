@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const SL = { pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', delivered: 'Livré', returned: 'Retour', cancelled: 'Annulé' };
@@ -17,6 +18,7 @@ const OrderDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, workspace } = useEcomAuth();
+  const { fmt } = useMoney();
   const isAdmin = user?.role === 'ecom_admin';
   const invoiceRef = useRef(null);
 
@@ -214,7 +216,6 @@ const OrderDetail = () => {
     setTimeout(() => { win.print(); win.close(); }, 300);
   };
 
-  const fmt = (n) => `${(n || 0).toLocaleString('fr-FR')} FCFA`;
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }) : '-';
   const fmtDateTime = (d) => d ? new Date(d).toLocaleString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
 

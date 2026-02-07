@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const AdminDashboard = () => {
   const { user, logout } = useEcomAuth();
+  const { fmt } = useMoney();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     products: [],
@@ -53,9 +55,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const formatCurrency = (amount) => {
-    return `${amount?.toLocaleString('fr-FR') || 0} FCFA`;
-  };
+  // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const formatPercent = (value) => {
     return `${(value * 100).toFixed(1)}%`;
@@ -165,7 +165,7 @@ const AdminDashboard = () => {
               <div className="sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Bénéfice Net</p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {formatCurrency(stats.financialStats.totalProfit)}
+                  {fmt(stats.financialStats.totalProfit)}
                 </p>
               </div>
             </div>
@@ -287,7 +287,7 @@ const AdminDashboard = () => {
                       <div>
                         <Link to={`/ecom/products/${product._id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
                         <p className="text-sm text-gray-500">
-                          Stock: {product.stock} | Marge: <span className={margin >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(margin)}</span>
+                          Stock: {product.stock} | Marge: <span className={margin >= 0 ? 'text-green-600' : 'text-red-600'}>{fmt(margin)}</span>
                         </p>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -324,19 +324,19 @@ const AdminDashboard = () => {
               <div className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Chiffre d'affaires</span>
-                  <span className="font-semibold text-blue-600">{formatCurrency(stats.financialStats.totalRevenue)}</span>
+                  <span className="font-semibold text-blue-600">{fmt(stats.financialStats.totalRevenue)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Coûts totaux</span>
                   <span className="font-semibold text-red-600">
-                    {formatCurrency(stats.financialStats.totalCost)}
+                    {fmt(stats.financialStats.totalCost)}
                   </span>
                 </div>
                 <div className="border-t pt-3">
                   <div className="flex justify-between items-center">
                     <span className="text-gray-900 font-semibold">Bénéfice net</span>
                     <span className={`font-bold text-lg ${stats.financialStats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {formatCurrency(stats.financialStats.totalProfit)}
+                      {fmt(stats.financialStats.totalProfit)}
                     </span>
                   </div>
                   {stats.financialStats.totalProfit !== 0 && (

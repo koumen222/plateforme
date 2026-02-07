@@ -97,16 +97,16 @@ const ProductDetail = () => {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <div className="bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Prix de vente</p>
-          <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">{formatCurrency(product.sellingPrice)}</p>
+          <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">{fmt(product.sellingPrice)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Coût total</p>
-          <p className="text-lg sm:text-xl font-bold text-red-600 mt-1">{formatCurrency(totalCost)}</p>
+          <p className="text-lg sm:text-xl font-bold text-red-600 mt-1">{fmt(totalCost)}</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Marge</p>
           <p className={`text-lg sm:text-xl font-bold mt-1 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(margin)}
+            {fmt(margin)}
           </p>
           <p className="text-[10px] text-gray-400">{marginPercent}%</p>
         </div>
@@ -128,19 +128,19 @@ const ProductDetail = () => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Coût produit</span>
-              <span className="text-sm font-semibold">{formatCurrency(product.productCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product.productCost)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Frais de livraison</span>
-              <span className="text-sm font-semibold">{formatCurrency(product.deliveryCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product.deliveryCost)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Coût pub moyen</span>
-              <span className="text-sm font-semibold">{formatCurrency(product.avgAdsCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product.avgAdsCost)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between items-center">
               <span className="text-sm font-semibold text-gray-900">Total</span>
-              <span className="text-sm font-bold text-red-600">{formatCurrency(totalCost)}</span>
+              <span className="text-sm font-bold text-red-600">{fmt(totalCost)}</span>
             </div>
           </div>
         </div>
@@ -183,14 +183,14 @@ const ProductDetail = () => {
           <>
             <div className="flex h-6 rounded-full overflow-hidden bg-gray-200 mb-3">
               <div className="bg-red-400" style={{ width: `${(product.productCost / product.sellingPrice * 100)}%` }}
-                title={`Produit: ${formatCurrency(product.productCost)}`}></div>
+                title={`Produit: ${fmt(product.productCost)}`}></div>
               <div className="bg-yellow-400" style={{ width: `${(product.deliveryCost / product.sellingPrice * 100)}%` }}
-                title={`Livraison: ${formatCurrency(product.deliveryCost)}`}></div>
+                title={`Livraison: ${fmt(product.deliveryCost)}`}></div>
               <div className="bg-purple-400" style={{ width: `${(product.avgAdsCost / product.sellingPrice * 100)}%` }}
-                title={`Pub: ${formatCurrency(product.avgAdsCost)}`}></div>
+                title={`Pub: ${fmt(product.avgAdsCost)}`}></div>
               <div className={`${margin >= 0 ? 'bg-green-400' : 'bg-red-600'}`}
                 style={{ width: `${Math.max(0, margin / product.sellingPrice * 100)}%` }}
-                title={`Marge: ${formatCurrency(margin)}`}></div>
+                title={`Marge: ${fmt(margin)}`}></div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-gray-600">
               <span className="flex items-center"><span className="w-2.5 h-2.5 bg-red-400 rounded-full mr-1.5"></span>Produit</span>

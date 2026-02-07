@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const ProductsList = () => {
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,9 +47,7 @@ const ProductsList = () => {
     return sellingPrice - totalCost;
   };
 
-  const formatCurrency = (amount) => {
-    return `${amount?.toLocaleString('fr-FR') || 0} FCFA`;
-  };
+  // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const deleteProduct = async (productId) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
@@ -130,14 +130,14 @@ const ProductsList = () => {
                       <Link to={`/ecom/products/${product._id}`} className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatCurrency(product.sellingPrice)}</div>
+                      <div className="text-xs sm:text-sm text-gray-900">{fmt(product.sellingPrice)}</div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
-                      <div className="text-xs sm:text-sm text-gray-900">{formatCurrency(totalCost)}</div>
+                      <div className="text-xs sm:text-sm text-gray-900">{fmt(totalCost)}</div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                       <div className={`text-xs sm:text-sm font-medium ${isProfitable ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(benefit)}
+                        {fmt(benefit)}
                       </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">

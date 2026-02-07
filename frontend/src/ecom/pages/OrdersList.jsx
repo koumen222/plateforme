@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const SL = { pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', delivered: 'Livré', returned: 'Retour', cancelled: 'Annulé' };
@@ -20,6 +21,7 @@ const SD = {
 const OrdersList = () => {
   const navigate = useNavigate();
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const isAdmin = user?.role === 'ecom_admin';
   const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({});
@@ -117,7 +119,6 @@ const OrdersList = () => {
     } catch { setError('Erreur modification'); }
   };
 
-  const fmt = (n) => `${(n || 0).toLocaleString('fr-FR')} FCFA`;
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '-';
   const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
 

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const categoryLabels = {
@@ -20,6 +21,7 @@ const categoryLabels = {
 
 const TransactionsList = () => {
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const [transactions, setTransactions] = useState([]);
   const [summary, setSummary] = useState({});
   const [loading, setLoading] = useState(true);
@@ -105,18 +107,18 @@ const TransactionsList = () => {
       <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <div className="bg-white rounded-lg shadow p-3 sm:p-5">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Entrées</p>
-          <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">{formatCurrency(summary.totalIncome)}</p>
+          <p className="text-lg sm:text-2xl font-bold text-green-600 mt-1">{fmt(summary.totalIncome)}</p>
           <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{summary.incomeCount || 0} tx</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 sm:p-5">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Dépenses</p>
-          <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{formatCurrency(summary.totalExpense)}</p>
+          <p className="text-lg sm:text-2xl font-bold text-red-600 mt-1">{fmt(summary.totalExpense)}</p>
           <p className="text-[10px] sm:text-xs text-gray-400 mt-1">{summary.expenseCount || 0} tx</p>
         </div>
         <div className="bg-white rounded-lg shadow p-3 sm:p-5">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Solde</p>
           <p className={`text-lg sm:text-2xl font-bold mt-1 ${balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {formatCurrency(balance)}
+            {fmt(balance)}
           </p>
           <p className="text-xs text-gray-400 mt-1">{balance >= 0 ? 'Bénéfice' : 'Déficit'}</p>
         </div>
@@ -135,7 +137,7 @@ const TransactionsList = () => {
                   <div key={i} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">{categoryLabels[c._id.category] || c._id.category}</span>
                     <div className="text-right">
-                      <span className="text-sm font-semibold text-red-600">{formatCurrency(c.total)}</span>
+                      <span className="text-sm font-semibold text-red-600">{fmt(c.total)}</span>
                       <span className="text-xs text-gray-400 ml-2">({c.count})</span>
                     </div>
                   </div>
@@ -155,7 +157,7 @@ const TransactionsList = () => {
                   <div key={i} className="flex justify-between items-center">
                     <span className="text-sm text-gray-600">{categoryLabels[c._id.category] || c._id.category}</span>
                     <div className="text-right">
-                      <span className="text-sm font-semibold text-green-600">{formatCurrency(c.total)}</span>
+                      <span className="text-sm font-semibold text-green-600">{fmt(c.total)}</span>
                       <span className="text-xs text-gray-400 ml-2">({c.count})</span>
                     </div>
                   </div>
@@ -246,7 +248,7 @@ const TransactionsList = () => {
                   <td className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-semibold text-right ${
                     tx.type === 'income' ? 'text-green-600' : 'text-red-600'
                   }`}>
-                    {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                    {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                     <Link to={`/ecom/transactions/${tx._id}/edit`}

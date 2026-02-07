@@ -49,6 +49,7 @@ router.post('/login', validateEmail, async (req, res) => {
           id: user._id,
           email: user.email,
           role: user.role,
+          currency: user.currency,
           lastLogin: user.lastLogin,
           workspaceId: user.workspaceId
         },
@@ -126,6 +127,7 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
             email: user.email,
             role: user.role,
             isActive: user.isActive,
+            currency: user.currency,
             workspaceId: null
           },
           workspace: null
@@ -189,6 +191,7 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
           email: user.email,
           role: user.role,
           isActive: user.isActive,
+          currency: user.currency,
           workspaceId: workspace._id
         },
         workspace: {
@@ -357,7 +360,7 @@ router.put('/currency', async (req, res) => {
       // Afrique Centrale
       'XAF', 'CDF',
       // Afrique de l'Ouest
-      'XOF', 'NGN', 'GHS', 'GNF', 'SLL',
+      'XOF', 'NGN', 'GHS', 'GNF', 'LRD', 'SLL',
       // Afrique du Nord
       'MAD', 'TND', 'DZD', 'EGP', 'LYD',
       // Afrique de l'Est

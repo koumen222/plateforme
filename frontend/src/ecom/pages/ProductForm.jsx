@@ -65,9 +65,7 @@ const ProductForm = () => {
     return sellingPrice - totalCost;
   };
 
-  const formatCurrency = (amount) => {
-    return `${amount?.toLocaleString('fr-FR') || 0} FCFA`;
-  };
+  // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -169,7 +167,7 @@ const ProductForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Prix de vente (FCFA) *
+              Prix de vente ({symbol}) *
             </label>
             <input
               type="number"
@@ -185,7 +183,7 @@ const ProductForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Coût du produit (FCFA) *
+              Coût du produit ({symbol}) *
             </label>
             <input
               type="number"
@@ -201,7 +199,7 @@ const ProductForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Coût de livraison (FCFA) *
+              Coût de livraison ({symbol}) *
             </label>
             <input
               type="number"
@@ -217,7 +215,7 @@ const ProductForm = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Coût publicitaire moyen (FCFA)
+              Coût publicitaire moyen ({symbol})
             </label>
             <input
               type="number"
@@ -298,21 +296,18 @@ const ProductForm = () => {
             <div className="grid grid-cols-2 gap-3 sm:gap-4 text-sm">
               <div>
                 <span className="text-blue-700">Prix de vente:</span>
-                <span className="ml-2 font-semibold">{formatCurrency(formData.sellingPrice)}</span>
+                <span className="ml-2 font-semibold">{fmt(formData.sellingPrice)}</span>
               </div>
               <div>
                 <span className="text-blue-700">Coût total:</span>
-                <span className="ml-2 font-semibold">{formatCurrency(
-                  (parseFloat(formData.productCost) || 0) + 
-                  (parseFloat(formData.deliveryCost) || 0)
-                )}</span>
+                <span className="ml-2 font-semibold">{fmt((parseFloat(formData.productCost) || 0) + (parseFloat(formData.deliveryCost) || 0))}</span>
               </div>
               <div className="col-span-2">
                 <span className="text-blue-700">Bénéfice estimé:</span>
                 <span className={`ml-2 font-bold text-lg ${
                   calculateBenefit() > 0 ? 'text-green-600' : 'text-red-600'
                 }`}>
-                  {formatCurrency(calculateBenefit())}
+                  {fmt(calculateBenefit())}
                 </span>
               </div>
             </div>

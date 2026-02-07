@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const categoryLabels = {
@@ -13,6 +14,7 @@ const categoryLabels = {
 const TransactionDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { fmt } = useMoney();
   const [tx, setTx] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -90,7 +92,7 @@ const TransactionDetail = () => {
       <div className={`rounded-xl p-6 mb-4 sm:mb-6 text-center ${isIncome ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'}`}>
         <p className="text-xs font-medium text-gray-500 uppercase mb-1">Montant</p>
         <p className={`text-3xl sm:text-4xl font-bold ${isIncome ? 'text-green-600' : 'text-red-600'}`}>
-          {isIncome ? '+' : '-'}{formatCurrency(tx.amount)}
+          {isIncome ? '+' : '-'}{fmt(tx.amount)}
         </p>
       </div>
 

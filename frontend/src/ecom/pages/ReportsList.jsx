@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const ReportsList = () => {
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const [reports, setReports] = useState([]);
   const [financialStats, setFinancialStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -99,17 +101,17 @@ const ReportsList = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
           <div className="bg-white rounded-lg shadow p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Chiffre d'affaires</p>
-            <p className="text-base sm:text-xl font-bold text-blue-600 mt-1">{formatCurrency(financialStats.totalRevenue)}</p>
+            <p className="text-base sm:text-xl font-bold text-blue-600 mt-1">{fmt(financialStats.totalRevenue)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Bénéfice net</p>
             <p className={`text-xl font-bold mt-1 ${(financialStats.totalProfit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatCurrency(financialStats.totalProfit)}
+              {fmt(financialStats.totalProfit)}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Dépenses pub</p>
-            <p className="text-base sm:text-xl font-bold text-red-600 mt-1">{formatCurrency(totalAdSpend)}</p>
+            <p className="text-base sm:text-xl font-bold text-red-600 mt-1">{fmt(totalAdSpend)}</p>
           </div>
           <div className="bg-white rounded-lg shadow p-3 sm:p-4">
             <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">ROAS</p>
@@ -158,23 +160,23 @@ const ReportsList = () => {
             <div 
               className="bg-red-500" 
               style={{ width: `${(financialStats.totalProductCost / financialStats.totalCost * 100)}%` }}
-              title={`Produits: ${formatCurrency(financialStats.totalProductCost)}`}
+              title={`Produits: ${fmt(financialStats.totalProductCost)}`}
             ></div>
             <div 
               className="bg-yellow-500" 
               style={{ width: `${(financialStats.totalDeliveryCost / financialStats.totalCost * 100)}%` }}
-              title={`Livraison: ${formatCurrency(financialStats.totalDeliveryCost)}`}
+              title={`Livraison: ${fmt(financialStats.totalDeliveryCost)}`}
             ></div>
             <div 
               className="bg-purple-500" 
               style={{ width: `${(financialStats.totalAdSpend / financialStats.totalCost * 100)}%` }}
-              title={`Pub: ${formatCurrency(financialStats.totalAdSpend)}`}
+              title={`Pub: ${fmt(financialStats.totalAdSpend)}`}
             ></div>
           </div>
           <div className="flex justify-between mt-2 text-xs text-gray-500">
-            <span className="flex items-center"><span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>Produits {formatCurrency(financialStats.totalProductCost)}</span>
-            <span className="flex items-center"><span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>Livraison {formatCurrency(financialStats.totalDeliveryCost)}</span>
-            <span className="flex items-center"><span className="w-2 h-2 bg-purple-500 rounded-full mr-1"></span>Pub {formatCurrency(financialStats.totalAdSpend)}</span>
+            <span className="flex items-center"><span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>Produits {fmt(financialStats.totalProductCost)}</span>
+            <span className="flex items-center"><span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>Livraison {fmt(financialStats.totalDeliveryCost)}</span>
+            <span className="flex items-center"><span className="w-2 h-2 bg-purple-500 rounded-full mr-1"></span>Pub {fmt(financialStats.totalAdSpend)}</span>
           </div>
         </div>
       )}
@@ -262,7 +264,7 @@ const ReportsList = () => {
                     </td>
                     {user?.role !== 'ecom_closeuse' && (
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatCurrency(report.adSpend)}</div>
+                        <div className="text-sm text-gray-900">{fmt(report.adSpend)}</div>
                       </td>
                     )}
                     <td className="px-6 py-4 whitespace-nowrap">

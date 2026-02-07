@@ -1,6 +1,6 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { EcomAuthProvider, EcomAuthDebug } from './hooks/useEcomAuth.jsx';
+import { EcomAuthProvider } from './hooks/useEcomAuth.jsx';
 import { CurrencyProvider } from './contexts/CurrencyContext.jsx';
 import { useEcomAuth } from './hooks/useEcomAuth.jsx';
 import Login from './pages/Login.jsx';
@@ -36,6 +36,7 @@ import SuperAdminWorkspaces from './pages/SuperAdminWorkspaces.jsx';
 import SuperAdminActivity from './pages/SuperAdminActivity.jsx';
 import SuperAdminSettings from './pages/SuperAdminSettings.jsx';
 import SetupSuperAdmin from './pages/SetupSuperAdmin.jsx';
+import Settings from './pages/Settings.jsx';
 import EcomLandingPage from './pages/LandingPage.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
@@ -120,7 +121,6 @@ const EcomApp = () => {
     <EcomAuthProvider>
       <CurrencyProvider>
         <div className="min-h-screen bg-gray-50">
-          {process.env.NODE_ENV === 'development' && <EcomAuthDebug />}
           <Routes>
             {/* Route racine - landing page */}
             <Route path="/" element={<EcomLandingPage />} />
@@ -179,6 +179,9 @@ const EcomApp = () => {
             
             {/* Routes gestion utilisateurs (admin) */}
             <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
+            
+            {/* Route Paramètres */}
+            <Route path="settings" element={<LayoutRoute><Settings /></LayoutRoute>} />
             
             {/* Routes Super Admin */}
             <Route path="super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />

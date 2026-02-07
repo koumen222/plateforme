@@ -1,12 +1,8 @@
 import React from 'react';
+import { useMoney } from '../hooks/useMoney.js';
 
 const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('fr-FR', {
-      style: 'currency',
-      currency: 'XOF'
-    }).format(amount || 0);
-  };
+  const { fmt } = useMoney();
 
   const formatPercent = (value) => {
     return `${(value * 100).toFixed(1)}%`;
@@ -62,15 +58,13 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
         {/* KPIs principaux */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-1">
-              {formatCurrency(data.totalRevenue)}
-            </div>
+            <div className="text-2xl font-bold text-gray-900">{fmt(data.totalRevenue)}</div>
             <p className="text-sm text-gray-500">Chiffre d'Affaires</p>
           </div>
           
           <div className="text-center">
-            <div className={`text-3xl font-bold mb-1 ${getProfitColor(data.totalProfit)}`}>
-              {formatCurrency(data.totalProfit)}
+            <div className={`text-2xl font-bold mb-1 ${getProfitColor(data.totalProfit)}`}>
+              {fmt(data.totalProfit)}
             </div>
             <p className="text-sm text-gray-500">Bénéfice Net</p>
           </div>
@@ -89,7 +83,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
                     <span className="text-gray-700">Coûts Produits</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {formatCurrency(data.totalProductCost)}
+                    {fmt(data.totalProductCost)}
                   </span>
                 </div>
 
@@ -99,7 +93,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
                     <span className="text-gray-700">Coûts Livraison</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {formatCurrency(data.totalDeliveryCost)}
+                    {fmt(data.totalDeliveryCost)}
                   </span>
                 </div>
 
@@ -109,7 +103,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
                     <span className="text-gray-700">Dépenses Pub</span>
                   </div>
                   <span className="font-semibold text-gray-900">
-                    {formatCurrency(data.totalAdSpend)}
+                    {fmt(data.totalAdSpend)}
                   </span>
                 </div>
 
@@ -117,7 +111,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-900">Coûts Totaux</span>
                     <span className="font-bold text-red-600">
-                      {formatCurrency(data.totalCost)}
+                      {fmt(data.totalCost)}
                     </span>
                   </div>
                 </div>
@@ -204,8 +198,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Panier Moyen</span>
                     <span className="font-bold text-gray-900">
-                      {formatCurrency(data.totalOrdersDelivered > 0 ? 
-                        data.totalRevenue / data.totalOrdersDelivered : 0)}
+                      {fmt(data.totalOrdersDelivered > 0 ? data.totalRevenue / data.totalOrdersDelivered : 0)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500">
@@ -243,7 +236,7 @@ const FinancialSummary = ({ data, loading = false, showDetails = true }) => {
               {data.totalProfit < 0 && (
                 <div className="flex items-start">
                   <span className="text-red-600 mr-2">•</span>
-                  <span className="text-gray-700">Perte nette de {formatCurrency(Math.abs(data.totalProfit)). Action corrective requise.</span>
+                  <span className="text-gray-700">Perte nette de {fmt(Math.abs(data.totalProfit))}. Action corrective requise.</span>
                 </div>
               )}
               {data.roas >= 3 && data.deliveryRate >= 0.8 && profitMargin >= 0.2 && (

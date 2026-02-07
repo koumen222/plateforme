@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const ComptaDashboard = () => {
   const { user, logout } = useEcomAuth();
+  const { fmt } = useMoney();
   const [financialStats, setFinancialStats] = useState({});
   const [productStats, setProductStats] = useState([]);
   const [txSummary, setTxSummary] = useState({});
@@ -155,7 +157,7 @@ const ComptaDashboard = () => {
               <div className="sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Chiffre d'Affaires</p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {formatCurrency(financialStats.totalRevenue)}
+                  {fmt(financialStats.totalRevenue)}
                 </p>
               </div>
             </div>
@@ -171,7 +173,7 @@ const ComptaDashboard = () => {
               <div className="sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Coûts Totaux</p>
                 <p className="text-lg sm:text-2xl font-bold text-gray-900">
-                  {formatCurrency(financialStats.totalCost)}
+                  {fmt(financialStats.totalCost)}
                 </p>
               </div>
             </div>
@@ -187,7 +189,7 @@ const ComptaDashboard = () => {
               <div className="sm:ml-4">
                 <p className="text-xs sm:text-sm font-medium text-gray-600">Bénéfice Net</p>
                 <p className={`text-lg sm:text-2xl font-bold ${getProfitColor(financialStats.totalProfit)}`}>
-                  {formatCurrency(financialStats.totalProfit)}
+                  {fmt(financialStats.totalProfit)}
                 </p>
               </div>
             </div>
@@ -222,7 +224,7 @@ const ComptaDashboard = () => {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Coûts Produits</span>
-                    <span className="font-semibold">{formatCurrency(financialStats.totalProductCost)}</span>
+                    <span className="font-semibold">{fmt(financialStats.totalProductCost)}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
@@ -235,7 +237,7 @@ const ComptaDashboard = () => {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Coûts Livraison</span>
-                    <span className="font-semibold">{formatCurrency(financialStats.totalDeliveryCost)}</span>
+                    <span className="font-semibold">{fmt(financialStats.totalDeliveryCost)}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
@@ -248,7 +250,7 @@ const ComptaDashboard = () => {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-gray-600">Dépenses Pub</span>
-                    <span className="font-semibold">{formatCurrency(financialStats.totalAdSpend)}</span>
+                    <span className="font-semibold">{fmt(financialStats.totalAdSpend)}</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div 
@@ -285,14 +287,14 @@ const ComptaDashboard = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Panier Moyen</span>
                   <span className="font-semibold">
-                    {formatCurrency(financialStats.totalOrdersDelivered > 0 ? 
+                    {fmt(financialStats.totalOrdersDelivered > 0 ? 
                       financialStats.totalRevenue / financialStats.totalOrdersDelivered : 0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Coût par Commande</span>
                   <span className="font-semibold">
-                    {formatCurrency(financialStats.totalOrdersDelivered > 0 ? 
+                    {fmt(financialStats.totalOrdersDelivered > 0 ? 
                       financialStats.totalCost / financialStats.totalOrdersDelivered : 0)}
                   </span>
                 </div>
@@ -321,7 +323,7 @@ const ComptaDashboard = () => {
                     {statusData && (
                       <div className="text-xs text-gray-500">
                         <div>Stock total: {statusData.totalStock || 0}</div>
-                        <div>Marge moyenne: {formatCurrency(statusData.avgMargin || 0)}</div>
+                        <div>Marge moyenne: {fmt(statusData.avgMargin || 0)}</div>
                       </div>
                     )}
                   </div>
@@ -343,18 +345,18 @@ const ComptaDashboard = () => {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
               <div className="bg-green-50 rounded-lg p-4 text-center">
                 <p className="text-xs font-medium text-green-700 uppercase">Entrées</p>
-                <p className="text-xl font-bold text-green-600 mt-1">{formatCurrency(txSummary.totalIncome)}</p>
+                <p className="text-xl font-bold text-green-600 mt-1">{fmt(txSummary.totalIncome)}</p>
                 <p className="text-xs text-green-500 mt-1">{txSummary.incomeCount || 0} transactions</p>
               </div>
               <div className="bg-red-50 rounded-lg p-4 text-center">
                 <p className="text-xs font-medium text-red-700 uppercase">Dépenses</p>
-                <p className="text-xl font-bold text-red-600 mt-1">{formatCurrency(txSummary.totalExpense)}</p>
+                <p className="text-xl font-bold text-red-600 mt-1">{fmt(txSummary.totalExpense)}</p>
                 <p className="text-xs text-red-500 mt-1">{txSummary.expenseCount || 0} transactions</p>
               </div>
               <div className={`rounded-lg p-4 text-center ${(txSummary.balance || 0) >= 0 ? 'bg-blue-50' : 'bg-orange-50'}`}>
                 <p className={`text-xs font-medium uppercase ${(txSummary.balance || 0) >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>Solde</p>
                 <p className={`text-xl font-bold mt-1 ${(txSummary.balance || 0) >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
-                  {formatCurrency(txSummary.balance)}
+                  {fmt(txSummary.balance)}
                 </p>
                 <p className={`text-xs mt-1 ${(txSummary.balance || 0) >= 0 ? 'text-blue-500' : 'text-orange-500'}`}>
                   {(txSummary.balance || 0) >= 0 ? 'Excédent' : 'Déficit'}
@@ -377,7 +379,7 @@ const ComptaDashboard = () => {
                         </div>
                       </div>
                       <span className={`text-sm font-semibold ${tx.type === 'income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {tx.type === 'income' ? '+' : '-'}{formatCurrency(tx.amount)}
+                        {tx.type === 'income' ? '+' : '-'}{fmt(tx.amount)}
                       </span>
                     </Link>
                   ))}

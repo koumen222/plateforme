@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const ReportDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useEcomAuth();
+  const { fmt } = useMoney();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -190,42 +192,42 @@ const ReportDetail = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-500">Revenu total</label>
                 <p className="text-lg font-bold text-green-600">
-                  {formatCurrency(report.metrics?.revenue || 0)}
+                  {fmt(report.metrics?.revenue || 0)}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Dépenses publicitaires</label>
-                <p className="text-lg font-bold text-red-600">{formatCurrency(report.adSpend || 0)}</p>
+                <p className="text-lg font-bold text-red-600">{fmt(report.adSpend || 0)}</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Coût produit total</label>
                 <p className="text-lg font-bold text-red-600">
-                  {formatCurrency(report.metrics?.productCostTotal || 0)}
+                  {fmt(report.metrics?.productCostTotal || 0)}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Coût livraison total</label>
                 <p className="text-lg font-bold text-red-600">
-                  {formatCurrency(report.metrics?.deliveryCostTotal || 0)}
+                  {fmt(report.metrics?.deliveryCostTotal || 0)}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Coût total</label>
                 <p className="text-lg font-bold text-red-600">
-                  {formatCurrency(report.metrics?.totalCost || 0)}
+                  {fmt(report.metrics?.totalCost || 0)}
                 </p>
               </div>
               <hr className="border-gray-200" />
               <div>
                 <label className="block text-sm font-medium text-gray-500">Profit net</label>
                 <p className={`text-xl font-bold ${(report.metrics?.profit || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(report.metrics?.profit || 0)}
+                  {fmt(report.metrics?.profit || 0)}
                 </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Profit par commande</label>
                 <p className={`text-lg font-bold ${(report.metrics?.profitPerOrder || 0) > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(report.metrics?.profitPerOrder || 0)}
+                  {fmt(report.metrics?.profitPerOrder || 0)}
                 </p>
               </div>
               <div>
@@ -245,25 +247,25 @@ const ReportDetail = () => {
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Prix de vente</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(report.productId.sellingPrice || 0)}
+                    {fmt(report.productId.sellingPrice || 0)}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Coût du produit</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(report.productId.productCost || 0)}
+                    {fmt(report.productId.productCost || 0)}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Coût de livraison</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(report.productId.deliveryCost || 0)}
+                    {fmt(report.productId.deliveryCost || 0)}
                   </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-500">Coût publicitaire moyen</label>
                   <p className="text-lg font-semibold text-gray-900">
-                    {formatCurrency(report.productId.avgAdsCost || 0)}
+                    {fmt(report.productId.avgAdsCost || 0)}
                   </p>
                 </div>
               </div>

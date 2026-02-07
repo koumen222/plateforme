@@ -48,7 +48,7 @@ const ecomUserSchema = new mongoose.Schema({
       // Afrique Centrale
       'XAF', 'CDF',
       // Afrique de l'Ouest
-      'XOF', 'NGN', 'GHS', 'GNF', 'SLL',
+      'XOF', 'NGN', 'GHS', 'GNF', 'LRD', 'SLL',
       // Afrique du Nord
       'MAD', 'TND', 'DZD', 'EGP', 'LYD',
       // Afrique de l'Est

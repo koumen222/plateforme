@@ -93,9 +93,7 @@ const StockOrderForm = () => {
   const estimatedProfit = totalSellingValue - totalCost;
   const profitPerUnit = qty > 0 ? estimatedProfit / qty : 0;
 
-  const formatCurrency = (amount) => {
-    return `${amount?.toLocaleString('fr-FR') || 0} FCFA`;
-  };
+  // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -257,7 +255,7 @@ const StockOrderForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prix par kg (FCFA) *
+                Prix par kg ({symbol}) *
               </label>
               <input
                 type="number"
@@ -273,7 +271,7 @@ const StockOrderForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prix d'achat unitaire (FCFA) *
+                Prix d'achat unitaire ({symbol}) *
                 {formData.sourcing === 'chine' && <span className="text-xs text-blue-600 ml-1">(en Chine)</span>}
               </label>
               <input
@@ -290,7 +288,7 @@ const StockOrderForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Prix de vente unitaire (FCFA) *
+                Prix de vente unitaire ({symbol}) *
               </label>
               <input
                 type="number"
@@ -306,11 +304,11 @@ const StockOrderForm = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Coût de transport (FCFA)
+                Coût de transport ({symbol})
                 <span className="text-xs text-gray-500 ml-1">(poids x prix/kg)</span>
               </label>
               <div className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-md text-gray-900 font-semibold">
-                {formatCurrency(transportCost)}
+                {fmt(transportCost)}
               </div>
             </div>
           </div>
@@ -373,30 +371,30 @@ const StockOrderForm = () => {
               </div>
               <div>
                 <span className="text-gray-600">Coût d'achat total:</span>
-                <p className="font-semibold">{formatCurrency(totalPurchaseCost)}</p>
+                <p className="font-semibold">{fmt(totalPurchaseCost)}</p>
               </div>
               <div>
                 <span className="text-gray-600">Transport:</span>
-                <p className="font-semibold">{formatCurrency(transportCost)}</p>
+                <p className="font-semibold">{fmt(transportCost)}</p>
               </div>
               <div>
                 <span className="text-gray-600">Coût total:</span>
-                <p className="font-bold text-red-600">{formatCurrency(totalCost)}</p>
+                <p className="font-bold text-red-600">{fmt(totalCost)}</p>
               </div>
               <div>
                 <span className="text-gray-600">Valeur de vente:</span>
-                <p className="font-semibold text-blue-600">{formatCurrency(totalSellingValue)}</p>
+                <p className="font-semibold text-blue-600">{fmt(totalSellingValue)}</p>
               </div>
               <div>
                 <span className="text-gray-600">Profit estimé:</span>
                 <p className={`font-bold text-lg ${estimatedProfit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(estimatedProfit)}
+                  {fmt(estimatedProfit)}
                 </p>
               </div>
               <div>
                 <span className="text-gray-600">Profit/unité:</span>
                 <p className={`font-semibold ${profitPerUnit > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(profitPerUnit)}
+                  {fmt(profitPerUnit)}
                 </p>
               </div>
               <div>

@@ -11,6 +11,7 @@ export const conversionRates = {
   NGN: 1.35,     // 1 FCFA = 1.35 NGN
   GHS: 0.0095,   // 1 FCFA = 0.0095 GHS
   GNF: 15,       // 1 FCFA = 15 GNF
+  LRD: 0.28,     // 1 FCFA = 0.28 LRD
   SLL: 0.28,     // 1 FCFA = 0.28 SLL
   MAD: 0.015,    // 1 FCFA = 0.015 MAD
   TND: 0.0046,   // 1 FCFA = 0.0046 TND

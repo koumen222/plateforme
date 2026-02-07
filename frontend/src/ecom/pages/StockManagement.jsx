@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import ecomApi from '../services/ecommApi.js';
+import { useMoney } from '../hooks/useMoney.js';
 
 const StockManagement = () => {
+  const { fmt } = useMoney();
   const [entries, setEntries] = useState([]);
   const [summary, setSummary] = useState(null);
   const [products, setProducts] = useState([]);
@@ -105,8 +107,7 @@ const StockManagement = () => {
     } catch { setError('Erreur suppression'); }
   };
 
-  const fmt = (n) => new Intl.NumberFormat('fr-FR').format(n || 0);
-  const fmtMoney = (n) => new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n || 0);
+  const formatNumber = (n) => new Intl.NumberFormat('fr-FR').format(n || 0);
 
   const filteredEntries = entries.filter(e => {
     if (filterCity && !e.city?.toLowerCase().includes(filterCity.toLowerCase())) return false;
@@ -192,11 +193,11 @@ const StockManagement = () => {
           {/* Totals */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             <div className="bg-white rounded-xl shadow-sm border p-4 text-center">
-              <p className="text-2xl font-bold text-blue-600">{fmt(summary.totals?.totalQuantity)}</p>
+              <p className="text-2xl font-bold text-blue-600">{formatNumber(summary.totals?.totalQuantity)}</p>
               <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-medium mt-1">Total unités</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border p-4 text-center">
-              <p className="text-lg sm:text-2xl font-bold text-green-600">{fmtMoney(summary.totals?.totalValue)}</p>
+              <p className="text-lg sm:text-2xl font-bold text-green-600">{fmt(summary.totals?.totalValue)}</p>
               <p className="text-[10px] sm:text-xs text-gray-500 uppercase font-medium mt-1">Valeur totale</p>
             </div>
             <div className="bg-white rounded-xl shadow-sm border p-4 text-center">
@@ -227,8 +228,8 @@ const StockManagement = () => {
                       <p className="text-xs text-gray-500">{p.cities?.length || 0} ville(s)</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-bold text-gray-900">{fmt(p.totalQuantity)} unités</p>
-                      <p className="text-xs text-green-600 font-medium">{fmtMoney(p.totalValue)}</p>
+                      <p className="text-sm font-bold text-gray-900">{formatNumber(p.totalQuantity)} unités</p>
+                      <p className="text-xs text-green-600 font-medium">{fmt(p.totalValue)}</p>
                     </div>
                   </div>
                 ))}
@@ -291,9 +292,9 @@ const StockManagement = () => {
                         )}
                       </div>
                       <div className="flex items-center gap-3 mt-1">
-                        <span className="text-xs text-gray-500">Qté: <strong className="text-gray-800">{fmt(entry.quantity)}</strong></span>
-                        <span className="text-xs text-gray-500">Coût unit: <strong className="text-gray-800">{fmtMoney(entry.unitCost)}</strong></span>
-                        <span className="text-xs text-green-600 font-medium">Valeur: {fmtMoney(entry.quantity * entry.unitCost)}</span>
+                        <span className="text-xs text-gray-500">Qté: <strong className="text-gray-800">{formatNumber(entry.quantity)}</strong></span>
+                        <span className="text-xs text-gray-500">Coût unit: <strong className="text-gray-800">{fmt(entry.unitCost)}</strong></span>
+                        <span className="text-xs text-green-600 font-medium">Valeur: {fmt(entry.quantity * entry.unitCost)}</span>
                       </div>
                       {entry.notes && <p className="text-[10px] text-gray-400 mt-1 truncate">{entry.notes}</p>}
                     </div>
@@ -343,8 +344,8 @@ const StockManagement = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-gray-900">{fmt(c.totalQuantity)}</p>
-                    <p className="text-xs text-green-600 font-medium">{fmtMoney(c.totalValue)}</p>
+                    <p className="text-lg font-bold text-gray-900">{formatNumber(c.totalQuantity)}</p>
+                    <p className="text-xs text-green-600 font-medium">{fmt(c.totalValue)}</p>
                   </div>
                 </div>
               </div>
@@ -374,8 +375,8 @@ const StockManagement = () => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-gray-900">{fmt(a.totalQuantity)}</p>
-                    <p className="text-xs text-green-600 font-medium">{fmtMoney(a.totalValue)}</p>
+                    <p className="text-lg font-bold text-gray-900">{formatNumber(a.totalQuantity)}</p>
+                    <p className="text-xs text-green-600 font-medium">{fmt(a.totalValue)}</p>
                   </div>
                 </div>
               </div>
@@ -411,9 +412,9 @@ const StockManagement = () => {
                   <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
                     <p className="text-xs font-medium text-gray-500 mb-1.5">Infos produit</p>
                     <div className="flex flex-wrap gap-3 text-xs">
-                      <span className="text-gray-600">Prix vente: <strong className="text-gray-900">{fmtMoney(prod.sellingPrice)}</strong></span>
-                      <span className="text-gray-600">Coût produit: <strong className="text-gray-900">{fmtMoney(prod.productCost)}</strong></span>
-                      <span className="text-gray-600">Livraison: <strong className="text-gray-900">{fmtMoney(prod.deliveryCost)}</strong></span>
+                      <span className="text-gray-600">Prix vente: <strong className="text-gray-900">{fmt(prod.sellingPrice)}</strong></span>
+                      <span className="text-gray-600">Coût produit: <strong className="text-gray-900">{fmt(prod.productCost)}</strong></span>
+                      <span className="text-gray-600">Livraison: <strong className="text-gray-900">{fmt(prod.deliveryCost)}</strong></span>
                     </div>
                   </div>
                 );
