@@ -1919,6 +1919,19 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/campaigns.js:', error.message);
     }
 
+    // Routes E-commerce Ecore (Analyse économique)
+    try {
+      const ecomEcoreModule = await import("./ecom/routes/ecore.js");
+      const ecomEcoreRoutes = ecomEcoreModule.default;
+      app.use("/api/ecom/ecore", ecomEcoreRoutes);
+      console.log('✅ Routes E-commerce Ecore chargées');
+      console.log('   GET  /api/ecom/ecore/overview - Vue d\'ensemble économique');
+      console.log('   GET  /api/ecom/ecore/profit-analysis - Analyse rentabilité');
+      console.log('   GET  /api/ecom/ecore/trends - Tendances');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/ecore.js:', error.message);
+    }
+
     console.log('🛒 Module E-commerce Cockpit chargé avec succès!');
     console.log('   Accès frontend: /ecom/*');
     console.log('   API Base URL: /api/ecom/*');

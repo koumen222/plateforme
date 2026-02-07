@@ -247,6 +247,8 @@ router.get('/me', async (req, res) => {
         user: {
           id: user._id,
           email: user.email,
+          name: user.name,
+          phone: user.phone,
           role: user.role,
           isActive: user.isActive,
           lastLogin: user.lastLogin,
@@ -268,6 +270,39 @@ router.get('/me', async (req, res) => {
       success: false,
       message: 'Token invalide'
     });
+  }
+});
+
+// PUT /api/ecom/auth/profile - Mettre à jour le profil
+router.put('/profile', async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({ success: false, message: 'Token invalide' });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const user = await EcomUser.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non trouvé ou inactif' });
+    }
+
+    if (name !== undefined) user.name = name.trim();
+    if (phone !== undefined) user.phone = phone.trim();
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Profil mis à jour avec succès',
+      data: { name: user.name, phone: user.phone }
+    });
+  } catch (error) {
+    console.error('Erreur update profile e-commerce:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

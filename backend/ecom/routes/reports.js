@@ -4,6 +4,7 @@ import DailyReport from '../models/DailyReport.js';
 import Product from '../models/Product.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateDailyReport } from '../middleware/validation.js';
+import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
 
 const router = express.Router();
 
@@ -271,7 +272,11 @@ router.post('/',
 
       // Décrémenter le stock du produit selon les commandes livrées
       if (ordersDelivered > 0) {
-        await Product.findByIdAndUpdate(productId, { $inc: { stock: -ordersDelivered } });
+        await adjustProductStock({
+          workspaceId: req.workspaceId,
+          productId,
+          delta: -ordersDelivered
+        });
         console.log(`📦 Stock décrémenté de ${ordersDelivered} pour ${product.name}`);
       }
 
@@ -286,6 +291,9 @@ router.post('/',
       });
     } catch (error) {
       console.error('Erreur create report:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
+      }
       if (error.code === 11000) {
         return res.status(400).json({
           success: false,
@@ -335,7 +343,11 @@ router.put('/:id',
       const newDelivered = report.ordersDelivered || 0;
       const diff = newDelivered - oldDelivered;
       if (diff !== 0) {
-        await Product.findByIdAndUpdate(report.productId, { $inc: { stock: -diff } });
+        await adjustProductStock({
+          workspaceId: req.workspaceId,
+          productId: report.productId,
+          delta: -diff
+        });
         console.log(`📦 Stock ajusté de ${-diff} pour le rapport mis à jour`);
       }
 
@@ -350,6 +362,9 @@ router.put('/:id',
       });
     } catch (error) {
       console.error('Erreur update report:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
+      }
       res.status(500).json({
         success: false,
         message: 'Erreur serveur'
@@ -375,7 +390,11 @@ router.delete('/:id',
 
       // Restaurer le stock du produit
       if (report.ordersDelivered > 0) {
-        await Product.findByIdAndUpdate(report.productId, { $inc: { stock: report.ordersDelivered } });
+        await adjustProductStock({
+          workspaceId: req.workspaceId,
+          productId: report.productId,
+          delta: report.ordersDelivered
+        });
         console.log(`📦 Stock restauré de +${report.ordersDelivered} après suppression du rapport`);
       }
 
@@ -387,6 +406,9 @@ router.delete('/:id',
       });
     } catch (error) {
       console.error('Erreur delete report:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
+      }
       res.status(500).json({
         success: false,
         message: 'Erreur serveur'

@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import StockLocation from '../models/StockLocation.js';
 import Product from '../models/Product.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+import { adjustStockLocationQuantity, StockAdjustmentError } from '../services/stockService.js';
 
 const router = express.Router();
 
@@ -259,28 +260,24 @@ router.post('/:id/adjust',
         return res.status(400).json({ success: false, message: 'Ajustement requis (positif ou négatif)' });
       }
 
-      const entry = await StockLocation.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
-      if (!entry) {
-        return res.status(404).json({ success: false, message: 'Emplacement non trouvé' });
-      }
+      const updated = await adjustStockLocationQuantity({
+        workspaceId: req.workspaceId,
+        entryId: req.params.id,
+        adjustment: parseInt(adjustment, 10),
+        userId: req.ecomUser._id,
+        reason
+      });
 
-      const newQty = entry.quantity + parseInt(adjustment);
-      if (newQty < 0) {
-        return res.status(400).json({ success: false, message: `Stock insuffisant. Actuel: ${entry.quantity}` });
-      }
-
-      entry.quantity = newQty;
-      entry.notes = reason ? `${entry.notes ? entry.notes + ' | ' : ''}${adjustment > 0 ? '+' : ''}${adjustment}: ${reason}` : entry.notes;
-      entry.updatedBy = req.ecomUser._id;
-      await entry.save();
-
-      const populated = await StockLocation.findById(entry._id)
+      const populated = await StockLocation.findById(updated._id)
         .populate('productId', 'name sellingPrice productCost')
         .populate('updatedBy', 'email');
 
       res.json({ success: true, message: `Stock ajusté de ${adjustment > 0 ? '+' : ''}${adjustment}`, data: populated });
     } catch (error) {
       console.error('Erreur adjust stock:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
+      }
       res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
   }

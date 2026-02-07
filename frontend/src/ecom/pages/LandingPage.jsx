@@ -15,10 +15,10 @@ const LandingPage = () => {
     <div className="min-h-screen bg-[#0a0a0f] text-white overflow-x-hidden">
 
       {/* ═══════════════════ NAVBAR ═══════════════════ */}
-      <nav className="fixed top-0 w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
+      <nav className="w-full z-50 bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src="/img/ecom-logo.png" alt="Ecom Cockpit" className="h-10 sm:h-12" />
+            <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-16 object-contain" />
           </div>
           <div className="hidden sm:flex items-center gap-1">
             <a href="#features" className="px-3 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg">Fonctionnalités</a>
@@ -50,7 +50,7 @@ const LandingPage = () => {
       </nav>
 
       {/* ═══════════════════ HERO ═══════════════════ */}
-      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-32 px-4">
+      <section className="relative pt-16 pb-20 sm:pt-20 sm:pb-32 px-4">
         {/* Background effects */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-20 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[120px]"></div>
@@ -493,7 +493,7 @@ const LandingPage = () => {
         <div className="max-w-7xl mx-auto">
           <div className="grid sm:grid-cols-4 gap-8 mb-10">
             <div className="sm:col-span-2">
-              <img src="/img/ecom-logo.png" alt="Ecom Cockpit" className="h-10 mb-4" />
+              <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-14 object-contain mb-4" />
               <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
                 La plateforme tout-en-un pour gérer votre business e-commerce COD en Afrique. Commandes, clients, finances, marketing — tout centralisé.
               </p>

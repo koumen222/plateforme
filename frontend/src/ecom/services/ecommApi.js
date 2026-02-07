@@ -62,6 +62,9 @@ export const authApi = {
   // Obtenir le profil utilisateur
   getProfile: () => ecomApi.get('/auth/me'),
   
+  // Mettre à jour le profil (name, phone)
+  updateProfile: (data) => ecomApi.put('/auth/profile', data),
+  
   // Changer le mot de passe
   changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords),
   

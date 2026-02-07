@@ -13,7 +13,7 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
   try {
     const { startDate, endDate } = req.query;
     const matchStage = { workspaceId: new mongoose.Types.ObjectId(req.workspaceId) };
-    
+
     if (startDate || endDate) {
       matchStage.date = {};
       if (startDate) matchStage.date.$gte = new Date(startDate);
@@ -24,30 +24,51 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
       }
     }
 
-    // 1. Ventes et revenus
+    // 1. Ventes et revenus (DailyReport ne stocke pas les prix -> lookup Product)
     const salesData = await DailyReport.aggregate([
       { $match: matchStage },
       {
+        $lookup: {
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      { $unwind: '$product' },
+      {
         $group: {
           _id: null,
-          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$sellingPrice'] } },
-          totalProductCost: { $sum: { $multiply: ['$ordersDelivered', '$productCost'] } },
-          totalDeliveryCost: { $sum: { $multiply: ['$ordersDelivered', '$deliveryCost'] } },
+          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
+          totalProductCost: { $sum: { $multiply: ['$ordersDelivered', '$product.productCost'] } },
+          totalDeliveryCost: { $sum: { $multiply: ['$ordersDelivered', '$product.deliveryCost'] } },
+          totalAvgAdsCost: { $sum: { $multiply: ['$ordersDelivered', '$product.avgAdsCost'] } },
           totalAdSpend: { $sum: '$adSpend' },
           ordersReceived: { $sum: '$ordersReceived' },
-          ordersDelivered: { $sum: '$ordersDelivered' },
-          totalOrders: { $sum: { $add: ['$ordersReceived', '$ordersDelivered'] } }
+          ordersDelivered: { $sum: '$ordersDelivered' }
+        }
+      },
+      {
+        $addFields: {
+          totalOrders: { $add: ['$ordersReceived', '$ordersDelivered'] }
         }
       }
     ]);
 
-    // 2. Coûts stocks
+    // 2. Coûts stocks (status = received dans le modèle)
     const stockCosts = await StockOrder.aggregate([
-      { $match: { workspaceId: req.workspaceId, status: 'delivered' } },
+      {
+        $match: {
+          workspaceId: new mongoose.Types.ObjectId(req.workspaceId),
+          status: 'received'
+        }
+      },
       {
         $group: {
           _id: null,
-          totalStockCost: { $sum: '$purchasePrice' },
+          totalPurchaseCost: { $sum: { $multiply: ['$purchasePrice', '$quantity'] } },
+          totalTransportCost: { $sum: '$transportCost' },
+          totalStockCost: { $sum: { $add: [{ $multiply: ['$purchasePrice', '$quantity'] }, '$transportCost'] } },
           totalStockValue: { $sum: { $multiply: ['$quantity', '$sellingPrice'] } }
         }
       }
@@ -55,7 +76,7 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
 
     // 3. Transactions financières
     const transactions = await Transaction.aggregate([
-      { $match: { workspaceId: req.workspaceId } },
+      { $match: { workspaceId: new mongoose.Types.ObjectId(req.workspaceId) } },
       {
         $group: {
           _id: '$type',
@@ -66,33 +87,31 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
     ]);
 
     // 4. Produits actifs et leur performance
-    const productPerformance = await Product.aggregate([
-      { $match: { workspaceId: req.workspaceId, isActive: true } },
+    const productPerformance = await DailyReport.aggregate([
+      { $match: matchStage },
       {
         $lookup: {
-          from: 'dailyreports',
-          localField: '_id',
-          foreignField: 'productId',
-          as: 'reports'
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
         }
       },
-      { $unwind: '$reports' },
-      {
-        $match: { 'reports.date': matchStage.date || { $exists: true } }
-      },
+      { $unwind: '$product' },
+      { $match: { 'product.isActive': true } },
       {
         $group: {
-          _id: '$_id',
-          name: { $first: '$name' },
-          status: { $first: '$status' },
-          sellingPrice: { $first: '$sellingPrice' },
-          productCost: { $first: '$productCost' },
-          deliveryCost: { $first: '$deliveryCost' },
-          avgAdsCost: { $first: '$avgAdsCost' },
-          totalRevenue: { $sum: { $multiply: ['$reports.ordersDelivered', '$sellingPrice'] } },
-          totalOrders: { $sum: { $add: ['$reports.ordersReceived', '$reports.ordersDelivered'] } },
-          totalDelivered: { $sum: '$reports.ordersDelivered' },
-          totalAdSpend: { $sum: '$reports.adSpend' }
+          _id: '$productId',
+          name: { $first: '$product.name' },
+          status: { $first: '$product.status' },
+          sellingPrice: { $first: '$product.sellingPrice' },
+          productCost: { $first: '$product.productCost' },
+          deliveryCost: { $first: '$product.deliveryCost' },
+          avgAdsCost: { $first: '$product.avgAdsCost' },
+          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
+          totalOrders: { $sum: { $add: ['$ordersReceived', '$ordersDelivered'] } },
+          totalDelivered: { $sum: '$ordersDelivered' },
+          totalAdSpend: { $sum: '$adSpend' }
         }
       },
       {
@@ -109,9 +128,15 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
           totalAdSpend: 1,
           margin: { $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] },
           marginPercent: {
-            $multiply: [
-              { $divide: [{ $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }, '$sellingPrice'] },
-              100
+            $cond: [
+              { $eq: ['$sellingPrice', 0] },
+              0,
+              {
+                $multiply: [
+                  { $divide: [{ $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }, '$sellingPrice'] },
+                  100
+                ]
+              }
             ]
           },
           roas: {
@@ -127,7 +152,7 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
 
     // 5. Stock actif
     const stockValue = await Product.aggregate([
-      { $match: { workspaceId: req.workspaceId, isActive: true } },
+      { $match: { workspaceId: new mongoose.Types.ObjectId(req.workspaceId), isActive: true } },
       {
         $group: {
           _id: null,
@@ -143,16 +168,19 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
     ]);
 
     // 6. Taux de livraison
-    const deliveryRate = salesData[0] ? (salesData[0].ordersDelivered / salesData[0].totalOrders * 100) : 0;
+    const deliveryRate = salesData[0] && salesData[0].totalOrders
+      ? (salesData[0].ordersDelivered / salesData[0].totalOrders * 100)
+      : 0;
 
     // Calculs finaux
     const sales = salesData[0] || {};
-    const stock = stockCosts[0] || {};
+    const stockOrders = stockCosts[0] || {};
+    const stockAgg = stockValue[0] || {};
     const incomeData = transactions.find(t => t._id === 'income') || { total: 0 };
     const expenseData = transactions.find(t => t._id === 'expense') || { total: 0 };
 
     const totalRevenue = sales.totalRevenue || 0;
-    const totalCost = (sales.totalProductCost || 0) + (sales.totalDeliveryCost || 0) + (sales.totalAdSpend || 0) + (stock.totalStockCost || 0);
+    const totalCost = (sales.totalProductCost || 0) + (sales.totalDeliveryCost || 0) + (sales.totalAdSpend || 0) + (stockOrders.totalStockCost || 0);
     const grossProfit = totalRevenue - (sales.totalProductCost || 0) - (sales.totalDeliveryCost || 0);
     const netProfit = grossProfit - (sales.totalAdSpend || 0);
     const grossMargin = totalRevenue ? (grossProfit / totalRevenue * 100) : 0;
@@ -164,11 +192,13 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
       .slice(0, 10)
       .map(p => ({
         ...p,
-        profit: p.totalRevenue - (p.totalOrders * (p.productCost + p.deliveryCost + p.avgAdsCost)),
-        profitMargin: p.totalRevenue ? ((p.totalRevenue - (p.totalOrders * (p.productCost + p.deliveryCost + p.avgAdsCost))) / p.totalRevenue * 100 : 0
+        profit: p.totalRevenue - (p.totalDelivered * (p.productCost + p.deliveryCost + p.avgAdsCost)),
+        profitMargin: p.totalRevenue
+          ? ((p.totalRevenue - (p.totalDelivered * (p.productCost + p.deliveryCost + p.avgAdsCost))) / p.totalRevenue * 100)
+          : 0
       }));
 
-    const res.json({
+    res.json({
       success: true,
       data: {
         // Chiffres clés
@@ -178,34 +208,34 @@ router.get('/overview', requireEcomAuth, validateEcomAccess('finance', 'read'), 
         grossMargin,
         netMargin,
         deliveryRate,
-        
+
         // Ventes
         ordersReceived: sales.ordersReceived || 0,
         ordersDelivered: sales.ordersDelivered || 0,
         totalOrders: sales.totalOrders || 0,
-        
+
         // Coûts
         productCost: sales.totalProductCost || 0,
         deliveryCost: sales.totalDeliveryCost || 0,
         adSpend: sales.totalAdSpend || 0,
-        stockCost: stock.totalStockCost || 0,
-        
+        stockCost: stockOrders.totalStockCost || 0,
+
         // Stock
-        totalStock: stock.totalStock || 0,
-        stockValue: stock.totalValue || 0,
-        lowStockAlerts: stock.lowStockCount || 0,
-        
+        totalStock: stockAgg.totalStock || 0,
+        stockValue: stockAgg.totalValue || 0,
+        lowStockAlerts: stockAgg.lowStockCount || 0,
+
         // Transactions
         totalIncome: incomeData.total,
         totalExpense: expenseData.total,
         cashFlow: incomeData.total - expenseData.total,
-        
+
         // Top produits
         topProducts,
-        
+
         // Détails par statut
         productsByStatus: await Product.aggregate([
-          { $match: { workspaceId: req.workspaceId, isActive: true } },
+          { $match: { workspaceId: new mongoose.Types.ObjectId(req.workspaceId), isActive: true } },
           {
             $group: {
               _id: '$status',
@@ -228,7 +258,7 @@ router.get('/profit-analysis', requireEcomAuth, validateEcomAccess('finance', 'r
   try {
     const { startDate, endDate, productId } = req.query;
     const matchStage = { workspaceId: new mongoose.Types.ObjectId(req.workspaceId) };
-    
+
     if (startDate || endDate) {
       matchStage.date = {};
       if (startDate) matchStage.date.$gte = new Date(startDate);
@@ -241,12 +271,11 @@ router.get('/profit-analysis', requireEcomAuth, validateEcomAccess('finance', 'r
 
     if (productId) matchStage.productId = new mongoose.Types.ObjectId(productId);
 
-    // Analyse par produit
     const profitByProduct = await DailyReport.aggregate([
       { $match: matchStage },
       {
         $lookup: {
-          from: 'products',
+          from: 'ecom_products',
           localField: 'productId',
           foreignField: '_id',
           as: 'product'
@@ -264,49 +293,46 @@ router.get('/profit-analysis', requireEcomAuth, validateEcomAccess('finance', 'r
           avgAdsCost: { $first: '$product.avgAdsCost' },
           stock: { $first: '$product.stock' },
           reorderThreshold: { $first: '$product.reorderThreshold' },
-          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$sellingPrice'] } },
+          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] } },
           totalOrders: { $sum: { $add: ['$ordersReceived', '$ordersDelivered'] } },
           totalDelivered: { $sum: '$ordersDelivered' },
           totalAdSpend: { $sum: '$adSpend' }
         }
       },
       {
-        $project: {
-          name: 1,
-          status: 1,
-          sellingPrice: 1,
-          productCost: 1,
-          deliveryCost: 1,
-          avgAdsCost: 1,
-          stock: 1,
-          reorderThreshold: 1,
-          totalRevenue: 1,
-          totalOrders: 1,
-          totalDelivered: 1,
-          totalAdSpend: 1,
+        $addFields: {
           unitCost: { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] },
-          unitMargin: { $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] },
+          unitMargin: { $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }
+        }
+      },
+      {
+        $addFields: {
           unitMarginPercent: {
-            $multiply: [
-              { $divide: [{ $subtract: ['$sellingPrice', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }, '$sellingPrice'] },
-              100
+            $cond: [
+              { $eq: ['$sellingPrice', 0] },
+              0,
+              { $multiply: [{ $divide: ['$unitMargin', '$sellingPrice'] }, 100] }
             ]
           },
-          totalCost: { $multiply: ['$totalDelivered', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] },
-          grossProfit: { $subtract: ['$totalRevenue', { $multiply: ['$totalDelivered', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] } },
+          totalCost: { $multiply: ['$totalDelivered', '$unitCost'] },
+          grossProfit: { $subtract: ['$totalRevenue', { $multiply: ['$totalDelivered', '$unitCost'] }] },
+          netProfit: { $subtract: [{ $subtract: ['$totalRevenue', { $multiply: ['$totalDelivered', '$unitCost'] }] }, '$totalAdSpend'] }
+        }
+      },
+      {
+        $addFields: {
           grossMargin: {
-            $multiply: [
-              { $divide: [{ $subtract: ['$totalRevenue', { $multiply: ['$totalDelivered', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] } }, '$totalRevenue'] },
-              100
+            $cond: [
+              { $eq: ['$totalRevenue', 0] },
+              0,
+              { $multiply: [{ $divide: ['$grossProfit', '$totalRevenue'] }, 100] }
             ]
-          },
-          netProfit: {
-            $subtract: ['$totalRevenue', { $add: [{ $multiply: ['$totalDelivered', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }, '$totalAdSpend'] }] }
           },
           netMargin: {
-            $multiply: [
-              { $divide: [{ $subtract: ['$totalRevenue', { $add: [{ $multiply: ['$totalDelivered', { $add: ['$productCost', '$deliveryCost', '$avgAdsCost'] }] }, '$totalAdSpend'] }] }, '$totalRevenue'] },
-              100
+            $cond: [
+              { $eq: ['$totalRevenue', 0] },
+              0,
+              { $multiply: [{ $divide: ['$netProfit', '$totalRevenue'] }, 100] }
             ]
           },
           roas: {
@@ -323,14 +349,47 @@ router.get('/profit-analysis', requireEcomAuth, validateEcomAccess('finance', 'r
               { $multiply: [{ $divide: ['$totalDelivered', '$totalOrders'] }, 100] }
             ]
           },
-          avgOrderValue: { $cond: [{ $eq: ['$totalDelivered', 0] }, 0, { $divide: ['$totalRevenue', '$totalDelivered'] }] }
+          avgOrderValue: {
+            $cond: [
+              { $eq: ['$totalDelivered', 0] },
+              0,
+              { $divide: ['$totalRevenue', '$totalDelivered'] }
+            ]
+          }
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          status: 1,
+          sellingPrice: 1,
+          productCost: 1,
+          deliveryCost: 1,
+          avgAdsCost: 1,
+          stock: 1,
+          reorderThreshold: 1,
+          totalRevenue: 1,
+          totalOrders: 1,
+          totalDelivered: 1,
+          totalAdSpend: 1,
+          unitCost: 1,
+          unitMargin: 1,
+          unitMarginPercent: 1,
+          totalCost: 1,
+          grossProfit: 1,
+          grossMargin: 1,
+          netProfit: 1,
+          netMargin: 1,
+          roas: 1,
+          deliveryRate: 1,
+          avgOrderValue: 1
         }
       }
     ]);
 
     res.json({
       success: true,
-      data: profitByProduct.sort((a, b) => b.totalRevenue - a.totalRevenue)
+      data: profitByProduct.sort((a, b) => (b.totalRevenue || 0) - (a.totalRevenue || 0))
     });
   } catch (error) {
     console.error('Erreur profit analysis:', error);
@@ -352,16 +411,34 @@ router.get('/trends', requireEcomAuth, validateEcomAccess('finance', 'read'), as
         }
       },
       {
+        $lookup: {
+          from: 'ecom_products',
+          localField: 'productId',
+          foreignField: '_id',
+          as: 'product'
+        }
+      },
+      {
+        $unwind: {
+          path: '$product',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
         $group: {
-          _id: { $dateToString: { date: '$date', format: '%Y-%m-%d' } } },
-          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', '$sellingPrice'] } },
+          _id: { $dateToString: { date: '$date', format: '%Y-%m-%d' } },
+          totalRevenue: { $sum: { $multiply: ['$ordersDelivered', { $ifNull: ['$product.sellingPrice', 0] }] } },
           totalAdSpend: { $sum: '$adSpend' },
-          ordersDelivered: { $sum: '$ordersDelivered' },
+          ordersDelivered: { $sum: '$ordersDelivered' }
+        }
+      },
+      {
+        $addFields: {
           roas: {
             $cond: [
-              { $eq: ['$sum', '$adSpend'], 0 },
+              { $eq: ['$totalAdSpend', 0] },
               0,
-              { $divide: [{ $sum: { $multiply: ['$ordersDelivered', '$sellingPrice'] } }, { $sum: '$adSpend' }] }
+              { $divide: ['$totalRevenue', '$totalAdSpend'] }
             ]
           }
         }
@@ -374,6 +451,7 @@ router.get('/trends', requireEcomAuth, validateEcomAccess('finance', 'read'), as
       const start = Math.max(0, index - 6);
       const end = index;
       const weekData = trends.slice(start, end + 1);
+
       
       const avgRevenue = weekData.reduce((sum, d) => sum + d.totalRevenue, 0) / weekData.length;
       const avgAdSpend = weekData.reduce((sum, d) => sum + d.totalAdSpend, 0) / weekData.length;

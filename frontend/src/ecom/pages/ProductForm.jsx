@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney';
 import ecomApi from '../services/ecommApi.js';
 
 const ProductForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useEcomAuth();
+  const { fmt, symbol } = useMoney();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [error, setError] = useState('');
@@ -81,14 +83,19 @@ const ProductForm = () => {
     setError('');
 
     try {
+      if (!isEditing && !user?._id) {
+        setError('Utilisateur non trouvé. Veuillez vous reconnecter.');
+        return;
+      }
+
       const productData = {
         ...formData,
         sellingPrice: parseFloat(formData.sellingPrice),
         productCost: parseFloat(formData.productCost),
         deliveryCost: parseFloat(formData.deliveryCost) || 0,
         avgAdsCost: parseFloat(formData.avgAdsCost) || 0,
-        stock: parseInt(formData.stock),
-        reorderThreshold: parseInt(formData.reorderThreshold)
+        stock: parseInt(formData.stock, 10),
+        reorderThreshold: parseInt(formData.reorderThreshold, 10)
       };
 
       if (isEditing) {

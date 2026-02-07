@@ -50,7 +50,7 @@ const Login = () => {
             onClick={() => navigate('/ecom')}
             className="inline-flex items-center gap-2.5 mb-6 group"
           >
-            <img src="/img/ecom-logo.png" alt="Ecom Cockpit" className="h-16 group-hover:opacity-80 transition" />
+            <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-14 object-contain group-hover:opacity-80 transition" />
           </button>
           <h1 className="text-2xl font-bold text-white">Bon retour !</h1>
           <p className="mt-1.5 text-gray-400 text-sm">Connectez-vous à votre espace de travail</p>

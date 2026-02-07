@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney';
 import ecomApi from '../services/ecommApi.js';
 
 const StockOrderForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useEcomAuth();
+  const { fmt, symbol } = useMoney();
   const [loading, setLoading] = useState(false);
   const [initialLoading, setInitialLoading] = useState(false);
   const [error, setError] = useState('');

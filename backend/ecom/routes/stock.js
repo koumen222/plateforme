@@ -3,6 +3,7 @@ import StockOrder from '../models/StockOrder.js';
 import Product from '../models/Product.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateStockOrder } from '../middleware/validation.js';
+import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
 
 const router = express.Router();
 
@@ -226,18 +227,24 @@ router.put('/orders/:id/receive',
       // Mettre à jour le stock du produit
       let product = null;
       if (order.productId) {
-        product = await Product.findById(order.productId);
+        product = await Product.findOne({ _id: order.productId, workspaceId: req.workspaceId });
       }
       if (!product && order.productName) {
-        product = await Product.findOne({ name: { $regex: new RegExp(`^${order.productName}$`, 'i') } });
+        product = await Product.findOne({
+          workspaceId: req.workspaceId,
+          name: { $regex: new RegExp(`^${order.productName}$`, 'i') }
+        });
         if (product) {
           order.productId = product._id;
           await order.save();
         }
       }
       if (product) {
-        product.stock += order.quantity;
-        await product.save();
+        await adjustProductStock({
+          workspaceId: req.workspaceId,
+          productId: product._id,
+          delta: order.quantity
+        });
       }
 
       const updatedOrder = await StockOrder.findById(order._id)
@@ -251,6 +258,9 @@ router.put('/orders/:id/receive',
       });
     } catch (error) {
       console.error('Erreur receive stock order:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
+      }
       res.status(500).json({
         success: false,
         message: 'Erreur serveur'
