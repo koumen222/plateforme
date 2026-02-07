@@ -23,6 +23,129 @@
   --ecom-gray-900: #111827;
 }
 
+/* 🆕 Optimisations Mobile */
+/* Safe areas pour les mobiles modernes (iPhone X, etc.) */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+.safe-area-all {
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+/* 🆕 Optimisations pour le tactile sur mobile */
+@media (max-width: 768px) {
+  /* Boutons plus grands pour le tactile */
+  .ecom-mobile-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+  }
+  
+  /* Espaces entre les éléments cliquables */
+  .ecom-mobile-spacing > * {
+    margin-bottom: 12px;
+  }
+  
+  /* Textes plus lisibles sur mobile */
+  .ecom-mobile-text {
+    font-size: 16px;
+    line-height: 1.5;
+  }
+  
+  /* Scroll optimisé pour mobile */
+  .ecom-mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Input optimisés pour mobile */
+  .ecom-mobile-input {
+    font-size: 16px; /* Évite le zoom sur iOS */
+    padding: 12px 16px;
+    border-radius: 8px;
+  }
+  
+  /* Cards optimisées pour mobile */
+  .ecom-mobile-card {
+    margin: 8px;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  /* Tableaux optimisés pour mobile */
+  .ecom-mobile-table {
+    font-size: 14px;
+  }
+  
+  .ecom-mobile-table th,
+  .ecom-mobile-table td {
+    padding: 8px 4px;
+    white-space: nowrap;
+  }
+  
+  /* Navigation mobile optimisée */
+  .ecom-mobile-nav {
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+  
+  /* Animations plus fluides sur mobile */
+  .ecom-mobile-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Conteneur optimisé pour mobile */
+  .ecom-mobile-container {
+    max-width: 100%;
+    padding: 0 16px;
+    overflow-x: hidden;
+  }
+  
+  /* Grilles optimisées pour mobile */
+  .ecom-mobile-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+  }
+  
+  @media (min-width: 640px) {
+    .ecom-mobile-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+}
+
+/* 🆕 Performance mobile */
+/* Réduire les animations sur les appareils bas de gamme */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* 🆕 Mode sombre pour mobile (optionnel) */
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .ecom-mobile-dark {
+    background-color: #1a1a1a;
+    color: #ffffff;
+  }
+}
+
 /* Reset et base */
 .ecom-app * {
   box-sizing: border-box;

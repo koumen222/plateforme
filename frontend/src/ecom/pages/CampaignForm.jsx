@@ -66,12 +66,25 @@ const CampaignForm = () => {
     });
   };
 
-  const toggleAll = () => {
+  const selectSingleClient = (clientId) => {
+    setSelectedClients(new Set([clientId]));
+  };
+
+  const selectAllClients = () => {
+    if (!preview) return;
+    setSelectedClients(new Set(preview.clients.map(c => c._id)));
+  };
+
+  const deselectAllClients = () => {
+    setSelectedClients(new Set());
+  };
+
+  const toggleAllClients = () => {
     if (!preview) return;
     if (selectedClients.size === preview.clients.length) {
-      setSelectedClients(new Set());
+      deselectAllClients();
     } else {
-      setSelectedClients(new Set(preview.clients.map(c => c._id)));
+      selectAllClients();
     }
   };
 
@@ -475,12 +488,32 @@ const CampaignForm = () => {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="checkbox" checked={selectedClients.size === preview.clients.length && preview.clients.length > 0} onChange={toggleAll}
+                    <input type="checkbox" checked={selectedClients.size === preview.clients.length && preview.clients.length > 0} onChange={toggleAllClients}
                       className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
                     <span className="text-sm font-semibold text-indigo-700">{selectedClients.size}/{preview.count} sélectionné{selectedClients.size > 1 ? 's' : ''}</span>
                   </label>
                 </div>
                 <div className="flex items-center gap-1.5">
+                  {/* 🆕 Boutons de sélection rapide */}
+                  {preview.clients.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => selectSingleClient(preview.clients[0]._id)}
+                        className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-[10px] font-medium hover:bg-purple-200 transition"
+                        disabled={selectedClients.size === 1 && selectedClients.has(preview.clients[0]._id)}
+                      >
+                        {selectedClients.size === 1 && selectedClients.has(preview.clients[0]._id) ? '1er sélectionné' : 'Sélectionner 1er'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={selectedClients.size === preview.clients.length ? deselectAllClients : selectAllClients}
+                        className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-medium hover:bg-gray-200 transition"
+                      >
+                        {selectedClients.size === preview.clients.length ? 'Désélectionner' : 'Sélectionner tout'}
+                      </button>
+                    </>
+                  )}
                   <button type="button" onClick={() => setShowPhoneList(!showPhoneList)}
                     className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-[10px] font-medium hover:bg-gray-200 transition">
                     {showPhoneList ? 'Masquer' : 'Voir'} numéros
@@ -511,12 +544,23 @@ const CampaignForm = () => {
                     ))}
                     {(c.products || []).length > 0 && <span className="text-[9px] text-indigo-500">{(c.products || []).join(', ')}</span>}
                     
-                    {/* 🆕 Bouton d'aperçu par personne */}
+                    {/* 🆕 Bouton d'aperçu par personne - Amélioré */}
                     <button
                       type="button"
-                      onClick={() => handlePreviewSend(c)}
+                      onClick={() => {
+                        // 🆕 Sélectionner automatiquement cette personne si pas déjà sélectionnée
+                        if (!selectedClients.has(c._id)) {
+                          selectSingleClient(c._id);
+                        }
+                        // Envoyer l'aperçu
+                        handlePreviewSend(c);
+                      }}
                       disabled={previewSending === c._id || !formData.messageTemplate.trim()}
-                      className="ml-auto px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition text-[9px] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                      className={`ml-auto px-3 py-1.5 rounded-lg text-[10px] font-medium transition flex items-center gap-1 ${
+                        selectedClients.has(c._id) 
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200 border border-green-200' 
+                          : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200 border border-indigo-200'
+                      } disabled:opacity-50 disabled:cursor-not-allowed`}
                     >
                       {previewSending === c._id ? (
                         <>
@@ -528,10 +572,21 @@ const CampaignForm = () => {
                         </>
                       ) : (
                         <>
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                          </svg>
-                          Aperçu
+                          {selectedClients.has(c._id) ? (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                              </svg>
+                              Envoyer
+                            </>
+                          ) : (
+                            <>
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                              </svg>
+                              {selectedClients.size === 0 ? 'Aperçu' : 'Aperçu'}
+                            </>
+                          )}
                         </>
                       )}
                     </button>

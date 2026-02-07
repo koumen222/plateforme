@@ -13,6 +13,7 @@ import ProductForm from './pages/ProductForm.jsx';
 import ReportsList, { ReportsListWithBoundary } from './pages/ReportsList.jsx';
 import ReportForm from './pages/ReportForm.jsx';
 import ReportDetail from './pages/ReportDetail.jsx';
+import Profile from './pages/Profile.jsx';
 import StockOrdersList from './pages/StockOrdersList.jsx';
 import StockOrderForm from './pages/StockOrderForm.jsx';
 import StockManagement from './pages/StockManagement.jsx';
@@ -191,6 +192,9 @@ const EcomApp = () => {
               <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
+
+              {/* Route profil */}
+              <Route path="profile" element={<LayoutRoute><Profile /></LayoutRoute>} />
 
               {/* Route Data */}
               <Route path="data" element={<LayoutRoute><Data /></LayoutRoute>} />

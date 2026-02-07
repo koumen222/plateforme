@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const statusLabels = { draft: 'Brouillon', scheduled: 'Programmée', sending: 'En cours', sent: 'Envoyée', paused: 'Pause', failed: 'Échouée' };
@@ -16,6 +17,7 @@ const typeLabels = { relance_pending: 'Relance en attente', relance_cancelled: '
 
 const CampaignsList = () => {
   const { user } = useEcomAuth();
+  const { fmt } = useMoney(); // 🆕 Hook pour formater les montants
   const isAdmin = user?.role === 'ecom_admin';
   const [campaigns, setCampaigns] = useState([]);
   const [stats, setStats] = useState({});
@@ -23,6 +25,12 @@ const CampaignsList = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [sending, setSending] = useState(null);
+  
+  // 🆕 États pour l'aperçu à une personne
+  const [showPreview, setShowPreview] = useState(null);
+  const [previewData, setPreviewData] = useState(null);
+  const [selectedClient, setSelectedClient] = useState(null);
+  const [previewSending, setPreviewSending] = useState(false);
 
   const fetchCampaigns = async () => {
     try {
@@ -37,14 +45,50 @@ const CampaignsList = () => {
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
 
   const handleSend = async (id) => {
-    if (!confirm('Envoyer cette campagne maintenant ? Les messages WhatsApp seront envoyés à tous les clients ciblés.')) return;
-    setSending(id);
-    try {
-      const res = await ecomApi.post(`/campaigns/${id}/send`, {}, { timeout: 300000 });
-      setSuccess(res.data.message);
-      fetchCampaigns();
-    } catch (err) { setError(err.response?.data?.message || 'Erreur envoi'); }
-    finally { setSending(null); }
+    // 🆕 Si une personne est sélectionnée, envoyer seulement à cette personne
+    if (selectedClient && showPreview === id) {
+      if (!confirm(`Envoyer le message uniquement à ${selectedClient.firstName} ${selectedClient.lastName} ?`)) return;
+      
+      setSending(id);
+      try {
+        const response = await ecomApi.post('/campaigns/preview-send', {
+          messageTemplate: previewData.messageTemplate,
+          clientId: selectedClient._id
+        });
+        
+        if (response.data.success) {
+          setSuccess(`Message envoyé à ${selectedClient.firstName} ${selectedClient.lastName} !`);
+          // Fermer la modale après envoi réussi
+          setShowPreview(null);
+          setSelectedClient(null);
+        } else {
+          setError(response.data.message);
+        }
+      } catch (err) { 
+        setError(err.response?.data?.message || 'Erreur envoi'); 
+      } finally { 
+        setSending(null); 
+      }
+    } else {
+      // 🆕 Si personne n'est sélectionnée, envoyer à tout le monde
+      // Trouver la campagne pour vérifier si elle est programmée
+      const campaign = campaigns.find(c => c._id === id);
+      const isScheduled = campaign?.status === 'scheduled';
+      
+      const confirmMessage = isScheduled 
+        ? `Cette campagne est programmée. Envoyer maintenant annulera la programmation et enverra à tous les clients ciblés. Continuer ?`
+        : 'Envoyer cette campagne maintenant ? Les messages WhatsApp seront envoyés à tous les clients ciblés.';
+        
+      if (!confirm(confirmMessage)) return;
+      
+      setSending(id);
+      try {
+        const res = await ecomApi.post(`/campaigns/${id}/send`, {}, { timeout: 300000 });
+        setSuccess(res.data.message);
+        fetchCampaigns(); // Rafraîchir pour voir le changement de statut
+      } catch (err) { setError(err.response?.data?.message || 'Erreur envoi'); }
+      finally { setSending(null); }
+    }
   };
 
   const handleDelete = async (id, name) => {
@@ -54,6 +98,45 @@ const CampaignsList = () => {
       setSuccess('Campagne supprimée');
       fetchCampaigns();
     } catch { setError('Erreur suppression'); }
+  };
+
+  // 🆕 Fonction pour charger l'aperçu d'une campagne
+  const handlePreview = async (campaignId) => {
+    try {
+      const res = await ecomApi.post(`/campaigns/${campaignId}/preview`, {});
+      setPreviewData(res.data.data);
+      setShowPreview(campaignId);
+      setSelectedClient(null);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur chargement aperçu');
+    }
+  };
+
+  // 🆕 Fonction pour envoyer un aperçu à une personne spécifique
+  const handlePreviewSend = async (client) => {
+    if (!showPreview || !previewData) return;
+    
+    // 🆕 Sélectionner cette personne
+    setSelectedClient(client);
+    
+    setPreviewSending(true);
+    try {
+      const response = await ecomApi.post('/campaigns/preview-send', {
+        messageTemplate: previewData.messageTemplate,
+        clientId: client._id
+      });
+      
+      if (response.data.success) {
+        setSuccess(`Message d'aperçu envoyé à ${client.firstName} ${client.lastName} !`);
+      } else {
+        setError(response.data.message);
+      }
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Erreur envoi aperçu';
+      setError(errorMsg);
+    } finally {
+      setPreviewSending(false);
+    }
   };
 
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-';
@@ -144,14 +227,38 @@ const CampaignsList = () => {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   {(c.status === 'draft' || c.status === 'scheduled') && (
-                    <button onClick={() => handleSend(c._id)} disabled={sending === c._id}
-                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1">
-                      {sending === c._id ? (
-                        <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Envoi...</>
-                      ) : (
-                        <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg> Envoyer</>
-                      )}
-                    </button>
+                    <>
+                      {/* 🆕 Bouton Aperçu */}
+                      <button 
+                        onClick={() => handlePreview(c._id)} 
+                        disabled={sending === c._id}
+                        className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                        </svg>
+                        Aperçu
+                      </button>
+                      
+                      {/* Bouton Envoyer (existant) */}
+                      <button onClick={() => handleSend(c._id)} disabled={sending === c._id}
+                        className={`px-3 py-1.5 rounded-lg transition text-xs font-medium disabled:opacity-50 flex items-center gap-1 ${
+                          c.status === 'scheduled' 
+                            ? 'bg-orange-600 text-white hover:bg-orange-700' 
+                            : 'bg-green-600 text-white hover:bg-green-700'
+                        }`}
+                      >
+                        {sending === c._id ? (
+                          <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Envoi...</>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                            {c.status === 'scheduled' ? 'Envoyer maintenant' : 'Envoyer'}
+                          </>
+                        )}
+                      </button>
+                    </>
                   )}
                   <Link to={`/ecom/campaigns/${c._id}/edit`} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
@@ -165,6 +272,139 @@ const CampaignsList = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* 🆕 Modale d'aperçu */}
+      {showPreview && previewData && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Aperçu de la campagne</h3>
+                  <p className="text-sm opacity-90 mt-1">
+                    {previewData.clients?.length || 0} client{previewData.clients?.length > 1 ? 's' : ''} ciblé{previewData.clients?.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowPreview(null);
+                    setSelectedClient(null); // 🆕 Réinitialiser la sélection
+                  }}
+                  className="text-white hover:bg-white hover:bg-opacity-20 rounded-lg p-1 transition"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            {/* Message template */}
+            <div className="p-4 border-b border-gray-200 bg-gray-50">
+              <p className="text-sm font-medium text-gray-700 mb-2">Message template:</p>
+              <div className="bg-white p-3 rounded-lg border border-gray-200">
+                <p className="text-sm text-gray-800 whitespace-pre-wrap">{previewData.messageTemplate}</p>
+              </div>
+            </div>
+            
+            {/* Liste des clients */}
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-gray-900">Clients ciblés</p>
+                <p className="text-xs text-gray-500">Cliquez sur "Aperçu" pour envoyer à une seule personne</p>
+              </div>
+              
+              {/* 🆕 Indication de personne sélectionnée */}
+              {selectedClient && (
+                <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                      </svg>
+                      <span className="text-sm font-medium text-green-800">
+                        {selectedClient.firstName} {selectedClient.lastName} sélectionné(e)
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleSend(showPreview)}
+                      disabled={sending === showPreview}
+                      className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1"
+                    >
+                      {sending === showPreview ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                          </svg>
+                          Envoyer
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+              
+              <div className="max-h-96 overflow-y-auto space-y-2">
+                {previewData.clients?.map(client => (
+                  <div 
+                    key={client._id} 
+                    className={`flex items-center gap-3 p-3 rounded-lg transition cursor-pointer ${
+                      selectedClient?._id === client._id 
+                        ? 'bg-green-50 border border-green-200' 
+                        : 'bg-gray-50 border border-transparent hover:bg-gray-100'
+                    }`}
+                    onClick={() => setSelectedClient(client)}
+                  >
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{client.firstName} {client.lastName}</p>
+                      <p className="text-sm text-gray-500">{client.phone}</p>
+                      {client.city && <p className="text-xs text-gray-400">{client.city}</p>}
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation(); // Empêcher la sélection du client
+                        handlePreviewSend(client);
+                      }}
+                      disabled={previewSending}
+                      className={`px-3 py-1.5 rounded-lg transition text-xs font-medium disabled:opacity-50 flex items-center gap-1 ${
+                        selectedClient?._id === client._id
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                      }`}
+                    >
+                      {previewSending ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                          </svg>
+                          {selectedClient?._id === client._id ? 'Envoyer' : 'Aperçu'}
+                        </>
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

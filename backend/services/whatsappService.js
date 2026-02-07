@@ -479,8 +479,8 @@ const sendMessageWithDelay = async (messageData, isRateLimit = false) => {
 const sendBulkWhatsApp = async (messages) => {
   const results = [];
   
-  // 🆕 Délai entre chaque message: 5 secondes (augmenté pour e-commerce)
-  const delayBetweenMessages = 5000; // 5 secondes (au lieu de 4)
+  // 🆕 Délai entre chaque message: 30 secondes (comme demandé)
+  const delayBetweenMessages = 30000; // 30 secondes (uniforme comme demandé)
   
   // Compteur de messages actifs (limite Green API: 3 messages)
   let activeMessages = 0;
@@ -691,7 +691,7 @@ const getRandomVariant = (variants) => {
  * @returns {number} - Délai en millisecondes (30000ms)
  */
 const getHumanDelay = () => {
-  return 30 * 1000; // 30 secondes
+  return 30 * 1000; // 30 secondes exact
 };
 
 /**
@@ -1159,9 +1159,10 @@ const validateMessageBeforeSend = (message, userId) => {
  * @returns {number} - Délai en millisecondes
  */
 const getHumanDelayWithVariation = () => {
-  const baseDelay = 45000; // 45 secondes (augmenté pour e-commerce)
-  const variation = Math.random() * 10000 - 5000; // ±5 secondes
-  const finalDelay = Math.max(30000, baseDelay + variation); // Minimum 30 secondes
+  // Délai fixe de 30 secondes comme demandé
+  const baseDelay = 30000; // 30 secondes exact
+  const variation = Math.random() * 1000 - 500; // ±0.5 secondes (variation minimale)
+  const finalDelay = baseDelay + variation; // 29.5 à 30.5 secondes
   
   console.log(`⏱️ Délai humain calculé: ${Math.round(finalDelay / 1000)}s`);
   return finalDelay;

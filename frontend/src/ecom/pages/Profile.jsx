@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useEcomAuth } from '../hooks/useEcomAuth.jsx';
 import { authApi } from '../services/ecommApi.js';
+import { useMoney } from '../hooks/useMoney.js';
 
 const Profile = () => {
   const { user, workspace, logout, loadUser } = useEcomAuth();
+  const { fmt } = useMoney(); // 🆕 Hook pour formater les montants
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
@@ -17,10 +19,15 @@ const Profile = () => {
   const [pwdMsg, setPwdMsg] = useState(null);
   const [showPwdForm, setShowPwdForm] = useState(false);
 
+  // 🆕 État de chargement pour éviter les erreurs
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
+    // 🆕 Initialiser les données utilisateur
     if (user) {
       setName(user.name || '');
       setPhone(user.phone || '');
+      setLoading(false);
     }
   }, [user]);
 
@@ -85,8 +92,37 @@ const Profile = () => {
 
   const initial = user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U';
 
+  // 🆕 Affichage de chargement
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement du profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🆕 Affichage si pas d'utilisateur
+  if (!user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Utilisateur non trouvé</p>
+          <button 
+            onClick={() => window.location.href = '/ecom/login'}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Se connecter
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+    <div className="ecom-mobile-container max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 safe-area-top safe-area-bottom">
       {/* Header avec avatar */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div className="h-24 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600"></div>
@@ -109,10 +145,10 @@ const Profile = () => {
       </div>
 
       {/* Informations du profil */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="ecom-mobile-card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">Informations personnelles</h2>
+            <h2 className="ecom-mobile-text text-base font-semibold text-gray-900">Informations personnelles</h2>
             <p className="text-xs text-gray-500 mt-0.5">Modifiez votre nom et numéro de téléphone</p>
           </div>
           {profileMsg && (
@@ -122,7 +158,7 @@ const Profile = () => {
           )}
         </div>
         <form onSubmit={handleSaveProfile} className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div className="ecom-mobile-grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom complet</label>
               <input
@@ -130,7 +166,7 @@ const Profile = () => {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Votre nom"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none"
+                className="ecom-mobile-input w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none"
               />
             </div>
             <div>
@@ -140,7 +176,7 @@ const Profile = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+237 6XX XXX XXX"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none"
+                className="ecom-mobile-input w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition outline-none"
               />
             </div>
             <div>
@@ -149,7 +185,7 @@ const Profile = () => {
                 type="email"
                 value={user?.email || ''}
                 disabled
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                className="ecom-mobile-input w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
               />
               <p className="text-[11px] text-gray-400 mt-1">L'email ne peut pas être modifié</p>
             </div>
@@ -159,7 +195,7 @@ const Profile = () => {
                 type="text"
                 value={roleLabels[user?.role] || user?.role || ''}
                 disabled
-                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
+                className="ecom-mobile-input w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500 cursor-not-allowed"
               />
             </div>
           </div>
@@ -167,7 +203,7 @@ const Profile = () => {
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="ecom-mobile-button px-6 py-2.5 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {saving && (
                 <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
@@ -320,21 +356,21 @@ const Profile = () => {
       </div>
 
       {/* Infos compte */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+      <div className="ecom-mobile-card bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-6">
         <div className="px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-900">Informations du compte</h2>
+          <h2 className="ecom-mobile-text text-base font-semibold text-gray-900">Informations du compte</h2>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="ecom-mobile-grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Membre depuis</p>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="ecom-mobile-text text-sm font-semibold text-gray-900">
                 {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
             </div>
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 text-center">
               <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Dernière connexion</p>
-              <p className="text-sm font-semibold text-gray-900">
+              <p className="ecom-mobile-text text-sm font-semibold text-gray-900">
                 {user?.lastLogin ? new Date(user.lastLogin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'}
               </p>
             </div>
@@ -346,6 +382,21 @@ const Profile = () => {
               </span>
             </div>
           </div>
+          
+          {/* 🆕 Espace de travail info si disponible */}
+          {workspace && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <span className="text-white text-lg font-bold">{workspace.name?.charAt(0)?.toUpperCase() || 'W'}</span>
+                </div>
+                <div>
+                  <p className="ecom-mobile-text text-sm font-semibold text-gray-900">{workspace.name}</p>
+                  <p className="text-xs text-gray-500 font-mono">{workspace.slug}</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -353,7 +404,7 @@ const Profile = () => {
       <div className="flex justify-center">
         <button
           onClick={logout}
-          className="px-6 py-2.5 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition border border-red-200 flex items-center gap-2"
+          className="ecom-mobile-button px-6 py-3 text-sm font-medium text-red-600 bg-red-50 rounded-xl hover:bg-red-100 transition border border-red-200 flex items-center gap-2"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

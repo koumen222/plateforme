@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
 const ProductDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useEcomAuth();
+  const { fmt } = useMoney(); // 🆕 Hook pour formater les montants
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -87,32 +89,32 @@ const ProductDetail = () => {
         </div>
         {user?.role === 'ecom_admin' && (
           <Link to={`/ecom/products/${id}/edit`}
-            className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium">
+            className="ecom-mobile-button px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors">
             Modifier
           </Link>
         )}
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+      <div className="ecom-mobile-grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+        <div className="ecom-mobile-card bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Prix de vente</p>
-          <p className="text-lg sm:text-xl font-bold text-gray-900 mt-1">{fmt(product.sellingPrice)}</p>
+          <p className="ecom-mobile-text text-lg sm:text-xl font-bold text-gray-900 mt-1">{fmt(product?.sellingPrice || 0)}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+        <div className="ecom-mobile-card bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Coût total</p>
-          <p className="text-lg sm:text-xl font-bold text-red-600 mt-1">{fmt(totalCost)}</p>
+          <p className="ecom-mobile-text text-lg sm:text-xl font-bold text-red-600 mt-1">{fmt(totalCost)}</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+        <div className="ecom-mobile-card bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Marge</p>
-          <p className={`text-lg sm:text-xl font-bold mt-1 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`ecom-mobile-text text-lg sm:text-xl font-bold mt-1 ${margin >= 0 ? 'text-green-600' : 'text-red-600'}`}>
             {fmt(margin)}
           </p>
           <p className="text-[10px] text-gray-400">{marginPercent}%</p>
         </div>
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4">
+        <div className="ecom-mobile-card bg-white rounded-lg shadow p-3 sm:p-4">
           <p className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase">Stock</p>
-          <p className={`text-lg sm:text-xl font-bold mt-1 ${
+          <p className={`ecom-mobile-text text-lg sm:text-xl font-bold mt-1 ${
             product.stock === 0 ? 'text-red-600' : product.stock <= product.reorderThreshold ? 'text-yellow-600' : 'text-green-600'
           }`}>
             {product.stock}
@@ -128,15 +130,15 @@ const ProductDetail = () => {
           <div className="space-y-3">
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Coût produit</span>
-              <span className="text-sm font-semibold">{fmt(product.productCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product?.productCost || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Frais de livraison</span>
-              <span className="text-sm font-semibold">{fmt(product.deliveryCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product?.deliveryCost || 0)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-sm text-gray-600">Coût pub moyen</span>
-              <span className="text-sm font-semibold">{fmt(product.avgAdsCost)}</span>
+              <span className="text-sm font-semibold">{fmt(product?.avgAdsCost || 0)}</span>
             </div>
             <div className="border-t pt-2 flex justify-between items-center">
               <span className="text-sm font-semibold text-gray-900">Total</span>
@@ -182,14 +184,14 @@ const ProductDetail = () => {
         {product.sellingPrice > 0 && (
           <>
             <div className="flex h-6 rounded-full overflow-hidden bg-gray-200 mb-3">
-              <div className="bg-red-400" style={{ width: `${(product.productCost / product.sellingPrice * 100)}%` }}
-                title={`Produit: ${fmt(product.productCost)}`}></div>
-              <div className="bg-yellow-400" style={{ width: `${(product.deliveryCost / product.sellingPrice * 100)}%` }}
-                title={`Livraison: ${fmt(product.deliveryCost)}`}></div>
-              <div className="bg-purple-400" style={{ width: `${(product.avgAdsCost / product.sellingPrice * 100)}%` }}
-                title={`Pub: ${fmt(product.avgAdsCost)}`}></div>
+              <div className="bg-red-400" style={{ width: `${(product?.productCost || 0) / (product?.sellingPrice || 1) * 100}%` }}
+                title={`Produit: ${fmt(product?.productCost || 0)}`}></div>
+              <div className="bg-yellow-400" style={{ width: `${(product?.deliveryCost || 0) / (product?.sellingPrice || 1) * 100}%` }}
+                title={`Livraison: ${fmt(product?.deliveryCost || 0)}`}></div>
+              <div className="bg-purple-400" style={{ width: `${(product?.avgAdsCost || 0) / (product?.sellingPrice || 1) * 100}%` }}
+                title={`Pub: ${fmt(product?.avgAdsCost || 0)}`}></div>
               <div className={`${margin >= 0 ? 'bg-green-400' : 'bg-red-600'}`}
-                style={{ width: `${Math.max(0, margin / product.sellingPrice * 100)}%` }}
+                style={{ width: `${Math.max(0, margin / (product?.sellingPrice || 1) * 100)}%` }}
                 title={`Marge: ${fmt(margin)}`}></div>
             </div>
             <div className="flex flex-wrap gap-3 text-xs text-gray-600">

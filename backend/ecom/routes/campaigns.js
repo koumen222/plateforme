@@ -137,6 +137,37 @@ router.post('/preview', requireEcomAuth, async (req, res) => {
   }
 });
 
+// POST /api/ecom/campaigns/:id/preview - Prévisualiser les clients ciblés pour une campagne spécifique
+router.post('/:id/preview', requireEcomAuth, async (req, res) => {
+  try {
+    // Récupérer la campagne
+    const campaign = await Campaign.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
+    if (!campaign) {
+      return res.status(404).json({ success: false, message: 'Campagne non trouvée' });
+    }
+
+    // Utiliser les filtres de la campagne
+    const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+    // Seulement les clients avec un téléphone
+    filter.phone = { $exists: true, $ne: '' };
+
+    const clients = await Client.find(filter).select('firstName lastName phone city products totalOrders totalSpent status tags').limit(500);
+    
+    res.json({ 
+      success: true, 
+      data: { 
+        count: clients.length, 
+        clients,
+        messageTemplate: campaign.messageTemplate,
+        campaignName: campaign.name
+      } 
+    });
+  } catch (error) {
+    console.error('Erreur preview campaign spécifique:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // GET /api/ecom/campaigns/:id - Détail d'une campagne
 router.get('/:id', requireEcomAuth, async (req, res) => {
   try {
@@ -260,6 +291,14 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     if (!campaign) return res.status(404).json({ success: false, message: 'Campagne non trouvée' });
     if (campaign.status === 'sending' || campaign.status === 'sent') {
       return res.status(400).json({ success: false, message: 'Campagne déjà envoyée ou en cours' });
+    }
+
+    // 🆕 Pour les campagnes programmées, annuler la programmation et envoyer maintenant
+    if (campaign.status === 'scheduled') {
+      campaign.status = 'draft';
+      campaign.scheduledAt = null;
+      await campaign.save();
+      console.log(`🔄 Campagne ${campaign.name}: programmation annulée, envoi manuel initié`);
     }
 
     const greenApiId = process.env.GREEN_API_ID_INSTANCE;
