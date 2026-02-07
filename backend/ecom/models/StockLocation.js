@@ -9,13 +9,13 @@ const stockLocationSchema = new mongoose.Schema({
   },
   productId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'EcomProduct',
+    ref: 'Product',
     required: true
   },
   city: {
     type: String,
-    required: true,
-    trim: true
+    trim: true,
+    default: 'Non assigné'
   },
   agency: {
     type: String,

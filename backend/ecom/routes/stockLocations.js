@@ -145,8 +145,8 @@ router.post('/',
     try {
       const { productId, city, agency, quantity, unitCost, notes } = req.body;
 
-      if (!productId || !city || quantity === undefined) {
-        return res.status(400).json({ success: false, message: 'Produit, ville et quantité sont requis' });
+      if (!productId || quantity === undefined) {
+        return res.status(400).json({ success: false, message: 'Produit et quantité sont requis' });
       }
 
       // Vérifier que le produit existe

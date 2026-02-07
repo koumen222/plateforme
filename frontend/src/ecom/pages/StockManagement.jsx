@@ -48,8 +48,8 @@ const StockManagement = () => {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!form.productId || !form.city || !form.quantity) {
-      setError('Produit, ville et quantité sont requis');
+    if (!form.productId || !form.quantity) {
+      setError('Produit et quantité sont requis');
       return;
     }
     setSubmitting(true);
@@ -392,45 +392,52 @@ const StockManagement = () => {
             <form onSubmit={handleAdd} className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Produit *</label>
-                <select value={form.productId} onChange={e => setForm(p => ({ ...p, productId: e.target.value }))}
+                <select value={form.productId} onChange={e => {
+                  const pid = e.target.value;
+                  const prod = products.find(p => p._id === pid);
+                  setForm(p => ({ ...p, productId: pid, unitCost: prod?.productCost || '' }));
+                }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" required>
-                  <option value="">-- Choisir --</option>
+                  <option value="">-- Choisir un produit --</option>
                   {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
                 </select>
               </div>
+
+              {/* Infos produit auto-remplies */}
+              {form.productId && (() => {
+                const prod = products.find(p => p._id === form.productId);
+                if (!prod) return null;
+                return (
+                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+                    <p className="text-xs font-medium text-gray-500 mb-1.5">Infos produit</p>
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      <span className="text-gray-600">Prix vente: <strong className="text-gray-900">{fmtMoney(prod.sellingPrice)}</strong></span>
+                      <span className="text-gray-600">Coût produit: <strong className="text-gray-900">{fmtMoney(prod.productCost)}</strong></span>
+                      <span className="text-gray-600">Livraison: <strong className="text-gray-900">{fmtMoney(prod.deliveryCost)}</strong></span>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantité *</label>
+                <input type="number" min="0" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="Nombre d'unités" required />
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
                   <input type="text" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    placeholder="Ex: Douala" required />
+                    placeholder="Ex: Douala" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Agence de livraison</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Agence</label>
                   <input type="text" value={form.agency} onChange={e => setForm(p => ({ ...p, agency: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
                     placeholder="Ex: Lygos, Anka" />
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Quantité *</label>
-                  <input type="number" min="0" value={form.quantity} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    placeholder="0" required />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Coût unitaire (FCFA)</label>
-                  <input type="number" min="0" value={form.unitCost} onChange={e => setForm(p => ({ ...p, unitCost: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                    placeholder="Auto si vide" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-                <input type="text" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
-                  placeholder="Optionnel" />
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowAddModal(false)}
