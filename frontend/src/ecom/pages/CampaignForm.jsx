@@ -81,11 +81,25 @@ const CampaignForm = () => {
   };
 
   const quickFilter = (tag) => {
-    const statusMap = { 'Client': 'delivered', 'En attente': 'prospect', 'Annulé': 'returned' };
-    updateFilter('clientStatus', statusMap[tag] || '');
-    updateFilter('tag', tag);
-    // Auto-preview
-    setTimeout(() => handlePreview(), 100);
+    const statusMap = { 'Client': 'delivered', 'En attente': 'prospect', 'Confirmé': 'confirmed', 'Annulé': 'prospect' };
+    setFormData(prev => ({
+      ...prev,
+      targetFilters: {
+        ...prev.targetFilters,
+        clientStatus: statusMap[tag] || '',
+        tag: tag
+      }
+    }));
+    // Auto-preview après mise à jour du state
+    setTimeout(() => handlePreview(), 200);
+  };
+
+  const resetFilters = () => {
+    setFormData(prev => ({
+      ...prev,
+      targetFilters: { ...prev.targetFilters, clientStatus: '', tag: '', city: '', product: '', minOrders: 0, maxOrders: 0 }
+    }));
+    setTimeout(() => handlePreview(), 200);
   };
 
   const applyTemplate = (tpl) => {
@@ -279,7 +293,7 @@ const CampaignForm = () => {
                 {f.label}
               </button>
             ))}
-            <button type="button" onClick={() => { updateFilter('clientStatus', ''); updateFilter('tag', ''); setTimeout(() => handlePreview(), 100); }}
+            <button type="button" onClick={resetFilters}
               className="px-2.5 py-1 rounded-lg text-[10px] font-medium border bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100 transition">
               Tous
             </button>

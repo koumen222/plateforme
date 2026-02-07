@@ -231,6 +231,10 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
 
     let sent = 0;
     let failed = 0;
+    let messageCount = 0;
+    const BATCH_SIZE = 5;
+    const BATCH_PAUSE_MS = 10000; // 10 secondes entre chaque lot
+    const MSG_PAUSE_MS = 2000; // 2 secondes entre chaque message
 
     for (const client of clients) {
       const message = renderMessage(campaign.messageTemplate, client);
@@ -255,6 +259,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         } else {
           campaign.results.push({ clientId: client._id, clientName: `${client.firstName} ${client.lastName}`, phone: client.phone, status: 'sent', sentAt: new Date() });
           sent++;
+          messageCount++;
           // Mettre à jour le dernier contact du client
           client.lastContactAt = new Date();
           if (!client.tags.includes('Relancé')) client.tags.push('Relancé');
@@ -265,8 +270,13 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         failed++;
       }
 
-      // Pause 1.5s entre chaque message pour éviter le rate limiting
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Pause de 10 secondes tous les 5 messages envoyés, sinon 2s entre chaque
+      if (messageCount > 0 && messageCount % BATCH_SIZE === 0) {
+        console.log(`⏸️ Campagne ${campaign.name}: pause 10s après ${messageCount} messages envoyés...`);
+        await new Promise(resolve => setTimeout(resolve, BATCH_PAUSE_MS));
+      } else {
+        await new Promise(resolve => setTimeout(resolve, MSG_PAUSE_MS));
+      }
     }
 
     campaign.status = failed === clients.length ? 'failed' : 'sent';
