@@ -130,10 +130,10 @@ const AdminDashboard = () => {
                 + Stock
               </Link>
               <Link
-                to="/ecom/decisions/new"
+                to="/ecom/transactions/new"
                 className="px-3 py-2.5 sm:px-4 sm:py-3 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-center font-medium text-xs sm:text-sm"
               >
-                + Décision
+                + Transaction
               </Link>
             </div>
           </div>

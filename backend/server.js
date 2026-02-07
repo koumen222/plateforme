@@ -1868,6 +1868,48 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
     }
 
+    // Routes E-commerce Clients
+    try {
+      const ecomClientsModule = await import("./ecom/routes/clients.js");
+      const ecomClientsRoutes = ecomClientsModule.default;
+      app.use("/api/ecom/clients", ecomClientsRoutes);
+      console.log('✅ Routes E-commerce Clients chargées');
+      console.log('   GET    /api/ecom/clients - Liste clients');
+      console.log('   POST   /api/ecom/clients - Créer client');
+      console.log('   PUT    /api/ecom/clients/:id - Modifier client');
+      console.log('   DELETE /api/ecom/clients/:id - Supprimer client');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/clients.js:', error.message);
+    }
+
+    // Routes E-commerce Commandes (Google Sheets)
+    try {
+      const ecomOrdersModule = await import("./ecom/routes/orders.js");
+      const ecomOrdersRoutes = ecomOrdersModule.default;
+      app.use("/api/ecom/orders", ecomOrdersRoutes);
+      console.log('✅ Routes E-commerce Commandes chargées');
+      console.log('   GET    /api/ecom/orders - Liste commandes');
+      console.log('   POST   /api/ecom/orders/sync-sheets - Sync Google Sheets');
+      console.log('   PUT    /api/ecom/orders/:id - Modifier commande');
+      console.log('   GET    /api/ecom/orders/settings - Config Google Sheets');
+      console.log('   PUT    /api/ecom/orders/settings - Sauver config');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/orders.js:', error.message);
+    }
+
+    // Routes E-commerce Campagnes Marketing
+    try {
+      const ecomCampaignsModule = await import("./ecom/routes/campaigns.js");
+      const ecomCampaignsRoutes = ecomCampaignsModule.default;
+      app.use("/api/ecom/campaigns", ecomCampaignsRoutes);
+      console.log('✅ Routes E-commerce Campagnes chargées');
+      console.log('   GET    /api/ecom/campaigns - Liste campagnes');
+      console.log('   POST   /api/ecom/campaigns - Créer campagne');
+      console.log('   POST   /api/ecom/campaigns/:id/send - Envoyer campagne');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/campaigns.js:', error.message);
+    }
+
     console.log('🛒 Module E-commerce Cockpit chargé avec succès!');
     console.log('   Accès frontend: /ecom/*');
     console.log('   API Base URL: /api/ecom/*');

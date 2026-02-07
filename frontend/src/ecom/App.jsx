@@ -21,12 +21,20 @@ import TransactionForm from './pages/TransactionForm.jsx';
 import TransactionDetail from './pages/TransactionDetail.jsx';
 import ProductDetail from './pages/ProductDetail.jsx';
 import UserManagement from './pages/UserManagement.jsx';
+import ClientsList from './pages/ClientsList.jsx';
+import ClientForm from './pages/ClientForm.jsx';
+import ProspectsList from './pages/ProspectsList.jsx';
+import OrdersList from './pages/OrdersList.jsx';
+import OrderDetail from './pages/OrderDetail.jsx';
+import CampaignsList from './pages/CampaignsList.jsx';
+import CampaignForm from './pages/CampaignForm.jsx';
 import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import SuperAdminUsers from './pages/SuperAdminUsers.jsx';
 import SuperAdminWorkspaces from './pages/SuperAdminWorkspaces.jsx';
 import SuperAdminActivity from './pages/SuperAdminActivity.jsx';
 import SuperAdminSettings from './pages/SuperAdminSettings.jsx';
 import SetupSuperAdmin from './pages/SetupSuperAdmin.jsx';
+import EcomLandingPage from './pages/LandingPage.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
 // Composant de protection des routes
@@ -110,10 +118,11 @@ const EcomApp = () => {
     <EcomAuthProvider>
       <div className="ecom-app">
         <Routes>
-          {/* Route racine - rediriger vers login */}
-          <Route path="/" element={<Navigate to="/ecom/login" replace />} />
+          {/* Route racine - landing page */}
+          <Route path="/" element={<EcomLandingPage />} />
           
           {/* Routes publiques (sans layout) */}
+          <Route path="landing" element={<EcomLandingPage />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
           <Route path="setup-admin" element={<SetupSuperAdmin />} />
@@ -145,6 +154,23 @@ const EcomApp = () => {
           {/* Routes décisions */}
           <Route path="decisions" element={<LayoutRoute requiredRole="ecom_admin"><DecisionsList /></LayoutRoute>} />
           <Route path="decisions/new" element={<LayoutRoute requiredRole="ecom_admin"><DecisionForm /></LayoutRoute>} />
+          
+          {/* Routes clients (admin + closeuse) */}
+          <Route path="clients" element={<LayoutRoute><ClientsList /></LayoutRoute>} />
+          <Route path="clients/new" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+          <Route path="clients/:id/edit" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+          
+          {/* Routes prospects */}
+          <Route path="prospects" element={<LayoutRoute><ProspectsList /></LayoutRoute>} />
+          
+          {/* Routes commandes (admin + closeuse) */}
+          <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
+          <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
+          
+          {/* Routes campagnes marketing (admin) */}
+          <Route path="campaigns" element={<LayoutRoute requiredRole="ecom_admin"><CampaignsList /></LayoutRoute>} />
+          <Route path="campaigns/new" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
+          <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
           
           {/* Routes gestion utilisateurs (admin) */}
           <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
