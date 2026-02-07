@@ -24,6 +24,11 @@ const CampaignForm = () => {
   const [error, setError] = useState('');
   const [showPhoneList, setShowPhoneList] = useState(false);
   const [copied, setCopied] = useState(false);
+  // 🆕 États pour les fonctionnalités anti-spam
+  const [spamAnalysis, setSpamAnalysis] = useState(null);
+  const [testResult, setTestResult] = useState(null);
+  const [previewSending, setPreviewSending] = useState(false);
+  const [previewClient, setPreviewClient] = useState(null);
 
   useEffect(() => {
     ecomApi.get('/campaigns/templates').then(res => setTemplates(res.data.data)).catch(() => {});
@@ -134,12 +139,177 @@ const CampaignForm = () => {
       }
       navigate('/ecom/campaigns');
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur enregistrement');
+      const errorMsg = err.response?.data?.message || 'Erreur enregistrement';
+      
+      // 🆕 Gérer les erreurs anti-spam spécifiques
+      if (err.response?.data?.spamAnalysis) {
+        setError(`Message rejeté pour risque de spam: ${errorMsg}`);
+        setSpamAnalysis(err.response.data.spamAnalysis);
+      } else {
+        setError(errorMsg);
+      }
     } finally { setLoading(false); }
+  };
+
+  // 🆕 Fonction pour tester un message
+  const handleTestMessage = async () => {
+    if (!formData.messageTemplate.trim()) {
+      setError('Message requis pour le test');
+      return;
+    }
+    
+    try {
+      // Utiliser le premier client du preview comme test
+      const testClient = preview?.clients?.[0] || {
+        firstName: 'Aminata',
+        lastName: 'Koné',
+        phone: '+225 07 00 00 00',
+        city: 'Abidjan',
+        totalOrders: 3,
+        totalSpent: 45000
+      };
+      
+      const response = await ecomApi.post('/campaigns/test-message', {
+        messageTemplate: formData.messageTemplate,
+        clientData: testClient
+      });
+      
+      setTestResult(response.data);
+      setSpamAnalysis(response.data.analysis);
+      
+    } catch (error) {
+      setError('Erreur lors du test du message');
+      console.error('Test message error:', error);
+    }
+  };
+
+  // 🆕 Fonction pour envoyer un aperçu à une personne spécifique
+  const handlePreviewSend = async (client) => {
+    if (!formData.messageTemplate.trim()) {
+      setError('Message requis pour l\'aperçu');
+      return;
+    }
+    
+    setPreviewSending(true);
+    setPreviewClient(client._id);
+    
+    try {
+      const response = await ecomApi.post('/campaigns/preview-send', {
+        messageTemplate: formData.messageTemplate,
+        clientId: client._id
+      });
+      
+      if (response.data.success) {
+        setSuccess(`Message d'aperçu envoyé à ${client.firstName} ${client.lastName} !`);
+      } else {
+        setError(response.data.message);
+      }
+      
+    } catch (error) {
+      const errorMsg = error.response?.data?.message || 'Erreur envoi aperçu';
+      
+      // Gérer les erreurs anti-spam
+      if (error.response?.data?.analysis) {
+        setError(`Message rejeté: ${errorMsg}`);
+        setSpamAnalysis(error.response.data.analysis);
+      } else {
+        setError(errorMsg);
+      }
+    } finally {
+      setPreviewSending(false);
+      setPreviewClient(null);
+    }
   };
 
   const updateFilter = (key, value) => {
     setFormData(prev => ({ ...prev, targetFilters: { ...prev.targetFilters, [key]: value } }));
+  };
+
+  // 🆕 Fonction simple d'analyse anti-spam côté client
+  const analyzeSpamRisk = (message) => {
+    if (!message || typeof message !== 'string') {
+      return { score: 0, risk: 'LOW', warnings: [], recommendations: [] };
+    }
+
+    let riskScore = 0;
+    const warnings = [];
+    const recommendations = [];
+    
+    // Mots déclencheurs de spam
+    const spamTriggers = [
+      'GRATUIT', 'PROMOTION', 'OFFRE SPÉCIALE',
+      'CLIQUEZ ICI', 'URGENT', 'LIMITÉ',
+      'ACHETEZ MAINTENANT', '100% GRATUIT',
+      'GAGNEZ', 'CONCOURS', 'BONUS',
+      'ARGENT RAPIDE', 'DEVENEZ RICHE',
+      'MULTI-LEVEL', 'MARKETING',
+      'LIEN SPONSORISÉ', 'PUBLICITÉ'
+    ];
+    
+    // Vérifier les mots déclencheurs
+    spamTriggers.forEach(trigger => {
+      if (message.toUpperCase().includes(trigger)) {
+        riskScore += 10;
+        warnings.push(`Mot déclencheur: ${trigger}`);
+      }
+    });
+    
+    // Vérifier les formats problématiques
+    if (message === message.toUpperCase() && message.length > 20) {
+      riskScore += 5;
+      warnings.push('Message entièrement en majuscules');
+      recommendations.push('✍️ Utiliser une casse normale (mixte)');
+    }
+    
+    if ((message.match(/!/g) || []).length > 2) {
+      riskScore += 5;
+      warnings.push('Trop de points d\'exclamation');
+      recommendations.push('📝 Limiter à 1-2 points d\'exclamation maximum');
+    }
+    
+    if ((message.match(/\?/g) || []).length > 2) {
+      riskScore += 3;
+      warnings.push('Trop de points d\'interrogation');
+    }
+    
+    // Vérifier les caractères répétitifs
+    if (message.match(/(.)\1{3,}/)) {
+      riskScore += 5;
+      warnings.push('Caractères répétitifs détectés');
+    }
+    
+    // Vérifier la longueur
+    if (message.length > 500) {
+      riskScore += 3;
+      warnings.push('Message trop long (>500 caractères)');
+      recommendations.push('✂️ Raccourcir le message (<300 caractères idéalement)');
+    }
+    
+    if (message.length < 15) {
+      riskScore += 2;
+      warnings.push('Message très court (<15 caractères)');
+    }
+    
+    // Vérifier les liens multiples
+    const linkCount = (message.match(/https?:\/\//g) || []).length;
+    if (linkCount > 1) {
+      riskScore += 8;
+      warnings.push('Multiples liens détectés');
+    }
+    
+    // Recommandations générales
+    if (riskScore > 15) {
+      recommendations.push('⚠️ Message à haut risque - Réécrire complètement');
+    } else if (riskScore > 8) {
+      recommendations.push('🔄 Message à risque moyen - Modifier avant envoi');
+    }
+    
+    return {
+      score: riskScore,
+      risk: riskScore > 15 ? 'HIGH' : riskScore > 8 ? 'MEDIUM' : 'LOW',
+      warnings,
+      recommendations
+    };
   };
 
   const renderPreviewMessage = () => {
@@ -325,7 +495,7 @@ const CampaignForm = () => {
               {/* Client list with checkboxes */}
               <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
                 {preview.clients.map(c => (
-                  <label key={c._id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition text-xs ${selectedClients.has(c._id) ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-transparent hover:bg-gray-100'}`}>
+                  <div key={c._id} className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg cursor-pointer transition text-xs ${selectedClients.has(c._id) ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 border border-transparent hover:bg-gray-100'}`}>
                     <input type="checkbox" checked={selectedClients.has(c._id)} onChange={() => toggleClient(c._id)}
                       className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
                     <span className="font-medium text-gray-800 min-w-[100px]">{c.firstName} {c.lastName}</span>
@@ -340,7 +510,32 @@ const CampaignForm = () => {
                       }`}>{t}</span>
                     ))}
                     {(c.products || []).length > 0 && <span className="text-[9px] text-indigo-500">{(c.products || []).join(', ')}</span>}
-                  </label>
+                    
+                    {/* 🆕 Bouton d'aperçu par personne */}
+                    <button
+                      type="button"
+                      onClick={() => handlePreviewSend(c)}
+                      disabled={previewSending === c._id || !formData.messageTemplate.trim()}
+                      className="ml-auto px-2 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition text-[9px] font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                    >
+                      {previewSending === c._id ? (
+                        <>
+                          <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                          </svg>
+                          Envoi...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                          </svg>
+                          Aperçu
+                        </>
+                      )}
+                    </button>
+                  </div>
                 ))}
               </div>
 
@@ -362,7 +557,18 @@ const CampaignForm = () => {
 
         {/* Message template */}
         <div className="bg-white rounded-xl shadow-sm border p-4">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Message WhatsApp</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-gray-900">Message WhatsApp</h2>
+            {/* 🆕 Bouton de test anti-spam */}
+            <button type="button" onClick={handleTestMessage}
+              className="px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition text-xs font-medium flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+              </svg>
+              Tester anti-spam
+            </button>
+          </div>
+          
           <div className="flex flex-wrap gap-1.5 mb-2">
             {variables.map(v => (
               <button key={v.var} type="button" onClick={() => insertVariable(v.var)}
@@ -374,10 +580,92 @@ const CampaignForm = () => {
           <textarea
             rows={6}
             value={formData.messageTemplate}
-            onChange={e => setFormData(p => ({ ...p, messageTemplate: e.target.value }))}
+            onChange={e => {
+              setFormData(p => ({ ...p, messageTemplate: e.target.value }));
+              // 🆕 Analyser le message en temps réel
+              if (e.target.value.trim()) {
+                const analysis = analyzeSpamRisk(e.target.value);
+                setSpamAnalysis(analysis);
+              } else {
+                setSpamAnalysis(null);
+              }
+            }}
             className={inputClass}
             placeholder="Bonjour {firstName} 👋&#10;&#10;Votre message personnalisé ici..."
           />
+          
+          {/* 🆕 Affichage de l'analyse anti-spam */}
+          {spamAnalysis && (
+            <div className={`mt-3 p-3 rounded-lg border ${
+              spamAnalysis.risk === 'HIGH' ? 'bg-red-50 border-red-200' :
+              spamAnalysis.risk === 'MEDIUM' ? 'bg-yellow-50 border-yellow-200' :
+              'bg-green-50 border-green-200'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[10px] font-semibold uppercase mb-1.5">
+                  {spamAnalysis.risk === 'HIGH' ? '⚠️ Risque spam élevé' :
+                   spamAnalysis.risk === 'MEDIUM' ? '⚠️ Risque spam moyen' :
+                   '✅ Faible risque spam'}
+                </p>
+                <span className="text-[10px] font-mono">Score: {spamAnalysis.score}</span>
+              </div>
+              
+              {spamAnalysis.warnings.length > 0 && (
+                <div className="mb-2">
+                  <p className="text-[10px] font-medium text-gray-700 mb-1">Warnings:</p>
+                  <ul className="text-[9px] text-gray-600 space-y-0.5">
+                    {spamAnalysis.warnings.map((warning, i) => (
+                      <li key={i} className="flex items-start gap-1">
+                        <span className="text-red-500">•</span>
+                        <span>{warning}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {spamAnalysis.recommendations.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-medium text-gray-700 mb-1">Recommandations:</p>
+                  <ul className="text-[9px] text-gray-600 space-y-0.5">
+                    {spamAnalysis.recommendations.map((rec, i) => (
+                      <li key={i} className="flex items-start gap-1">
+                        <span className="text-green-500">→</span>
+                        <span>{rec}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* 🆕 Résultat du test */}
+          {testResult && (
+            <div className={`mt-3 p-3 rounded-lg border ${
+              testResult.analysis.validated ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'
+            }`}>
+              <p className="text-[10px] font-semibold mb-2">{testResult.verdict}</p>
+              <div className="text-xs text-gray-600 space-y-1">
+                <p>Risque: <span className={`font-medium ${
+                  testResult.analysis.risk === 'HIGH' ? 'text-red-600' :
+                  testResult.analysis.risk === 'MEDIUM' ? 'text-yellow-600' : 'text-green-600'
+                }`}>{testResult.analysis.risk}</span></p>
+                <p>Score: <span className="font-mono">{testResult.analysis.score}</span></p>
+                <p>Longueur: {testResult.analysis.length} caractères</p>
+                <p>Mots: {testResult.analysis.wordCount}</p>
+              </div>
+              {testResult.personalizedMessage && (
+                <div className="mt-2 pt-2 border-t border-gray-200">
+                  <p className="text-[10px] font-medium text-gray-700 mb-1">Message personnalisé:</p>
+                  <div className="bg-white rounded p-2 text-xs text-gray-800 whitespace-pre-wrap">
+                    {testResult.personalizedMessage}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          
           {formData.messageTemplate && (
             <div className="mt-3 p-3 bg-green-50 rounded-lg border border-green-200">
               <p className="text-[10px] font-semibold text-green-700 uppercase mb-1.5">Aperçu du message</p>

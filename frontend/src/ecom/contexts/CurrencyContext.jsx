@@ -51,6 +51,7 @@ const CurrencyContext = createContext();
 export const CurrencyProvider = ({ children }) => {
   const { user } = useEcomAuth();
   
+  // 🆕 Gestion plus robuste de la devise avec fallback
   const currencyCode = user?.currency || 'XAF';
   const currencyInfo = getCurrencyInfo(currencyCode);
 
@@ -73,13 +74,25 @@ export const CurrencyProvider = ({ children }) => {
 
   // Formater un montant dans la devise de l'utilisateur
   const format = (amount, fromCurrency = 'XAF') => {
-    const converted = convert(amount, fromCurrency);
-    return formatMoney(converted, currencyCode);
+    try {
+      const converted = convert(amount, fromCurrency);
+      return formatMoney(converted, currencyCode);
+    } catch (error) {
+      console.warn('⚠️ Erreur de formatage de devise:', error);
+      // Fallback simple
+      return `${Number(amount || 0).toLocaleString('fr-FR')} ${currencyCode}`;
+    }
   };
 
   // Formater sans conversion (montant déjà dans la devise cible)
   const formatRaw = (amount) => {
-    return formatMoney(amount, currencyCode);
+    try {
+      return formatMoney(amount, currencyCode);
+    } catch (error) {
+      console.warn('⚠️ Erreur de formatage raw:', error);
+      // Fallback simple
+      return `${Number(amount || 0).toLocaleString('fr-FR')} ${currencyCode}`;
+    }
   };
 
   const value = useMemo(() => ({

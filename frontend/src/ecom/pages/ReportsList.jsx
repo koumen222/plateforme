@@ -4,9 +4,72 @@ import { useEcomAuth } from '../hooks/useEcomAuth';
 import { useMoney } from '../hooks/useMoney.js';
 import ecomApi from '../services/ecommApi.js';
 
+// 🆕 ErrorBoundary personnalisé pour ReportsList
+class ReportsErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('📊 ReportsList Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+            <div className="text-center mb-4">
+              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <h1 className="text-lg font-semibold text-gray-900">Erreur de chargement</h1>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              Une erreur est survenue lors du chargement des rapports. Veuillez rafraîchir la page.
+            </p>
+            <div className="space-y-2">
+              <button
+                onClick={() => window.location.reload()}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                Rafraîchir la page
+              </button>
+              <Link
+                to="/ecom/dashboard"
+                className="block w-full px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition text-center"
+              >
+                Retour au dashboard
+              </Link>
+            </div>
+            {process.env.NODE_ENV === 'development' && (
+              <details className="mt-4 p-3 bg-gray-50 rounded text-xs">
+                <summary className="cursor-pointer font-medium text-gray-700">Détails techniques</summary>
+                <pre className="mt-2 text-gray-600 whitespace-pre-wrap">
+                  {this.state.error?.toString()}
+                </pre>
+              </details>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 const ReportsList = () => {
   const { user } = useEcomAuth();
-  const { fmt } = useMoney();
+  const { fmt } = useMoney(); // 🆕 Hook maintenant robuste avec fallback intégré
+  
   const [reports, setReports] = useState([]);
   const [financialStats, setFinancialStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -20,6 +83,16 @@ const ReportsList = () => {
     loadData();
   }, [filter]);
 
+  // 🆕 Vérification des données avant affichage
+  const safeFinancialStats = {
+    totalCost: financialStats.totalCost || 0,
+    totalProductCost: financialStats.totalProductCost || 0,
+    totalDeliveryCost: financialStats.totalDeliveryCost || 0,
+    totalAdSpend: financialStats.totalAdSpend || 0,
+    totalRevenue: financialStats.totalRevenue || 0,
+    totalProfit: financialStats.totalProfit || 0
+  };
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -28,22 +101,34 @@ const ReportsList = () => {
       if (filter.date) params.date = filter.date;
       if (filter.status) params.status = filter.status;
       
+      console.log('📊 Chargement des rapports avec params:', params);
+      
       // Charger les rapports (obligatoire)
-      const reportsRes = await ecomApi.get('/reports', { params });
-      const reportsData = reportsRes.data?.data?.reports || [];
-      setReports(Array.isArray(reportsData) ? reportsData : []);
+      try {
+        const reportsRes = await ecomApi.get('/reports', { params });
+        const reportsData = reportsRes.data?.data?.reports || [];
+        console.log('📋 Rapports chargés:', reportsData.length);
+        setReports(Array.isArray(reportsData) ? reportsData : []);
+      } catch (reportsError) {
+        console.warn('⚠️ Erreur chargement rapports:', reportsError.message);
+        setReports([]);
+      }
 
       // Charger les stats financières (optionnel - peut échouer pour certains rôles)
       try {
         const statsRes = await ecomApi.get('/reports/stats/financial', { params });
-        setFinancialStats(statsRes.data?.data || {});
-      } catch {
+        const statsData = statsRes.data?.data || {};
+        console.log('💰 Stats financières chargées:', statsData);
+        setFinancialStats(statsData);
+      } catch (statsError) {
+        console.warn('⚠️ Erreur chargement stats financières (normal pour certains rôles):', statsError.message);
         setFinancialStats({});
       }
     } catch (error) {
+      console.error('❌ Erreur générale loadData:', error);
       setError('Erreur lors du chargement des rapports');
-      console.error(error);
       setReports([]);
+      setFinancialStats({});
     } finally {
       setLoading(false);
     }
@@ -59,10 +144,6 @@ const ReportsList = () => {
       setError('Erreur lors de la suppression du rapport');
       console.error(error);
     }
-  };
-
-  const formatCurrency = (amount) => {
-    return `${(amount || 0).toLocaleString('fr-FR')} FCFA`;
   };
 
   // Stats calculées depuis les rapports chargés
@@ -154,30 +235,32 @@ const ReportsList = () => {
       </div>
 
       {/* Répartition coûts - masqué pour la closeuse */}
-      {financialStats.totalCost > 0 && user?.role !== 'ecom_closeuse' && (
+      {safeFinancialStats.totalCost > 0 && user?.role !== 'ecom_closeuse' && (
         <div className="bg-white rounded-lg shadow p-4 mb-6">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Répartition des coûts</h3>
-          <div className="flex h-4 rounded-full overflow-hidden bg-gray-200">
-            <div 
-              className="bg-red-500" 
-              style={{ width: `${(financialStats.totalProductCost / financialStats.totalCost * 100)}%` }}
-              title={`Produits: ${fmt(financialStats.totalProductCost)}`}
-            ></div>
-            <div 
-              className="bg-yellow-500" 
-              style={{ width: `${(financialStats.totalDeliveryCost / financialStats.totalCost * 100)}%` }}
-              title={`Livraison: ${fmt(financialStats.totalDeliveryCost)}`}
-            ></div>
-            <div 
-              className="bg-purple-500" 
-              style={{ width: `${(financialStats.totalAdSpend / financialStats.totalCost * 100)}%` }}
-              title={`Pub: ${fmt(financialStats.totalAdSpend)}`}
-            ></div>
-          </div>
-          <div className="flex justify-between mt-2 text-xs text-gray-500">
-            <span className="flex items-center"><span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>Produits {fmt(financialStats.totalProductCost)}</span>
-            <span className="flex items-center"><span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>Livraison {fmt(financialStats.totalDeliveryCost)}</span>
-            <span className="flex items-center"><span className="w-2 h-2 bg-purple-500 rounded-full mr-1"></span>Pub {fmt(financialStats.totalAdSpend)}</span>
+          <div className="space-y-2">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-red-500 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${safeFinancialStats.totalCost > 0 ? (safeFinancialStats.totalProductCost / safeFinancialStats.totalCost * 100) : 0}%` }}
+                title={`Produits: ${fmt(safeFinancialStats.totalProductCost || 0)}`}
+              ></div>
+              <div 
+                className="bg-yellow-500 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${safeFinancialStats.totalCost > 0 ? (safeFinancialStats.totalDeliveryCost / safeFinancialStats.totalCost * 100) : 0}%` }}
+                title={`Livraison: ${fmt(safeFinancialStats.totalDeliveryCost || 0)}`}
+              ></div>
+              <div 
+                className="bg-purple-500 h-2 rounded-full transition-all duration-300" 
+                style={{ width: `${safeFinancialStats.totalCost > 0 ? (safeFinancialStats.totalAdSpend / safeFinancialStats.totalCost * 100) : 0}%` }}
+                title={`Pub: ${fmt(safeFinancialStats.totalAdSpend || 0)}`}
+              ></div>
+            </div>
+            <div className="flex justify-between mt-2 text-xs text-gray-500">
+              <span className="flex items-center"><span className="w-2 h-2 bg-red-500 rounded-full mr-1"></span>Produits {fmt(safeFinancialStats.totalProductCost || 0)}</span>
+              <span className="flex items-center"><span className="w-2 h-2 bg-yellow-500 rounded-full mr-1"></span>Livraison {fmt(safeFinancialStats.totalDeliveryCost || 0)}</span>
+              <span className="flex items-center"><span className="w-2 h-2 bg-purple-500 rounded-full mr-1"></span>Pub {fmt(safeFinancialStats.totalAdSpend || 0)}</span>
+            </div>
           </div>
         </div>
       )}
@@ -311,3 +394,10 @@ const ReportsList = () => {
 };
 
 export default ReportsList;
+
+// 🆕 Export du composant avec ErrorBoundary
+export const ReportsListWithBoundary = () => (
+  <ReportsErrorBoundary>
+    <ReportsList />
+  </ReportsErrorBoundary>
+);

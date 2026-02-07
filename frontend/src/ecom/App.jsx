@@ -10,7 +10,7 @@ import CloseuseDashboard from './pages/CloseuseDashboard.jsx';
 import ComptaDashboard from './pages/ComptaDashboard.jsx';
 import ProductsList from './pages/ProductsList.jsx';
 import ProductForm from './pages/ProductForm.jsx';
-import ReportsList from './pages/ReportsList.jsx';
+import ReportsList, { ReportsListWithBoundary } from './pages/ReportsList.jsx';
 import ReportForm from './pages/ReportForm.jsx';
 import ReportDetail from './pages/ReportDetail.jsx';
 import StockOrdersList from './pages/StockOrdersList.jsx';
@@ -187,7 +187,7 @@ const EcomApp = () => {
               <Route path="products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
               
               {/* Routes rapports */}
-              <Route path="reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
+              <Route path="reports" element={<LayoutRoute><ReportsListWithBoundary /></LayoutRoute>} />
               <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
               <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
