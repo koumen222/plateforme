@@ -3,7 +3,16 @@ import WhatsAppCampaign from '../models/WhatsAppCampaign.js';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
 import { requireAdmin } from '../middleware/admin.js';
-import { sendWhatsAppMessage, sendBulkWhatsApp, sendNewsletterCampaign, addSSEConnection } from '../services/whatsappService.js';
+import { 
+  sendWhatsAppMessage, 
+  sendBulkWhatsApp, 
+  sendNewsletterCampaign, 
+  addSSEConnection,
+  // 🆕 Fonctions anti-spam
+  analyzeSpamRisk,
+  validateMessageBeforeSend,
+  monitorSpamMetrics
+} from '../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -61,6 +70,40 @@ router.post('/', async (req, res) => {
     
     if (!hasMessage && !hasVariants) {
       return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
+    }
+    
+    // 🆕 VALIDATION ANTI-SPAM des messages
+    const messagesToValidate = hasMessage ? [message] : [];
+    if (hasVariants) {
+      messagesToValidate.push(...variants.filter(v => v && v.trim()));
+    }
+    
+    const spamValidationResults = messagesToValidate.map(msg => ({
+      message: msg.substring(0, 50) + '...',
+      analysis: analyzeSpamRisk(msg),
+      validated: validateMessageBeforeSend(msg, 'validation-campaign')
+    }));
+    
+    // Vérifier si des messages sont rejetés
+    const rejectedMessages = spamValidationResults.filter(r => !r.validated);
+    if (rejectedMessages.length > 0) {
+      return res.status(400).json({ 
+        error: 'Certains messages sont rejetés pour risque de spam élevé',
+        details: {
+          rejected: rejectedMessages,
+          recommendations: rejectedMessages.map(r => ({
+            message: r.message,
+            warnings: r.analysis.warnings,
+            recommendations: r.analysis.recommendations
+          }))
+        }
+      });
+    }
+    
+    // Avertir si des messages sont à risque moyen
+    const mediumRiskMessages = spamValidationResults.filter(r => r.analysis.risk === 'MEDIUM');
+    if (mediumRiskMessages.length > 0) {
+      console.warn('⚠️ Messages à risque moyen détectés:', mediumRiskMessages.map(r => r.message));
     }
     
     if (!recipients || !recipients.type) {
@@ -141,14 +184,29 @@ router.post('/', async (req, res) => {
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
       status: scheduledAt ? 'scheduled' : 'draft',
       fromPhone: fromPhone || process.env.WHATSAPP_FROM_PHONE || '',
-      createdBy: req.user._id
+      createdBy: req.user._id,
+      // 🆕 Métadonnées anti-spam
+      spamValidation: {
+        validated: true,
+        riskLevel: mediumRiskMessages.length > 0 ? 'MEDIUM' : 'LOW',
+        validatedAt: new Date(),
+        results: spamValidationResults
+      }
     });
     
     await campaign.save();
     
     res.status(201).json({
       success: true,
-      campaign: campaign.toObject()
+      campaign: campaign.toObject(),
+      spamValidation: {
+        validated: true,
+        riskLevel: mediumRiskMessages.length > 0 ? 'MEDIUM' : 'LOW',
+        warnings: mediumRiskMessages.length,
+        message: mediumRiskMessages.length > 0 
+          ? `${mediumRiskMessages.length} message(s) à risque moyen détecté(s)` 
+          : 'Tous les messages sont à faible risque'
+      }
     });
   } catch (error) {
     console.error('Erreur création campagne WhatsApp:', error.message);
@@ -567,6 +625,270 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Erreur suppression campagne:', error);
     res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// 🆕 Route pour le monitoring anti-spam
+router.get('/:id/anti-spam-monitoring', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const campaign = await WhatsAppCampaign.findById(id).lean();
+    
+    if (!campaign) {
+      return res.status(404).json({ error: 'Campagne non trouvée' });
+    }
+    
+    // Obtenir les métriques anti-spam
+    const monitoring = await monitorSpamMetrics(id);
+    
+    // Analyser les messages de la campagne
+    const messages = campaign.variants && campaign.variants.length > 0 
+      ? campaign.variants 
+      : (campaign.message ? [campaign.message] : []);
+    
+    const messageAnalysis = messages.map(msg => ({
+      message: msg.substring(0, 100) + (msg.length > 100 ? '...' : ''),
+      analysis: analyzeSpamRisk(msg),
+      validated: validateMessageBeforeSend(msg, 'monitoring-check')
+    }));
+    
+    // Statistiques globales
+    const stats = {
+      campaign: {
+        id: campaign._id,
+        name: campaign.name,
+        status: campaign.status,
+        createdAt: campaign.createdAt,
+        sentAt: campaign.sentAt
+      },
+      messages: {
+        total: messages.length,
+        highRisk: messageAnalysis.filter(m => m.analysis.risk === 'HIGH').length,
+        mediumRisk: messageAnalysis.filter(m => m.analysis.risk === 'MEDIUM').length,
+        lowRisk: messageAnalysis.filter(m => m.analysis.risk === 'LOW').length,
+        validated: messageAnalysis.filter(m => m.validated).length
+      },
+      performance: monitoring.metrics || {},
+      alerts: monitoring.alerts || [],
+      recommendation: monitoring.recommendation || {}
+    };
+    
+    // Score global de santé anti-spam
+    const healthScore = calculateAntiSpamHealthScore(stats);
+    stats.healthScore = healthScore;
+    
+    res.json({
+      success: true,
+      stats,
+      messageAnalysis,
+      healthScore,
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('Erreur monitoring anti-spam:', error);
+    res.status(500).json({ error: 'Erreur lors du monitoring anti-spam' });
+  }
+});
+
+/**
+ * Calcule un score de santé anti-spam (0-100)
+ */
+const calculateAntiSpamHealthScore = (stats) => {
+  let score = 100;
+  
+  // Pénalité pour messages à haut risque
+  if (stats.messages.highRisk > 0) {
+    score -= stats.messages.highRisk * 30;
+  }
+  
+  // Pénalité pour messages à risque moyen
+  if (stats.messages.mediumRisk > 0) {
+    score -= stats.messages.mediumRisk * 10;
+  }
+  
+  // Pénalité pour taux de livraison faible
+  if (stats.performance.delivery_rate < 0.95) {
+    score -= (0.95 - stats.performance.delivery_rate) * 100;
+  }
+  
+  // Pénalité pour taux d'échec élevé
+  if (stats.performance.failure_rate > 0.05) {
+    score -= stats.performance.failure_rate * 50;
+  }
+  
+  // Bonus pour bonne performance
+  if (stats.performance.delivery_rate > 0.98) {
+    score += 5;
+  }
+  
+  if (stats.performance.read_rate > 0.50) {
+    score += 5;
+  }
+  
+  return Math.max(0, Math.min(100, Math.round(score)));
+};
+
+export default router;
+
+// 🆕 Route pour l'aperçu/envoi à une seule personne
+router.post('/preview-send', async (req, res) => {
+  try {
+    const { 
+      message, 
+      phoneNumber, 
+      userId, 
+      firstName,
+      campaignId = 'preview-' + Date.now()
+    } = req.body;
+    
+    // Validation des champs requis
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Le message est requis' });
+    }
+    
+    if (!phoneNumber || !phoneNumber.trim()) {
+      return res.status(400).json({ error: 'Le numéro de téléphone est requis' });
+    }
+    
+    // 🆕 VALIDATION ANTI-SPAM du message
+    const analysis = analyzeSpamRisk(message);
+    const isValid = validateMessageBeforeSend(message, userId || 'preview-user');
+    
+    if (!isValid) {
+      return res.status(400).json({ 
+        error: 'Message rejeté pour risque de spam élevé',
+        analysis: {
+          risk: analysis.risk,
+          score: analysis.score,
+          warnings: analysis.warnings,
+          recommendations: analysis.recommendations
+        }
+      });
+    }
+    
+    // Nettoyer et valider le numéro
+    const cleanedPhone = phoneNumber.replace(/\D/g, '').trim();
+    if (!cleanedPhone || cleanedPhone.length < 8) {
+      return res.status(400).json({ error: 'Numéro de téléphone invalide' });
+    }
+    
+    // Vérifier si le numéro commence par un indicatif pays
+    const countryCodes = ['237', '221', '229', '226', '225', '223', '241', '242', '33', '1', '212', '213', '216', '20', '234', '254', '27'];
+    const hasValidCountryCode = countryCodes.some(code => cleanedPhone.startsWith(code));
+    
+    if (!hasValidCountryCode) {
+      return res.status(400).json({ 
+        error: 'Numéro invalide - doit commencer par un indicatif pays valide (ex: 237 pour le Cameroun)' 
+      });
+    }
+    
+    console.log(`📱 Envoi d\'aperçu WhatsApp à ${cleanedPhone} (${firstName || 'Inconnu'})`);
+    console.log(`   Message: "${message.substring(0, 50)}..."`);
+    console.log(`   Risque spam: ${analysis.risk} (score: ${analysis.score})`);
+    
+    // Préparer les données pour l'envoi
+    const messageData = {
+      to: cleanedPhone,
+      message: message.trim(),
+      campaignId: campaignId,
+      userId: userId || null,
+      firstName: firstName || null
+    };
+    
+    // Envoyer le message en utilisant le système anti-spam
+    try {
+      const result = await sendWhatsAppMessage(messageData);
+      
+      console.log(`✅ Message d\'aperçu envoyé avec succès`);
+      console.log(`   ID du message: ${result.messageId}`);
+      console.log(`   ID du log: ${result.logId}`);
+      
+      res.json({
+        success: true,
+        message: 'Message d\'aperçu envoyé avec succès',
+        result: {
+          messageId: result.messageId,
+          logId: result.logId,
+          phone: cleanedPhone,
+          firstName: firstName || null,
+          sentAt: new Date(),
+          spamAnalysis: {
+            risk: analysis.risk,
+            score: analysis.score,
+            validated: true
+          }
+        }
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erreur envoi aperçu: ${error.message}`);
+      
+      // Gérer les erreurs spécifiques
+      if (error.message.includes('HTTP_466')) {
+        return res.status(429).json({ 
+          error: 'Limite de débit atteinte - veuillez réessayer dans quelques minutes',
+          type: 'rate_limit',
+          retryAfter: 60
+        });
+      }
+      
+      if (error.message.includes('numéro invalide')) {
+        return res.status(400).json({ 
+          error: 'Numéro de téléphone invalide ou non enregistré sur WhatsApp',
+          type: 'invalid_phone'
+        });
+      }
+      
+      res.status(500).json({ 
+        error: 'Erreur lors de l\'envoi du message d\'aperçu',
+        details: error.message
+      });
+    }
+    
+  } catch (error) {
+    console.error('Erreur générale aperçu WhatsApp:', error);
+    res.status(500).json({ 
+      error: 'Erreur serveur lors de l\'envoi d\'aperçu',
+      details: error.message
+    });
+  }
+});
+
+// 🆕 Route pour tester un message sans l'envoyer
+router.post('/test-message', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message || !message.trim()) {
+      return res.status(400).json({ error: 'Le message est requis' });
+    }
+    
+    // Analyse anti-spam complète
+    const analysis = analyzeSpamRisk(message);
+    const isValid = validateMessageBeforeSend(message, 'test-user');
+    
+    res.json({
+      success: true,
+      message: 'Message testé avec succès',
+      analysis: {
+        risk: analysis.risk,
+        score: analysis.score,
+        warnings: analysis.warnings,
+        recommendations: analysis.recommendations,
+        validated: isValid,
+        length: message.length,
+        wordCount: message.split(/\s+/).length
+      },
+      verdict: isValid ? '✅ Message safe pour envoi' : '❌ Message à risque - modifications recommandées'
+    });
+    
+  } catch (error) {
+    console.error('Erreur test message:', error);
+    res.status(500).json({ 
+      error: 'Erreur lors du test du message',
+      details: error.message
+    });
   }
 });
 

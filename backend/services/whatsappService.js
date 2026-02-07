@@ -228,6 +228,7 @@ const performWarmup = async () => {
  * Envoie un message WhatsApp (fonction interne, appelée par sendMessageWithDelay)
  * Cette fonction ne gère PAS le retry, elle fait juste un essai unique
  * ⚠️ IMPORTANT: Cette fonction REJETTE immédiatement les numéros mal formatés
+ * 🆕 ANTI-SPAM: Validation du contenu avant envoi
  */
 const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName, attemptNumber = 1 }) => {
   if (!whatsappProvider || providerType !== 'green_api') {
@@ -246,9 +247,13 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
   }
   
   // 2️⃣ Validation STRICTE du format (OBLIGATOIRE)
-  // Un numéro invalide ne doit JAMAIS être envoyé
   if (!isValidPhoneNumber(cleanedPhone)) {
     throw new Error(`Numéro invalide: ${cleanedPhone} (doit commencer par un indicatif pays valide et avoir 8-15 chiffres)`);
+  }
+  
+  // 🆕 3️⃣ VALIDATION ANTI-SPAM du contenu
+  if (!validateMessageBeforeSend(message, userId)) {
+    throw new Error('Message rejeté - risque spam trop élevé');
   }
   
   const whatsappLog = new WhatsAppLog({
@@ -261,6 +266,9 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
   });
   
   try {
+    // 🆕 Simulation de comportement humain avant envoi
+    await simulateHumanBehavior();
+    
     const fetch = (await import('node-fetch')).default;
     
     // Envoi via Green API uniquement
@@ -466,12 +474,13 @@ const sendMessageWithDelay = async (messageData, isRateLimit = false) => {
  * Envoie plusieurs messages WhatsApp de manière séquentielle avec délais
  * ⚠️ CRITIQUE: Green API limite à 3 messages actifs
  * Après 3 messages, attendre 10-15 secondes avant de continuer
+ * 🆕 ANTI-SPAM: Délais augmentés et variation pour e-commerce
  */
 const sendBulkWhatsApp = async (messages) => {
   const results = [];
   
-  // Délai entre chaque message: 4 secondes (dans la plage 3-5 recommandée)
-  const delayBetweenMessages = 4000; // 4 secondes
+  // 🆕 Délai entre chaque message: 5 secondes (augmenté pour e-commerce)
+  const delayBetweenMessages = 5000; // 5 secondes (au lieu de 4)
   
   // Compteur de messages actifs (limite Green API: 3 messages)
   let activeMessages = 0;
@@ -482,7 +491,7 @@ const sendBulkWhatsApp = async (messages) => {
   }
   
   // Log initial uniquement pour le démarrage
-  console.log(`📱 Envoi de ${messages.length} messages WhatsApp via Green API`);
+  console.log(`📱 Envoi de ${messages.length} messages WhatsApp via Green API (mode anti-spam)`);
   
   // Warm-up automatique au début (une seule fois)
   if (!warmupCompleted) {
@@ -517,6 +526,17 @@ const sendBulkWhatsApp = async (messages) => {
       continue;
     }
     
+    // 🆕 VALIDATION ANTI-SPAM du contenu
+    if (!validateMessageBeforeSend(messageData.message, messageData.userId)) {
+      results.push({ 
+        success: false, 
+        phone: cleanedPhone, 
+        error: 'Message rejeté - risque spam trop élevé',
+        skipped: true
+      });
+      continue;
+    }
+    
     // Mettre à jour le numéro nettoyé et validé
     messageData.to = cleanedPhone;
     
@@ -524,7 +544,9 @@ const sendBulkWhatsApp = async (messages) => {
     // Vérifier AVANT d'envoyer le message
     let justPaused = false;
     if (activeMessages >= MAX_ACTIVE_MESSAGES) {
-      await sleep(12000); // Attendre 12 secondes (dans la plage 10-15 recommandée)
+      const pauseTime = 15000; // 15 secondes (augmenté)
+      console.log(`⏸️ Pause de ${Math.round(pauseTime / 1000)}s (limite de 3 messages actifs)`);
+      await sleep(pauseTime);
       activeMessages = 0; // Réinitialiser le compteur
       justPaused = true; // Marquer qu'on vient de faire une pause
     }
@@ -541,17 +563,18 @@ const sendBulkWhatsApp = async (messages) => {
       activeMessages++;
     }
     
-    // Délai obligatoire entre chaque message (ANTI-BLOCAGE)
-    // Le délai est déjà géré dans sendMessageWithDelay pour les retries (10 secondes)
-    // On ajoute un délai supplémentaire seulement si pas de retry
+    // 🆕 Délai OBLIGATOIRE entre chaque message avec variation (ANTI-BLOCAGE)
     if (i < messages.length - 1) {
       if (result.retried) {
         // Si retry effectué, le délai de 10s a déjà été pris dans le retry
         // On attend juste un peu plus pour éviter le rate limiting
-        await sleep(3000); // 3 secondes supplémentaires après un retry
+        await sleep(4000); // 4 secondes supplémentaires après un retry
       } else {
-        // Pas de retry, délai normal entre chaque message
-        await sleep(delayBetweenMessages);
+        // 🆕 Pas de retry, délai variable avec variation humaine
+        const variableDelay = getHumanDelayWithVariation();
+        const delaySeconds = Math.round(variableDelay / 1000);
+        console.log(`   ⏱️ Délai variable de ${delaySeconds}s avant le prochain message...`);
+        await sleep(variableDelay);
       }
     }
     
@@ -569,7 +592,7 @@ const sendBulkWhatsApp = async (messages) => {
   const skippedCount = results.filter(r => r.skipped).length;
   const failedCount = results.filter(r => !r.success && !r.skipped).length;
   
-  console.log(`✅ Envoi terminé: ${successCount}/${messages.length} succès | ${skippedCount} ignorés | ${failedCount} échecs`);
+  console.log(`✅ Envoi terminé (mode anti-spam): ${successCount}/${messages.length} succès | ${skippedCount} ignorés | ${failedCount} échecs`);
   
   return results;
 };
@@ -970,5 +993,364 @@ export {
   getHumanDelay,
   getLongPause,
   checkTimeWindow,
-  sleep
+  sleep,
+  // 🆕 Fonctions anti-spam
+  analyzeSpamRisk,
+  validateMessageBeforeSend,
+  getHumanDelayWithVariation,
+  simulateHumanBehavior,
+  getMessageWithRotation,
+  monitorSpamMetrics
+};
+
+// ============================================
+// 🆕 FONCTIONS ANTI-SPAM POUR E-COMMERCE
+// ============================================
+
+/**
+ * Mots et patterns déclencheurs de spam à éviter
+ */
+const spamTriggers = [
+  'GRATUIT', 'PROMOTION', 'OFFRE SPÉCIALE',
+  'CLIQUEZ ICI', 'URGENT', 'LIMITÉ',
+  'ACHETEZ MAINTENANT', '100% GRATUIT',
+  'GAGNEZ', 'CONCOURS', 'BONUS',
+  'ARGENT RAPIDE', 'DEVENEZ RICHE',
+  'MULTI-LEVEL', 'MARKETING',
+  'LIEN SPONSORISÉ', 'PUBLICITÉ',
+  'DEMANDEZ', 'SOLLICITEZ', 'IMMÉDIAT'
+];
+
+/**
+ * Analyse le risque de spam d'un message
+ * @param {string} message - Message à analyser
+ * @returns {Object} - Analyse de risque avec score et warnings
+ */
+const analyzeSpamRisk = (message) => {
+  if (!message || typeof message !== 'string') {
+    return { score: 0, risk: 'LOW', warnings: ['Message vide'] };
+  }
+
+  let riskScore = 0;
+  const warnings = [];
+  
+  // Vérifier les mots déclencheurs (insensible à la casse)
+  spamTriggers.forEach(trigger => {
+    if (message.toUpperCase().includes(trigger)) {
+      riskScore += 10;
+      warnings.push(`Mot déclencheur: ${trigger}`);
+    }
+  });
+  
+  // Vérifier les formats problématiques
+  if (message === message.toUpperCase() && message.length > 20) {
+    riskScore += 5;
+    warnings.push('Message entièrement en majuscules');
+  }
+  
+  if ((message.match(/!/g) || []).length > 2) {
+    riskScore += 5;
+    warnings.push('Trop de points d\'exclamation');
+  }
+  
+  if ((message.match(/\?/g) || []).length > 2) {
+    riskScore += 3;
+    warnings.push('Trop de points d\'interrogation');
+  }
+  
+  // Vérifier les caractères répétitifs
+  if (message.match(/(.)\1{3,}/)) {
+    riskScore += 5;
+    warnings.push('Caractères répétitifs détectés');
+  }
+  
+  // Vérifier la longueur
+  if (message.length > 500) {
+    riskScore += 3;
+    warnings.push('Message trop long (>500 caractères)');
+  }
+  
+  if (message.length < 15) {
+    riskScore += 2;
+    warnings.push('Message très court (<15 caractères)');
+  }
+  
+  // Vérifier les liens multiples
+  const linkCount = (message.match(/https?:\/\//g) || []).length;
+  if (linkCount > 1) {
+    riskScore += 8;
+    warnings.push('Multiples liens détectés');
+  }
+  
+  // Vérifier les numéros de téléphone
+  if (/\d{10,}/.test(message)) {
+    riskScore += 6;
+    warnings.push('Numéro de téléphone détecté dans le message');
+  }
+  
+  return {
+    score: riskScore,
+    risk: riskScore > 15 ? 'HIGH' : riskScore > 8 ? 'MEDIUM' : 'LOW',
+    warnings,
+    recommendations: getRecommendations(riskScore, warnings)
+  };
+};
+
+/**
+ * Génère des recommandations basées sur l'analyse
+ */
+const getRecommendations = (score, warnings) => {
+  const recommendations = [];
+  
+  if (score > 15) {
+    recommendations.push('⚠️ Message à haut risque - Réécrire complètement');
+  } else if (score > 8) {
+    recommendations.push('🔄 Message à risque moyen - Modifier avant envoi');
+  }
+  
+  if (warnings.some(w => w.includes('majuscules'))) {
+    recommendations.push('✍️ Utiliser une casse normale (mixte)');
+  }
+  
+  if (warnings.some(w => w.includes('points d\'exclamation'))) {
+    recommendations.push('📝 Limiter à 1-2 points d\'exclamation maximum');
+  }
+  
+  if (warnings.some(w => w.includes('Mot déclencheur'))) {
+    recommendations.push('🚫 Remplacer les mots promotionnels par des alternatives');
+  }
+  
+  if (warnings.some(w => w.includes('trop long'))) {
+    recommendations.push('✂️ Raccourcir le message (<300 caractères idéalement)');
+  }
+  
+  return recommendations;
+};
+
+/**
+ * Valide un message avant envoi
+ * @param {string} message - Message à valider
+ * @param {string} userId - ID utilisateur pour tracking
+ * @returns {boolean} - True si le message peut être envoyé
+ */
+const validateMessageBeforeSend = (message, userId) => {
+  const analysis = analyzeSpamRisk(message);
+  
+  console.log(`🔍 Analyse spam pour message: score=${analysis.score}, risque=${analysis.risk}`);
+  
+  if (analysis.risk === 'HIGH') {
+    console.error('🚫 MESSAGE REJETÉ - Risque spam élevé:', analysis.warnings);
+    console.log('💡 Recommandations:', analysis.recommendations);
+    return false;
+  }
+  
+  if (analysis.risk === 'MEDIUM') {
+    console.warn('⚠️ MESSAGE À RISQUE - Envoi avec délai prolongé:', analysis.warnings);
+    // On peut quand même envoyer mais avec délai plus long
+    return true;
+  }
+  
+  console.log('✅ Message validé - Risque faible');
+  return true;
+};
+
+/**
+ * Génère un délai humain avec variation aléatoire
+ * @returns {number} - Délai en millisecondes
+ */
+const getHumanDelayWithVariation = () => {
+  const baseDelay = 45000; // 45 secondes (augmenté pour e-commerce)
+  const variation = Math.random() * 10000 - 5000; // ±5 secondes
+  const finalDelay = Math.max(30000, baseDelay + variation); // Minimum 30 secondes
+  
+  console.log(`⏱️ Délai humain calculé: ${Math.round(finalDelay / 1000)}s`);
+  return finalDelay;
+};
+
+/**
+ * Simule un comportement humain (lecture/écriture)
+ */
+const simulateHumanBehavior = async () => {
+  // Simuler "l'écriture" du message
+  const typingTime = Math.random() * 2000 + 1000; // 1-3 secondes
+  console.log(`⌨️ Simulation d'écriture: ${Math.round(typingTime / 1000)}s`);
+  await sleep(typingTime);
+  
+  // Simuler "la lecture" avant de répondre
+  const readingTime = Math.random() * 3000 + 2000; // 2-5 secondes
+  console.log(`👀 Simulation de lecture: ${Math.round(readingTime / 1000)}s`);
+  await sleep(readingTime);
+};
+
+/**
+ * Pool de messages variés pour éviter la répétition
+ */
+const messagePool = {
+  greetings: [
+    "Salut [PRENOM] ! 😊",
+    "Bonjour [PRENOM] ! Comment allez-vous ?",
+    "Hey [PRENOM] ! J'espère que vous passez une bonne journée 👋",
+    "Bonjour [PRENOM] ! Je pense à vous aujourd'hui",
+    "Salut [PRENOM] ! Tout va bien ?"
+  ],
+  
+  content_intro: [
+    "Je voulais partager quelque chose d'intéressant avec vous...",
+    "Petite découverte qui pourrait vous plaire...",
+    "Je suis tombé sur ça et ça m'a fait penser à vous...",
+    "J'ai quelque chose qui pourrait vous intéresser...",
+    "Petite info qui pourrait être utile pour vous..."
+  ],
+  
+  followup: [
+    "Qu'en pensez-vous ?",
+    "Ça vous intéresse de savoir plus ?",
+    "N'hésitez pas si vous avez des questions !",
+    "Dites-moi ce que vous en pensez...",
+    "Votre avis m'intéresse !"
+  ],
+  
+  closing: [
+    "Bonne journée !",
+    "À bientôt peut-être 😊",
+    "Passez une belle journée !",
+    "Au plaisir de vous lire",
+    "Prenez soin de vous !"
+  ]
+};
+
+/**
+ * Sélectionne un message avec rotation pour éviter la répétition
+ * @param {string} userId - ID utilisateur
+ * @param {string} messageType - Type de message
+ * @returns {string} - Message sélectionné
+ */
+const getMessageWithRotation = (userId, messageType) => {
+  const messages = messagePool[messageType];
+  if (!messages || messages.length === 0) {
+    return '';
+  }
+  
+  // Pour l'instant, sélection aléatoire simple
+  // TODO: Implémenter un système de mémoire des messages envoyés
+  const randomIndex = Math.floor(Math.random() * messages.length);
+  return messages[randomIndex];
+};
+
+/**
+ * Monitor les métriques anti-spam pour une campagne
+ * @param {string} campaignId - ID de la campagne
+ * @returns {Object} - Métriques et alertes
+ */
+const monitorSpamMetrics = async (campaignId) => {
+  try {
+    const WhatsAppLog = (await import('../models/WhatsAppLog.js')).default;
+    const logs = await WhatsAppLog.find({ campaignId });
+    
+    if (logs.length === 0) {
+      return { total: 0, metrics: {}, alerts: [] };
+    }
+    
+    const metrics = {
+      total: logs.length,
+      sent: logs.filter(l => l.status === 'sent').length,
+      delivered: logs.filter(l => l.status === 'delivered').length,
+      read: logs.filter(l => l.status === 'read').length,
+      failed: logs.filter(l => l.status === 'failed').length,
+      pending: logs.filter(l => l.status === 'pending').length,
+      
+      delivery_rate: 0,
+      read_rate: 0,
+      failure_rate: 0,
+      response_rate: 0
+    };
+    
+    // Calculer les taux
+    metrics.delivery_rate = metrics.delivered / metrics.total;
+    metrics.read_rate = metrics.read / metrics.total;
+    metrics.failure_rate = metrics.failed / metrics.total;
+    
+    const alerts = [];
+    
+    // Alertes selon les seuils
+    if (metrics.delivery_rate < 0.85) {
+      alerts.push({
+        level: 'WARNING',
+        message: `Taux de livraison faible: ${Math.round(metrics.delivery_rate * 100)}%`,
+        threshold: 85,
+        current: Math.round(metrics.delivery_rate * 100)
+      });
+    }
+    
+    if (metrics.failure_rate > 0.15) {
+      alerts.push({
+        level: 'ERROR',
+        message: `Taux d'échec élevé: ${Math.round(metrics.failure_rate * 100)}%`,
+        threshold: 15,
+        current: Math.round(metrics.failure_rate * 100)
+      });
+    }
+    
+    if (metrics.read_rate < 0.20 && metrics.delivered > 10) {
+      alerts.push({
+        level: 'INFO',
+        message: `Taux de lecture faible: ${Math.round(metrics.read_rate * 100)}%`,
+        threshold: 20,
+        current: Math.round(metrics.read_rate * 100)
+      });
+    }
+    
+    console.log(`📊 Métriques campagne ${campaignId}:`, {
+      total: metrics.total,
+      delivery: `${Math.round(metrics.delivery_rate * 100)}%`,
+      read: `${Math.round(metrics.read_rate * 100)}%`,
+      failure: `${Math.round(metrics.failure_rate * 100)}%`,
+      alerts: alerts.length
+    });
+    
+    return {
+      metrics,
+      alerts,
+      recommendation: getOverallRecommendation(metrics, alerts)
+    };
+    
+  } catch (error) {
+    console.error('❌ Erreur monitoring spam metrics:', error);
+    return { error: error.message };
+  }
+};
+
+/**
+ * Génère une recommandation globale basée sur les métriques
+ */
+const getOverallRecommendation = (metrics, alerts) => {
+  if (alerts.some(a => a.level === 'ERROR')) {
+    return {
+      action: 'STOP_CAMPAIGN',
+      reason: 'Taux d\'échec critique détecté',
+      priority: 'HIGH'
+    };
+  }
+  
+  if (alerts.some(a => a.level === 'WARNING')) {
+    return {
+      action: 'SLOW_DOWN',
+      reason: 'Performance sous les seuils optimaux',
+      priority: 'MEDIUM'
+    };
+  }
+  
+  if (metrics.delivery_rate > 0.95 && metrics.read_rate > 0.40) {
+    return {
+      action: 'CONTINUE',
+      reason: 'Performance excellente',
+      priority: 'LOW'
+    };
+  }
+  
+  return {
+    action: 'MONITOR',
+    reason: 'Performance acceptable',
+    priority: 'LOW'
+  };
 };

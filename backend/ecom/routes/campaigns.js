@@ -2,6 +2,14 @@ import express from 'express';
 import Campaign from '../models/Campaign.js';
 import Client from '../models/Client.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+// 🆕 Import des fonctions anti-spam WhatsApp
+import { 
+  analyzeSpamRisk, 
+  validateMessageBeforeSend, 
+  sendWhatsAppMessage,
+  getHumanDelayWithVariation,
+  simulateHumanBehavior
+} from '../../services/whatsappService.js';
 
 const router = express.Router();
 
@@ -150,6 +158,28 @@ router.post('/', requireEcomAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Nom et message requis' });
     }
 
+    // 🆕 VALIDATION ANTI-SPAM du message template
+    const analysis = analyzeSpamRisk(messageTemplate);
+    const isValid = validateMessageBeforeSend(messageTemplate, 'campaign-creation');
+    
+    if (!isValid) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Message rejeté pour risque de spam élevé',
+        spamAnalysis: {
+          risk: analysis.risk,
+          score: analysis.score,
+          warnings: analysis.warnings,
+          recommendations: analysis.recommendations
+        }
+      });
+    }
+    
+    // Avertir si risque moyen
+    if (analysis.risk === 'MEDIUM') {
+      console.warn('⚠️ Campagne marketing à risque moyen:', analysis.warnings);
+    }
+
     // Compter les clients ciblés
     const filter = buildClientFilter(req.workspaceId, targetFilters || {});
     filter.phone = { $exists: true, $ne: '' };
@@ -165,11 +195,31 @@ router.post('/', requireEcomAuth, async (req, res) => {
       status: scheduledAt ? 'scheduled' : 'draft',
       stats: { targeted: targetedCount },
       tags: tags || [],
-      createdBy: req.ecomUser._id
+      createdBy: req.ecomUser._id,
+      // 🆕 Métadonnées anti-spam
+      spamValidation: {
+        validated: true,
+        riskLevel: analysis.risk,
+        score: analysis.score,
+        validatedAt: new Date(),
+        warnings: analysis.warnings
+      }
     });
 
     await campaign.save();
-    res.status(201).json({ success: true, message: 'Campagne créée', data: campaign });
+    
+    res.status(201).json({ 
+      success: true, 
+      message: 'Campagne créée', 
+      data: campaign,
+      spamValidation: {
+        validated: true,
+        riskLevel: analysis.risk,
+        score: analysis.score,
+        message: analysis.risk === 'HIGH' ? 'Message à risque élevé' : 
+                analysis.risk === 'MEDIUM' ? 'Message à risque moyen' : 'Message sécurisé'
+      }
+    });
   } catch (error) {
     console.error('Erreur create campaign:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -219,6 +269,23 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       return res.status(500).json({ success: false, message: 'Green API non configuré' });
     }
 
+    // 🆕 VALIDATION ANTI-SPAM du message avant envoi massif
+    const analysis = analyzeSpamRisk(campaign.messageTemplate);
+    const isValid = validateMessageBeforeSend(campaign.messageTemplate, `campaign-${campaign._id}`);
+    
+    if (!isValid) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Envoi bloqué - message à risque de spam élevé',
+        spamAnalysis: {
+          risk: analysis.risk,
+          score: analysis.score,
+          warnings: analysis.warnings,
+          recommendations: analysis.recommendations
+        }
+      });
+    }
+
     // Récupérer les clients ciblés
     const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
     filter.phone = { $exists: true, $ne: '' };
@@ -229,53 +296,116 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     campaign.results = [];
     await campaign.save();
 
+    console.log(`🚀 Envoi campagne marketing "${campaign.name}" avec système anti-spam`);
+    console.log(`   Clients ciblés: ${clients.length}`);
+    console.log(`   Risque spam: ${analysis.risk} (score: ${analysis.score})`);
+
     let sent = 0;
     let failed = 0;
     let messageCount = 0;
-    const BATCH_SIZE = 5;
-    const BATCH_PAUSE_MS = 10000; // 10 secondes entre chaque lot
-    const MSG_PAUSE_MS = 2000; // 2 secondes entre chaque message
+    
+    // 🆕 Configuration anti-spam pour marketing
+    const BATCH_SIZE = 3; // Réduit de 5 à 3 pour plus de sécurité
+    const BATCH_PAUSE_MS = 15000; // Augmenté de 10s à 15s
+    const MSG_PAUSE_MS = 5000; // Augmenté de 2s à 5s
 
     for (const client of clients) {
       const message = renderMessage(campaign.messageTemplate, client);
       const cleanedPhone = (client.phone || '').replace(/\D/g, '');
+      
       if (!cleanedPhone || cleanedPhone.length < 8) {
-        campaign.results.push({ clientId: client._id, clientName: `${client.firstName} ${client.lastName}`, phone: client.phone, status: 'failed', error: 'Numéro invalide' });
+        campaign.results.push({ 
+          clientId: client._id, 
+          clientName: `${client.firstName} ${client.lastName}`, 
+          phone: client.phone, 
+          status: 'failed', 
+          error: 'Numéro invalide' 
+        });
         failed++;
         continue;
       }
 
       try {
-        const apiUrl = `${greenApiUrl}/waInstance${greenApiId}/sendMessage/${greenApiToken}`;
-        const response = await fetch(apiUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ chatId: `${cleanedPhone}@c.us`, message })
-        });
-        const data = await response.json();
-        if (!response.ok || data.error) {
-          campaign.results.push({ clientId: client._id, clientName: `${client.firstName} ${client.lastName}`, phone: client.phone, status: 'failed', error: data.error || data.errorMessage || 'Erreur API' });
+        // 🆕 Validation anti-spam pour chaque message personnalisé
+        const personalizedAnalysis = analyzeSpamRisk(message);
+        const isPersonalizedValid = validateMessageBeforeSend(message, `client-${client._id}`);
+        
+        if (!isPersonalizedValid) {
+          campaign.results.push({ 
+            clientId: client._id, 
+            clientName: `${client.firstName} ${client.lastName}`, 
+            phone: client.phone, 
+            status: 'failed', 
+            error: 'Message personnalisé rejeté (spam)',
+            spamRisk: personalizedAnalysis.risk,
+            spamScore: personalizedAnalysis.score
+          });
           failed++;
-        } else {
-          campaign.results.push({ clientId: client._id, clientName: `${client.firstName} ${client.lastName}`, phone: client.phone, status: 'sent', sentAt: new Date() });
+          continue;
+        }
+
+        // 🆕 Envoi avec système anti-spam
+        const messageData = {
+          to: cleanedPhone,
+          message: message,
+          campaignId: campaign._id,
+          userId: client._id,
+          firstName: client.firstName
+        };
+
+        const result = await sendWhatsAppMessage(messageData);
+        
+        if (result.success) {
+          campaign.results.push({ 
+            clientId: client._id, 
+            clientName: `${client.firstName} ${client.lastName}`, 
+            phone: client.phone, 
+            status: 'sent', 
+            sentAt: new Date(),
+            messageId: result.messageId,
+            spamRisk: personalizedAnalysis.risk
+          });
           sent++;
           messageCount++;
+          
           // Mettre à jour le dernier contact du client
           client.lastContactAt = new Date();
           if (!client.tags.includes('Relancé')) client.tags.push('Relancé');
           await client.save();
+          
+          console.log(`✅ Message envoyé à ${client.firstName} ${client.lastName} (${cleanedPhone})`);
+        } else {
+          campaign.results.push({ 
+            clientId: client._id, 
+            clientName: `${client.firstName} ${client.lastName}`, 
+            phone: client.phone, 
+            status: 'failed', 
+            error: result.error 
+          });
+          failed++;
         }
+        
       } catch (err) {
-        campaign.results.push({ clientId: client._id, clientName: `${client.firstName} ${client.lastName}`, phone: client.phone, status: 'failed', error: err.message });
+        campaign.results.push({ 
+          clientId: client._id, 
+          clientName: `${client.firstName} ${client.lastName}`, 
+          phone: client.phone, 
+          status: 'failed', 
+          error: err.message 
+        });
         failed++;
       }
 
-      // Pause de 10 secondes tous les 5 messages envoyés, sinon 2s entre chaque
+      // 🆕 Délais anti-spam améliorés
       if (messageCount > 0 && messageCount % BATCH_SIZE === 0) {
-        console.log(`⏸️ Campagne ${campaign.name}: pause 10s après ${messageCount} messages envoyés...`);
-        await new Promise(resolve => setTimeout(resolve, BATCH_PAUSE_MS));
+        const pauseTime = getHumanDelayWithVariation();
+        const pauseSeconds = Math.round(pauseTime / 1000);
+        console.log(`⏸️ Campagne ${campaign.name}: pause anti-spam de ${pauseSeconds}s après ${messageCount} messages...`);
+        await new Promise(resolve => setTimeout(resolve, pauseTime));
       } else {
-        await new Promise(resolve => setTimeout(resolve, MSG_PAUSE_MS));
+        // Délai variable entre chaque message
+        const variableDelay = MSG_PAUSE_MS + Math.random() * 2000; // 5-7 secondes
+        await new Promise(resolve => setTimeout(resolve, variableDelay));
       }
     }
 
@@ -283,12 +413,29 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     campaign.sentAt = new Date();
     campaign.stats.sent = sent;
     campaign.stats.failed = failed;
+    campaign.spamValidation = {
+      validated: true,
+      riskLevel: analysis.risk,
+      score: analysis.score,
+      sentAt: new Date()
+    };
     await campaign.save();
+
+    const successRate = Math.round((sent / clients.length) * 100);
+    console.log(`✅ Campagne marketing terminée: ${sent}/${clients.length} envoyés (${successRate}% succès)`);
 
     res.json({
       success: true,
-      message: `Campagne envoyée: ${sent} envoyés, ${failed} échoués sur ${clients.length} ciblés`,
-      data: campaign
+      message: `Campagne envoyée avec protection anti-spam: ${sent} envoyés, ${failed} échoués sur ${clients.length} ciblés`,
+      data: campaign,
+      stats: {
+        total: clients.length,
+        sent,
+        failed,
+        successRate,
+        spamRisk: analysis.risk,
+        spamScore: analysis.score
+      }
     });
   } catch (error) {
     console.error('Erreur send campaign:', error);
@@ -305,6 +452,185 @@ router.delete('/:id', requireEcomAuth, validateEcomAccess('products', 'write'), 
   } catch (error) {
     console.error('Erreur delete campaign:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// 🆕 POST /api/ecom/campaigns/preview-send - Envoyer un aperçu à une seule personne
+router.post('/preview-send', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { 
+      messageTemplate, 
+      clientId, 
+      clientData,
+      campaignId = 'preview-' + Date.now()
+    } = req.body;
+    
+    // Validation des champs requis
+    if (!messageTemplate || !messageTemplate.trim()) {
+      return res.status(400).json({ success: false, message: 'Le message template est requis' });
+    }
+    
+    let client = null;
+    
+    // Si clientId fourni, récupérer le client depuis la base
+    if (clientId) {
+      client = await Client.findOne({ _id: clientId, workspaceId: req.workspaceId });
+      if (!client) {
+        return res.status(404).json({ success: false, message: 'Client non trouvé' });
+      }
+    } 
+    // Sinon, utiliser les données fournies
+    else if (clientData) {
+      client = clientData;
+    } else {
+      return res.status(400).json({ success: false, message: 'clientId ou clientData requis' });
+    }
+    
+    // Personnaliser le message
+    const personalizedMessage = renderMessage(messageTemplate, client);
+    
+    // 🆕 VALIDATION ANTI-SPAM du message personnalisé
+    const analysis = analyzeSpamRisk(personalizedMessage);
+    const isValid = validateMessageBeforeSend(personalizedMessage, `preview-${client._id || 'manual'}`);
+    
+    if (!isValid) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Message rejeté pour risque de spam élevé',
+        analysis: {
+          risk: analysis.risk,
+          score: analysis.score,
+          warnings: analysis.warnings,
+          recommendations: analysis.recommendations
+        }
+      });
+    }
+    
+    // Nettoyer et valider le numéro
+    const cleanedPhone = (client.phone || '').replace(/\D/g, '').trim();
+    if (!cleanedPhone || cleanedPhone.length < 8) {
+      return res.status(400).json({ success: false, message: 'Numéro de téléphone invalide' });
+    }
+    
+    console.log(`📱 Envoi d\'aperçu marketing à ${client.firstName} ${client.lastName || ''} (${cleanedPhone})`);
+    console.log(`   Message: "${personalizedMessage.substring(0, 50)}..."`);
+    console.log(`   Risque spam: ${analysis.risk} (score: ${analysis.score})`);
+    
+    // Préparer les données pour l'envoi
+    const messageData = {
+      to: cleanedPhone,
+      message: personalizedMessage,
+      campaignId: campaignId,
+      userId: client._id || null,
+      firstName: client.firstName || null
+    };
+    
+    // Envoyer le message en utilisant le système anti-spam
+    try {
+      const result = await sendWhatsAppMessage(messageData);
+      
+      console.log(`✅ Message d\'aperçu marketing envoyé avec succès`);
+      console.log(`   ID du message: ${result.messageId}`);
+      console.log(`   ID du log: ${result.logId}`);
+      
+      res.json({
+        success: true,
+        message: 'Message d\'aperçu marketing envoyé avec succès',
+        result: {
+          messageId: result.messageId,
+          logId: result.logId,
+          phone: cleanedPhone,
+          clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim(),
+          sentAt: new Date(),
+          personalizedMessage: personalizedMessage,
+          spamAnalysis: {
+            risk: analysis.risk,
+            score: analysis.score,
+            validated: true
+          }
+        }
+      });
+      
+    } catch (error) {
+      console.error(`❌ Erreur envoi aperçu marketing: ${error.message}`);
+      
+      // Gérer les erreurs spécifiques
+      if (error.message.includes('HTTP_466')) {
+        return res.status(429).json({ 
+          success: false,
+          message: 'Limite de débit atteinte - veuillez réessayer dans quelques minutes',
+          type: 'rate_limit',
+          retryAfter: 60
+        });
+      }
+      
+      if (error.message.includes('numéro invalide')) {
+        return res.status(400).json({ 
+          success: false,
+          message: 'Numéro de téléphone invalide ou non enregistré sur WhatsApp',
+          type: 'invalid_phone'
+        });
+      }
+      
+      res.status(500).json({ 
+        success: false,
+        message: 'Erreur lors de l\'envoi du message d\'aperçu',
+        details: error.message
+      });
+    }
+    
+  } catch (error) {
+    console.error('Erreur générale aperçu marketing:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur serveur lors de l\'envoi d\'aperçu',
+      details: error.message
+    });
+  }
+});
+
+// 🆕 POST /api/ecom/campaigns/test-message - Tester un message sans l'envoyer
+router.post('/test-message', requireEcomAuth, async (req, res) => {
+  try {
+    const { messageTemplate, clientData } = req.body;
+    
+    if (!messageTemplate || !messageTemplate.trim()) {
+      return res.status(400).json({ success: false, message: 'Le message template est requis' });
+    }
+    
+    // Si clientData fourni, personnaliser le message pour le test
+    let testMessage = messageTemplate;
+    if (clientData) {
+      testMessage = renderMessage(messageTemplate, clientData);
+    }
+    
+    // Analyse anti-spam complète
+    const analysis = analyzeSpamRisk(testMessage);
+    const isValid = validateMessageBeforeSend(testMessage, 'test-user');
+    
+    res.json({
+      success: true,
+      message: 'Message testé avec succès',
+      analysis: {
+        risk: analysis.risk,
+        score: analysis.score,
+        warnings: analysis.warnings,
+        recommendations: analysis.recommendations,
+        validated: isValid,
+        length: testMessage.length,
+        wordCount: testMessage.split(/\s+/).length
+      },
+      personalizedMessage: clientData ? testMessage : null,
+      verdict: isValid ? '✅ Message safe pour envoi' : '❌ Message à risque - modifications recommandées'
+    });
+    
+  } catch (error) {
+    console.error('Erreur test message marketing:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Erreur lors du test du message',
+      details: error.message
+    });
   }
 });
 
