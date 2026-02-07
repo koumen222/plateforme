@@ -269,6 +269,12 @@ router.post('/',
       const report = new DailyReport(reportData);
       await report.save();
 
+      // Décrémenter le stock du produit selon les commandes livrées
+      if (ordersDelivered > 0) {
+        await Product.findByIdAndUpdate(productId, { $inc: { stock: -ordersDelivered } });
+        console.log(`📦 Stock décrémenté de ${ordersDelivered} pour ${product.name}`);
+      }
+
       const populatedReport = await DailyReport.findById(report._id)
         .populate('productId', 'name sellingPrice')
         .populate('reportedBy', 'email');
@@ -321,8 +327,17 @@ router.put('/:id',
         }
       }
 
+      const oldDelivered = report.ordersDelivered || 0;
       Object.assign(report, req.body);
       await report.save();
+
+      // Ajuster le stock si ordersDelivered a changé
+      const newDelivered = report.ordersDelivered || 0;
+      const diff = newDelivered - oldDelivered;
+      if (diff !== 0) {
+        await Product.findByIdAndUpdate(report.productId, { $inc: { stock: -diff } });
+        console.log(`📦 Stock ajusté de ${-diff} pour le rapport mis à jour`);
+      }
 
       const updatedReport = await DailyReport.findById(report._id)
         .populate('productId', 'name sellingPrice')
@@ -356,6 +371,12 @@ router.delete('/:id',
           success: false,
           message: 'Rapport non trouvé'
         });
+      }
+
+      // Restaurer le stock du produit
+      if (report.ordersDelivered > 0) {
+        await Product.findByIdAndUpdate(report.productId, { $inc: { stock: report.ordersDelivered } });
+        console.log(`📦 Stock restauré de +${report.ordersDelivered} après suppression du rapport`);
       }
 
       await DailyReport.findByIdAndDelete(req.params.id);
