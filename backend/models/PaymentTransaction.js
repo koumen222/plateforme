@@ -14,8 +14,7 @@ const paymentTransactionSchema = new mongoose.Schema({
   paymentId: {
     type: String,
     required: true,
-    unique: true,
-    index: true
+    unique: true
   },
   amount: {
     type: Number,
@@ -71,7 +70,6 @@ const paymentTransactionSchema = new mongoose.Schema({
 
 paymentTransactionSchema.index({ userId: 1 });
 paymentTransactionSchema.index({ ebookId: 1 });
-paymentTransactionSchema.index({ paymentId: 1 });
 paymentTransactionSchema.index({ status: 1 });
 paymentTransactionSchema.index({ createdAt: -1 });
 

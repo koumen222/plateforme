@@ -88,7 +88,8 @@ const app = express();
 app.use(cors({
   origin: [
     "https://www.safitech.shop",
-    "http://localhost:5173"
+    "http://localhost:5173",
+    "http://localhost:8081"
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"],
@@ -96,10 +97,6 @@ app.use(cors({
   optionsSuccessStatus: 204 // Répondre avec 204 No Content pour les requêtes OPTIONS
 }));
 
-console.log('🔒 Configuration CORS activée');
-console.log('   - Origines autorisées: https://www.safitech.shop, http://localhost:5173');
-console.log('   - Méthodes: GET, POST, PUT, DELETE, OPTIONS');
-console.log('   - Headers: Content-Type, Authorization');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true })); // Pour les requêtes POST avec application/x-www-form-urlencoded
@@ -114,6 +111,12 @@ app.use((req, res, next) => {
   if (req.url.startsWith('/api/coacching-reservations')) {
     req.url = req.url.replace('/api/coacching-reservations', '/api/coaching-reservations');
   }
+  
+  // Debug: Log toutes les requêtes API
+  if (req.url.startsWith('/api/')) {
+    console.log(`🔍 Requête API: ${req.method} ${req.url}`);
+  }
+  
   next();
 });
 
@@ -152,9 +155,7 @@ app.use('/uploads', (req, res, next) => {
   // Si on arrive ici, c'est que express.static n'a pas trouvé le fichier
   // Vérifier si c'est vraiment une requête vers /uploads
   if (req.originalUrl.startsWith('/uploads/')) {
-    console.log(`⚠️ Fichier statique non trouvé: ${req.originalUrl}`);
-    console.log(`   - Chemin uploads configuré: ${uploadsPath}`);
-    res.status(404).json({
+        res.status(404).json({
       error: 'Fichier non trouvé',
       path: req.originalUrl,
       uploadsPath: uploadsPath
@@ -164,13 +165,9 @@ app.use('/uploads', (req, res, next) => {
   next();
 });
 
-console.log('📁 Dossier uploads configuré: /uploads');
-console.log('📁 Chemin absolu uploads:', uploadsPath);
-console.log('📁 Dossier uploads/pdf configuré: /uploads/pdf');
 
 // Configuration pour Render (trust proxy - OBLIGATOIRE et doit être AVANT session)
 app.set("trust proxy", 1);
-console.log('🔒 Trust proxy activé (nécessaire pour Render)');
 
 // Configuration de la session pour Passport (OBLIGATOIRE pour Render)
 app.use(session({
@@ -194,15 +191,11 @@ app.use(passport.session());
 configurePassport();
 
 // Log de confirmation des routes OAuth
-console.log('🔐 Routes OAuth Google configurées:');
-console.log('   - GET /auth/google');
-console.log('   - GET /auth/google/callback');
 
 // Middleware de logging pour debug (exclure les health checks pour réduire le bruit)
 app.use((req, res, next) => {
   // Ne pas logger les health checks
   if (req.originalUrl !== '/health' && req.originalUrl !== '/') {
-    console.log(`📥 ${req.method} ${req.originalUrl}`, req.body ? 'avec body' : 'sans body');
   }
   next();
 });
@@ -274,9 +267,6 @@ app.get("/api/test", (req, res) => {
 // Route GET /api/valentine-winners - PRIORITAIRE (avant toutes les autres routes)
 // Cette route est définie ici pour garantir qu'elle soit toujours disponible
 app.get("/api/valentine-winners", authenticate, async (req, res) => {
-  console.log('💝 Route /api/valentine-winners appelée (route principale)');
-  console.log('💝 User:', req.user ? { id: req.user._id, status: req.user.status } : 'non authentifié');
-  console.log('💝 Query params:', req.query);
 
   const blurProduct = (product) => {
     const maskedName = product.name ? `${product.name.substring(0, 10)}...` : 'Produit réservé';
@@ -307,7 +297,6 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
     let cacheMessage = null;
 
     if (!valentineProducts.length) {
-      console.log('💝 Aucun produit St Valentin en base, génération immédiate...');
       shouldRefresh = true;
     } else {
       const mostRecentValentine = valentineProducts[0];
@@ -316,11 +305,9 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
         const timeSinceUpdate = now - lastUpdate;
 
         if (timeSinceUpdate >= twentyFourHoursInMs) {
-          console.log(`💝 Produits St Valentin obsolètes (${Math.round(timeSinceUpdate / (60 * 60 * 1000))}h), génération...`);
           shouldRefresh = true;
         } else {
           const remainingHours = Math.round((twentyFourHoursInMs - timeSinceUpdate) / (60 * 60 * 1000));
-          console.log(`💝 Produits St Valentin en cache (actualisation dans ${remainingHours}h)`);
           cacheMessage = `Produits St Valentin chargés depuis le cache. Prochaine actualisation dans ${remainingHours}h`;
         }
       } else {
@@ -331,13 +318,11 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
     if (shouldRefresh) {
       try {
         const successRadarCron = await import("./services/successRadarCron.js");
-        console.log('💝 Génération de nouveaux produits St Valentin via OpenAI...');
         await successRadarCron.refreshValentineProducts();
         valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
           .sort({ lastUpdated: -1, createdAt: -1 })
           .limit(50)
           .lean();
-        console.log(`💝 ${valentineProducts.length} produits St Valentin générés et enregistrés`);
       } catch (err) {
         console.error('❌ Erreur génération produits St Valentin:', err.message);
         valentineProducts = await WinningProduct.find({ specialEvent: 'saint-valentin' })
@@ -354,7 +339,6 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
         }
       }
     } else {
-      console.log(`💝 Retour des ${valentineProducts.length} produits St Valentin depuis le cache`);
     }
 
     if (!valentineProducts.length) {
@@ -1364,7 +1348,6 @@ const startServer = async () => {
           });
         }
         
-        console.log(`🚀 Démarrage envoi campagne WhatsApp "${campaign.name}" à ${users.length} destinataires`);
         
         campaign.status = 'sending';
         await campaign.save();
@@ -1482,7 +1465,6 @@ const startServer = async () => {
     });
     
     // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
-    console.log('📦 Chargement dynamique de tous les modules...');
     
     // 0. Routes Facebook Auth OAuth (doivent être montées EN PREMIER pour capturer /auth/*)
     try {
@@ -1492,9 +1474,6 @@ const startServer = async () => {
         throw new Error('Router facebookAuth est null ou undefined');
       }
       app.use("/", facebookAuthRoutes);
-      console.log('✅ Routes Facebook Auth chargées (priorité)');
-      console.log('   Route OAuth: GET /auth/facebook');
-      console.log('   Route Callback: GET /auth/facebook/callback');
     } catch (error) {
       console.error('⚠️ Erreur chargement facebookAuth.js:', error.message);
       console.error('   Stack:', error.stack);
@@ -1505,17 +1484,129 @@ const startServer = async () => {
       const authModule = await import("./routes/auth.js");
       authRoutes = authModule.default;
       app.use("/api", authRoutes);
-      console.log('✅ Routes d\'authentification chargées');
+      console.log('✅ Routes auth.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement auth.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
+
+    // 1.1. Routes auth spécifiques sous /api/auth/ pour compatibilité frontend
+    app.post("/api/auth/forgot-password", async (req, res) => {
+      try {
+        const { email } = req.body;
+
+        // Validation
+        if (!email) {
+          return res.status(400).json({ error: 'L\'adresse email est requise' });
+        }
+
+        // Validation de l'email
+        const emailRegex = /^\S+@\S+\.\S+$/;
+        if (!emailRegex.test(email)) {
+          return res.status(400).json({ error: 'Veuillez entrer une adresse email valide' });
+        }
+
+    // Trouver l'utilisateur par email
+    const User = (await import('./models/User.js')).default;
+    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+    
+    console.log(`🔍 Tentative de réinitialisation pour: ${email}`);
+    
+    // Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non
+    if (!user) {
+      console.log(`❌ Email non trouvé dans la base: ${email}`);
+      return res.json({ 
+        success: true, 
+        message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.' 
+      });
+    }
+
+    console.log(`👤 Utilisateur trouvé: ${user.name} (${user._id})`);
+    console.log(`🔑 AuthProvider: ${user.authProvider}`);
+    console.log(`📝 Password présent: ${!!user.password}`);
+
+    // Vérifier que l'utilisateur a un mot de passe (pas OAuth)
+    if (!user.password && user.authProvider === 'google') {
+      console.log(`❌ Tentative de réinitialisation pour un compte OAuth Google: ${email}`);
+      return res.json({ 
+        success: true, 
+        message: 'Ce compte utilise l\'authentification Google. Veuillez vous connecter avec Google.' 
+      });
+    }
+
+        // Générer un token de réinitialisation
+        const crypto = await import('crypto');
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+        // Sauvegarder le token dans la base de données
+        user.passwordResetToken = resetToken;
+        user.passwordResetExpires = resetTokenExpiry;
+        await user.save();
+
+        console.log(`✅ Token de réinitialisation généré pour: ${email}`);
+
+        // Envoyer l'email avec Resend
+        try {
+          const { Resend } = await import('resend');
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          
+          console.log('🔧 Tentative d\'envoi email avec Resend...');
+          console.log('   - API Key:', process.env.RESEND_API_KEY ? '✅ Définie' : '❌ Manquante');
+          console.log('   - From:', process.env.EMAIL_FROM || 'noreply@infomania.store');
+          console.log('   - To:', email);
+          
+          const result = await resend.emails.send({
+            from: `Ecomstarter <${process.env.EMAIL_FROM || 'noreply@infomania.store'}>`,
+            to: email,
+            subject: 'Réinitialisation de votre mot de passe',
+            html: `
+              <h2 style="color: #333; font-family: Arial, sans-serif;">Réinitialisation de votre mot de passe</h2>
+              <p style="color: #666; font-family: Arial, sans-serif;">Bonjour ${user.name},</p>
+              <p style="color: #666; font-family: Arial, sans-serif;">Vous avez demandé la réinitialisation de votre mot de passe. Cliquez sur le lien ci-dessous pour continuer:</p>
+              <div style="text-align: center; margin: 20px 0;">
+                <a href="${process.env.FRONTEND_URL}/reset-password?token=${resetToken}" 
+                   style="background-color: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                  Réinitialiser mon mot de passe
+                </a>
+              </div>
+              <p style="color: #999; font-size: 14px; font-family: Arial, sans-serif;">Ce lien expirera dans 10 minutes.</p>
+              <p style="color: #999; font-size: 14px; font-family: Arial, sans-serif;">Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
+              <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
+              <p style="color: #999; font-size: 12px; font-family: Arial, sans-serif;">
+                Ceci est un email automatique de la plateforme de formation Andromeda.
+              </p>
+            `
+          });
+          
+          console.log('✅ Email de réinitialisation envoyé à:', email);
+          console.log('   - Result ID:', result.id);
+        } catch (emailError) {
+          console.error('❌ Erreur envoi email:', emailError);
+          console.error('   Details:', emailError.message);
+          console.error('   Stack:', emailError.stack);
+          // Ne pas retourner d'erreur 500, juste logger et continuer
+          console.log('⚠️ Email non envoyé mais token généré - mode dégradé');
+        }
+
+        res.json({ 
+          success: true, 
+          message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.' 
+        });
+
+      } catch (error) {
+        console.error('❌ Erreur forgot-password:', error);
+        res.status(500).json({ 
+          error: 'Une erreur est survenue lors du traitement de votre demande. Veuillez réessayer plus tard.' 
+        });
+      }
+    });
 
     // 1bis. Routes parrainage (optionnelles)
     try {
       const referralsModule = await import("./routes/referrals.js");
       referralsRoutes = referralsModule.default;
       app.use("/api", referralsRoutes);
-      console.log('✅ Routes parrainage chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement referrals.js:', error.message);
     }
@@ -1525,7 +1616,6 @@ const startServer = async () => {
       const videoModule = await import("./routes/videos.js");
       videoRoutes = videoModule.default;
       app.use("/api", videoRoutes);
-      console.log('✅ Routes vidéos chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement videos.js:', error.message);
     }
@@ -1535,7 +1625,6 @@ const startServer = async () => {
       const coursesModule = await import("./routes/courses.js");
       coursesRoutes = coursesModule.default;
       app.use("/api/courses", coursesRoutes);
-      console.log('✅ Routes cours chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement courses.js:', error.message);
     }
@@ -1545,7 +1634,6 @@ const startServer = async () => {
       const coachingModule = await import("./routes/coaching-reservations.js");
       coachingRoutes = coachingModule.default;
       app.use("/api/coaching-reservations", coachingRoutes);
-      console.log('✅ Routes coaching réservations chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-reservations.js:', error.message);
     }
@@ -1555,7 +1643,6 @@ const startServer = async () => {
       const coachingApplicationsModule = await import("./routes/coaching-applications.js");
       coachingApplicationsRoutes = coachingApplicationsModule.default;
       app.use("/api/coaching-applications", coachingApplicationsRoutes);
-      console.log('✅ Routes candidatures coaching chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-applications.js:', error.message);
     }
@@ -1565,7 +1652,6 @@ const startServer = async () => {
       const recrutementModule = await import("./routes/recrutement.js");
       recrutementRoutes = recrutementModule.default;
       app.use("/api/recrutement", recrutementRoutes);
-      console.log('✅ Routes recrutement chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement recrutement.js:', error.message);
     }
@@ -1575,7 +1661,6 @@ const startServer = async () => {
       const partenairesModule = await import("./routes/partenaires.js");
       partenairesRoutes = partenairesModule.default;
       app.use("/api/partenaires", partenairesRoutes);
-      console.log('✅ Routes partenaires chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement partenaires.js:', error.message);
     }
@@ -1585,7 +1670,6 @@ const startServer = async () => {
       const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
       ressourcesPdfRoutes = ressourcesPdfModule.default;
       app.use("/api/ressources-pdf", ressourcesPdfRoutes);
-      console.log('✅ Routes ressources PDF chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ressources-pdf.js:', error.message);
       app.get("/api/ressources-pdf", (req, res) => {
@@ -1598,7 +1682,6 @@ const startServer = async () => {
       const progressModule = await import("./routes/progress.js");
       progressRoutes = progressModule.default;
       app.use("/api/progress", progressRoutes);
-      console.log('✅ Routes progression chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement progress.js:', error.message);
     }
@@ -1608,7 +1691,6 @@ const startServer = async () => {
       const commentsModule = await import("./routes/comments.js");
       commentsRoutes = commentsModule.default;
       app.use("/api/comments", commentsRoutes);
-      console.log('✅ Routes commentaires chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement comments.js:', error.message);
     }
@@ -1618,7 +1700,6 @@ const startServer = async () => {
       const successRadarModule = await import("./routes/successRadar.js");
       successRadarRoutes = successRadarModule.default;
       app.use("/api", successRadarRoutes);
-      console.log('✅ Routes Success Radar chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement successRadar.js:', error.message);
     }
@@ -1628,7 +1709,6 @@ const startServer = async () => {
       const adminModule = await import("./routes/admin.js");
       adminRoutes = adminModule.default;
       app.use("/api/admin", adminRoutes);
-      console.log('✅ Routes admin chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement admin.js:', error.message);
     }
@@ -1638,7 +1718,6 @@ const startServer = async () => {
       const paymentModule = await import("./routes/payment.js");
       paymentRoutes = paymentModule.default;
       app.use("/api/payment", paymentRoutes);
-      console.log('✅ Routes paiement chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement payment.js:', error.message);
     }
@@ -1648,7 +1727,6 @@ const startServer = async () => {
       const diagnosticModule = await import("./routes/diagnostic.js");
       diagnosticRoutes = diagnosticModule.default;
       app.use("/api/diagnostic", diagnosticRoutes);
-      console.log('✅ Routes diagnostic chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
     }
@@ -1658,7 +1736,6 @@ const startServer = async () => {
       const filesModule = await import("./routes/files.js");
       filesRoutes = filesModule.default;
       app.use("/api/files", filesRoutes);
-      console.log('✅ Routes fichiers chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement files.js:', error.message);
       app.get("/api/files", (req, res) => {
@@ -1674,8 +1751,6 @@ const startServer = async () => {
         throw new Error('Router ai-analyzer est null ou undefined');
       }
       app.use("/api/ai-analyzer", aiAnalyzerRoutes);
-      console.log('✅ Routes AI Analyzer chargées');
-      console.log('   Route analyze disponible: POST /api/ai-analyzer/analyze');
     } catch (error) {
       console.error('⚠️ Erreur chargement ai-analyzer.js:', error.message);
       console.error('   Stack:', error.stack);
@@ -1696,12 +1771,6 @@ const startServer = async () => {
         metaModule.setFacebookTokens(facebookTokens);
       }
       app.use("/api/meta", metaRoutes);
-      console.log('✅ Routes Meta chargées');
-      console.log('   Route status: GET /api/meta/status');
-      console.log('   Route businesses: GET /api/meta/businesses');
-      console.log('   Route adaccounts: GET /api/meta/adaccounts');
-      console.log('   Route campaigns: GET /api/meta/campaigns');
-      console.log('   Route select: POST /api/meta/select');
     } catch (error) {
       console.error('⚠️ Erreur chargement meta.js:', error.message);
       console.error('   Stack:', error.stack);
@@ -1712,7 +1781,6 @@ const startServer = async () => {
       const successRadarCronModule = await import("./services/successRadarCron.js");
       startSuccessRadarCron = successRadarCronModule.startSuccessRadarCron;
       runSuccessRadarOnce = successRadarCronModule.runSuccessRadarOnce;
-      console.log('✅ Services Success Radar Cron chargés');
     } catch (error) {
       console.error('⚠️ Erreur chargement successRadarCron.js:', error.message);
     }
@@ -1722,8 +1790,6 @@ const startServer = async () => {
       const pushModule = await import("./routes/push.js");
       pushRoutes = pushModule.default;
       app.use("/api/push", pushRoutes);
-      console.log('✅ Routes Web Push chargées');
-      console.log('   Route public-key: GET /api/push/public-key');
     } catch (error) {
       console.error('⚠️ Erreur chargement push.js:', error.message);
       console.error('   Stack:', error.stack);
@@ -1734,7 +1800,6 @@ const startServer = async () => {
       const notificationsModule = await import("./routes/notifications.js");
       notificationsRoutes = notificationsModule.default;
       app.use("/api/notifications", notificationsRoutes);
-      console.log('✅ Routes notifications internes chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement notifications.js:', error.message);
     }
@@ -1744,7 +1809,6 @@ const startServer = async () => {
       const ebooksModule = await import("./routes/ebooks.js");
       ebooksRoutes = ebooksModule.default;
       app.use("/api/ebooks", ebooksRoutes);
-      console.log('✅ Routes ebooks chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ebooks.js:', error.message);
     }
@@ -1754,23 +1818,17 @@ const startServer = async () => {
       const paymentsModule = await import("./routes/payments.js");
       paymentsRoutes = paymentsModule.default;
       app.use("/api/payments", paymentsRoutes);
-      console.log('✅ Routes paiements Monetbil chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement payments.js:', error.message);
     }
 
     // ===== MODULE E-COMMERCE ISOLÉ =====
-    console.log('🛒 Chargement du module E-commerce Cockpit...');
     
     // Routes E-commerce Authentification
     try {
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
-      console.log('✅ Routes E-commerce Auth chargées');
-      console.log('   POST /api/ecom/auth/login - Connexion e-commerce');
-      console.log('   POST /api/ecom/auth/register - Inscription e-commerce');
-      console.log('   GET  /api/ecom/auth/me - Profil utilisateur e-commerce');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
     }
@@ -1780,12 +1838,6 @@ const startServer = async () => {
       const ecomProductsModule = await import("./ecom/routes/products.js");
       ecomProductsRoutes = ecomProductsModule.default;
       app.use("/api/ecom/products", ecomProductsRoutes);
-      console.log('✅ Routes E-commerce Produits chargées');
-      console.log('   GET    /api/ecom/products - Liste produits');
-      console.log('   POST   /api/ecom/products - Créer produit');
-      console.log('   GET    /api/ecom/products/:id - Détail produit');
-      console.log('   PUT    /api/ecom/products/:id - Modifier produit');
-      console.log('   DELETE /api/ecom/products/:id - Supprimer produit');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/products.js:', error.message);
     }
@@ -1795,10 +1847,6 @@ const startServer = async () => {
       const ecomReportsModule = await import("./ecom/routes/reports.js");
       ecomReportsRoutes = ecomReportsModule.default;
       app.use("/api/ecom/reports", ecomReportsRoutes);
-      console.log('✅ Routes E-commerce Rapports chargées');
-      console.log('   GET  /api/ecom/reports - Liste rapports quotidiens');
-      console.log('   POST /api/ecom/reports - Créer rapport quotidien');
-      console.log('   GET  /api/ecom/reports/stats/financial - Stats financières');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/reports.js:', error.message);
     }
@@ -1808,11 +1856,6 @@ const startServer = async () => {
       const ecomStockModule = await import("./ecom/routes/stock.js");
       ecomStockRoutes = ecomStockModule.default;
       app.use("/api/ecom/stock", ecomStockRoutes);
-      console.log('✅ Routes E-commerce Stock chargées');
-      console.log('   GET  /api/ecom/stock/orders - Commandes stock');
-      console.log('   POST /api/ecom/stock/orders - Créer commande stock');
-      console.log('   GET  /api/ecom/stock/alerts - Alertes stock');
-      console.log('   GET  /api/ecom/stock/overview - Vue ensemble stock');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/stock.js:', error.message);
     }
@@ -1821,7 +1864,6 @@ const startServer = async () => {
     try {
       const ecomStockLocationsModule = await import("./ecom/routes/stockLocations.js");
       app.use("/api/ecom/stock-locations", ecomStockLocationsModule.default);
-      console.log('✅ Routes E-commerce Stock Locations chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/stockLocations.js:', error.message);
     }
@@ -1831,10 +1873,6 @@ const startServer = async () => {
       const ecomDecisionsModule = await import("./ecom/routes/decisions.js");
       ecomDecisionsRoutes = ecomDecisionsModule.default;
       app.use("/api/ecom/decisions", ecomDecisionsRoutes);
-      console.log('✅ Routes E-commerce Décisions chargées');
-      console.log('   GET  /api/ecom/decisions - Liste décisions');
-      console.log('   POST /api/ecom/decisions - Créer décision');
-      console.log('   GET  /api/ecom/decisions/dashboard/overview - Dashboard décisions');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/decisions.js:', error.message);
     }
@@ -1844,10 +1882,6 @@ const startServer = async () => {
       const ecomTransactionsModule = await import("./ecom/routes/transactions.js");
       const ecomTransactionsRoutes = ecomTransactionsModule.default;
       app.use("/api/ecom/transactions", ecomTransactionsRoutes);
-      console.log('✅ Routes E-commerce Transactions chargées');
-      console.log('   GET  /api/ecom/transactions - Liste transactions');
-      console.log('   GET  /api/ecom/transactions/summary - Résumé financier');
-      console.log('   POST /api/ecom/transactions - Créer transaction');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/transactions.js:', error.message);
     }
@@ -1857,10 +1891,6 @@ const startServer = async () => {
       const ecomUsersModule = await import("./ecom/routes/users.js");
       const ecomUsersRoutes = ecomUsersModule.default;
       app.use("/api/ecom/users", ecomUsersRoutes);
-      console.log('✅ Routes E-commerce Utilisateurs chargées');
-      console.log('   GET  /api/ecom/users - Liste utilisateurs');
-      console.log('   POST /api/ecom/users - Créer utilisateur');
-      console.log('   PUT  /api/ecom/users/:id - Modifier utilisateur');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/users.js:', error.message);
     }
@@ -1870,9 +1900,6 @@ const startServer = async () => {
       const ecomSuperAdminModule = await import("./ecom/routes/superAdmin.js");
       const ecomSuperAdminRoutes = ecomSuperAdminModule.default;
       app.use("/api/ecom/super-admin", ecomSuperAdminRoutes);
-      console.log('✅ Routes E-commerce Super Admin chargées');
-      console.log('   GET  /api/ecom/super-admin/users - Tous les utilisateurs');
-      console.log('   GET  /api/ecom/super-admin/workspaces - Toutes les workspaces');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
     }
@@ -1882,11 +1909,6 @@ const startServer = async () => {
       const ecomClientsModule = await import("./ecom/routes/clients.js");
       const ecomClientsRoutes = ecomClientsModule.default;
       app.use("/api/ecom/clients", ecomClientsRoutes);
-      console.log('✅ Routes E-commerce Clients chargées');
-      console.log('   GET    /api/ecom/clients - Liste clients');
-      console.log('   POST   /api/ecom/clients - Créer client');
-      console.log('   PUT    /api/ecom/clients/:id - Modifier client');
-      console.log('   DELETE /api/ecom/clients/:id - Supprimer client');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/clients.js:', error.message);
     }
@@ -1896,12 +1918,6 @@ const startServer = async () => {
       const ecomOrdersModule = await import("./ecom/routes/orders.js");
       const ecomOrdersRoutes = ecomOrdersModule.default;
       app.use("/api/ecom/orders", ecomOrdersRoutes);
-      console.log('✅ Routes E-commerce Commandes chargées');
-      console.log('   GET    /api/ecom/orders - Liste commandes');
-      console.log('   POST   /api/ecom/orders/sync-sheets - Sync Google Sheets');
-      console.log('   PUT    /api/ecom/orders/:id - Modifier commande');
-      console.log('   GET    /api/ecom/orders/settings - Config Google Sheets');
-      console.log('   PUT    /api/ecom/orders/settings - Sauver config');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/orders.js:', error.message);
     }
@@ -1911,10 +1927,6 @@ const startServer = async () => {
       const ecomCampaignsModule = await import("./ecom/routes/campaigns.js");
       const ecomCampaignsRoutes = ecomCampaignsModule.default;
       app.use("/api/ecom/campaigns", ecomCampaignsRoutes);
-      console.log('✅ Routes E-commerce Campagnes chargées');
-      console.log('   GET    /api/ecom/campaigns - Liste campagnes');
-      console.log('   POST   /api/ecom/campaigns - Créer campagne');
-      console.log('   POST   /api/ecom/campaigns/:id/send - Envoyer campagne');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/campaigns.js:', error.message);
     }
@@ -1924,30 +1936,17 @@ const startServer = async () => {
       const ecomEcoreModule = await import("./ecom/routes/ecore.js");
       const ecomEcoreRoutes = ecomEcoreModule.default;
       app.use("/api/ecom/ecore", ecomEcoreRoutes);
-      console.log('✅ Routes E-commerce Ecore chargées');
-      console.log('   GET  /api/ecom/ecore/overview - Vue d\'ensemble économique');
-      console.log('   GET  /api/ecom/ecore/profit-analysis - Analyse rentabilité');
-      console.log('   GET  /api/ecom/ecore/trends - Tendances');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/ecore.js:', error.message);
     }
 
-    console.log('🛒 Module E-commerce Cockpit chargé avec succès!');
-    console.log('   Accès frontend: /ecom/*');
-    console.log('   API Base URL: /api/ecom/*');
-    console.log('   Rôles: super_admin, ecom_admin, ecom_closeuse, ecom_compta');
-    console.log('=====================================');
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {
-      console.log('📦 Tentative de chargement routes subscribers...');
       try {
         const subscribersModule = await import("./routes/subscribers.js");
-        console.log('📦 Module subscribers importé:', !!subscribersModule);
-        console.log('📦 subscribersModule.default:', !!subscribersModule?.default);
         if (subscribersModule && subscribersModule.default) {
           app.use("/api/subscribers", subscribersModule.default);
-          console.log('✅ Routes subscribers chargées sur /api/subscribers');
           // Route de test pour vérifier que le router fonctionne
           app.get("/api/subscribers/test", (req, res) => {
             res.json({ success: true, message: 'Route subscribers fonctionnelle', timestamp: new Date().toISOString() });
@@ -1972,10 +1971,6 @@ const startServer = async () => {
       const emailCampaignsModule = await import("./routes/email-campaigns.js");
       if (emailCampaignsModule && emailCampaignsModule.default) {
         app.use("/api/email-campaigns", emailCampaignsModule.default);
-        console.log('✅ Routes email-campaigns chargées');
-        console.log('   POST /api/email-campaigns - Créer une campagne');
-        console.log('   GET  /api/email-campaigns - Lister les campagnes');
-        console.log('   POST /api/email-campaigns/:id/send - Envoyer une campagne');
       } else {
         console.error('❌ emailCampaignsModule.default est null ou undefined');
         console.error('   Module:', emailCampaignsModule);
@@ -1984,16 +1979,14 @@ const startServer = async () => {
       const emailTemplatesModule = await import("./routes/email-templates.js");
       if (emailTemplatesModule && emailTemplatesModule.default) {
         app.use("/api/email-templates", emailTemplatesModule.default);
-        console.log('✅ Routes email-templates chargées');
-      } else {
+        } else {
         console.error('❌ emailTemplatesModule.default est null ou undefined');
       }
       
       const emailTrackingModule = await import("./routes/email-tracking.js");
       if (emailTrackingModule && emailTrackingModule.default) {
         app.use("/api/email", emailTrackingModule.default);
-        console.log('✅ Routes email-tracking chargées');
-      } else {
+        } else {
         console.error('❌ emailTrackingModule.default est null ou undefined');
       }
       
@@ -2002,30 +1995,16 @@ const startServer = async () => {
         const emailLogsModule = await import("./routes/email-logs.js");
         if (emailLogsModule && emailLogsModule.default) {
           app.use("/api/email-logs", emailLogsModule.default);
-          console.log('✅ Routes email-logs chargées');
-          console.log('   GET /api/email-logs - Lister tous les emails avec filtres');
-          console.log('   GET /api/email-logs/stats - Statistiques globales');
-          console.log('   POST /api/email-logs/resend - Renvoyer les emails en échec');
-          console.log('   POST /api/email-logs/:id/resend-single - Renvoyer un email spécifique');
-        }
+          }
       } catch (error) {
         console.error('⚠️ Erreur chargement email-logs.js:', error.message);
       }
       
       // Routes de tracking des visites
-      console.log('📦 Tentative de chargement routes visits...');
       try {
         const visitsModule = await import("./routes/visits.js");
-        console.log('📦 Module visits importé:', !!visitsModule);
-        console.log('📦 visitsModule:', Object.keys(visitsModule || {}));
-        console.log('📦 visitsModule.default:', !!visitsModule?.default);
-        console.log('📦 Type de visitsModule.default:', typeof visitsModule?.default);
         if (visitsModule && visitsModule.default) {
           app.use("/api/visits", visitsModule.default);
-          console.log('✅ Routes visits chargées sur /api/visits');
-          console.log('   POST /api/visits/track - Enregistrer une visite');
-          console.log('   GET  /api/visits/stats - Statistiques par pays (admin)');
-          console.log('   GET  /api/visits/recent - Visites récentes (admin)');
         } else {
           console.error('❌ visitsModule.default est null ou undefined');
           console.error('   Module:', visitsModule);
@@ -2233,17 +2212,10 @@ const startServer = async () => {
         });
       }
       
-      console.log('📦 Tentative de chargement routes whatsapp-campaigns...');
       try {
         const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
-        console.log('📦 Module whatsapp-campaigns importé:', !!whatsappCampaignsModule);
-        console.log('📦 whatsappCampaignsModule.default:', !!whatsappCampaignsModule?.default);
         if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
           app.use("/api/whatsapp-campaigns", whatsappCampaignsModule.default);
-          console.log('✅ Routes WhatsApp campaigns chargées sur /api/whatsapp-campaigns');
-          console.log('   POST /api/whatsapp-campaigns - Créer une campagne');
-          console.log('   GET  /api/whatsapp-campaigns - Lister les campagnes');
-          console.log('   POST /api/whatsapp-campaigns/:id/send - Envoyer une campagne');
           // Route de test pour vérifier que le router fonctionne
           app.get("/api/whatsapp-campaigns/test", (req, res) => {
             res.json({ success: true, message: 'Route whatsapp-campaigns fonctionnelle', timestamp: new Date().toISOString() });
@@ -2466,7 +2438,6 @@ const startServer = async () => {
       });
     }
     
-    console.log('📦 Chargement dynamique terminé\n');
     
     // Connexion MongoDB
     await connectDB();
@@ -2476,7 +2447,6 @@ const startServer = async () => {
       await configureWebPush();
     } catch (error) {
       console.warn('⚠️ Web Push non configuré:', error.message);
-      console.warn('   Les notifications push ne seront pas disponibles');
     }
 
     // Configuration Email Service (Marketing Automation)
@@ -2485,7 +2455,6 @@ const startServer = async () => {
       initEmailService();
     } catch (error) {
       console.warn('⚠️ Service email non configuré:', error.message);
-      console.warn('   Les campagnes email ne seront pas disponibles');
     }
     
     // Configuration WhatsApp Service
@@ -2494,7 +2463,6 @@ const startServer = async () => {
       await initWhatsAppService();
     } catch (error) {
       console.warn('⚠️ Service WhatsApp non configuré:', error.message);
-      console.warn('   Les campagnes WhatsApp ne seront pas disponibles');
     }
 
     // Planification des campagnes email avec node-cron
@@ -2514,8 +2482,6 @@ const startServer = async () => {
           });
 
           for (const campaign of campaigns) {
-            console.log(`📧 Envoi campagne programmée: ${campaign.name}`);
-            
             campaign.status = 'sending';
             await campaign.save();
 
@@ -2610,12 +2576,9 @@ const startServer = async () => {
               campaign.sentAt = new Date();
               campaign.stats.sent = stats.sent;
               await campaign.save();
-
-              console.log(`✅ Campagne ${campaign.name} envoyée: ${stats.sent}/${subscribers.length}`);
             } else {
               campaign.status = 'draft';
               await campaign.save();
-              console.warn(`⚠️ Aucun destinataire pour la campagne ${campaign.name}`);
             }
           }
         } catch (error) {
@@ -2623,8 +2586,7 @@ const startServer = async () => {
         }
       });
 
-      console.log('✅ Planificateur de campagnes email activé');
-    } catch (error) {
+      } catch (error) {
       console.warn('⚠️ Planificateur de campagnes non configuré:', error.message);
     }
     
@@ -2647,7 +2609,6 @@ const startServer = async () => {
         isPublished: true
       });
       await facebookAdsCourse.save();
-      console.log('✅ Cours Facebook Ads créé');
 
       // Créer le Module 1
       const module1 = new Module({
@@ -2656,7 +2617,6 @@ const startServer = async () => {
         order: 1
       });
       await module1.save();
-      console.log('✅ Module 1 créé');
 
       // Créer toutes les leçons
       const lessonsData = [
@@ -2891,16 +2851,12 @@ const startServer = async () => {
           isCoaching: lessonData.isCoaching || false
         });
         await lesson.save();
-        console.log(`✅ Leçon ${lessonData.order} créée: ${lessonData.title}`);
       }
       
-      console.log('✅ Cours Facebook Ads initialisé avec succès !');
     } else {
-      console.log('ℹ️ Cours Facebook Ads existe déjà');
-      if (facebookAdsCourse.isPublished !== true) {
+        if (facebookAdsCourse.isPublished !== true) {
         facebookAdsCourse.isPublished = true;
         await facebookAdsCourse.save();
-        console.log('✅ Facebook Ads publié (visible sur la home)');
       }
     }
     
@@ -2977,21 +2933,6 @@ const startServer = async () => {
     
     // Démarrer le serveur Express
     app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Backend running on port ${PORT}`);
-      console.log(`📡 API disponible sur http://localhost:${PORT}`);
-      console.log(`🌐 Environnement: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`\n📋 Routes disponibles:`);
-      console.log(`   POST /api/register - Inscription utilisateur`);
-      console.log(`   POST /api/login - Connexion`);
-      console.log(`   GET  /api/user/me - Profil utilisateur`);
-      console.log(`   PUT  /api/profile - Mise à jour profil`);
-      console.log(`   POST /api/admin/register - Inscription admin`);
-      console.log(`   GET  /api/admin/check - Vérifier admin`);
-      console.log(`   GET  /api/success-radar - Success Radar (protégé)`);
-      console.log(`   GET  /api/valentine-winners - Winners St Valentin (protégé)`);
-      console.log(`   GET  /auth/facebook - OAuth Facebook (protégé)`);
-      console.log(`   GET  /api/meta/status - Statut Meta (protégé)`);
-      console.log(`\n✅ Serveur prêt à recevoir des requêtes!\n`);
     });
   } catch (error) {
     console.error('❌ Impossible de démarrer le serveur:', error);

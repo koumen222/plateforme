@@ -85,6 +85,14 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
+  passwordResetToken: {
+    type: String,
+    select: false
+  },
+  passwordResetExpires: {
+    type: Date,
+    select: false
+  },
   progress: [{
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

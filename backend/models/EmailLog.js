@@ -77,9 +77,6 @@ const emailLogSchema = new mongoose.Schema({
 
 emailLogSchema.index({ campaignId: 1 });
 emailLogSchema.index({ subscriberId: 1 });
-emailLogSchema.index({ email: 1 });
 emailLogSchema.index({ status: 1 });
-emailLogSchema.index({ 'tracking.openToken': 1 });
-emailLogSchema.index({ 'tracking.clickToken': 1 });
 
 export default mongoose.model('EmailLog', emailLogSchema);

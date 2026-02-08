@@ -113,7 +113,8 @@ const checkWhatsappNumber = async (phone) => {
   }
   
   try {
-    const fetch = (await import('node-fetch')).default;
+    const fetchModule = await import('node-fetch');
+    const fetch = fetchModule.default;
     const apiUrl = whatsappProvider.apiUrl || `https://${whatsappProvider.idInstance}.api.greenapi.com`;
     const endpoint = `${apiUrl}/waInstance${whatsappProvider.idInstance}/checkWhatsapp/${whatsappProvider.apiTokenInstance}`;
     
@@ -192,7 +193,8 @@ const performWarmup = async () => {
     }
     
     try {
-      const fetch = (await import('node-fetch')).default;
+      const fetchModule = await import('node-fetch');
+    const fetch = fetchModule.default;
       const apiUrl = whatsappProvider.apiUrl || `https://${whatsappProvider.idInstance}.api.greenapi.com`;
       const endpoint = `${apiUrl}/waInstance${whatsappProvider.idInstance}/sendMessage/${whatsappProvider.apiTokenInstance}`;
       
@@ -269,7 +271,8 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
     // 🆕 Simulation de comportement humain avant envoi
     await simulateHumanBehavior();
     
-    const fetch = (await import('node-fetch')).default;
+    const fetchModule = await import('node-fetch');
+    const fetch = fetchModule.default;
     
     // Envoi via Green API uniquement
     const apiUrl = whatsappProvider.apiUrl || `https://${whatsappProvider.idInstance}.api.greenapi.com`;
@@ -1245,7 +1248,8 @@ const getMessageWithRotation = (userId, messageType) => {
  */
 const monitorSpamMetrics = async (campaignId) => {
   try {
-    const WhatsAppLog = (await import('../models/WhatsAppLog.js')).default;
+    const logModule = await import('../models/WhatsAppLog.js');
+    const WhatsAppLog = logModule.default;
     const logs = await WhatsAppLog.find({ campaignId });
     
     if (logs.length === 0) {

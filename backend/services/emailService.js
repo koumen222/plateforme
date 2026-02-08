@@ -81,7 +81,7 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
       }
     );
     
-    const from = fromName ? `${fromName} <${fromEmail}>` : fromEmail;
+    const from = fromName ? `${fromName} <${fromEmail}>` : `Ecomstarter <${fromEmail}>`;
     
     // Générer les headers anti-spam
     const antiSpamHeaders = generateAntiSpamHeaders({

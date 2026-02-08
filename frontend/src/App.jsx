@@ -10,6 +10,7 @@ import PrivateRoute from './components/PrivateRoute'
 import LessonPage from './pages/LessonPage'
 import CoachingPage from './pages/CoachingPage'
 import LoginPage from './pages/LoginPage'
+import ResetPasswordPage from './pages/ResetPasswordPage'
 import ProfilePage from './pages/ProfilePage'
 import AdminLoginPage from './pages/admin/AdminLoginPage'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage'
@@ -168,6 +169,7 @@ function App() {
           <Route path="/chat" element={<ChatbotPage />} />
           {/* Routes publiques avec PlatformLayout (Header + Footer) */}
           <Route path="/login" element={<PlatformLayout><LoginPage /></PlatformLayout>} />
+          <Route path="/reset-password" element={<PlatformLayout><ResetPasswordPage /></PlatformLayout>} />
           <Route path="/landing" element={<PlatformLayout><LandingPage /></PlatformLayout>} />
           <Route path="/payment-success" element={<PlatformLayout><PaymentSuccessPage /></PlatformLayout>} />
           <Route path="/payment-failed" element={<PlatformLayout><PaymentFailedPage /></PlatformLayout>} />

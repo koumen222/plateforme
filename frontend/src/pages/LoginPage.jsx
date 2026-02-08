@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { countries } from '../data/countries'
-import { FiUser, FiMail, FiPhone, FiLock, FiChevronDown, FiSearch, FiGlobe, FiEye, FiEyeOff } from 'react-icons/fi'
+import { FiUser, FiMail, FiPhone, FiLock, FiChevronDown, FiSearch, FiGlobe, FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
+  const [isForgotPassword, setIsForgotPassword] = useState(false)
   const [emailOrPhone, setEmailOrPhone] = useState('')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -14,6 +15,8 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('')
+  const [resetSent, setResetSent] = useState(false)
   const { login, register, isAuthenticated } = useAuth()
   const navigate = useNavigate()
   const location = useLocation()
@@ -121,6 +124,50 @@ export default function LoginPage() {
   const handleFieldBlur = (fieldName, value) => {
     setTouchedFields({ ...touchedFields, [fieldName]: true })
     validateField(fieldName, value)
+  }
+
+  const handleForgotPassword = async (e) => {
+    e.preventDefault()
+    setError('')
+    
+    if (!forgotPasswordEmail) {
+      setError('Veuillez entrer votre adresse email')
+      return
+    }
+    
+    // Validation email
+    const emailRegex = /^\S+@\S+\.\S+$/
+    if (!emailRegex.test(forgotPasswordEmail)) {
+      setError('Veuillez entrer une adresse email valide')
+      return
+    }
+    
+    setLoading(true)
+    
+    try {
+      // Appel à l'API pour la réinitialisation du mot de passe
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotPasswordEmail })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok) {
+        setResetSent(true)
+        setError('')
+      } else {
+        setError(data.error || 'Une erreur est survenue lors de l\'envoi de l\'email de réinitialisation')
+      }
+    } catch (err) {
+      console.error('Forgot password error:', err)
+      setError('Problème de connexion au serveur. Veuillez réessayer plus tard.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleSubmit = async (e) => {
@@ -244,15 +291,27 @@ export default function LoginPage() {
           {/* Header */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 bg-accent rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <FiLock className="w-8 h-8 text-white" />
+              {isForgotPassword ? (
+                <FiMail className="w-8 h-8 text-white" />
+              ) : (
+                <FiLock className="w-8 h-8 text-white" />
+              )}
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-primary mb-3">
-              {isLogin ? 'Connexion' : 'Créer un compte'}
+              {isForgotPassword 
+                ? 'Mot de passe oublié'
+                : isLogin 
+                  ? 'Connexion' 
+                  : 'Créer un compte'
+              }
             </h1>
             <p className="text-secondary">
-              {isLogin 
-                ? 'Accédez à votre espace de formation'
-                : 'Rejoignez la communauté des entrepreneurs'}
+              {isForgotPassword 
+                ? 'Recevez un lien pour réinitialiser votre mot de passe'
+                : isLogin 
+                  ? 'Accédez à votre espace de formation'
+                  : 'Rejoignez la communauté des entrepreneurs'
+              }
             </p>
           </div>
 
@@ -266,7 +325,25 @@ export default function LoginPage() {
             </div>
           )}
 
+          {/* Success Message */}
+          {resetSent && (
+            <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl flex items-start gap-3">
+              <svg className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="text-sm text-green-700 dark:text-green-400 font-medium">
+                  Email envoyé avec succès!
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-500 mt-1">
+                  Vérifiez votre boîte de réception et suivez les instructions pour réinitialiser votre mot de passe.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Form */}
+          {!isForgotPassword ? (
           <form onSubmit={handleSubmit} className="space-y-5">
             {!isLogin && (
               <div>
@@ -478,35 +555,116 @@ export default function LoginPage() {
               )}
             </button>
           </form>
+          ) : (
+            // Forgot Password Form
+            <form onSubmit={handleForgotPassword} className="space-y-5">
+              <div>
+                <label htmlFor="forgotEmail" className="block text-sm font-semibold text-primary mb-2 flex items-center gap-2">
+                  <FiMail className="w-4 h-4" />
+                  Email de réinitialisation
+                </label>
+                <input
+                  type="email"
+                  id="forgotEmail"
+                  value={forgotPasswordEmail}
+                  onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                  required
+                  placeholder="votre@email.com"
+                  disabled={loading || resetSent}
+                  className="input-startup"
+                />
+                <p className="mt-2 text-xs text-secondary">
+                  Entrez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
+                </p>
+              </div>
+
+              {!resetSent && (
+                <button 
+                  type="submit" 
+                  disabled={loading}
+                  className="btn-primary w-full py-3 px-4 font-semibold shadow-lg hover:shadow-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Envoi en cours...
+                    </>
+                  ) : (
+                    <>
+                      <FiMail className="w-4 h-4" />
+                      Envoyer le lien de réinitialisation
+                    </>
+                  )}
+                </button>
+              )}
+            </form>
+          )}
 
           {/* Toggle Mode */}
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => {
-                setIsLogin(!isLogin)
-                setError('')
-                setName('')
-                setEmail('')
-                setEmailOrPhone('')
-                setPhoneNumber('')
-                setPassword('')
-                setFieldErrors({})
-                setTouchedFields({})
-              }}
-              disabled={loading}
-              className="text-sm text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
-            >
-              {isLogin 
-                ? <>
-                    <FiUser className="w-4 h-4" />
-                    Pas encore de compte ? S'inscrire
-                  </>
-                : <>
-                    <FiLock className="w-4 h-4" />
-                    Déjà un compte ? Se connecter
-                  </>}
-            </button>
+          <div className="mt-6 text-center space-y-3">
+            {isLogin && !isForgotPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(true)
+                  setError('')
+                  setResetSent(false)
+                  setForgotPasswordEmail('')
+                }}
+                disabled={loading}
+                className="text-sm text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+              >
+                <FiLock className="w-4 h-4" />
+                Mot de passe oublié ?
+              </button>
+            )}
+            
+            {isForgotPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsForgotPassword(false)
+                  setError('')
+                  setResetSent(false)
+                  setForgotPasswordEmail('')
+                }}
+                disabled={loading}
+                className="text-sm text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+              >
+                <FiArrowLeft className="w-4 h-4" />
+                Retour à la connexion
+              </button>
+            )}
+            
+            {!isForgotPassword && (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(!isLogin)
+                  setError('')
+                  setName('')
+                  setEmail('')
+                  setEmailOrPhone('')
+                  setPhoneNumber('')
+                  setPassword('')
+                  setFieldErrors({})
+                  setTouchedFields({})
+                }}
+                disabled={loading}
+                className="text-sm text-accent hover:text-accent/80 font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2 mx-auto"
+              >
+                {isLogin 
+                  ? <>
+                      <FiUser className="w-4 h-4" />
+                      Pas encore de compte ? S'inscrire
+                    </>
+                  : <>
+                      <FiLock className="w-4 h-4" />
+                      Déjà un compte ? Se connecter
+                    </>
+                }
+              </button>
+            )}
           </div>
 
           {/* Info Note */}
