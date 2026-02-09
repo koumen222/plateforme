@@ -41,11 +41,14 @@ const OrdersList = () => {
   const [showConfig, setShowConfig] = useState(false);
   const [config, setConfig] = useState({ spreadsheetId: '', sheetName: 'Sheet1' });
   const [configLoading, setConfigLoading] = useState(false);
-  const [lastSync, setLastSync] = useState(null);
+  const [sources, setSources] = useState([]);
+  const [selectedSourceId, setSelectedSourceId] = useState('');
+  const [lastSyncs, setLastSyncs] = useState({});
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({});
   const [viewMode, setViewMode] = useState('table');
+  const [showSourceSelector, setShowSourceSelector] = useState(true);
 
   const fetchOrders = async () => {
     try {
@@ -57,6 +60,7 @@ const OrdersList = () => {
       if (filterTag) params.tag = filterTag;
       if (filterStartDate) params.startDate = filterStartDate;
       if (filterEndDate) params.endDate = filterEndDate;
+      if (selectedSourceId) params.sourceId = selectedSourceId;
       const res = await ecomApi.get('/orders', { params });
       setOrders(res.data.data.orders);
       setStats(res.data.data.stats);
@@ -67,27 +71,57 @@ const OrdersList = () => {
   const fetchConfig = async () => {
     try {
       const res = await ecomApi.get('/orders/settings');
-      if (res.data.data) {
-        setConfig(prev => ({ ...prev, ...res.data.data }));
-        setLastSync(res.data.data.lastSyncAt);
+      if (res.data.success) {
+        let allSources = res.data.data.sources || [];
+        
+        // Ajouter la source "Legacy/Principal" si elle est configurée
+        if (res.data.data.googleSheets?.spreadsheetId) {
+          allSources = [
+            {
+              _id: 'legacy',
+              name: 'Commandes Zendo',
+              sheetName: res.data.data.googleSheets.sheetName || 'Sheet1',
+              isActive: true,
+              lastSyncAt: res.data.data.googleSheets.lastSyncAt
+            },
+            ...allSources
+          ];
+        }
+        
+        setSources(allSources);
+        
+        const syncs = {};
+        allSources.forEach(s => {
+          if (s.lastSyncAt) syncs[s._id] = s.lastSyncAt;
+        });
+        setLastSyncs(syncs);
       }
-    } catch {}
+    } catch (err) {
+      console.error('Error fetching config:', err);
+    }
   };
 
   useEffect(() => {
-    Promise.all([fetchOrders(), isAdmin ? fetchConfig() : Promise.resolve()]).finally(() => setLoading(false));
+    const init = async () => {
+      if (isAdmin) await fetchConfig();
+      // On n'appelle fetchOrders que si on n'est pas en mode sélection de source
+      // ou si on veut charger les stats globales
+      await fetchOrders();
+      setLoading(false);
+    };
+    init();
   }, []);
 
-  useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, page]);
+  useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId, page]);
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t); } }, [success]);
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
 
-  const handleSync = async () => {
+  const handleSync = async (sourceId = null) => {
     setSyncing(true); setError('');
     try {
-      const res = await ecomApi.post('/orders/sync-sheets', {}, { timeout: 120000 });
+      const res = await ecomApi.post('/orders/sync-sheets', { sourceId: sourceId || selectedSourceId }, { timeout: 120000 });
       setSuccess(res.data.message);
-      setLastSync(new Date().toISOString());
+      fetchConfig(); // Refresh sources for sync times
       fetchOrders();
     } catch (err) { setError(err.response?.data?.message || 'Erreur synchronisation'); }
     finally { setSyncing(false); }
@@ -162,6 +196,76 @@ const OrdersList = () => {
     </div>
   );
 
+  if (showSourceSelector && isAdmin) {
+    return (
+      <div className="p-4 sm:p-6 max-w-5xl mx-auto min-h-[80vh] flex flex-col justify-center">
+        <div className="mb-12 text-center">
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight">Gestion des Commandes</h1>
+          <p className="text-gray-500 mt-3 text-lg">Choisissez une source de données pour commencer</p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Option Vue Globale */}
+          <button
+            onClick={() => {
+              setSelectedSourceId('');
+              setPage(1);
+              setShowSourceSelector(false);
+            }}
+            className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-3xl hover:border-blue-500 hover:shadow-xl hover:shadow-blue-500/10 transition-all group"
+          >
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+              <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+              </svg>
+            </div>
+            <span className="font-bold text-gray-900 text-lg">Vue globale</span>
+            <span className="text-sm text-gray-400 mt-2 text-center">Toutes les sources consolidées</span>
+          </button>
+
+          {/* Liste des sources existantes */}
+          {sources.map(source => (
+            <button
+              key={source._id}
+              onClick={() => {
+                setSelectedSourceId(source._id);
+                setPage(1);
+                setShowSourceSelector(false);
+              }}
+              className="flex flex-col items-center justify-center p-8 bg-white border-2 border-gray-100 rounded-3xl hover:border-green-500 hover:shadow-xl hover:shadow-green-500/10 transition-all group"
+            >
+              <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
+                <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </div>
+              <span className="font-bold text-gray-900 text-lg">{source.name}</span>
+              <span className="text-sm text-gray-400 mt-2">{source.sheetName}</span>
+              <div className="mt-4 flex items-center gap-2">
+                <span className={`w-2 h-2 rounded-full ${source.isActive ? 'bg-green-500' : 'bg-gray-300'}`}></span>
+                <span className="text-[10px] text-gray-400 uppercase font-bold tracking-wider">{source.isActive ? 'Actif' : 'Inactif'}</span>
+              </div>
+            </button>
+          ))}
+
+          {/* Option Ajouter une source */}
+          <button
+            onClick={() => navigate('/ecom/settings')}
+            className="flex flex-col items-center justify-center p-8 bg-gray-50 border-2 border-dashed border-gray-200 rounded-3xl hover:border-blue-400 hover:bg-blue-50/50 transition-all group"
+          >
+            <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mb-5 shadow-sm group-hover:scale-110 transition-transform">
+              <svg className="w-8 h-8 text-gray-400 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </div>
+            <span className="font-bold text-gray-500 group-hover:text-blue-600 text-lg">Ajouter un sheet</span>
+            <span className="text-sm text-gray-400 mt-2 text-center">Configurer une nouvelle source</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-[1400px] mx-auto">
       {success && <div className="mb-3 p-2.5 bg-green-50 text-green-800 rounded-lg text-sm border border-green-200 flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>{success}</div>}
@@ -169,58 +273,59 @@ const OrdersList = () => {
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Commandes</h1>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {stats.total || 0} total
-            {lastSync && <> · Sync {fmtDate(lastSync)} {fmtTime(lastSync)}</>}
-          </p>
+        <div className="flex items-center gap-3">
+          {isAdmin && sources.length > 0 && (
+            <button
+              onClick={() => {
+                setShowSourceSelector(true);
+                setPage(1);
+              }}
+              className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              title="Changer de source"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 15l-3-3m0 0l3-3m-3 3h8M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+              </svg>
+            </button>
+          )}
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+              {selectedSourceId ? sources.find(s => s._id === selectedSourceId)?.name : (showSourceSelector ? 'Gestion des Commandes' : 'Vue globale')}
+            </h1>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {stats.total || 0} total
+              {Object.keys(lastSyncs).length > 0 && <> · Dernières synchronisations actives</>}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-1.5">
           {isAdmin && (
             <>
-              <button onClick={() => setShowConfig(!showConfig)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition" title="Config">
+              {sources.length > 0 && (
+                <div className="flex items-center gap-2 mr-2">
+                  <select
+                    value={selectedSourceId}
+                    onChange={(e) => setSelectedSourceId(e.target.value)}
+                    className="text-xs border border-gray-200 rounded-lg px-2 py-2 focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                  >
+                    <option value="">Toutes les sources actives</option>
+                    {sources.map(s => (
+                      <option key={s._id} value={s._id}>{s.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button onClick={() => navigate('/ecom/settings')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition" title="Gérer les sources">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               </button>
-              <button onClick={handleBackfillClients} disabled={backfilling} className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1.5" title="Ajouter les clients livrés dans la base clients">
-                <svg className={`w-4 h-4 ${backfilling ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                {backfilling ? 'Sync...' : 'Sync Clients'}
-              </button>
-              <button onClick={handleSync} disabled={syncing} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1.5">
+              <button onClick={() => handleSync()} disabled={syncing} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1.5">
                 <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
-                {syncing ? 'Synchronisation...' : 'Sync Sheets'}
+                {syncing ? 'Sync...' : 'Sync Sheets'}
               </button>
             </>
           )}
         </div>
       </div>
-
-      {/* Config panel */}
-      {showConfig && isAdmin && (
-        <div className="bg-white rounded-xl shadow-sm border mb-4 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">Connecter Google Sheets</h2>
-              <p className="text-[10px] text-gray-400 mt-0.5">Collez le lien, le système détecte les colonnes automatiquement</p>
-            </div>
-            <button onClick={() => setShowConfig(false)} className="text-gray-400 hover:text-gray-600"><svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg></button>
-          </div>
-          <div className="grid sm:grid-cols-4 gap-3 mb-3">
-            <div className="sm:col-span-3">
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">Lien Google Sheet</label>
-              <input type="text" value={config.spreadsheetId} onChange={(e) => setConfig(p => ({ ...p, spreadsheetId: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://docs.google.com/spreadsheets/d/..." />
-            </div>
-            <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">Onglet</label>
-              <input type="text" value={config.sheetName} onChange={(e) => setConfig(p => ({ ...p, sheetName: e.target.value }))} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Sheet1" />
-            </div>
-          </div>
-          <div className="flex items-center justify-between">
-            <button onClick={handleSaveConfig} disabled={configLoading} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-xs font-medium disabled:opacity-50">{configLoading ? 'Sauvegarde...' : 'Sauvegarder'}</button>
-            <p className="text-[9px] text-gray-400">Le sheet doit être partagé : <strong>Toute personne ayant le lien</strong></p>
-          </div>
-        </div>
-      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">

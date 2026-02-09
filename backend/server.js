@@ -63,6 +63,7 @@ let ecomProductsRoutes = null;
 let ecomReportsRoutes = null;
 let ecomStockRoutes = null;
 let ecomDecisionsRoutes = null;
+let ecomGoalsRoutes = null;
 let facebookTokens = new Map(); // Fallback en mémoire si Redis indisponible
 let startSuccessRadarCron = null;
 let runSuccessRadarOnce = null;
@@ -1842,7 +1843,20 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/products.js:', error.message);
     }
 
-    // Routes E-commerce Rapports
+    // Routes E-commerce Objectifs
+    try {
+      const ecomGoalsModule = await import("./ecom/routes/goals.js");
+      ecomGoalsRoutes = ecomGoalsModule.default;
+      app.use("/api/ecom/goals", ecomGoalsRoutes);
+      
+      // Forcer la synchronisation des index du modèle Goal
+      const Goal = (await import("./ecom/models/Goal.js")).default;
+      await Goal.syncIndexes();
+      console.log('✅ Index des objectifs synchronisés');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/goals.js ou sync indexes:', error.message);
+    }
+
     try {
       const ecomReportsModule = await import("./ecom/routes/reports.js");
       ecomReportsRoutes = ecomReportsModule.default;

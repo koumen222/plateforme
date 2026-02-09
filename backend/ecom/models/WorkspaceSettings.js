@@ -25,7 +25,17 @@ const workspaceSettingsSchema = new mongoose.Schema({
       status: { type: String, default: 'I' },
       notes: { type: String, default: 'J' }
     }
-  }
+  },
+  sources: [{
+    name: { type: String, required: true },
+    type: { type: String, enum: ['google_sheets'], default: 'google_sheets' },
+    spreadsheetId: { type: String, required: true },
+    sheetName: { type: String, default: 'Sheet1' },
+    isActive: { type: Boolean, default: true },
+    lastSyncAt: { type: Date },
+    detectedHeaders: [String],
+    detectedColumns: mongoose.Schema.Types.Mixed
+  }]
 }, {
   timestamps: true,
   collection: 'ecom_workspace_settings'

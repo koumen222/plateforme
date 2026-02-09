@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ecomApi from '../services/ecommApi.js';
 import { useMoney } from '../hooks/useMoney.js';
 
@@ -10,7 +10,7 @@ const StockManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [tab, setTab] = useState('overview'); // overview, list, add
+  const [tab, setTab] = useState('excel'); // excel, overview, list
   const [filterCity, setFilterCity] = useState('');
   const [filterAgency, setFilterAgency] = useState('');
   const [filterProduct, setFilterProduct] = useState('');
@@ -20,6 +20,14 @@ const StockManagement = () => {
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Excel-like editing state
+  const [editingCell, setEditingCell] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const [selectedCells, setSelectedCells] = useState(new Set());
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [selectionStart, setSelectionStart] = useState(null);
+  const tableRef = useRef(null);
 
   const [form, setForm] = useState({
     productId: '', city: '', agency: '', quantity: '', unitCost: '', notes: ''
@@ -57,7 +65,7 @@ const StockManagement = () => {
     setSubmitting(true);
     setError('');
     try {
-      await ecomApi.post('/stock-locations', {
+      const response = await ecomApi.post('/stock-locations', {
         productId: form.productId,
         city: form.city.trim(),
         agency: form.agency.trim(),
@@ -65,12 +73,20 @@ const StockManagement = () => {
         unitCost: parseFloat(form.unitCost) || 0,
         notes: form.notes
       });
+      
+      // Ajout local sans rechargement
+      const newEntry = response.data.data || response.data;
+      if (newEntry) {
+        setEntries(prevEntries => [...prevEntries, newEntry]);
+      }
+      
       setSuccess('Stock ajouté avec succès');
       setShowAddModal(false);
       setForm({ productId: '', city: '', agency: '', quantity: '', unitCost: '', notes: '' });
-      loadAll();
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur');
+      // En cas d'erreur, on recharge les données
+      loadAll();
     } finally {
       setSubmitting(false);
     }
@@ -82,17 +98,29 @@ const StockManagement = () => {
     setSubmitting(true);
     setError('');
     try {
-      await ecomApi.post(`/stock-locations/${selectedEntry._id}/adjust`, {
+      const response = await ecomApi.post(`/stock-locations/${selectedEntry._id}/adjust`, {
         adjustment: parseInt(adjustForm.adjustment),
         reason: adjustForm.reason
       });
+      
+      // Mise à jour locale sans rechargement
+      const updatedEntry = response.data.data || response.data;
+      if (updatedEntry) {
+        setEntries(prevEntries => 
+          prevEntries.map(e => 
+            e._id === selectedEntry._id ? updatedEntry : e
+          )
+        );
+      }
+      
       setSuccess('Stock ajusté');
       setShowAdjustModal(false);
       setAdjustForm({ adjustment: '', reason: '' });
       setSelectedEntry(null);
-      loadAll();
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur');
+      // En cas d'erreur, on recharge les données
+      loadAll();
     } finally {
       setSubmitting(false);
     }
@@ -119,6 +147,137 @@ const StockManagement = () => {
   // Get unique cities and agencies for filters
   const uniqueCities = [...new Set(entries.map(e => e.city).filter(Boolean))].sort();
   const uniqueAgencies = [...new Set(entries.map(e => e.agency).filter(Boolean))].sort();
+
+  // Excel-like functions
+  const startCellSelection = (rowIndex, colIndex) => {
+    setIsSelecting(true);
+    setSelectionStart({ row: rowIndex, col: colIndex });
+    setSelectedCells(new Set([`${rowIndex}-${colIndex}`]));
+  };
+
+  const updateCellSelection = (rowIndex, colIndex) => {
+    if (!isSelecting || !selectionStart) return;
+    
+    const newSelection = new Set();
+    const minRow = Math.min(selectionStart.row, rowIndex);
+    const maxRow = Math.max(selectionStart.row, rowIndex);
+    const minCol = Math.min(selectionStart.col, colIndex);
+    const maxCol = Math.max(selectionStart.col, colIndex);
+    
+    for (let r = minRow; r <= maxRow; r++) {
+      for (let c = minCol; c <= maxCol; c++) {
+        newSelection.add(`${r}-${c}`);
+      }
+    }
+    setSelectedCells(newSelection);
+  };
+
+  const endCellSelection = () => {
+    setIsSelecting(false);
+    setSelectionStart(null);
+  };
+
+  const startEditing = (entry, field, value) => {
+    setEditingCell({ entryId: entry._id, field });
+    setEditValue(value?.toString() || '');
+  };
+
+  const saveEdit = async () => {
+    if (!editingCell) return;
+    
+    try {
+      const entry = entries.find(e => e._id === editingCell.entryId);
+      if (!entry) return;
+
+      let updateData = {};
+      let newValue = editValue;
+
+      if (editingCell.field === 'quantity') {
+        newValue = parseInt(editValue) || 0;
+        updateData.quantity = newValue;
+      } else if (editingCell.field === 'unitCost') {
+        newValue = parseFloat(editValue) || 0;
+        updateData.unitCost = newValue;
+      } else if (editingCell.field === 'city') {
+        updateData.city = newValue.trim();
+      } else if (editingCell.field === 'agency') {
+        updateData.agency = newValue.trim();
+      }
+
+      await ecomApi.put(`/stock-locations/${editingCell.entryId}`, updateData);
+      
+      // Mise à jour locale sans rechargement
+      setEntries(prevEntries => 
+        prevEntries.map(e => 
+          e._id === editingCell.entryId 
+            ? { ...e, ...updateData }
+            : e
+        )
+      );
+      
+      setSuccess('Modification enregistrée');
+    } catch (err) {
+      setError('Erreur lors de la modification');
+      // En cas d'erreur, on recharge les données
+      loadAll();
+    } finally {
+      setEditingCell(null);
+      setEditValue('');
+    }
+  };
+
+  const handleDeleteFromTable = async (entryId) => {
+    if (!confirm('Supprimer cette ligne de stock ?')) return;
+    
+    try {
+      await ecomApi.delete(`/stock-locations/${entryId}`);
+      
+      // Mise à jour locale sans rechargement
+      setEntries(prevEntries => prevEntries.filter(e => e._id !== entryId));
+      
+      setSuccess('Ligne supprimée avec succès');
+    } catch (err) {
+      setError('Erreur lors de la suppression');
+      // En cas d'erreur, on recharge les données
+      loadAll();
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  // Calculate stock value by city
+  const getStockByCity = () => {
+    const cityData = {};
+    
+    filteredEntries.forEach(entry => {
+      const city = entry.city || 'Non spécifiée';
+      if (!cityData[city]) {
+        cityData[city] = {
+          city,
+          totalQuantity: 0,
+          totalValue: 0,
+          entries: []
+        };
+      }
+      
+      const entryValue = entry.quantity * entry.unitCost;
+      cityData[city].totalQuantity += entry.quantity;
+      cityData[city].totalValue += entryValue;
+      cityData[city].entries.push(entry);
+    });
+    
+    return Object.values(cityData).sort((a, b) => b.totalValue - a.totalValue);
+  };
+
+  // Calculate totals
+  const totals = filteredEntries.reduce((acc, entry) => {
+    acc.totalQuantity += entry.quantity;
+    acc.totalValue += entry.quantity * entry.unitCost;
+    return acc;
+  }, { totalQuantity: 0, totalValue: 0 });
 
   if (loading) {
     return (
@@ -170,10 +329,10 @@ const StockManagement = () => {
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-6">
         {[
+          { key: 'excel', label: '📊 Tableau Excel' },
           { key: 'overview', label: 'Vue d\'ensemble' },
           { key: 'list', label: 'Détail stock' },
-          { key: 'cities', label: 'Par ville' },
-          { key: 'agencies', label: 'Par agence' }
+          { key: 'cities', label: 'Par ville' }
         ].map(t => (
           <button
             key={t.key}
@@ -186,6 +345,271 @@ const StockManagement = () => {
           </button>
         ))}
       </div>
+
+      {/* Excel Tab */}
+      {tab === 'excel' && (
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          {/* Excel Toolbar */}
+          <div className="border-b bg-gray-50 px-4 py-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddModal(true)}
+                  className="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium hover:bg-blue-700 flex items-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Ajouter
+                </button>
+                <div className="h-4 w-px bg-gray-300"></div>
+                <span className="text-xs text-gray-500">
+                  {selectedCells.size > 0 ? `${selectedCells.size} cellule(s) sélectionnée(s)` : 'Cliquez sur une cellule pour éditer'}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <select value={filterProduct} onChange={e => setFilterProduct(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-500">
+                  <option value="">Tous les produits</option>
+                  {products.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                </select>
+                <select value={filterCity} onChange={e => setFilterCity(e.target.value)}
+                  className="px-2 py-1 border border-gray-200 rounded text-xs focus:ring-1 focus:ring-blue-500">
+                  <option value="">Toutes les villes</option>
+                  {uniqueCities.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Excel Table */}
+          <div className="overflow-auto max-h-[600px]" ref={tableRef}>
+            <table className="w-full text-xs" onMouseUp={endCellSelection}>
+              <thead className="bg-gray-100 sticky top-0 z-10">
+                <tr>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-medium text-gray-700 bg-gray-50">Produit</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-medium text-gray-700 bg-gray-50">Ville</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-medium text-gray-700 bg-gray-50">Agence</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right font-medium text-gray-700 bg-gray-50">Quantité</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right font-medium text-gray-700 bg-gray-50">Coût unit.</th>
+                  <th className="border border-gray-300 px-2 py-1 text-right font-medium text-gray-700 bg-gray-50">Valeur</th>
+                  <th className="border border-gray-300 px-2 py-1 text-left font-medium text-gray-700 bg-gray-50">Notes</th>
+                  <th className="border border-gray-300 px-2 py-1 text-center font-medium text-gray-700 bg-gray-50">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {getStockByCity().map((cityData, cityIndex) => (
+                  <React.Fragment key={cityData.city}>
+                    {/* City Header Row */}
+                    <tr className="bg-blue-50 font-semibold">
+                      <td colSpan="3" className="border border-gray-300 px-2 py-2 text-blue-800">
+                        📍 {cityData.city}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2 text-right text-blue-800">
+                        {formatNumber(cityData.totalQuantity)}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2 text-right text-blue-800">
+                        -
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2 text-right text-green-700 font-bold">
+                        {fmt(cityData.totalValue)}
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2 text-blue-800">
+                        {cityData.entries.length} emplacement(s)
+                      </td>
+                      <td className="border border-gray-300 px-2 py-2 text-blue-800 text-center">
+                        -
+                      </td>
+                    </tr>
+                    
+                    {/* City Entries */}
+                    {cityData.entries.map((entry, entryIndex) => {
+                      const rowIndex = cityIndex * 100 + entryIndex;
+                      return (
+                        <tr key={entry._id} className="hover:bg-gray-50">
+                          <td 
+                            className={`border border-gray-300 px-2 py-1 cursor-pointer ${
+                              selectedCells.has(`${rowIndex}-0`) ? 'bg-blue-100' : ''
+                            }`}
+                            onMouseDown={() => startCellSelection(rowIndex, 0)}
+                            onMouseEnter={() => updateCellSelection(rowIndex, 0)}
+                            onDoubleClick={() => startEditing(entry, 'productId', entry.productId?.name)}
+                          >
+                            {entry.productId?.name || '?'}
+                          </td>
+                          <td 
+                            className={`border border-gray-300 px-2 py-1 cursor-pointer ${
+                              selectedCells.has(`${rowIndex}-1`) ? 'bg-blue-100' : ''
+                            }`}
+                            onMouseDown={() => startCellSelection(rowIndex, 1)}
+                            onMouseEnter={() => updateCellSelection(rowIndex, 1)}
+                            onDoubleClick={() => startEditing(entry, 'city', entry.city)}
+                          >
+                            {editingCell?.entryId === entry._id && editingCell?.field === 'city' ? (
+                              <input
+                                type="text"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveEdit();
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                                className="w-full px-1 py-0.5 border border-blue-400 rounded text-xs"
+                                autoFocus
+                              />
+                            ) : (
+                              entry.city || '-'
+                            )}
+                          </td>
+                          <td 
+                            className={`border border-gray-300 px-2 py-1 cursor-pointer ${
+                              selectedCells.has(`${rowIndex}-2`) ? 'bg-blue-100' : ''
+                            }`}
+                            onMouseDown={() => startCellSelection(rowIndex, 2)}
+                            onMouseEnter={() => updateCellSelection(rowIndex, 2)}
+                            onDoubleClick={() => startEditing(entry, 'agency', entry.agency)}
+                          >
+                            {editingCell?.entryId === entry._id && editingCell?.field === 'agency' ? (
+                              <input
+                                type="text"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveEdit();
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                                className="w-full px-1 py-0.5 border border-blue-400 rounded text-xs"
+                                autoFocus
+                              />
+                            ) : (
+                              entry.agency || '-'
+                            )}
+                          </td>
+                          <td 
+                            className={`border border-gray-300 px-2 py-1 text-right cursor-pointer ${
+                              selectedCells.has(`${rowIndex}-3`) ? 'bg-blue-100' : ''
+                            }`}
+                            onMouseDown={() => startCellSelection(rowIndex, 3)}
+                            onMouseEnter={() => updateCellSelection(rowIndex, 3)}
+                            onDoubleClick={() => startEditing(entry, 'quantity', entry.quantity)}
+                          >
+                            {editingCell?.entryId === entry._id && editingCell?.field === 'quantity' ? (
+                              <input
+                                type="number"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveEdit();
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                                className="w-full px-1 py-0.5 border border-blue-400 rounded text-xs text-right"
+                                autoFocus
+                              />
+                            ) : (
+                              formatNumber(entry.quantity)
+                            )}
+                          </td>
+                          <td 
+                            className={`border border-gray-300 px-2 py-1 text-right cursor-pointer ${
+                              selectedCells.has(`${rowIndex}-4`) ? 'bg-blue-100' : ''
+                            }`}
+                            onMouseDown={() => startCellSelection(rowIndex, 4)}
+                            onMouseEnter={() => updateCellSelection(rowIndex, 4)}
+                            onDoubleClick={() => startEditing(entry, 'unitCost', entry.unitCost)}
+                          >
+                            {editingCell?.entryId === entry._id && editingCell?.field === 'unitCost' ? (
+                              <input
+                                type="number"
+                                step="0.01"
+                                value={editValue}
+                                onChange={e => setEditValue(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') saveEdit();
+                                  if (e.key === 'Escape') cancelEdit();
+                                }}
+                                className="w-full px-1 py-0.5 border border-blue-400 rounded text-xs text-right"
+                                autoFocus
+                              />
+                            ) : (
+                              fmt(entry.unitCost)
+                            )}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-right text-green-600 font-medium">
+                            {fmt(entry.quantity * entry.unitCost)}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-gray-500 text-xs truncate max-w-[150px]">
+                            {entry.notes || '-'}
+                          </td>
+                          <td className="border border-gray-300 px-2 py-1 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => { setSelectedEntry(entry); setAdjustForm({ adjustment: '', reason: '' }); setShowAdjustModal(true); }}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded transition" 
+                                title="Ajuster le stock"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFromTable(entry._id)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded transition" 
+                                title="Supprimer"
+                              >
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                ))}
+                
+                {/* Total Row */}
+                <tr className="bg-gray-100 font-bold">
+                  <td colSpan="3" className="border border-gray-300 px-2 py-2 text-gray-800">
+                    📊 TOTAL GÉNÉRAL
+                  </td>
+                  <td className="border border-gray-300 px-2 py-2 text-right text-gray-800">
+                    {formatNumber(totals.totalQuantity)}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-2 text-right text-gray-800">
+                    -
+                  </td>
+                  <td className="border border-gray-300 px-2 py-2 text-right text-green-700 text-sm">
+                    {fmt(totals.totalValue)}
+                  </td>
+                  <td className="border border-gray-300 px-2 py-2 text-gray-800">
+                    {filteredEntries.length} entrées
+                  </td>
+                  <td className="border border-gray-300 px-2 py-2 text-center text-gray-800">
+                    -
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {filteredEntries.length === 0 && (
+            <div className="text-center py-12 text-gray-400">
+              <svg className="w-12 h-12 mx-auto mb-3 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17v1a1 1 0 001 1h4a1 1 0 001-1v-1m3-2V8a2 2 0 00-2-2H8a2 2 0 00-2 2v7m3-2h6" />
+              </svg>
+              <p className="text-sm">Aucune donnée de stock</p>
+              <button onClick={() => setShowAddModal(true)} className="mt-3 text-blue-600 text-sm font-medium hover:underline">
+                Ajouter du stock
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Overview Tab */}
       {tab === 'overview' && summary && (

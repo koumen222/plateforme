@@ -39,6 +39,7 @@ import SuperAdminSettings from './pages/SuperAdminSettings.jsx';
 import SetupSuperAdmin from './pages/SetupSuperAdmin.jsx';
 import Settings from './pages/Settings.jsx';
 import Data from './pages/Data.jsx';
+import Goals from './pages/Goals.jsx';
 import EcomLandingPage from './pages/LandingPage.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
@@ -108,16 +109,19 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     return <Navigate to="/ecom/login" replace />;
   }
 
-  if (requiredRole && user?.role !== requiredRole) {
-    // Rediriger vers le dashboard approprié selon le rôle
-    const roleDashboardMap = {
-      'super_admin': '/ecom/super-admin',
-      'ecom_admin': '/ecom/dashboard/admin',
-      'ecom_closeuse': '/ecom/dashboard/closeuse',
-      'ecom_compta': '/ecom/dashboard/compta'
-    };
-    
-    return <Navigate to={roleDashboardMap[user.role] || '/ecom/login'} replace />;
+  if (requiredRole) {
+    const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    if (!roles.includes(user?.role)) {
+      // Rediriger vers le dashboard approprié selon le rôle
+      const roleDashboardMap = {
+        'super_admin': '/ecom/super-admin',
+        'ecom_admin': '/ecom/dashboard/admin',
+        'ecom_closeuse': '/ecom/dashboard/closeuse',
+        'ecom_compta': '/ecom/dashboard/compta'
+      };
+      
+      return <Navigate to={roleDashboardMap[user.role] || '/ecom/login'} replace />;
+    }
   }
 
   return children;
@@ -198,6 +202,9 @@ const EcomApp = () => {
 
               {/* Route Data */}
               <Route path="data" element={<LayoutRoute><Data /></LayoutRoute>} />
+              
+              {/* Route Objectifs */}
+              <Route path="goals" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><Goals /></LayoutRoute>} />
               
               {/* Routes stock */}
               <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
