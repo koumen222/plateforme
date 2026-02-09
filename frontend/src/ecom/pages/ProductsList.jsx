@@ -10,17 +10,28 @@ const ProductsList = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [isActiveFilter, setIsActiveFilter] = useState('');
 
   useEffect(() => {
     console.log('🔄 ProductsList useEffect - Début du chargement');
     loadProducts();
-  }, []);
+  }, [searchTerm, statusFilter, isActiveFilter]);
 
   const loadProducts = async () => {
     try {
       console.log('📦 loadProducts - Début de la requête API');
       setLoading(true);
-      const response = await ecomApi.get('/products');
+      
+      // Construction des paramètres de requête
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (statusFilter) params.append('status', statusFilter);
+      if (isActiveFilter !== '') params.append('isActive', isActiveFilter);
+      
+      const url = params.toString() ? `/products?${params.toString()}` : '/products';
+      const response = await ecomApi.get(url);
       console.log('📩 Réponse API produits:', response.data);
       
       // Correction: les produits sont directement dans response.data.data
@@ -47,6 +58,40 @@ const ProductsList = () => {
     return sellingPrice - totalCost;
   };
 
+  const calculateSuggestedPrice = (product) => {
+    const productCost = product.productCost || 0;
+    
+    let suggestedPrice;
+    
+    if (productCost < 10000) {
+      // Si < 10 000 : multiplier par 3
+      suggestedPrice = productCost * 3;
+    } else {
+      // Si >= 10 000 : multiplier par 2,25
+      suggestedPrice = productCost * 2.25;
+    }
+    
+    // Le prix ne doit JAMAIS être inférieur à 10 000
+    if (suggestedPrice < 10000) {
+      suggestedPrice = 10000;
+    }
+    
+    // Arrondir au multiple de 50 supérieur pour un prix psychologique
+    return Math.ceil(suggestedPrice / 50) * 50;
+  };
+
+  const updateSellingPrice = async (productId, newPrice) => {
+    try {
+      await ecomApi.patch(`/products/${productId}`, {
+        sellingPrice: newPrice
+      });
+      loadProducts(); // Recharger la liste
+    } catch (error) {
+      setError('Erreur lors de la mise à jour du prix');
+      console.error(error);
+    }
+  };
+
   // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const deleteProduct = async (productId) => {
@@ -71,7 +116,7 @@ const ProductsList = () => {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6">
-      <div className="flex justify-between items-center mb-4 sm:mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-4">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Produits</h1>
         <Link
           to="/ecom/products/new"
@@ -79,6 +124,76 @@ const ProductsList = () => {
         >
           + Produit
         </Link>
+      </div>
+
+      {/* Barre de recherche et filtres */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          {/* Champ de recherche */}
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Recherche
+            </label>
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Rechercher par nom ou statut..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+          
+          {/* Filtre par statut */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Statut
+            </label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tous les statuts</option>
+              <option value="test">Test</option>
+              <option value="stable">Stable</option>
+              <option value="winner">Winner</option>
+              <option value="pause">Pause</option>
+              <option value="stop">Stop</option>
+            </select>
+          </div>
+          
+          {/* Filtre par activité */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Activité
+            </label>
+            <select
+              value={isActiveFilter}
+              onChange={(e) => setIsActiveFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Tous</option>
+              <option value="true">Actifs</option>
+              <option value="false">Inactifs</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Bouton de réinitialisation */}
+        {(searchTerm || statusFilter || isActiveFilter) && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setIsActiveFilter('');
+              }}
+              className="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Réinitialiser les filtres
+            </button>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -115,7 +230,9 @@ const ProductsList = () => {
             {products.length === 0 ? (
               <tr>
                 <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
-                  Aucun produit trouvé
+                  {searchTerm || statusFilter || isActiveFilter 
+                    ? 'Aucun produit trouvé pour ces critères de recherche' 
+                    : 'Aucun produit trouvé'}
                 </td>
               </tr>
             ) : (
@@ -130,7 +247,21 @@ const ProductsList = () => {
                       <Link to={`/ecom/products/${product._id}`} className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                      <div className="text-xs sm:text-sm text-gray-900">{fmt(product.sellingPrice)}</div>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                        <div className="text-xs sm:text-sm text-gray-900">{fmt(product.sellingPrice)}</div>
+                        <button
+                          onClick={() => {
+                            const suggestedPrice = calculateSuggestedPrice(product);
+                            if (confirm(`Prix suggéré: ${fmt(suggestedPrice)}\n\nAppliquer ce prix au produit "${product.name}" ?`)) {
+                              updateSellingPrice(product._id, suggestedPrice);
+                            }
+                          }}
+                          className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded hover:bg-green-200 transition-colors"
+                          title="Calculer un prix de vente raisonnable"
+                        >
+                          Suggérer prix
+                        </button>
+                      </div>
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap hidden sm:table-cell">
                       <div className="text-xs sm:text-sm text-gray-900">{fmt(totalCost)}</div>

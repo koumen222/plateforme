@@ -67,6 +67,37 @@ const ProductForm = () => {
     return sellingPrice - totalCost;
   };
 
+  // Calcul du prix suggéré
+  const calculateSuggestedPrice = () => {
+    const productCost = parseFloat(formData.productCost) || 0;
+    
+    let suggestedPrice;
+    
+    if (productCost < 10000) {
+      // Si < 10 000 : multiplier par 3
+      suggestedPrice = productCost * 3;
+    } else {
+      // Si >= 10 000 : multiplier par 2,25
+      suggestedPrice = productCost * 2.25;
+    }
+    
+    // Le prix ne doit JAMAIS être inférieur à 10 000
+    if (suggestedPrice < 10000) {
+      suggestedPrice = 10000;
+    }
+    
+    return Math.ceil(suggestedPrice / 50) * 50; // Arrondi au multiple de 50
+  };
+
+  // Appliquer le prix suggéré
+  const applySuggestedPrice = () => {
+    const suggestedPrice = calculateSuggestedPrice();
+    setFormData(prev => ({
+      ...prev,
+      sellingPrice: suggestedPrice
+    }));
+  };
+
   // Supprimer la fonction formatCurrency locale car nous utilisons maintenant useMoney
 
   const handleChange = (e) => {
@@ -170,16 +201,33 @@ const ProductForm = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Prix de vente ({symbol}) *
             </label>
-            <input
-              type="number"
-              name="sellingPrice"
-              required
-              min="0"
-              step="0.01"
-              value={formData.sellingPrice}
-              onChange={handleChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-            />
+            <div className="flex gap-2">
+              <input
+                type="number"
+                name="sellingPrice"
+                required
+                min="0"
+                step="0.01"
+                value={formData.sellingPrice}
+                onChange={handleChange}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+              />
+              {formData.productCost && (
+                <button
+                  type="button"
+                  onClick={applySuggestedPrice}
+                  className="px-3 py-2 bg-green-100 text-green-700 text-sm rounded-md hover:bg-green-200 transition-colors"
+                  title="Calculer un prix de vente raisonnable (3x le prix d'achat)"
+                >
+                  Suggérer prix
+                </button>
+              )}
+            </div>
+            {formData.productCost && (
+              <p className="mt-1 text-xs text-gray-500">
+                Prix suggéré: {fmt(calculateSuggestedPrice())} (3x le prix d'achat)
+              </p>
+            )}
           </div>
 
           <div>

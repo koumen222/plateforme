@@ -83,6 +83,14 @@ const orderSchema = new mongoose.Schema({
   rawData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}
+  },
+  whatsappNotificationSent: {
+    type: Boolean,
+    default: false
+  },
+  whatsappNotificationSentAt: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true,

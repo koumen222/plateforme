@@ -35,7 +35,19 @@ const workspaceSettingsSchema = new mongoose.Schema({
     lastSyncAt: { type: Date },
     detectedHeaders: [String],
     detectedColumns: mongoose.Schema.Types.Mixed
-  }]
+  }],
+  customWhatsAppNumber: { 
+    type: String, 
+    default: '',
+    validate: {
+      validator: function(v) {
+        if (!v) return true; // Permet les valeurs vides
+        // Validation pour le format 237 + chiffres
+        return /^237\d{8,}$/.test(v);
+      },
+      message: 'Le numéro WhatsApp doit commencer par 237 suivi d\'au moins 8 chiffres'
+    }
+  }
 }, {
   timestamps: true,
   collection: 'ecom_workspace_settings'

@@ -60,6 +60,7 @@ let paymentsRoutes = null;
 // Module E-commerce - Routes isolées
 let ecomAuthRoutes = null;
 let ecomProductsRoutes = null;
+let ecomProductResearchRoutes = null;
 let ecomReportsRoutes = null;
 let ecomStockRoutes = null;
 let ecomDecisionsRoutes = null;
@@ -1841,6 +1842,15 @@ const startServer = async () => {
       app.use("/api/ecom/products", ecomProductsRoutes);
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/products.js:', error.message);
+    }
+
+    // Routes E-commerce Recherche Produits
+    try {
+      const ecomProductResearchModule = await import("./ecom/routes/productResearch.js");
+      ecomProductResearchRoutes = ecomProductResearchModule.default;
+      app.use("/api/ecom/products-research", ecomProductResearchRoutes);
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/productResearch.js:', error.message);
     }
 
     // Routes E-commerce Objectifs

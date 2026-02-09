@@ -173,6 +173,26 @@ const ReportDetail = () => {
                 </div>
               </div>
             )}
+
+            {/* Livraisons par agence */}
+            {report.deliveries && report.deliveries.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-gray-200">
+                <label className="block text-sm font-medium text-gray-700 mb-3">Livraisons par agence</label>
+                <div className="space-y-2">
+                  {report.deliveries.map((delivery, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        <span className="font-medium text-gray-900">{delivery.agencyName}</span>
+                      </div>
+                      <span className="text-lg font-bold text-green-600">{delivery.ordersDelivered} commandes</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Notes */}

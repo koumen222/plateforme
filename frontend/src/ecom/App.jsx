@@ -40,7 +40,11 @@ import SetupSuperAdmin from './pages/SetupSuperAdmin.jsx';
 import Settings from './pages/Settings.jsx';
 import Data from './pages/Data.jsx';
 import Goals from './pages/Goals.jsx';
+import LivreurDashboard from './pages/LivreurDashboard.jsx';
 import EcomLandingPage from './pages/LandingPage.jsx';
+import ProductResearchList from './pages/ProductResearchList.jsx';
+import ProductFinder from './pages/ProductFinder.jsx';
+import ProductFinderEdit from './pages/ProductFinderEdit.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
 class ErrorBoundary extends React.Component {
@@ -151,7 +155,8 @@ const DashboardRedirect = () => {
     'super_admin': '/ecom/super-admin',
     'ecom_admin': '/ecom/dashboard/admin',
     'ecom_closeuse': '/ecom/dashboard/closeuse',
-    'ecom_compta': '/ecom/dashboard/compta'
+    'ecom_compta': '/ecom/dashboard/compta',
+    'livreur': '/ecom/livreur'
   };
   
   const dashboardPath = roleDashboardMap[user?.role] || '/ecom/login';
@@ -206,6 +211,11 @@ const EcomApp = () => {
               {/* Route Objectifs */}
               <Route path="goals" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><Goals /></LayoutRoute>} />
               
+              {/* Route Recherche Produits */}
+              <Route path="product-research" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductResearchList /></LayoutRoute>} />
+              <Route path="product-finder" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinder /></LayoutRoute>} />
+              <Route path="product-finder/:id" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinderEdit /></LayoutRoute>} />
+              
               {/* Routes stock */}
               <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
               <Route path="stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
@@ -245,6 +255,9 @@ const EcomApp = () => {
               
               {/* Route Paramètres */}
               <Route path="settings" element={<LayoutRoute><Settings /></LayoutRoute>} />
+              
+              {/* Route Livreur */}
+              <Route path="livreur" element={<LayoutRoute requiredRole="livreur"><LivreurDashboard /></LayoutRoute>} />
               
               {/* Routes Super Admin */}
               <Route path="super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />

@@ -6,6 +6,59 @@ import { checkBusinessRules } from '../services/businessRules.js';
 
 const router = express.Router();
 
+// GET /api/ecom/products/search - Recherche publique de produits (sans authentification)
+router.get('/search', async (req, res) => {
+  try {
+    console.log('🔍 GET /api/ecom/products/search - Recherche publique');
+    console.log('🔍 Termes de recherche:', req.query);
+    
+    const { search, status, isActive, limit = 20 } = req.query;
+    
+    // Pour la démo, on retourne tous les produits actifs sans filtre de workspace
+    // En production, vous pouvez configurer un workspace public spécifique
+    const filter = { 
+      isActive: true // Uniquement les produits actifs pour la recherche publique
+    };
+    
+    // Ajout de la logique de recherche
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim());
+      filter.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
+    }
+    
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+
+    console.log('🔎 Filtre recherche publique:', filter);
+    
+    const products = await Product.find(filter)
+      .select('name status sellingPrice productCost deliveryCost avgAdsCost stock isActive createdAt')
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    console.log('📊 Produits trouvés (public):', products.length);
+
+    res.json({
+      success: true,
+      data: products,
+      count: products.length,
+      search: search || null
+    });
+  } catch (error) {
+    console.error('Erreur search products public:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // GET /api/ecom/products - Liste des produits (tous roles peuvent voir)
 router.get('/', requireEcomAuth, async (req, res) => {
   try {
@@ -13,8 +66,16 @@ router.get('/', requireEcomAuth, async (req, res) => {
     console.log('👤 Utilisateur:', req.ecomUser?.email);
     console.log('🔍 Filtres:', req.query);
     
-    const { status, isActive } = req.query;
+    const { status, isActive, search } = req.query;
     const filter = { workspaceId: req.workspaceId };
+    
+    // Ajout de la logique de recherche
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } }
+      ];
+    }
     
     if (status) {
       // Support comma-separated status values: ?status=test,stable,winner
@@ -37,6 +98,59 @@ router.get('/', requireEcomAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur get products:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/ecom/products/research - Recherche publique de produits (sans authentification)
+router.get('/search', async (req, res) => {
+  try {
+    console.log('🔍 GET /api/ecom/products/search - Recherche publique');
+    console.log('🔍 Termes de recherche:', req.query);
+    
+    const { search, status, isActive, limit = 20 } = req.query;
+    
+    // Pour la démo, on retourne tous les produits actifs sans filtre de workspace
+    // En production, vous pourriez avoir une logique pour déterminer le workspace public
+    const filter = { 
+      isActive: true // Uniquement les produits actifs pour la recherche publique
+    };
+    
+    // Ajout de la logique de recherche
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { status: { $regex: search, $options: 'i' } }
+      ];
+    }
+    
+    if (status) {
+      const statuses = status.split(',').map(s => s.trim());
+      filter.status = statuses.length > 1 ? { $in: statuses } : statuses[0];
+    }
+    
+    if (isActive !== undefined) filter.isActive = isActive === 'true';
+
+    console.log('🔎 Filtre recherche publique:', filter);
+    
+    const products = await Product.find(filter)
+      .select('name status sellingPrice productCost deliveryCost avgAdsCost stock isActive createdAt')
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    console.log('📊 Produits trouvés (public):', products.length);
+
+    res.json({
+      success: true,
+      data: products,
+      count: products.length,
+      search: search || null
+    });
+  } catch (error) {
+    console.error('Erreur search products public:', error);
     res.status(500).json({
       success: false,
       message: 'Erreur serveur'

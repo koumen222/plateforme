@@ -492,7 +492,7 @@ router.post('/',
       console.log('👤 Utilisateur:', req.ecomUser?.email);
       console.log('📋 Corps de la requête:', req.body);
       
-      const { date, productId, ordersReceived, ordersDelivered, adSpend, notes } = req.body;
+      const { date, productId, ordersReceived, ordersDelivered, adSpend, notes, deliveries } = req.body;
 
       // Vérifier que le produit existe dans le même workspace
       const product = await Product.findOne({ _id: productId, workspaceId: req.workspaceId });
@@ -529,7 +529,10 @@ router.post('/',
         ordersDelivered,
         adSpend,
         notes,
-        reportedBy: req.ecomUser._id
+        reportedBy: req.ecomUser._id,
+        deliveries: (deliveries || []).filter(d => 
+          d.agencyName && d.agencyName.trim() !== '' && d.ordersDelivered > 0
+        )
       };
 
       // Calculer le bénéfice (sans inclure avgAdsCost)
@@ -614,7 +617,23 @@ router.put('/:id',
       }
 
       const oldDelivered = report.ordersDelivered || 0;
-      Object.assign(report, req.body);
+      
+      // Mise à jour explicite des champs, y compris deliveries
+      if (req.body.date !== undefined) report.date = req.body.date;
+      if (req.body.productId !== undefined) report.productId = req.body.productId;
+      if (req.body.ordersReceived !== undefined) report.ordersReceived = req.body.ordersReceived;
+      if (req.body.ordersDelivered !== undefined) report.ordersDelivered = req.body.ordersDelivered;
+      if (req.body.adSpend !== undefined) report.adSpend = req.body.adSpend;
+      if (req.body.notes !== undefined) report.notes = req.body.notes;
+      if (req.body.deliveries !== undefined) {
+        // Filtrer les livraisons vides (agencyName vide ou ordersDelivered = 0)
+        report.deliveries = req.body.deliveries.filter(d => 
+          d.agencyName && d.agencyName.trim() !== '' && d.ordersDelivered > 0
+        );
+      }
+      
+      console.log('📝 Mise à jour du rapport avec deliveries:', report.deliveries);
+      
       await report.save();
 
       // Ajuster le stock si ordersDelivered a changé

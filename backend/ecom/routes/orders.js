@@ -3,6 +3,9 @@ import mongoose from 'mongoose';
 import Order from '../models/Order.js';
 import Client from '../models/Client.js';
 import WorkspaceSettings from '../models/WorkspaceSettings.js';
+import EcomUser from '../models/EcomUser.js';
+import Notification from '../../models/Notification.js';
+import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 
 const router = express.Router();
@@ -176,6 +179,218 @@ function parseFlexDate(dateVal) {
   return new Date();
 }
 
+// Helper: notifier les livreurs des nouvelles commandes
+async function notifyLivreursOfNewOrder(order, workspaceId) {
+  try {
+    // Récupérer tous les livreurs disponibles pour ce workspace
+    const livreurs = await EcomUser.find({ 
+      workspaceId,
+      role: 'livreur',
+      status: 'active'
+    });
+
+    if (livreurs.length === 0) {
+      console.log('Aucun livreur disponible pour la notification');
+      return;
+    }
+
+    // Créer une notification pour chaque livreur
+    const notifications = livreurs.map(livreur => ({
+      userId: livreur._id,
+      type: 'new_order',
+      title: '📦 Nouvelle commande disponible',
+      message: `Commande #${order.orderId} - ${order.clientName} à ${order.city}`,
+      data: {
+        orderId: order._id,
+        orderIdStr: order.orderId,
+        clientName: order.clientName,
+        city: order.city,
+        product: order.product,
+        price: order.price,
+        phone: order.clientPhone
+      },
+      priority: 'high',
+      actionUrl: `/ecom/orders/${order._id}`
+    }));
+
+    // Insérer toutes les notifications
+    await Notification.insertMany(notifications);
+    
+    // Envoyer les messages WhatsApp
+    for (const livreur of livreurs) {
+      if (livreur.phone) {
+        try {
+          const whatsappMessage = `📦 *NOUVELLE COMMANDE DISPONIBLE*\n\n` +
+            `🔢 *Commande:* #${order.orderId}\n` +
+            `👤 *Client:* ${order.clientName}\n` +
+            `📞 *Téléphone:* ${order.clientPhone}\n` +
+            `📍 *Ville:* ${order.city}\n` +
+            `📦 *Produit:* ${order.product}\n` +
+            `🔢 *Quantité:* ${order.quantity}\n` +
+            `💰 *Prix:* ${order.price} FCFA\n\n` +
+            `🚀 *Prenez cette commande rapidement!*`;
+          
+          await sendWhatsAppMessage({ 
+            to: livreur.phone, 
+            message: whatsappMessage,
+            userId: livreur._id,
+            firstName: livreur.name 
+          });
+          console.log(`✅ WhatsApp envoyé à ${livreur.name} (${livreur.phone}) pour la commande #${order.orderId}`);
+        } catch (whatsappError) {
+          console.error(`❌ Erreur WhatsApp pour ${livreur.phone}:`, whatsappError.message);
+        }
+      }
+    }
+    
+    console.log(`✅ Notifications envoyées à ${livreurs.length} livreurs pour la commande #${order.orderId}`);
+    
+  } catch (error) {
+    console.error('Erreur lors de la notification des livreurs:', error);
+  }
+}
+
+// Helper: notifier les livreurs qu'une commande a été prise
+async function notifyOrderTaken(order, workspaceId, takenByLivreurId) {
+  try {
+    // Récupérer tous les livreurs SAUF celui qui a pris la commande
+    const livreurs = await EcomUser.find({ 
+      workspaceId,
+      role: 'livreur',
+      status: 'active',
+      _id: { $ne: takenByLivreurId }
+    });
+
+    if (livreurs.length === 0) {
+      console.log('Aucun autre livreur à notifier');
+      return;
+    }
+
+    // Récupérer le nom du livreur qui a pris la commande
+    const takingLivreur = await EcomUser.findById(takenByLivreurId).select('name');
+
+    // Créer une notification pour chaque autre livreur
+    const notifications = livreurs.map(livreur => ({
+      userId: livreur._id,
+      type: 'order_taken',
+      title: '🚚 Commande assignée',
+      message: `Commande #${order.orderId} a été prise par ${takingLivreur?.name || 'un livreur'}`,
+      data: {
+        orderId: order._id,
+        orderIdStr: order.orderId,
+        takenBy: takingLivreur?.name || 'Un livreur'
+      },
+      priority: 'medium',
+      actionUrl: null // Pas d'action car la commande n'est plus disponible
+    }));
+
+    // Insérer toutes les notifications
+    await Notification.insertMany(notifications);
+    
+    // Envoyer les messages WhatsApp aux autres livreurs
+    for (const livreur of livreurs) {
+      if (livreur.phone) {
+        try {
+          const whatsappMessage = `🚚 *COMMANDE ASSIGNÉE*\n\n` +
+            `❌ La commande #${order.orderId} n'est plus disponible\n\n` +
+            `👤 *Client:* ${order.clientName}\n` +
+            `📍 *Ville:* ${order.city}\n` +
+            `✅ *Prise par:* ${takingLivreur?.name || 'Un livreur'}\n\n` +
+            `📋 *Autres commandes disponibles dans votre dashboard*`;
+          
+          await sendWhatsAppMessage({ 
+            to: livreur.phone, 
+            message: whatsappMessage,
+            userId: livreur._id,
+            firstName: livreur.name 
+          });
+          console.log(`✅ WhatsApp de commande prise envoyé à ${livreur.name} (${livreur.phone})`);
+        } catch (whatsappError) {
+          console.error(`❌ Erreur WhatsApp pour ${livreur.phone}:`, whatsappError.message);
+        }
+      }
+    }
+    
+    console.log(`✅ Notification de commande prise envoyée à ${livreurs.length} autres livreurs`);
+    
+  } catch (error) {
+    console.error('Erreur lors de la notification de commande prise:', error);
+  }
+}
+
+// Helper: envoyer automatiquement à un numéro WhatsApp prédéfini
+async function sendOrderToCustomNumber(order, workspaceId) {
+  try {
+    // Récupérer les paramètres du workspace pour le numéro personnalisé
+    const settings = await WorkspaceSettings.findOne({ workspaceId });
+    
+    // Numéro WhatsApp personnalisé (peut être configuré dans les settings)
+    const customWhatsAppNumber = settings?.customWhatsAppNumber || process.env.CUSTOM_WHATSAPP_NUMBER;
+    
+    if (!customWhatsAppNumber) {
+      console.log('⚠️ Aucun numéro WhatsApp personnalisé configuré');
+      return;
+    }
+
+    // Formater le message complet pour le destinataire personnalisé
+    const whatsappMessage = `📦 *NOUVELLE COMMANDE REÇUE*\n\n` +
+      `🔢 *Référence:* #${order.orderId}\n` +
+      `📅 *Date:* ${new Date(order.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}\n` +
+      `⏰ *Heure:* ${new Date(order.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+      `👤 *INFORMATIONS CLIENT*\n` +
+      `👤 *Nom:* ${order.clientName}\n` +
+      `📞 *Téléphone:* ${order.clientPhone}\n` +
+      `📍 *Ville:* ${order.city}\n` +
+      `${order.deliveryLocation ? `🏠 *Adresse:* ${order.deliveryLocation}\n` : ''}` +
+      `${order.deliveryTime ? `⏰ *Heure livraison:* ${order.deliveryTime}\n` : ''}\n\n` +
+      `📦 *DÉTAILS COMMANDE*\n` +
+      `📦 *Produit:* ${order.product}\n` +
+      `🔢 *Quantité:* ${order.quantity}\n` +
+      `💰 *Prix unitaire:* ${order.price} FCFA\n` +
+      `💰 *Total:* ${order.price * order.quantity} FCFA\n\n` +
+      `📋 *STATUT:* ${order.status === 'pending' ? '⏳ En attente' : 
+                      order.status === 'confirmed' ? '✅ Confirmé' : 
+                      order.status === 'shipped' ? '🚚 Expédié' : 
+                      order.status === 'delivered' ? '✅ Livré' : 
+                      order.status === 'cancelled' ? '❌ Annulé' : order.status}\n\n` +
+      `${order.notes ? `📝 *Notes:* ${order.notes}\n\n` : ''}` +
+      `🔗 *Traitez cette commande rapidement*`;
+
+    // Envoyer le message WhatsApp
+    try {
+      await sendWhatsAppMessage({ 
+        to: customWhatsAppNumber, 
+        message: whatsappMessage,
+        userId: 'system',
+        firstName: 'System'
+      });
+      
+      console.log(`✅ Commande #${order.orderId} envoyée automatiquement à ${customWhatsAppNumber}`);
+      
+      // Créer une notification système pour le suivi
+      await Notification.create({
+        userId: null, // Notification système
+        type: 'auto_whatsapp_sent',
+        title: '📱 WhatsApp auto-envoyé',
+        message: `Commande #${order.orderId} envoyée à ${customWhatsAppNumber}`,
+        data: {
+          orderId: order._id,
+          orderIdStr: order.orderId,
+          phoneNumber: customWhatsAppNumber,
+          sentAt: new Date()
+        },
+        priority: 'low'
+      });
+      
+    } catch (whatsappError) {
+      console.error(`❌ Erreur WhatsApp auto-envoi à ${customWhatsAppNumber}:`, whatsappError.message);
+    }
+    
+  } catch (error) {
+    console.error('Erreur lors de l\'envoi WhatsApp automatique:', error);
+  }
+}
+
 // POST /api/ecom/orders/sync-sheets - Synchroniser depuis Google Sheets
 router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -325,6 +540,38 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
           const result = await Order.bulkWrite(bulkOps);
           totalImported += result.upsertedCount || 0;
           totalUpdated += result.modifiedCount || 0;
+          
+          // Détecter les nouvelles commandes et notifier les livreurs
+          if (result.upsertedCount > 0) {
+            // Récupérer les commandes qui viennent d'être insérées
+            const newOrders = [];
+            for (const op of bulkOps) {
+              if (op.updateOne.upsert && op.updateOne.filter.sheetRowId) {
+                newOrders.push(op.updateOne.filter.sheetRowId);
+              }
+            }
+            
+            if (newOrders.length > 0) {
+              const insertedOrders = await Order.find({
+                workspaceId: req.workspaceId,
+                sheetRowId: { $in: newOrders },
+                status: { $in: ['pending', 'confirmed'] }, // Seulement les commandes en attente/confirmées
+                whatsappNotificationSent: { $ne: true } // IMPORTANT: Seulement si notification pas encore envoyée
+              }).populate('assignedLivreur', 'name email phone');
+              
+              // Notifier les livreurs pour chaque nouvelle commande
+              for (const order of insertedOrders) {
+                await notifyLivreursOfNewOrder(order, req.workspaceId);
+                // Envoyer automatiquement au numéro WhatsApp personnalisé
+                await sendOrderToCustomNumber(order, req.workspaceId);
+                
+                // Marquer la notification comme envoyée
+                order.whatsappNotificationSent = true;
+                order.whatsappNotificationSentAt = new Date();
+                await order.save();
+              }
+            }
+          }
         }
 
         // Update source stats
@@ -364,6 +611,7 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
     res.status(500).json({ success: false, message: 'Erreur synchronisation: ' + error.message });
   }
 });
+
 
 // GET /api/ecom/orders/settings - Récupérer la config et les sources
 router.get('/settings', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
@@ -554,16 +802,101 @@ router.post('/backfill-clients', requireEcomAuth, validateEcomAccess('products',
   }
 });
 
-// GET /api/ecom/orders/:id - Détail d'une commande
-router.get('/:id', requireEcomAuth, async (req, res) => {
+// GET /api/ecom/orders/available - Commandes disponibles pour les livreurs
+router.get('/available', requireEcomAuth, async (req, res) => {
   try {
-    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId }).populate('assignedLivreur', 'name email phone');
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+    const { city, limit = 20 } = req.query;
+    
+    // Filtre pour les commandes disponibles (non assignées et en attente/confirmées)
+    const filter = {
+      workspaceId: req.workspaceId,
+      status: { $in: ['pending', 'confirmed'] },
+      assignedLivreur: null
+    };
+    
+    if (city) {
+      filter.city = { $regex: city, $options: 'i' };
     }
+    
+    const orders = await Order.find(filter)
+      .sort({ date: -1 })
+      .limit(parseInt(limit));
+    
+    res.json({
+      success: true,
+      data: orders
+    });
+  } catch (error) {
+    console.error('Erreur get available orders:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/:id/assign - Assigner une commande à un livreur
+router.post('/:id/assign', requireEcomAuth, async (req, res) => {
+  try {
+    const orderId = req.params.id;
+    const livreurId = req.user._id; // L'utilisateur connecté devient le livreur
+    
+    // Vérifier que l'utilisateur est un livreur
+    if (req.user.role !== 'livreur') {
+      return res.status(403).json({ success: false, message: 'Accès réservé aux livreurs.' });
+    }
+    
+    const order = await Order.findOneAndUpdate(
+      { 
+        _id: orderId, 
+        workspaceId: req.workspaceId,
+        assignedLivreur: null, // Non encore assignée
+        status: { $in: ['pending', 'confirmed'] } // Disponible
+      },
+      { 
+        assignedLivreur: livreurId,
+        status: 'confirmed' // Marquer comme confirmée quand assignée
+      },
+      { new: true }
+    ).populate('assignedLivreur', 'name email phone');
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Commande non disponible ou déjà assignée.' });
+    }
+    
+    // Notifier les autres livreurs que cette commande n'est plus disponible
+    await notifyOrderTaken(order, req.workspaceId, req.user._id);
+    
+    res.json({ 
+      success: true, 
+      message: 'Commande assignée avec succès',
+      data: order 
+    });
+  } catch (error) {
+    console.error('Erreur assign order:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/ecom/orders/:id - Mettre à jour une commande
+router.put('/:id', requireEcomAuth, async (req, res) => {
+  try {
+    const { status, assignedLivreur } = req.body;
+    const updateData = {};
+    
+    if (status !== undefined) updateData.status = status;
+    if (assignedLivreur !== undefined) updateData.assignedLivreur = assignedLivreur;
+    
+    const order = await Order.findOneAndUpdate(
+      { _id: req.params.id, workspaceId: req.workspaceId },
+      updateData,
+      { new: true }
+    ).populate('assignedLivreur', 'name email phone');
+    
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+    }
+    
     res.json({ success: true, data: order });
   } catch (error) {
-    console.error('Erreur get order:', error);
+    console.error('Erreur update order:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
@@ -722,6 +1055,237 @@ router.delete('/:id', requireEcomAuth, validateEcomAccess('products', 'write'), 
     res.json({ success: true, message: 'Commande supprimée' });
   } catch (error) {
     console.error('Erreur delete order:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/orders/:id - Détails d'une commande spécifique
+router.get('/:id', requireEcomAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({ 
+      _id: req.params.id, 
+      workspaceId: req.workspaceId 
+    })
+    .populate('assignedLivreur', 'name email phone');
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+    }
+
+    res.json({
+      success: true,
+      data: order
+    });
+  } catch (error) {
+    console.error('Erreur get order detail:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/:id/send-whatsapp - Envoyer les détails d'une commande par WhatsApp
+router.post('/:id/send-whatsapp', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    
+    if (!phoneNumber) {
+      return res.status(400).json({ success: false, message: 'Numéro de téléphone requis' });
+    }
+
+    // Récupérer la commande
+    const order = await Order.findOne({ 
+      _id: req.params.id, 
+      workspaceId: req.workspaceId 
+    });
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+    }
+
+    // Formater le message WhatsApp avec tous les détails
+    const whatsappMessage = `📦 *DÉTAILS COMMANDE*\n\n` +
+      `🔢 *Référence:* #${order.orderId}\n` +
+      `📅 *Date:* ${new Date(order.date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}\n` +
+      `⏰ *Heure:* ${new Date(order.date).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}\n\n` +
+      `👤 *INFORMATIONS CLIENT*\n` +
+      `👤 *Nom:* ${order.clientName}\n` +
+      `📞 *Téléphone:* ${order.clientPhone}\n` +
+      `📍 *Ville:* ${order.city}\n` +
+      `${order.deliveryLocation ? `🏠 *Adresse:* ${order.deliveryLocation}\n` : ''}` +
+      `${order.deliveryTime ? `⏰ *Heure livraison:* ${order.deliveryTime}\n` : ''}\n\n` +
+      `📦 *DÉTAILS COMMANDE*\n` +
+      `📦 *Produit:* ${order.product}\n` +
+      `🔢 *Quantité:* ${order.quantity}\n` +
+      `💰 *Prix unitaire:* ${order.price} FCFA\n` +
+      `💰 *Total:* ${order.price * order.quantity} FCFA\n\n` +
+      `📋 *STATUT:* ${order.status === 'pending' ? '⏳ En attente' : 
+                      order.status === 'confirmed' ? '✅ Confirmé' : 
+                      order.status === 'shipped' ? '🚚 Expédié' : 
+                      order.status === 'delivered' ? '✅ Livré' : 
+                      order.status === 'cancelled' ? '❌ Annulé' : order.status}\n\n` +
+      `${order.notes ? `📝 *Notes:* ${order.notes}\n\n` : ''}` +
+      `🔗 *Envoyé depuis le système de gestion*`;
+
+    // Envoyer le message WhatsApp
+    try {
+      await sendWhatsAppMessage({ 
+        to: phoneNumber, 
+        message: whatsappMessage,
+        userId: req.user._id,
+        firstName: req.user.name 
+      });
+      
+      console.log(`✅ WhatsApp envoyé à ${phoneNumber} pour la commande #${order.orderId}`);
+      
+      res.json({
+        success: true,
+        message: `Détails de la commande #${order.orderId} envoyés par WhatsApp à ${phoneNumber}`,
+        data: {
+          orderId: order._id,
+          orderIdStr: order.orderId,
+          phoneNumber: phoneNumber,
+          sentAt: new Date()
+        }
+      });
+    } catch (whatsappError) {
+      console.error(`❌ Erreur WhatsApp pour ${phoneNumber}:`, whatsappError.message);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Erreur lors de l\'envoi WhatsApp: ' + whatsappError.message 
+      });
+    }
+  } catch (error) {
+    console.error('Erreur send order WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/config/whatsapp - Configurer le numéro WhatsApp personnalisé
+router.post('/config/whatsapp', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { customWhatsAppNumber } = req.body;
+    
+    if (!customWhatsAppNumber) {
+      return res.status(400).json({ success: false, message: 'Numéro WhatsApp requis' });
+    }
+
+    // Valider le format du numéro (doit commencer par 237 et contenir uniquement des chiffres)
+    const cleanNumber = customWhatsAppNumber.replace(/\D/g, '');
+    if (!cleanNumber.startsWith('237') || cleanNumber.length < 9) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Format invalide. Le numéro doit commencer par 237 et contenir au moins 9 chiffres (ex: 237612345678)' 
+      });
+    }
+
+    // Mettre à jour les settings du workspace
+    const settings = await WorkspaceSettings.findOneAndUpdate(
+      { workspaceId: req.workspaceId },
+      { $set: { customWhatsAppNumber: cleanNumber } },
+      { new: true, upsert: true }
+    );
+
+    res.json({
+      success: true,
+      message: `Numéro WhatsApp configuré: ${cleanNumber}`,
+      data: {
+        customWhatsAppNumber: cleanNumber
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur configuration WhatsApp personnalisé:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/orders/config/whatsapp - Récupérer la configuration WhatsApp
+router.get('/config/whatsapp', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    
+    res.json({
+      success: true,
+      data: {
+        customWhatsAppNumber: settings?.customWhatsAppNumber || null,
+        environmentNumber: process.env.CUSTOM_WHATSAPP_NUMBER || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur récupération config WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/ecom/orders/sources/:id - Supprimer une source Google Sheets
+router.delete('/sources/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    if (id === 'legacy') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Pour supprimer la source par défaut, utilisez DELETE /api/ecom/orders/sources/legacy/confirm' 
+      });
+    }
+
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    
+    if (!settings || !settings.sources) {
+      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
+    }
+
+    // Supprimer la source du tableau
+    const sourceIndex = settings.sources.findIndex(s => s._id === id);
+    if (sourceIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
+    }
+
+    const deletedSource = settings.sources[sourceIndex];
+    settings.sources.splice(sourceIndex, 1);
+    
+    await settings.save();
+
+    res.json({
+      success: true,
+      message: `Source "${deletedSource.name}" supprimée avec succès`,
+      data: {
+        deletedSource: deletedSource
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression source:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/ecom/orders/sources/legacy/confirm - Supprimer le Google Sheet par défaut
+router.delete('/sources/legacy/confirm', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    
+    if (!settings) {
+      return res.status(404).json({ success: false, message: 'Workspace non trouvé.' });
+    }
+
+    // Supprimer seulement le spreadsheetId et réinitialiser le sync, mais garder les autres configurations
+    settings.googleSheets.spreadsheetId = '';
+    settings.googleSheets.lastSyncAt = null;
+    
+    await settings.save();
+
+    res.json({
+      success: true,
+      message: 'Google Sheet par défaut supprimé avec succès. Les autres configurations sont conservées.',
+      data: {
+        clearedFields: ['googleSheets.spreadsheetId', 'googleSheets.lastSyncAt'],
+        preservedFields: ['googleSheets.apiKey', 'googleSheets.sheetName', 'googleSheets.columnMapping']
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression source legacy:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

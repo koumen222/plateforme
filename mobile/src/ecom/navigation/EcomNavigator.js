@@ -28,6 +28,8 @@ import ReportForm from '../pages/ReportForm';
 import TransactionForm from '../pages/TransactionForm';
 import ClientForm from '../pages/ClientForm';
 import OrderDetail from '../pages/OrderDetail';
+import NotificationTestScreen from '../../screens/NotificationTestScreen';
+import ProductResearchScreen from '../../screens/ProductResearchScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -246,6 +248,8 @@ const MoreScreen = ({ navigation }) => {
     { icon: 'account-balance-wallet', label: 'Transactions', screen: 'Transactions', color: '#10b981' },
     { icon: 'inventory', label: 'Stock', screen: 'Stock', color: '#8b5cf6' },
     { icon: 'campaign', label: 'Marketing', screen: 'Campaigns', color: '#ec4899' },
+    { icon: 'search', label: 'Recherche Produits', screen: 'ProductResearch', color: '#8b5cf6' },
+    { icon: 'notifications', label: 'Test Notifications', screen: 'NotificationTest', color: '#ef4444' },
     { icon: 'group', label: 'Équipe', screen: 'Users', color: '#3b82f6' },
     { icon: 'settings', label: 'Paramètres', screen: 'Settings', color: '#6b7280' },
     { icon: 'person', label: 'Mon Profil', screen: 'Profile', color: '#8b5cf6' },
@@ -294,6 +298,8 @@ const MoreStackNavigator = () => (
     <MoreStack.Screen name="TransactionForm" component={WithHeader(TransactionForm)} />
     <MoreStack.Screen name="Stock" component={WithHeader(PlaceholderScreen)} />
     <MoreStack.Screen name="Campaigns" component={WithHeader(PlaceholderScreen)} />
+    <MoreStack.Screen name="ProductResearch" component={WithHeader(ProductResearchScreen)} />
+    <MoreStack.Screen name="NotificationTest" component={WithHeader(NotificationTestScreen)} />
     <MoreStack.Screen name="Users" component={WithHeader(UserManagement)} />
     <MoreStack.Screen name="Settings" component={WithHeader(Settings)} />
     <MoreStack.Screen name="Profile" component={WithHeader(Profile)} />

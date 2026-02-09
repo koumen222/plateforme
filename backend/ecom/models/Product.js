@@ -67,6 +67,7 @@ const productSchema = new mongoose.Schema({
 // Index pour recherche rapide
 productSchema.index({ status: 1, isActive: 1 });
 productSchema.index({ stock: 1 });
+productSchema.index({ name: 'text', status: 'text' }); // Index pour recherche plein texte
 
 // Méthode pour calculer la marge (sans inclure avgAdsCost)
 productSchema.methods.getMargin = function() {

@@ -42,7 +42,20 @@ const dailyReportSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EcomUser',
     required: true
-  }
+  },
+  deliveries: [{
+    agencyName: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    ordersDelivered: {
+      type: Number,
+      required: false,
+      min: 0,
+      default: 0
+    }
+  }]
 }, {
   collection: 'ecom_daily_reports',
   timestamps: true,

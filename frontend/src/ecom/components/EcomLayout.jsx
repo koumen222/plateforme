@@ -85,6 +85,11 @@ const EcomLayout = ({ children }) => {
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
     },
     {
+      name: 'Recherche Produits', shortName: 'Recherche', href: '/ecom/product-research', primary: true,
+      roles: ['ecom_admin', 'ecom_closeuse', 'ecom_compta'],
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5l7 7M5 11h19M12 11l-7 7m-7 7m-7-7v6" /></svg>
+    },
+    {
       name: 'Data', shortName: 'Data', href: '/ecom/data', primary: false,
       roles: ['ecom_admin', 'ecom_compta', 'super_admin'],
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>

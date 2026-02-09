@@ -19,7 +19,8 @@ const ReportForm = () => {
     ordersReceived: '',
     ordersDelivered: '',
     adSpend: '0',
-    notes: ''
+    notes: '',
+    deliveries: []
   });
 
   useEffect(() => {
@@ -45,7 +46,8 @@ const ReportForm = () => {
         ordersReceived: report.ordersReceived?.toString() || '',
         ordersDelivered: report.ordersDelivered?.toString() || '',
         adSpend: report.adSpend?.toString() || '0',
-        notes: report.notes || ''
+        notes: report.notes || '',
+        deliveries: report.deliveries || []
       });
     } catch (error) {
       setError('Erreur lors du chargement du rapport');
@@ -76,6 +78,29 @@ const ReportForm = () => {
     }));
   };
 
+  const addDelivery = () => {
+    setFormData(prev => ({
+      ...prev,
+      deliveries: [...prev.deliveries, { agencyName: '', ordersDelivered: '' }]
+    }));
+  };
+
+  const removeDelivery = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveries: prev.deliveries.filter((_, i) => i !== index)
+    }));
+  };
+
+  const handleDeliveryChange = (index, field, value) => {
+    setFormData(prev => ({
+      ...prev,
+      deliveries: prev.deliveries.map((delivery, i) => 
+        i === index ? { ...delivery, [field]: value } : delivery
+      )
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -90,7 +115,11 @@ const ReportForm = () => {
         ordersReceived: parseInt(formData.ordersReceived),
         ordersDelivered: parseInt(formData.ordersDelivered),
         adSpend: parseFloat(formData.adSpend) || 0,
-        notes: formData.notes
+        notes: formData.notes,
+        deliveries: formData.deliveries.map(d => ({
+          agencyName: d.agencyName,
+          ordersDelivered: parseInt(d.ordersDelivered) || 0
+        }))
       };
 
       if (isEditing) {
@@ -202,7 +231,67 @@ const ReportForm = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
             />
           </div>
+        </div>
 
+        {/* Section Livraisons par agence */}
+        <div className="border-t pt-6">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-medium text-gray-900">Livraisons par agence</h3>
+            <button
+              type="button"
+              onClick={addDelivery}
+              className="px-3 py-2 bg-green-600 text-white text-sm rounded-md hover:bg-green-700"
+            >
+              + Ajouter une agence
+            </button>
+          </div>
+
+          {formData.deliveries.length === 0 ? (
+            <p className="text-gray-500 text-sm italic">Aucune agence ajoutée. Cliquez sur "Ajouter une agence" pour commencer.</p>
+          ) : (
+            <div className="space-y-3">
+              {formData.deliveries.map((delivery, index) => (
+                <div key={index} className="flex gap-3 items-start p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Nom de l'agence
+                    </label>
+                    <input
+                      type="text"
+                      value={delivery.agencyName}
+                      onChange={(e) => handleDeliveryChange(index, 'agencyName', e.target.value)}
+                      placeholder="Ex: DHL Express"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <div className="w-32">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                      Commandes
+                    </label>
+                    <input
+                      type="number"
+                      value={delivery.ordersDelivered}
+                      onChange={(e) => handleDeliveryChange(index, 'ordersDelivered', e.target.value)}
+                      min="0"
+                      placeholder="0"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeDelivery(index)}
+                    className="mt-6 px-3 py-2 bg-red-100 text-red-700 rounded-md hover:bg-red-200"
+                    title="Supprimer"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
           {user?.role !== 'ecom_closeuse' && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ProductSearch from '../components/ProductSearch.jsx';
+import ProductSearchDebug from '../components/ProductSearchDebug.jsx';
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -106,6 +108,23 @@ const LandingPage = () => {
               Prêt en 30 secondes
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════ PRODUCT SEARCH ═══════════════════ */}
+      <section className="py-16 sm:py-24 px-4 bg-gradient-to-b from-transparent to-blue-950/5">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-full text-blue-400 text-xs font-semibold mb-4">
+              RECHERCHE DE PRODUITS
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black mb-4">Découvrez nos produits</h2>
+            <p className="text-gray-400 max-w-2xl mx-auto text-lg">
+              Explorez notre catalogue de produits testés et validés pour le marché africain.
+            </p>
+          </div>
+          
+          <ProductSearch />
         </div>
       </section>
 
