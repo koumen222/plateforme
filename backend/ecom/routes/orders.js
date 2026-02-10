@@ -527,6 +527,17 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
             rawData
           };
 
+          // Vérifier si la commande existe déjà et si son statut a été modifié manuellement
+          const existingOrder = await Order.findOne({ 
+            workspaceId: req.workspaceId, 
+            sheetRowId: rowId 
+          });
+
+          // Si la commande existe et que le statut a été modifié manuellement, ne pas écraser le statut
+          if (existingOrder && existingOrder.statusModifiedManually) {
+            delete doc.status; // Ne pas mettre à jour le statut
+          }
+
           bulkOps.push({
             updateOne: {
               filter: { workspaceId: req.workspaceId, sheetRowId: rowId },
@@ -552,23 +563,28 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
             }
             
             if (newOrders.length > 0) {
-              const insertedOrders = await Order.find({
+              // Récupérer uniquement la dernière commande (la plus récente)
+              const latestOrder = await Order.findOne({
                 workspaceId: req.workspaceId,
                 sheetRowId: { $in: newOrders },
                 status: { $in: ['pending', 'confirmed'] }, // Seulement les commandes en attente/confirmées
                 whatsappNotificationSent: { $ne: true } // IMPORTANT: Seulement si notification pas encore envoyée
-              }).populate('assignedLivreur', 'name email phone');
+              })
+              .sort({ date: -1 }) // Trier par date décroissante pour obtenir la plus récente
+              .populate('assignedLivreur', 'name email phone');
               
-              // Notifier les livreurs pour chaque nouvelle commande
-              for (const order of insertedOrders) {
-                await notifyLivreursOfNewOrder(order, req.workspaceId);
+              // Envoyer uniquement la dernière commande
+              if (latestOrder) {
+                await notifyLivreursOfNewOrder(latestOrder, req.workspaceId);
                 // Envoyer automatiquement au numéro WhatsApp personnalisé
-                await sendOrderToCustomNumber(order, req.workspaceId);
+                await sendOrderToCustomNumber(latestOrder, req.workspaceId);
                 
                 // Marquer la notification comme envoyée
-                order.whatsappNotificationSent = true;
-                order.whatsappNotificationSentAt = new Date();
-                await order.save();
+                latestOrder.whatsappNotificationSent = true;
+                latestOrder.whatsappNotificationSentAt = new Date();
+                await latestOrder.save();
+                
+                console.log(`📱 WhatsApp envoyé uniquement pour la dernière commande: #${latestOrder.orderId}`);
               }
             }
           }
@@ -881,7 +897,11 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
     const { status, assignedLivreur } = req.body;
     const updateData = {};
     
-    if (status !== undefined) updateData.status = status;
+    if (status !== undefined) {
+      updateData.status = status;
+      updateData.statusModifiedManually = true;
+      updateData.lastManualStatusUpdate = new Date();
+    }
     if (assignedLivreur !== undefined) updateData.assignedLivreur = assignedLivreur;
     
     const order = await Order.findOneAndUpdate(

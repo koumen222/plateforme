@@ -91,6 +91,14 @@ const orderSchema = new mongoose.Schema({
   whatsappNotificationSentAt: {
     type: Date,
     default: null
+  },
+  statusModifiedManually: {
+    type: Boolean,
+    default: false
+  },
+  lastManualStatusUpdate: {
+    type: Date,
+    default: null
   }
 }, {
   timestamps: true,
