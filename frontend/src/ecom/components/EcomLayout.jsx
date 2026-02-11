@@ -486,6 +486,7 @@ const getPageTitle = (pathname) => {
   if (pathname.includes('/transactions')) return 'Transactions';
   if (pathname.includes('/decisions/new')) return 'Nouvelle décision';
   if (pathname.includes('/decisions')) return 'Décisions';
+  if (pathname.includes('/import')) return 'Import Commandes';
   if (pathname.match(/\/orders\/[a-f0-9]{24}/)) return 'Détail commande';
   if (pathname.includes('/orders')) return 'Commandes';
   if (pathname.includes('/clients/new')) return 'Nouveau client';

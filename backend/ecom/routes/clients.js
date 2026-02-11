@@ -4,6 +4,22 @@ import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 
 const router = express.Router();
 
+// DELETE /api/ecom/clients/bulk - Supprimer tous les clients
+router.delete('/bulk', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const filter = { workspaceId: req.workspaceId };
+    const result = await Client.deleteMany(filter);
+    res.json({ 
+      success: true, 
+      message: `${result.deletedCount} client(s) supprimé(s)`, 
+      data: { deletedCount: result.deletedCount } 
+    });
+  } catch (error) {
+    console.error('Erreur suppression bulk clients:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // GET /api/ecom/clients - Liste des clients
 router.get('/', requireEcomAuth, async (req, res) => {
   try {

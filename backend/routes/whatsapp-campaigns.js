@@ -891,5 +891,3 @@ router.post('/test-message', async (req, res) => {
     });
   }
 });
-
-export default router;

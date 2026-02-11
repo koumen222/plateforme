@@ -11,7 +11,7 @@ const CampaignForm = () => {
     name: '',
     type: 'custom',
     messageTemplate: '',
-    targetFilters: { clientStatus: '', city: '', product: '', tag: '', minOrders: 0, maxOrders: 0 },
+    targetFilters: { clientStatus: '', city: '', product: '', tag: '', minOrders: 0, maxOrders: 0, orderStatus: '', orderCity: '', orderAddress: '', orderProduct: '', orderDateFrom: '', orderDateTo: '', orderSourceId: '', orderMinPrice: 0, orderMaxPrice: 0 },
     scheduledAt: '',
     tags: ''
   });
@@ -29,9 +29,11 @@ const CampaignForm = () => {
   const [testResult, setTestResult] = useState(null);
   const [previewSending, setPreviewSending] = useState(false);
   const [previewClient, setPreviewClient] = useState(null);
+  const [filterOptions, setFilterOptions] = useState({ cities: [], products: [], addresses: [] });
 
   useEffect(() => {
     ecomApi.get('/campaigns/templates').then(res => setTemplates(res.data.data)).catch(() => {});
+    ecomApi.get('/campaigns/filter-options').then(res => setFilterOptions(res.data.data)).catch(() => {});
     if (isEdit) {
       ecomApi.get(`/campaigns/${id}`).then(res => {
         const c = res.data.data;
@@ -39,7 +41,7 @@ const CampaignForm = () => {
           name: c.name || '',
           type: c.type || 'custom',
           messageTemplate: c.messageTemplate || '',
-          targetFilters: c.targetFilters || { clientStatus: '', city: '', product: '', tag: '', minOrders: 0, maxOrders: 0 },
+          targetFilters: { clientStatus: '', city: '', product: '', tag: '', minOrders: 0, maxOrders: 0, orderStatus: '', orderCity: '', orderAddress: '', orderProduct: '', orderDateFrom: '', orderDateTo: '', orderSourceId: '', orderMinPrice: 0, orderMaxPrice: 0, ...(c.targetFilters || {}) },
           scheduledAt: c.scheduledAt ? new Date(c.scheduledAt).toISOString().slice(0, 16) : '',
           tags: (c.tags || []).join(', ')
         });
@@ -115,7 +117,7 @@ const CampaignForm = () => {
   const resetFilters = () => {
     setFormData(prev => ({
       ...prev,
-      targetFilters: { ...prev.targetFilters, clientStatus: '', tag: '', city: '', product: '', minOrders: 0, maxOrders: 0 }
+      targetFilters: { clientStatus: '', city: '', product: '', tag: '', minOrders: 0, maxOrders: 0, orderStatus: '', orderCity: '', orderAddress: '', orderProduct: '', orderDateFrom: '', orderDateTo: '', orderSourceId: '', orderMinPrice: 0, orderMaxPrice: 0 }
     }));
     setTimeout(() => handlePreview(), 200);
   };
@@ -335,17 +337,26 @@ const CampaignForm = () => {
       .replace(/\{city\}/g, 'Abidjan')
       .replace(/\{product\}/g, 'Crème visage')
       .replace(/\{totalOrders\}/g, '3')
-      .replace(/\{totalSpent\}/g, '45000');
+      .replace(/\{totalSpent\}/g, '45000')
+      .replace(/\{price\}/g, '15000')
+      .replace(/\{orderDate\}/g, '11/02/2026')
+      .replace(/\{status\}/g, 'En attente')
+      .replace(/\{lastContact\}/g, '05/02/2026');
   };
 
   const variables = [
     { var: '{firstName}', label: 'Prénom' },
     { var: '{lastName}', label: 'Nom' },
     { var: '{fullName}', label: 'Nom complet' },
+    { var: '{phone}', label: 'Téléphone' },
     { var: '{city}', label: 'Ville' },
     { var: '{product}', label: 'Produits' },
     { var: '{totalOrders}', label: 'Nb commandes' },
-    { var: '{totalSpent}', label: 'Total dépensé' }
+    { var: '{totalSpent}', label: 'Total dépensé' },
+    { var: '{price}', label: 'Prix' },
+    { var: '{orderDate}', label: 'Date commande' },
+    { var: '{status}', label: 'Statut' },
+    { var: '{lastContact}', label: 'Dernier contact' }
   ];
 
   const insertVariable = (v) => {
@@ -429,25 +440,100 @@ const CampaignForm = () => {
               {previewLoading ? <><svg className="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Chargement...</> : <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg> Prévisualiser</>}
             </button>
           </div>
+          {/* Ciblage par commande */}
+          <p className="text-[10px] font-semibold text-indigo-600 uppercase tracking-wider mb-2">Ciblage par commande</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Statut commande</label>
+              <select value={formData.targetFilters.orderStatus} onChange={e => updateFilter('orderStatus', e.target.value)} className={inputClass}>
+                <option value="">Tous</option>
+                <option value="pending">En attente</option>
+                <option value="confirmed">Confirmé</option>
+                <option value="shipped">Expédié</option>
+                <option value="delivered">Livré</option>
+                <option value="returned">Retour</option>
+                <option value="cancelled">Annulé</option>
+                <option value="unreachable">Injoignable</option>
+                <option value="called">Appelé</option>
+                <option value="postponed">Reporté</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Ville (commande)</label>
+              <select value={formData.targetFilters.orderCity} onChange={e => updateFilter('orderCity', e.target.value)} className={inputClass}>
+                <option value="">Toutes les villes</option>
+                {filterOptions.cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Adresse (commande)</label>
+              <select value={formData.targetFilters.orderAddress || ''} onChange={e => updateFilter('orderAddress', e.target.value)} className={inputClass}>
+                <option value="">Toutes les adresses</option>
+                {(filterOptions.addresses || []).map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Produit (commande)</label>
+              <select value={formData.targetFilters.orderProduct} onChange={e => updateFilter('orderProduct', e.target.value)} className={inputClass}>
+                <option value="">Tous les produits</option>
+                {filterOptions.products.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Source</label>
+              <input type="text" value={formData.targetFilters.orderSourceId} onChange={e => updateFilter('orderSourceId', e.target.value)} className={inputClass} placeholder="ID source" />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Date début</label>
+              <input type="date" value={formData.targetFilters.orderDateFrom} onChange={e => updateFilter('orderDateFrom', e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Date fin</label>
+              <input type="date" value={formData.targetFilters.orderDateTo} onChange={e => updateFilter('orderDateTo', e.target.value)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Prix min</label>
+              <input type="number" min="0" value={formData.targetFilters.orderMinPrice} onChange={e => updateFilter('orderMinPrice', parseInt(e.target.value) || 0)} className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Prix max</label>
+              <input type="number" min="0" value={formData.targetFilters.orderMaxPrice} onChange={e => updateFilter('orderMaxPrice', parseInt(e.target.value) || 0)} className={inputClass} />
+            </div>
+          </div>
+
+          {/* Ciblage par client */}
+          <p className="text-[10px] font-semibold text-purple-600 uppercase tracking-wider mb-2">Ciblage par client</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <div>
               <label className="block text-[10px] font-medium text-gray-500 mb-1">Statut client</label>
               <select value={formData.targetFilters.clientStatus} onChange={e => updateFilter('clientStatus', e.target.value)} className={inputClass}>
                 <option value="">Tous</option>
-                <option value="prospect">Prospect</option>
+                <option value="pending">En attente</option>
                 <option value="confirmed">Confirmé</option>
-                <option value="delivered">Livré (Client)</option>
+                <option value="shipped">Expédié</option>
+                <option value="delivered">Livré</option>
                 <option value="returned">Retour</option>
+                <option value="cancelled">Annulé</option>
+                <option value="unreachable">Injoignable</option>
+                <option value="called">Appelé</option>
+                <option value="postponed">Reporté</option>
+                <option value="prospect">Prospect</option>
                 <option value="blocked">Bloqué</option>
               </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">Ville</label>
-              <input type="text" value={formData.targetFilters.city} onChange={e => updateFilter('city', e.target.value)} className={inputClass} placeholder="Ex: Abidjan" />
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Ville (client)</label>
+              <select value={formData.targetFilters.city} onChange={e => updateFilter('city', e.target.value)} className={inputClass}>
+                <option value="">Toutes les villes</option>
+                {filterOptions.cities.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
             <div>
-              <label className="block text-[10px] font-medium text-gray-500 mb-1">Produit</label>
-              <input type="text" value={formData.targetFilters.product} onChange={e => updateFilter('product', e.target.value)} className={inputClass} placeholder="Ex: Crème" />
+              <label className="block text-[10px] font-medium text-gray-500 mb-1">Produit (client)</label>
+              <select value={formData.targetFilters.product} onChange={e => updateFilter('product', e.target.value)} className={inputClass}>
+                <option value="">Tous les produits</option>
+                {filterOptions.products.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
             </div>
             <div>
               <label className="block text-[10px] font-medium text-gray-500 mb-1">Tag</label>
@@ -465,14 +551,20 @@ const CampaignForm = () => {
 
           {/* Quick filter buttons */}
           <div className="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-gray-100">
-            <span className="text-[10px] text-gray-400 font-medium self-center mr-1">Filtres rapides :</span>
-            {[{ tag: 'Client', label: 'Clients livrés', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-              { tag: 'En attente', label: 'En attente', color: 'bg-amber-50 text-amber-700 border-amber-200' },
-              { tag: 'Annulé', label: 'Annulés / Retours', color: 'bg-red-50 text-red-700 border-red-200' },
-              { tag: 'Confirmé', label: 'Confirmés', color: 'bg-blue-50 text-blue-700 border-blue-200' }
+            <span className="text-[10px] text-gray-400 font-medium self-center mr-1">Relances rapides :</span>
+            {[
+              { key: 'pending', label: 'En attente', color: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+              { key: 'unreachable', label: 'Injoignables', color: 'bg-gray-50 text-gray-700 border-gray-300' },
+              { key: 'called', label: 'Appelés', color: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
+              { key: 'postponed', label: 'Reportés', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+              { key: 'confirmed', label: 'Confirmés', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+              { key: 'shipped', label: 'Expédiés', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+              { key: 'delivered', label: 'Livrés', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+              { key: 'returned', label: 'Retours', color: 'bg-orange-50 text-orange-700 border-orange-200' },
+              { key: 'cancelled', label: 'Annulés', color: 'bg-red-50 text-red-700 border-red-200' },
             ].map(f => (
-              <button key={f.tag} type="button" onClick={() => quickFilter(f.tag)}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition hover:opacity-80 ${f.color}`}>
+              <button key={f.key} type="button" onClick={() => { updateFilter('orderStatus', f.key); setTimeout(() => handlePreview(), 200); }}
+                className={`px-2.5 py-1 rounded-lg text-[10px] font-medium border transition hover:opacity-80 ${formData.targetFilters.orderStatus === f.key ? 'ring-2 ring-offset-1 ring-gray-400 ' : ''}${f.color}`}>
                 {f.label}
               </button>
             ))}
@@ -533,6 +625,7 @@ const CampaignForm = () => {
                       className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 flex-shrink-0" />
                     <span className="font-medium text-gray-800 min-w-[100px]">{c.firstName} {c.lastName}</span>
                     <span className="text-gray-500 font-mono">{c.phone}</span>
+                    {c.address && <span className="text-gray-400 text-[10px] truncate max-w-[120px]" title={c.address}>📍 {c.address}</span>}
                     {c.city && <span className="text-gray-400">· {c.city}</span>}
                     {(c.tags || []).map(t => (
                       <span key={t} className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${

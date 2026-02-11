@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
+import EcomUser from '../ecom/models/EcomUser.js';
 
 /**
  * Middleware pour authentifier via cookie ou header Authorization
@@ -34,7 +35,42 @@ export const authenticate = async (req, res, next) => {
     
     console.log('🔐 Token trouvé, longueur:', token.length);
 
-    // Vérifier le token
+    // Vérifier si c'est un token e-commerce
+    if (token.startsWith('ecom:')) {
+      console.log('🔐 Token e-commerce détecté, utilisation du système e-commerce');
+      
+      try {
+        const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+        const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+        
+        // Récupérer l'utilisateur e-commerce
+        const ecomUser = await EcomUser.findById(decoded.id).select('-password');
+        
+        if (!ecomUser || !ecomUser.isActive) {
+          return res.status(401).json({ error: 'Utilisateur e-commerce non trouvé ou inactif' });
+        }
+
+        // Convertir l'utilisateur e-commerce au format attendu par le middleware principal
+        req.user = {
+          _id: ecomUser._id,
+          email: ecomUser.email,
+          name: ecomUser.name,
+          role: ecomUser.role,
+          status: ecomUser.isActive ? 'active' : 'inactive',
+          accountStatus: ecomUser.isActive ? 'active' : 'blocked'
+        };
+        
+        console.log('✅ Utilisateur e-commerce authentifié:', req.user.email);
+        next();
+        return;
+      } catch (ecomError) {
+        console.error('❌ Erreur token e-commerce:', ecomError.message);
+        return res.status(401).json({ error: 'Token e-commerce invalide ou expiré' });
+      }
+    }
+
+    // Token normal (système principal)
+    console.log('🔐 Token normal détecté, utilisation du système principal');
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key-change-in-production');
 
     // Récupérer l'utilisateur

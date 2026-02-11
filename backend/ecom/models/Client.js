@@ -45,7 +45,6 @@ const clientSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['prospect', 'confirmed', 'delivered', 'returned', 'blocked'],
     default: 'prospect'
   },
   totalOrders: {

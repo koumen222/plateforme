@@ -1,6 +1,7 @@
 import express from 'express';
 import Campaign from '../models/Campaign.js';
 import Client from '../models/Client.js';
+import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 // 🆕 Import des fonctions anti-spam WhatsApp
 import { 
@@ -14,8 +15,8 @@ import {
 const router = express.Router();
 
 // Helper: remplacer les variables dans le template
-function renderMessage(template, client) {
-  return template
+function renderMessage(template, client, orderData = null) {
+  let msg = template
     .replace(/\{firstName\}/g, client.firstName || '')
     .replace(/\{lastName\}/g, client.lastName || '')
     .replace(/\{fullName\}/g, [client.firstName, client.lastName].filter(Boolean).join(' '))
@@ -23,7 +24,13 @@ function renderMessage(template, client) {
     .replace(/\{city\}/g, client.city || '')
     .replace(/\{product\}/g, (client.products || []).join(', ') || '')
     .replace(/\{totalOrders\}/g, String(client.totalOrders || 0))
-    .replace(/\{totalSpent\}/g, String(client.totalSpent || 0));
+    .replace(/\{totalSpent\}/g, String(client.totalSpent || 0))
+    .replace(/\{status\}/g, client._orderStatus || '')
+    .replace(/\{price\}/g, client._orderPrice ? String(client._orderPrice) : '')
+    .replace(/\{orderDate\}/g, client._orderDate ? new Date(client._orderDate).toLocaleDateString('fr-FR') : '')
+    .replace(/\{address\}/g, client.address || '')
+    .replace(/\{lastContact\}/g, client.lastContactAt ? new Date(client.lastContactAt).toLocaleDateString('fr-FR') : '');
+  return msg;
 }
 
 // Helper: construire le filtre MongoDB depuis les targetFilters
@@ -37,6 +44,44 @@ function buildClientFilter(workspaceId, targetFilters) {
   if (targetFilters.maxOrders > 0) filter.totalOrders = { ...filter.totalOrders, $lte: targetFilters.maxOrders };
   if (targetFilters.lastContactBefore) filter.lastContactAt = { $lt: new Date(targetFilters.lastContactBefore) };
   return filter;
+}
+
+// Helper: ciblage basé sur les commandes — retourne les phones des clients correspondants
+async function getClientsFromOrderFilters(workspaceId, targetFilters) {
+  const orderFilter = { workspaceId };
+  if (targetFilters.orderStatus) orderFilter.status = targetFilters.orderStatus;
+  if (targetFilters.orderCity) orderFilter.city = { $regex: targetFilters.orderCity, $options: 'i' };
+  if (targetFilters.orderAddress) orderFilter.address = { $regex: targetFilters.orderAddress, $options: 'i' };
+  if (targetFilters.orderProduct) orderFilter.product = { $regex: targetFilters.orderProduct, $options: 'i' };
+  if (targetFilters.orderDateFrom) orderFilter.date = { ...orderFilter.date, $gte: new Date(targetFilters.orderDateFrom) };
+  if (targetFilters.orderDateTo) {
+    const end = new Date(targetFilters.orderDateTo);
+    end.setHours(23, 59, 59, 999);
+    orderFilter.date = { ...orderFilter.date, $lte: end };
+  }
+  if (targetFilters.orderSourceId) {
+    if (targetFilters.orderSourceId === 'legacy') {
+      orderFilter.sheetRowId = { $not: /^source_/ };
+    } else {
+      orderFilter.sheetRowId = { $regex: `^source_${targetFilters.orderSourceId}_` };
+    }
+  }
+  if (targetFilters.orderMinPrice > 0) orderFilter.price = { ...orderFilter.price, $gte: targetFilters.orderMinPrice };
+  if (targetFilters.orderMaxPrice > 0) orderFilter.price = { ...orderFilter.price, $lte: targetFilters.orderMaxPrice };
+
+  const orders = await Order.find(orderFilter).select('clientName clientPhone city address product price date status quantity').lean();
+
+  // Group by phone, keep most recent order data
+  const clientMap = new Map();
+  for (const o of orders) {
+    const phone = (o.clientPhone || '').trim();
+    if (!phone) continue;
+    const existing = clientMap.get(phone);
+    if (!existing || new Date(o.date) > new Date(existing.date)) {
+      clientMap.set(phone, o);
+    }
+  }
+  return clientMap; // Map<phone, orderData>
 }
 
 // GET /api/ecom/campaigns - Liste des campagnes
@@ -79,28 +124,102 @@ router.get('/', requireEcomAuth, async (req, res) => {
   }
 });
 
+// GET /api/ecom/campaigns/filter-options - Villes, adresses et produits depuis commandes + clients
+router.get('/filter-options', requireEcomAuth, async (req, res) => {
+  try {
+    const wsFilter = { workspaceId: req.workspaceId };
+    
+    // Récupérer depuis les commandes
+    const [orderCities, orderProducts, orderAddresses] = await Promise.all([
+      Order.find({ ...wsFilter, city: { $exists: true, $ne: '' } }).distinct('city'),
+      Order.find({ ...wsFilter, product: { $exists: true, $ne: '' } }).distinct('product'),
+      Order.find({ ...wsFilter, address: { $exists: true, $ne: '' } }).distinct('address')
+    ]);
+    
+    // Récupérer aussi depuis les clients (données enrichies)
+    const [clientCities, clientProducts, clientAddresses] = await Promise.all([
+      Client.find({ ...wsFilter, city: { $exists: true, $ne: '' } }).distinct('city'),
+      Client.find({ ...wsFilter, products: { $exists: true, $ne: [] } }).distinct('products'),
+      Client.find({ ...wsFilter, address: { $exists: true, $ne: '' } }).distinct('address')
+    ]);
+    
+    // Fusionner et dédupliquer
+    const cities = [...new Set([...orderCities, ...clientCities])].filter(Boolean).sort();
+    const products = [...new Set([...orderProducts, ...clientProducts])].filter(Boolean).sort();
+    const addresses = [...new Set([...orderAddresses, ...clientAddresses])].filter(Boolean).sort();
+    
+    console.log(`📊 Filter options: ${cities.length} villes, ${products.length} produits, ${addresses.length} adresses`);
+    res.json({ success: true, data: { cities, products, addresses } });
+  } catch (error) {
+    console.error('Erreur filter-options:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // GET /api/ecom/campaigns/templates - Templates prédéfinis
 router.get('/templates', requireEcomAuth, async (req, res) => {
   const templates = [
     {
       id: 'relance_pending',
-      name: 'Relance commandes en attente',
+      name: 'Relance en attente',
       type: 'relance_pending',
-      message: 'Bonjour {firstName} 👋\n\nVotre commande est toujours en attente. Souhaitez-vous confirmer votre commande ?\n\nN\'hésitez pas à nous contacter pour toute question.',
-      targetFilters: { clientStatus: 'prospect' }
+      message: 'Bonjour {firstName} 👋\n\nVotre commande est toujours en attente. Souhaitez-vous confirmer ?\n\nN\'hésitez pas à nous contacter pour toute question.',
+      targetFilters: { orderStatus: 'pending' }
+    },
+    {
+      id: 'relance_unreachable',
+      name: 'Relance injoignables',
+      type: 'custom',
+      message: 'Bonjour {firstName} 👋\n\nNous avons essayé de vous joindre concernant votre commande mais sans succès.\n\nMerci de nous recontacter au plus vite pour finaliser votre commande.',
+      targetFilters: { orderStatus: 'unreachable' }
+    },
+    {
+      id: 'relance_called',
+      name: 'Relance appelés',
+      type: 'custom',
+      message: 'Bonjour {firstName} 👋\n\nSuite à notre appel, nous attendons votre confirmation pour votre commande ({product}).\n\nMerci de nous confirmer dès que possible.',
+      targetFilters: { orderStatus: 'called' }
+    },
+    {
+      id: 'relance_postponed',
+      name: 'Relance reportés',
+      type: 'custom',
+      message: 'Bonjour {firstName} 👋\n\nVous aviez souhaité reporter votre commande ({product}). Nous revenons vers vous pour savoir si le moment est plus opportun.\n\nÊtes-vous prêt(e) à recevoir votre commande ?',
+      targetFilters: { orderStatus: 'postponed' }
     },
     {
       id: 'relance_cancelled',
-      name: 'Relance commandes annulées',
+      name: 'Relance annulés',
       type: 'relance_cancelled',
-      message: 'Bonjour {firstName} 👋\n\nNous avons remarqué que votre dernière commande a été annulée. Nous aimerions comprendre ce qui s\'est passé.\n\nPouvons-nous vous aider ?',
-      targetFilters: { clientStatus: 'returned' }
+      message: 'Bonjour {firstName} 👋\n\nVotre commande a été annulée. Nous aimerions comprendre ce qui s\'est passé.\n\nPouvons-nous vous aider ou vous proposer une alternative ?',
+      targetFilters: { orderStatus: 'cancelled' }
     },
     {
-      id: 'promo',
-      name: 'Promotion produit',
+      id: 'relance_returned',
+      name: 'Relance retours',
+      type: 'custom',
+      message: 'Bonjour {firstName} 👋\n\nNous avons noté le retour de votre commande ({product}). Nous aimerions comprendre la raison.\n\nY a-t-il un problème que nous pouvons résoudre ?',
+      targetFilters: { orderStatus: 'returned' }
+    },
+    {
+      id: 'relance_confirmed',
+      name: 'Relance confirmés non expédiés',
+      type: 'custom',
+      message: 'Bonjour {firstName} 😊\n\nVotre commande ({product}) est confirmée et sera bientôt expédiée.\n\nNous vous tiendrons informé(e) de l\'avancement.',
+      targetFilters: { orderStatus: 'confirmed' }
+    },
+    {
+      id: 'promo_city',
+      name: 'Promo par ville',
       type: 'promo',
-      message: 'Bonjour {firstName} 🎉\n\nNous avons une offre spéciale pour vous ! Profitez de nos promotions exclusives.\n\nContactez-nous pour en savoir plus.',
+      message: 'Bonjour {firstName} 🎉\n\nOffre exclusive pour {city} ! Profitez de nos prix exceptionnels sur {product}.\n\nContactez-nous vite, stock limité !',
+      targetFilters: {}
+    },
+    {
+      id: 'promo_product',
+      name: 'Promo par produit',
+      type: 'promo',
+      message: 'Bonjour {firstName} 🎁\n\nVous avez aimé {product} ? Nous avons des nouveautés et offres spéciales sur cette gamme !\n\nContactez-nous pour en profiter.',
       targetFilters: { clientStatus: 'delivered' }
     },
     {
@@ -108,14 +227,21 @@ router.get('/templates', requireEcomAuth, async (req, res) => {
       name: 'Suivi après livraison',
       type: 'followup',
       message: 'Bonjour {firstName} 😊\n\nNous espérons que vous êtes satisfait(e) de votre commande ({product}).\n\nVotre avis compte beaucoup pour nous. N\'hésitez pas à nous faire un retour !',
-      targetFilters: { clientStatus: 'delivered' }
+      targetFilters: { orderStatus: 'delivered' }
     },
     {
       id: 'reorder',
       name: 'Relance réachat',
       type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nCela fait un moment que nous n\'avons pas eu de vos nouvelles !\n\nNos produits vous manquent ? Nous avons de nouvelles offres qui pourraient vous intéresser.',
+      message: 'Bonjour {firstName} 👋\n\nCela fait un moment ! Nos produits vous manquent ?\n\nNous avons de nouvelles offres qui pourraient vous intéresser. Contactez-nous !',
       targetFilters: { clientStatus: 'delivered' }
+    },
+    {
+      id: 'relance_shipped',
+      name: 'Suivi expédition',
+      type: 'followup',
+      message: 'Bonjour {firstName} 📦\n\nVotre commande ({product}) a été expédiée ! Elle arrivera bientôt à {city}.\n\nMerci de vous assurer d\'être disponible pour la réception.',
+      targetFilters: { orderStatus: 'shipped' }
     }
   ];
   res.json({ success: true, data: templates });
@@ -125,11 +251,55 @@ router.get('/templates', requireEcomAuth, async (req, res) => {
 router.post('/preview', requireEcomAuth, async (req, res) => {
   try {
     const { targetFilters } = req.body;
-    const filter = buildClientFilter(req.workspaceId, targetFilters || {});
-    // Seulement les clients avec un téléphone
-    filter.phone = { $exists: true, $ne: '' };
+    const tf = targetFilters || {};
+    console.log('🔍 Campaign preview - targetFilters reçus:', tf);
 
-    const clients = await Client.find(filter).select('firstName lastName phone city products totalOrders totalSpent status tags').limit(500);
+    // Check if order-based filters are used
+    const hasOrderFilters = tf.orderStatus || tf.orderCity || tf.orderAddress || tf.orderProduct || tf.orderDateFrom || tf.orderDateTo || tf.orderSourceId || tf.orderMinPrice || tf.orderMaxPrice;
+    console.log('📊 Has order filters:', hasOrderFilters);
+
+    let clients;
+
+    if (hasOrderFilters) {
+      // Order-based targeting: find orders matching filters, then map to clients
+      const orderMap = await getClientsFromOrderFilters(req.workspaceId, tf);
+      console.log('📦 Orders found:', orderMap.size, 'phones:', [...orderMap.keys()].slice(0, 5));
+
+      // Also apply client-level filters if present
+      const clientFilter = buildClientFilter(req.workspaceId, tf);
+      clientFilter.phone = { $exists: true, $ne: '' };
+
+      // If we have order filters, restrict to phones found in orders
+      if (orderMap.size > 0) {
+        clientFilter.phone = { $in: [...orderMap.keys()] };
+      } else {
+        // No orders matched -> no clients
+        console.log('❌ No orders matched filters');
+        return res.json({ success: true, data: { count: 0, clients: [] } });
+      }
+
+      const rawClients = await Client.find(clientFilter).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').limit(500).lean();
+      console.log('👥 Raw clients found:', rawClients.length);
+
+      // Enrich clients with order data for message variables
+      clients = rawClients.map(c => {
+        const od = orderMap.get(c.phone);
+        return {
+          ...c,
+          _orderStatus: od?.status || '',
+          _orderPrice: od?.price || 0,
+          _orderDate: od?.date || null,
+          _orderProduct: od?.product || ''
+        };
+      });
+    } else {
+      // Client-only targeting
+      const filter = buildClientFilter(req.workspaceId, tf);
+      filter.phone = { $exists: true, $ne: '' };
+      clients = await Client.find(filter).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').limit(500).lean();
+    }
+
+    console.log('✅ Final clients count:', clients.length);
     res.json({ success: true, data: { count: clients.length, clients } });
   } catch (error) {
     console.error('Erreur preview campaign:', error);

@@ -100,6 +100,15 @@ const Login = () => {
                 className="block w-full px-3.5 py-2.5 bg-gray-800 border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition"
                 placeholder="••••••••"
               />
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => navigate('/ecom/forgot-password')}
+                  className="text-xs text-blue-400 hover:text-blue-300 font-medium transition"
+                >
+                  Mot de passe oublié ?
+                </button>
+              </div>
             </div>
 
             <button

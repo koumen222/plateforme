@@ -14,6 +14,58 @@ const router = express.Router();
 // Créer un EventEmitter global pour la progression
 const syncProgressEmitter = new EventEmitter();
 
+// POST /api/ecom/orders - Créer une commande manuellement
+router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { clientName, clientPhone, city, address, product, quantity, price, status, notes, tags } = req.body;
+    if (!clientName && !clientPhone) {
+      return res.status(400).json({ success: false, message: 'Nom client ou téléphone requis' });
+    }
+    const order = new Order({
+      workspaceId: req.workspaceId,
+      orderId: `#MAN_${Date.now().toString(36)}`,
+      date: new Date(),
+      clientName: clientName || '',
+      clientPhone: clientPhone || '',
+      city: city || '',
+      address: address || '',
+      product: product || '',
+      quantity: quantity || 1,
+      price: price || 0,
+      status: status || 'pending',
+      notes: notes || '',
+      tags: tags || [],
+      source: 'manual',
+      sheetRowId: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
+    });
+    await order.save();
+    res.status(201).json({ success: true, message: 'Commande créée', data: order });
+  } catch (error) {
+    console.error('Erreur création commande:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/ecom/orders/bulk - Supprimer toutes les commandes (optionnel: filtrées par sourceId)
+router.delete('/bulk', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { sourceId } = req.query;
+    const filter = { workspaceId: req.workspaceId };
+    if (sourceId) {
+      if (sourceId === 'legacy') {
+        filter.sheetRowId = { $not: /^source_/ };
+      } else {
+        filter.sheetRowId = { $regex: `^source_${sourceId}_` };
+      }
+    }
+    const result = await Order.deleteMany(filter);
+    res.json({ success: true, message: `${result.deletedCount} commande(s) supprimée(s)`, data: { deletedCount: result.deletedCount } });
+  } catch (error) {
+    console.error('Erreur suppression bulk:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // GET /api/ecom/orders - Liste des commandes
 router.get('/', requireEcomAuth, async (req, res) => {
   try {
@@ -58,23 +110,27 @@ router.get('/', requireEcomAuth, async (req, res) => {
 
     const total = await Order.countDocuments(filter);
 
-    // Stats via aggregation (performant)
-    const statsAgg = await Order.aggregate([
-      { $match: filter },
-      {
-        $group: {
-          _id: '$status',
-          count: { $sum: 1 },
-          revenue: { $sum: { $multiply: ['$price', '$quantity'] } }
-        }
-      }
-    ]);
-    const stats = { total: 0, pending: 0, confirmed: 0, shipped: 0, delivered: 0, returned: 0, cancelled: 0, totalRevenue: 0 };
-    statsAgg.forEach(s => {
-      stats[s._id] = s.count;
-      stats.total += s.count;
-      if (s._id === 'delivered') stats.totalRevenue = s.revenue;
+    // Stats — use countDocuments per status (auto-casts workspaceId, always works)
+    const wsFilter = { workspaceId: req.workspaceId };
+    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
+    
+    const countPromises = statuses.map(s => 
+      Order.countDocuments({ ...wsFilter, status: s })
+    );
+    const counts = await Promise.all(countPromises);
+    
+    const stats = { total: 0, totalRevenue: 0 };
+    statuses.forEach((s, i) => {
+      stats[s] = counts[i];
+      stats.total += counts[i];
     });
+    
+    // Calculate delivered revenue
+    const deliveredOrders = await Order.find(
+      { ...wsFilter, status: 'delivered' },
+      { price: 1, quantity: 1 }
+    ).lean();
+    stats.totalRevenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
 
     res.json({
       success: true,
@@ -130,7 +186,7 @@ function autoDetectColumns(headers) {
     { field: 'product', compound: ['product name', 'nom produit', 'nom article', 'nom du produit'], simple: ['produit', 'product', 'article', 'item', 'designation'] },
     { field: 'price', compound: ['product price', 'prix produit', 'prix unitaire', 'unit price', 'selling price'], simple: ['prix', 'price', 'montant', 'amount', 'total', 'cout', 'cost', 'tarif'] },
     { field: 'quantity', compound: [], simple: ['quantite', 'quantity', 'qte', 'qty', 'nb', 'nombre'] },
-    { field: 'status', compound: [], simple: ['statut', 'status', 'etat', 'state', 'livraison', 'delivery'] },
+    { field: 'status', compound: ['statut livraison', 'statut commande', 'delivery status', 'order status'], simple: ['statut', 'status', 'etat', 'state'] },
     { field: 'notes', compound: [], simple: ['notes', 'note', 'commentaire', 'comment', 'remarque', 'observation'] },
     { field: 'address', compound: ['address 1', 'adresse 1'], simple: ['adresse', 'address'] },
   ];
@@ -671,11 +727,121 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
             }
           }
 
-          console.log(`📊 [${syncId}] Headers détectés:`, headers.length);
+          console.log(`📊 [${syncId}] Headers détectés (${headers.length}):`, headers);
           const columnMap = autoDetectColumns(headers);
+          
+          // Fallback: if status column not detected, scan headers manually
+          if (columnMap.status === undefined) {
+            console.log(`⚠️ [${syncId}] Status column NOT detected! Scanning headers for fallback...`);
+            const statusKeywordsForHeaders = ['statut', 'status', 'etat', 'état', 'state', 'livraison', 'delivery'];
+            const normalizeH = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+            const usedIdx = new Set(Object.values(columnMap));
+            for (let hi = 0; hi < headers.length; hi++) {
+              if (usedIdx.has(hi)) continue;
+              const nh = normalizeH(headers[hi]);
+              if (statusKeywordsForHeaders.some(kw => nh.includes(kw))) {
+                columnMap.status = hi;
+                console.log(`✅ [${syncId}] Status column found via fallback at index ${hi}: "${headers[hi]}"`);
+                break;
+              }
+            }
+            if (columnMap.status === undefined) {
+              console.log(`❌ [${syncId}] Status column NOT found even with fallback! All orders will default to 'pending'.`);
+            }
+          }
+          
+          console.log(`📊 [${syncId}] Final column mapping:`, columnMap);
           const bulkOps = [];
           
           // Émettre progression: traitement
+          syncProgressEmitter.emit('progress', {
+            workspaceId: req.workspaceId,
+            sourceId,
+            current: 30,
+            total: 100,
+            status: '⚙️ Chargement des commandes existantes...',
+            percentage: 30
+          });
+
+          // Batch-load existing orders for dedup:
+          // 1) By sheetRowId for this source
+          const existingByRow = await Order.find(
+            { workspaceId: req.workspaceId, sheetRowId: { $regex: `^source_${sourceToSync._id}_` } },
+            { sheetRowId: 1, orderId: 1, statusModifiedManually: 1, status: 1 }
+          ).lean();
+          const existingByRowId = new Map(existingByRow.map(o => [o.sheetRowId, o]));
+          
+          // 2) By orderId across ALL orders in workspace (to catch manual status changes on any source)
+          const allOrdersWithId = await Order.find(
+            { workspaceId: req.workspaceId, orderId: { $exists: true, $ne: '' } },
+            { orderId: 1, statusModifiedManually: 1, status: 1 }
+          ).lean();
+          const existingByOrderId = new Map(allOrdersWithId.map(o => [o.orderId, o]));
+          console.log(`📋 [${syncId}] ${existingByRow.length} par rowId, ${allOrdersWithId.length} par orderId chargées pour dedup`);
+
+          // Statistiques de mapping des statuts
+          let statusStats = {};
+          let unrecognizedStatuses = new Set();
+
+          // Mapping étendu des statuts (déclaré une seule fois hors boucle)
+          const statusMap = {
+            'en attente': 'pending', 'pending': 'pending', 'nouveau': 'pending', 'new': 'pending',
+            'à traiter': 'pending', 'a traiter': 'pending', 'en cours': 'pending', 'processing': 'pending',
+            'en attente de paiement': 'pending', 'attente paiement': 'pending', 'en validation': 'pending',
+            'confirmé': 'confirmed', 'confirmed': 'confirmed', 'confirme': 'confirmed',
+            'validé': 'confirmed', 'valide': 'confirmed', 'accepté': 'confirmed', 'accepte': 'confirmed',
+            'approuvé': 'confirmed', 'approuve': 'confirmed',
+            'expédié': 'shipped', 'shipped': 'shipped', 'expedie': 'shipped', 'envoyé': 'shipped', 'envoye': 'shipped',
+            'en livraison': 'shipped', 'en route': 'shipped', 'en transit': 'shipped',
+            'en cours de livraison': 'shipped', 'transporté': 'shipped', 'transporte': 'shipped',
+            'livré': 'delivered', 'delivered': 'delivered', 'livre': 'delivered',
+            'reçu': 'delivered', 'recu': 'delivered', 'livraison effectuée': 'delivered',
+            'livraison terminée': 'delivered', 'remis': 'delivered', 'remis client': 'delivered',
+            'retour': 'returned', 'returned': 'returned', 'retourné': 'returned', 'retourne': 'returned',
+            'retour client': 'returned', 'retour marchandise': 'returned', 'retour produit': 'returned',
+            'remboursé': 'returned', 'rembourse': 'returned', 'échange': 'returned', 'echange': 'returned',
+            'annulé': 'cancelled', 'cancelled': 'cancelled', 'canceled': 'cancelled', 'annule': 'cancelled',
+            'abandonné': 'cancelled', 'abandonne': 'cancelled', 'refusé': 'cancelled', 'refuse': 'cancelled',
+            'rejeté': 'cancelled', 'rejete': 'cancelled',
+            'injoignable': 'unreachable', 'unreachable': 'unreachable', 'injoignabl': 'unreachable',
+            'non joignable': 'unreachable', 'non joignabl': 'unreachable', 'téléphone injoignable': 'unreachable',
+            'tel injoignable': 'unreachable', 'pas de réponse': 'unreachable', 'absence réponse': 'unreachable',
+            'client injoignable': 'unreachable', 'contact impossible': 'unreachable',
+            'appelé': 'called', 'called': 'called', 'appele': 'called', 'contacté': 'called',
+            'contacte': 'called', 'appel effectué': 'called', 'appel terminé': 'called',
+            'client appelé': 'called', 'tentative appel': 'called',
+            'reporté': 'postponed', 'postponed': 'postponed', 'reporte': 'postponed',
+            'différé': 'postponed', 'differe': 'postponed', 'plus tard': 'postponed',
+            'reporté demande': 'postponed', 'reporté client': 'postponed', 'ajourné': 'postponed',
+            'ajourne': 'postponed'
+          };
+
+          // Fonction de mapping intelligent avec reconnaissance par mots-clés
+          const statusKeywords = {
+            'pending': ['attente', 'nouveau', 'new', 'traiter', 'processing', 'validation', 'en cours'],
+            'confirmed': ['confirm', 'valid', 'accept', 'approuv'],
+            'shipped': ['expedi', 'envoy', 'livraison', 'route', 'transit', 'transport'],
+            'delivered': ['livr', 'reçu', 'recu', 'remis', 'termin'],
+            'returned': ['retour', 'rembours', 'échange', 'echange', 'refund'],
+            'cancelled': ['annul', 'abandon', 'refus', 'rejet', 'cancel'],
+            'unreachable': ['injoign', 'joign', 'réponse', 'reponse'],
+            'called': ['appel', 'téléphon', 'telephon'],
+            'postponed': ['report', 'différ', 'tard', 'ajourn']
+          };
+          const intelligentStatusMapping = (normalized, raw) => {
+            if (!normalized || normalized === '') return 'pending';
+            if (statusMap[normalized]) return statusMap[normalized];
+            for (const [mapped, kwList] of Object.entries(statusKeywords)) {
+              for (const kw of kwList) {
+                if (normalized.includes(kw)) return mapped;
+              }
+            }
+            return 'pending';
+          };
+
+          // Track seen orderIds to prevent duplicates within same sync batch
+          const seenOrderIds = new Set();
+
           syncProgressEmitter.emit('progress', {
             workspaceId: req.workspaceId,
             sourceId,
@@ -689,9 +855,9 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
             const row = table.rows[i];
             if (!row.c || row.c.every(cell => !cell || !cell.v)) continue;
 
-            // Émettre progression pendant le traitement des lignes
-            const progress = 35 + Math.floor(((i - dataStartIndex) / (table.rows.length - dataStartIndex)) * 40;
-            if (i % Math.max(1, Math.ceil((table.rows.length - dataStartIndex) / 20)) === 0) { // Émettre toutes les 5% des lignes
+            // Émettre progression toutes les 5% des lignes
+            const progress = 35 + Math.floor(((i - dataStartIndex) / (table.rows.length - dataStartIndex)) * 40);
+            if (i % Math.max(1, Math.ceil((table.rows.length - dataStartIndex) / 20)) === 0) {
               syncProgressEmitter.emit('progress', {
                 workspaceId: req.workspaceId,
                 sourceId,
@@ -719,11 +885,18 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
               const idx = columnMap[field];
               if (idx === undefined || !row.c[idx]) return new Date();
               const cell = row.c[idx];
+              // Google Visualization API: Date(year, month, day) — month is 0-indexed, may have spaces
               if (typeof cell.v === 'string' && cell.v.startsWith('Date(')) {
-                const parts = cell.v.match(/Date\((\d+),(\d+),(\d+)/);
+                const parts = cell.v.match(/Date\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/);
                 if (parts) return new Date(parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]));
               }
-              return parseFlexDate(cell.f || cell.v);
+              // Google Sheets serial date number (days since Dec 30, 1899)
+              if (typeof cell.v === 'number' && cell.v > 10000 && cell.v < 100000) {
+                const epoch = new Date(1899, 11, 30);
+                return new Date(epoch.getTime() + cell.v * 86400000);
+              }
+              // Use formatted value first (cell.f), then raw value
+              return parseFlexDate(cell.f || (cell.v != null ? String(cell.v) : ''));
             };
 
             const rawData = {};
@@ -735,22 +908,52 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
             });
 
             const rowId = `source_${sourceToSync._id}_row_${i + 2}`;
-            const statusMap = {
-              'en attente': 'pending', 'pending': 'pending', 'nouveau': 'pending', 'new': 'pending',
-              'confirmé': 'confirmed', 'confirmed': 'confirmed', 'confirme': 'confirmed',
-              'expédié': 'shipped', 'shipped': 'shipped', 'expedie': 'shipped', 'envoyé': 'shipped', 'envoye': 'shipped',
-              'livré': 'delivered', 'delivered': 'delivered', 'livre': 'delivered',
-              'retour': 'returned', 'returned': 'returned', 'retourné': 'returned', 'retourne': 'returned',
-              'annulé': 'cancelled', 'cancelled': 'cancelled', 'canceled': 'cancelled', 'annule': 'cancelled'
-            };
-            const mappedStatus = statusMap[(getVal('status') || '').toLowerCase().trim()] || 'pending';
+            let rawStatus = getVal('status') || '';
+            
+            // Fallback: if status column not mapped, try to find status in rawData
+            if (!rawStatus && rawData && typeof rawData === 'object') {
+              const statusEntry = Object.entries(rawData).find(([k]) => {
+                const nk = k.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+                return nk.includes('statut') || nk.includes('status') || nk.includes('etat') || nk === 'state';
+              });
+              if (statusEntry && statusEntry[1]) {
+                rawStatus = statusEntry[1];
+              }
+            }
+            
+            const normalizedStatus = rawStatus.toString().toLowerCase().trim();
+            const mappedStatus = intelligentStatusMapping(normalizedStatus, rawStatus);
+            
+            // Debug: log first 3 rows to verify status mapping
+            if (i - dataStartIndex < 3) {
+              console.log(`🔍 [${syncId}] Row ${i+2}: rawStatus="${rawStatus}" → normalized="${normalizedStatus}" → mapped="${mappedStatus}" | columnMap.status=${columnMap.status}`);
+            }
+            
+            // Statistiques de mapping
+            statusStats[mappedStatus] = (statusStats[mappedStatus] || 0) + 1;
+            if (mappedStatus === 'pending' && normalizedStatus !== '' && !statusMap[normalizedStatus]) {
+              unrecognizedStatuses.add(rawStatus);
+            }
+
+            const orderId = getVal('orderId') || `#${sourceToSync.name}_${i + 2}`;
+
+            // Dedup: skip if this orderId was already processed in this batch
+            if (seenOrderIds.has(orderId)) {
+              console.log(`⚠️ [${syncId}] Doublon détecté dans le sheet, orderId: ${orderId}, ligne ${i + 2} ignorée`);
+              continue;
+            }
+            seenOrderIds.add(orderId);
+
+            const rawCity = getVal('city');
+            const rawAddress = getVal('address');
 
             const doc = {
-              orderId: getVal('orderId') || `#${sourceToSync.name}_${i + 2}`,
+              orderId,
               date: getDateVal('date'),
               clientName: getVal('clientName'),
               clientPhone: getVal('clientPhone'),
-              city: getVal('city'),
+              city: rawCity || rawAddress,
+              address: rawAddress,
               product: getVal('product'),
               quantity: parseInt(getNumVal('quantity')) || 1,
               price: getNumVal('price'),
@@ -760,20 +963,23 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
               rawData
             };
 
-            // Vérifier si la commande existe déjà
-            const existingOrder = await Order.findOne({ 
-              workspaceId: req.workspaceId, 
-              sheetRowId: rowId 
-            });
+            // Check if order already exists (by rowId first, then by orderId)
+            const existingOrder = existingByRowId.get(rowId) || existingByOrderId.get(orderId);
 
             // Si la commande existe et que le statut a été modifié manuellement, ne pas écraser le statut
             if (existingOrder && existingOrder.statusModifiedManually) {
               delete doc.status;
             }
 
+            // Use orderId + workspaceId as primary dedup key when orderId is a real value (not auto-generated)
+            const isRealOrderId = getVal('orderId') && getVal('orderId').trim() !== '';
+            const filterKey = isRealOrderId
+              ? { workspaceId: req.workspaceId, orderId }
+              : { workspaceId: req.workspaceId, sheetRowId: rowId };
+
             bulkOps.push({
               updateOne: {
-                filter: { workspaceId: req.workspaceId, sheetRowId: rowId },
+                filter: filterKey,
                 update: { $set: { ...doc, workspaceId: req.workspaceId, sheetRowId: rowId, source: 'google_sheets' } },
                 upsert: true
               }
@@ -845,6 +1051,16 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
                 }
               }
             }
+          }
+
+          // Afficher les statistiques de mapping des statuts
+          console.log(`📊 [${syncId}] Statistiques de mapping des statuts:`);
+          Object.entries(statusStats).forEach(([status, count]) => {
+            console.log(`   ${status}: ${count} commandes`);
+          });
+          
+          if (unrecognizedStatuses.size > 0) {
+            console.log(`⚠️ [${syncId}] Statuts non reconnus (${unrecognizedStatuses.size}):`, Array.from(unrecognizedStatuses));
           }
 
           // Update source stats
@@ -1145,15 +1361,42 @@ router.put('/sources/:sourceId', requireEcomAuth, validateEcomAccess('products',
   }
 });
 
-// DELETE /api/ecom/orders/sources/:sourceId - Supprimer une source
+// DELETE /api/ecom/orders/sources/:sourceId - Supprimer une source Google Sheets
 router.delete('/sources/:sourceId', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
-    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
-    if (!settings) return res.status(404).json({ success: false, message: 'Paramètres non trouvés' });
+    const { sourceId } = req.params;
 
-    settings.sources.pull(req.params.sourceId);
+    if (sourceId === 'legacy') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Pour supprimer la source par défaut, utilisez DELETE /api/ecom/orders/sources/legacy/confirm' 
+      });
+    }
+
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings || !settings.sources) {
+      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
+    }
+
+    const sourceIndex = settings.sources.findIndex(s => String(s._id) === sourceId);
+    if (sourceIndex === -1) {
+      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
+    }
+
+    const deletedSource = settings.sources[sourceIndex];
+    settings.sources.splice(sourceIndex, 1);
     await settings.save();
-    res.json({ success: true, message: 'Source supprimée' });
+
+    const deleteResult = await Order.deleteMany({
+      workspaceId: req.workspaceId,
+      sheetRowId: { $regex: `^source_${sourceId}_` }
+    });
+
+    res.json({
+      success: true,
+      message: `Source "${deletedSource.name}" supprimée avec succès ainsi que ${deleteResult.deletedCount} commande(s)`,
+      data: { deletedSource, deletedOrders: deleteResult.deletedCount }
+    });
   } catch (error) {
     console.error('Erreur delete source:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -1341,37 +1584,7 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
   }
 });
 
-// PUT /api/ecom/orders/:id - Mettre à jour une commande
-router.put('/:id', requireEcomAuth, async (req, res) => {
-  try {
-    const { status, assignedLivreur } = req.body;
-    const updateData = {};
-    
-    if (status !== undefined) {
-      updateData.status = status;
-      updateData.statusModifiedManually = true;
-      updateData.lastManualStatusUpdate = new Date();
-    }
-    if (assignedLivreur !== undefined) updateData.assignedLivreur = assignedLivreur;
-    
-    const order = await Order.findOneAndUpdate(
-      { _id: req.params.id, workspaceId: req.workspaceId },
-      updateData,
-      { new: true }
-    ).populate('assignedLivreur', 'name email phone');
-    
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
-    }
-    
-    res.json({ success: true, data: order });
-  } catch (error) {
-    console.error('Erreur update order:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
-});
-
-// PUT /api/ecom/orders/:id - Modifier le statut d'une commande
+// PUT /api/ecom/orders/:id - Modifier une commande (statut, champs, auto-tagging, client sync)
 router.put('/:id', requireEcomAuth, async (req, res) => {
   try {
     const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
@@ -1379,19 +1592,25 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
 
-    const allowedFields = ['status', 'notes', 'clientName', 'clientPhone', 'city', 'product', 'quantity', 'price', 'deliveryLocation', 'deliveryTime', 'tags', 'assignedLivreur'];
+    const allowedFields = ['status', 'notes', 'clientName', 'clientPhone', 'city', 'address', 'product', 'quantity', 'price', 'deliveryLocation', 'deliveryTime', 'tags', 'assignedLivreur'];
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) order[field] = req.body[field];
     });
 
+    // Marquer le statut comme modifié manuellement
+    if (req.body.status !== undefined) {
+      order.statusModifiedManually = true;
+      order.lastManualStatusUpdate = new Date();
+    }
+
     // Auto-tagging basé sur le statut
     if (req.body.status) {
-      const statusTags = { pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', delivered: 'Client', returned: 'Retour', cancelled: 'Annulé' };
+      const statusTags = { pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', delivered: 'Client', returned: 'Retour', cancelled: 'Annulé', unreachable: 'Injoignable', called: 'Appelé', postponed: 'Reporté' };
       const allStatusTags = Object.values(statusTags);
       // Retirer les anciens tags de statut, garder les tags manuels
       order.tags = (order.tags || []).filter(t => !allStatusTags.includes(t));
       // Ajouter le nouveau tag
-      const newTag = statusTags[req.body.status];
+      const newTag = statusTags[req.body.status] || req.body.status;
       if (newTag && !order.tags.includes(newTag)) {
         order.tags.push(newTag);
       }
@@ -1408,7 +1627,10 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
           confirmed: { clientStatus: 'confirmed', tag: 'Confirmé' },
           shipped: { clientStatus: 'confirmed', tag: 'Expédié' },
           cancelled: { clientStatus: 'prospect', tag: 'Annulé' },
-          returned: { clientStatus: 'returned', tag: 'Retour' }
+          returned: { clientStatus: 'returned', tag: 'Retour' },
+          unreachable: { clientStatus: 'prospect', tag: 'Injoignable' },
+          called: { clientStatus: 'prospect', tag: 'Appelé' },
+          postponed: { clientStatus: 'prospect', tag: 'Reporté' }
         };
         const statusPriority = { prospect: 1, confirmed: 2, returned: 3, delivered: 4, blocked: 5 };
         const mapping = orderStatusMap[req.body.status];
@@ -1473,48 +1695,6 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
   }
 });
 
-// POST /api/ecom/orders/:id/send-whatsapp - Envoyer message WhatsApp au livreur via Green API
-router.post('/:id/send-whatsapp', requireEcomAuth, async (req, res) => {
-  try {
-    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
-    if (!order) {
-      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
-    }
-
-    const { phone, message } = req.body;
-    if (!phone || !message) {
-      return res.status(400).json({ success: false, message: 'Numéro et message requis' });
-    }
-
-    const greenApiId = process.env.GREEN_API_ID_INSTANCE;
-    const greenApiToken = process.env.GREEN_API_TOKEN_INSTANCE;
-    const greenApiUrl = process.env.GREEN_API_URL || 'https://api.green-api.com';
-    if (!greenApiId || !greenApiToken) {
-      return res.status(500).json({ success: false, message: 'Green API non configuré sur le serveur' });
-    }
-
-    const cleanedPhone = phone.replace(/\D/g, '');
-    const apiUrl = `${greenApiUrl}/waInstance${greenApiId}/sendMessage/${greenApiToken}`;
-
-    const response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId: `${cleanedPhone}@c.us`, message })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok || data.error) {
-      return res.status(500).json({ success: false, message: data.error || data.errorMessage || 'Erreur Green API' });
-    }
-
-    res.json({ success: true, message: 'Message WhatsApp envoyé au livreur', data });
-  } catch (error) {
-    console.error('Erreur envoi WhatsApp livreur:', error);
-    res.status(500).json({ success: false, message: error.message || 'Erreur envoi WhatsApp' });
-  }
-});
-
 // DELETE /api/ecom/orders/:id - Supprimer une commande
 router.delete('/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -1525,6 +1705,51 @@ router.delete('/:id', requireEcomAuth, validateEcomAccess('products', 'write'), 
     res.json({ success: true, message: 'Commande supprimée' });
   } catch (error) {
     console.error('Erreur delete order:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/orders/fix-statuses - Corriger les statuts en français
+router.get('/fix-statuses', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const statusMapping = {
+      'livré': 'delivered', 'livre': 'delivered', 'LIVRÉ': 'delivered', 'LIVRE': 'delivered',
+      'en attente': 'pending', 'attente': 'pending', 'EN ATTENTE': 'pending',
+      'confirmé': 'confirmed', 'confirme': 'confirmed', 'CONFIRMÉ': 'confirmed', 'CONFIRME': 'confirmed',
+      'expédié': 'shipped', 'expedie': 'shipped', 'EXPÉDIÉ': 'shipped', 'EXPEDIE': 'shipped',
+      'retour': 'returned', 'retourné': 'returned', 'RETOUR': 'returned', 'RETournÉ': 'returned',
+      'annulé': 'cancelled', 'annule': 'cancelled', 'ANNULÉ': 'cancelled', 'ANNULE': 'cancelled',
+      'injoignable': 'unreachable', 'INJOIGNABLE': 'unreachable',
+      'appelé': 'called', 'appele': 'called', 'APPELÉ': 'called', 'APPELE': 'called',
+      'reporté': 'postponed', 'reporte': 'postponed', 'REPORTÉ': 'postponed', 'REPORTE': 'postponed'
+    };
+    
+    let totalUpdated = 0;
+    const updateResults = [];
+    
+    for (const [oldStatus, newStatus] of Object.entries(statusMapping)) {
+      const result = await Order.updateMany(
+        { workspaceId: req.workspaceId, status: oldStatus },
+        { status: newStatus }
+      );
+      
+      if (result.modifiedCount > 0) {
+        totalUpdated += result.modifiedCount;
+        updateResults.push({ oldStatus, newStatus, count: result.modifiedCount });
+        console.log(`✅ ${oldStatus} -> ${newStatus}: ${result.modifiedCount} commandes`);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: `${totalUpdated} commandes mises à jour`,
+      data: {
+        totalUpdated,
+        updates: updateResults
+      }
+    });
+  } catch (error) {
+    console.error('Erreur fix statuses:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
@@ -1687,49 +1912,6 @@ router.get('/config/whatsapp', requireEcomAuth, validateEcomAccess('products', '
   }
 });
 
-// DELETE /api/ecom/orders/sources/:id - Supprimer une source Google Sheets
-router.delete('/sources/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
-  try {
-    const { id } = req.params;
-    
-    if (id === 'legacy') {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Pour supprimer la source par défaut, utilisez DELETE /api/ecom/orders/sources/legacy/confirm' 
-      });
-    }
-
-    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
-    
-    if (!settings || !settings.sources) {
-      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
-    }
-
-    // Supprimer la source du tableau
-    const sourceIndex = settings.sources.findIndex(s => s._id === id);
-    if (sourceIndex === -1) {
-      return res.status(404).json({ success: false, message: 'Source non trouvée.' });
-    }
-
-    const deletedSource = settings.sources[sourceIndex];
-    settings.sources.splice(sourceIndex, 1);
-    
-    await settings.save();
-
-    res.json({
-      success: true,
-      message: `Source "${deletedSource.name}" supprimée avec succès`,
-      data: {
-        deletedSource: deletedSource
-      }
-    });
-
-  } catch (error) {
-    console.error('Erreur suppression source:', error);
-    res.status(500).json({ success: false, message: 'Erreur serveur' });
-  }
-});
-
 // DELETE /api/ecom/orders/sources/legacy/confirm - Supprimer le Google Sheet par défaut
 router.delete('/sources/legacy/confirm', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -1745,17 +1927,236 @@ router.delete('/sources/legacy/confirm', requireEcomAuth, validateEcomAccess('pr
     
     await settings.save();
 
+    // Supprimer toutes les commandes de la source legacy (sheetRowId ne commence pas par source_)
+    const deleteResult = await Order.deleteMany({
+      workspaceId: req.workspaceId,
+      sheetRowId: { $not: /^source_/, $ne: '' }
+    });
+
     res.json({
       success: true,
-      message: 'Google Sheet par défaut supprimé avec succès. Les autres configurations sont conservées.',
+      message: `Google Sheet par défaut supprimé avec succès ainsi que ${deleteResult.deletedCount} commande(s). Les autres configurations sont conservées.`,
       data: {
         clearedFields: ['googleSheets.spreadsheetId', 'googleSheets.lastSyncAt'],
-        preservedFields: ['googleSheets.apiKey', 'googleSheets.sheetName', 'googleSheets.columnMapping']
+        preservedFields: ['googleSheets.apiKey', 'googleSheets.sheetName', 'googleSheets.columnMapping'],
+        deletedOrders: deleteResult.deletedCount
       }
     });
 
   } catch (error) {
     console.error('Erreur suppression source legacy:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/sync-clients - Synchroniser tous les clients depuis les commandes
+router.post('/sync-clients', requireEcomAuth, async (req, res) => {
+  try {
+    console.log('🔄 ===== DÉBUT SYNCHRONISATION CLIENTS =====');
+    console.log('👤 Utilisateur:', req.ecomUser?.email);
+    console.log('🏢 Workspace ID:', req.workspaceId);
+    
+    const orderStatusMap = {
+      delivered: { clientStatus: 'delivered', tag: 'Client' },
+      pending: { clientStatus: 'prospect', tag: 'En attente' },
+      confirmed: { clientStatus: 'confirmed', tag: 'Confirmé' },
+      shipped: { clientStatus: 'confirmed', tag: 'Expédié' },
+      cancelled: { clientStatus: 'prospect', tag: 'Annulé' },
+      returned: { clientStatus: 'returned', tag: 'Retour' },
+      unreachable: { clientStatus: 'prospect', tag: 'Injoignable' },
+      called: { clientStatus: 'prospect', tag: 'Appelé' },
+      postponed: { clientStatus: 'prospect', tag: 'Reporté' }
+    };
+    console.log('📋 Mapping statuts:', Object.keys(orderStatusMap));
+    
+    const statusPriority = { prospect: 1, confirmed: 2, returned: 3, delivered: 4, blocked: 5 };
+    console.log('📊 Priorité statuts:', statusPriority);
+
+    // Récupérer toutes les commandes avec clientPhone
+    console.log('🔍 Recherche des commandes avec téléphone...');
+    const orders = await Order.find({ 
+      workspaceId: req.workspaceId,
+      clientPhone: { $exists: true, $ne: '' }
+    }).lean();
+
+    console.log(`📦 ${orders.length} commandes trouvées pour synchronisation`);
+    if (orders.length > 0) {
+      console.log('📈 Exemples de commandes:');
+      orders.slice(0, 3).forEach((order, i) => {
+        console.log(`  ${i+1}. ${order.clientName} - ${order.clientPhone} - ${order.status} - ${order.price}x${order.quantity}`);
+      });
+    }
+
+    let created = 0;
+    let updated = 0;
+    const statusGroups = {};
+    const totalOrders = orders.length;
+
+    // Emit progress start
+    req.app.get('io')?.emit(`sync-clients-progress-${req.workspaceId}`, {
+      type: 'start',
+      total: totalOrders,
+      message: `Démarrage de la synchronisation de ${totalOrders} commandes...`
+    });
+
+    console.log('⚙️ Traitement des commandes...');
+    for (let i = 0; i < orders.length; i++) {
+      const order = orders[i];
+      const phone = (order.clientPhone || '').trim();
+      const nameParts = (order.clientName || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || 'Client';
+      const lastName = nameParts.slice(1).join(' ') || '';
+      const orderTotal = (order.price || 0) * (order.quantity || 1);
+      const productName = getOrderProductName(order);
+
+      // Log détaillé pour les premières commandes
+      if (i < 5) {
+        console.log(`📝 Commande ${i+1}: ${order.clientName} (${phone}) - ${order.status} - ${orderTotal}€ - produit: "${productName}" (raw: "${order.product}")`);
+      }
+
+      // Compter par statut pour le retour
+      const mapping = orderStatusMap[order.status];
+      if (mapping) {
+        statusGroups[mapping.clientStatus] = (statusGroups[mapping.clientStatus] || 0) + 1;
+        if (i < 5) {
+          console.log(`  ↳ Mapping: ${order.status} → ${mapping.clientStatus} (${mapping.tag})`);
+        }
+      } else {
+        if (i < 5) {
+          console.log(`  ⚠️ Aucun mapping pour statut: ${order.status}`);
+        }
+      }
+
+      let client = await Client.findOne({ workspaceId: req.workspaceId, phone });
+
+      if (!client) {
+        // Créer nouveau client
+        console.log(`  ➕ Création nouveau client: ${firstName} ${lastName} (${phone})`);
+        client = new Client({
+          workspaceId: req.workspaceId,
+          phone,
+          firstName,
+          lastName,
+          city: order.city || '',
+          address: order.address || '',
+          products: productName ? [productName] : [],
+          status: mapping ? mapping.clientStatus : 'prospect',
+          tags: mapping ? [mapping.tag] : [],
+          totalOrders: 1,
+          totalSpent: orderTotal,
+          lastOrderAt: order.date,
+          lastContactAt: order.date,
+          createdBy: req.ecomUser._id
+        });
+        await client.save();
+        created++;
+        console.log(`  ✅ Client créé avec ID: ${client._id}`);
+      } else {
+        // Mettre à jour client existant
+        console.log(`  🔄 Mise à jour client existant: ${client.firstName} (${phone}) - statut actuel: ${client.status}`);
+        let hasChanges = false;
+        
+        // Mettre à jour le statut si priorité plus élevée
+        if (mapping && statusPriority[mapping.clientStatus] > statusPriority[client.status]) {
+          console.log(`    📈 Changement statut: ${client.status} → ${mapping.clientStatus} (priorité ${statusPriority[mapping.clientStatus]} > ${statusPriority[client.status]})`);
+          client.status = mapping.clientStatus;
+          hasChanges = true;
+        }
+        
+        // Ajouter le tag si non présent
+        if (mapping && !client.tags.includes(mapping.tag)) {
+          console.log(`    🏷️ Ajout tag: ${mapping.tag}`);
+          client.tags.push(mapping.tag);
+          hasChanges = true;
+        }
+        
+        // Mettre à jour l'adresse si elle n'existe pas
+        if (order.address && !client.address) {
+          console.log(`    📍 Ajout adresse: ${order.address}`);
+          client.address = order.address;
+          hasChanges = true;
+        }
+        
+        // Ajouter le produit s'il n'est pas déjà dans la liste
+        if (productName && !client.products.includes(productName)) {
+          console.log(`    📦 Ajout produit: ${productName}`);
+          client.products.push(productName);
+          hasChanges = true;
+        }
+        
+        // Mettre à jour les totaux
+        const oldOrders = client.totalOrders || 0;
+        const oldSpent = client.totalSpent || 0;
+        client.totalOrders = oldOrders + 1;
+        client.totalSpent = oldSpent + orderTotal;
+        client.lastOrderAt = order.date;
+        client.lastContactAt = order.date;
+        
+        console.log(`    💰 Mise à jour totaux: ${oldOrders}→${client.totalOrders} commandes, ${oldSpent}→${client.totalSpent}€ dépensés`);
+        
+        if (hasChanges || true) { // Toujours sauvegarder pour les totaux
+          await client.save();
+          updated++;
+          console.log(`  ✅ Client mis à jour`);
+        }
+      }
+
+      // Emit progress every 10 orders or at the end
+      if (i % 10 === 0 || i === orders.length - 1) {
+        const progress = Math.round(((i + 1) / totalOrders) * 100);
+        console.log(`📊 Progression: ${i + 1}/${totalOrders} (${progress}%) - Créés: ${created}, Mis à jour: ${updated}`);
+        
+        req.app.get('io')?.emit(`sync-clients-progress-${req.workspaceId}`, {
+          type: 'progress',
+          current: i + 1,
+          total: totalOrders,
+          percentage: progress,
+          created,
+          updated,
+          message: `Traitement de ${i + 1}/${totalOrders} commandes...`
+        });
+      }
+    }
+
+    console.log(`✅ ===== SYNCHRONISATION TERMINÉE =====`);
+    console.log(`📊 Résultats:`);
+    console.log(`  • Total commandes traitées: ${totalOrders}`);
+    console.log(`  • Clients créés: ${created}`);
+    console.log(`  • Clients mis à jour: ${updated}`);
+    console.log(`  • Total clients traités: ${created + updated}`);
+    console.log(`� Répartition par statut:`, statusGroups);
+
+    // Emit completion
+    req.app.get('io')?.emit(`sync-clients-progress-${req.workspaceId}`, {
+      type: 'complete',
+      created,
+      updated,
+      total: created + updated,
+      statusGroups,
+      message: 'Synchronisation terminée avec succès !'
+    });
+
+    res.json({ 
+      success: true, 
+      message: 'Synchronisation terminée',
+      data: {
+        created,
+        updated,
+        total: created + updated,
+        statusGroups
+      }
+    });
+  } catch (error) {
+    console.error('❌ ===== ERREUR SYNCHRONISATION =====');
+    console.error('Erreur:', error.message);
+    console.error('Stack:', error.stack);
+    
+    // Emit error
+    req.app.get('io')?.emit(`sync-clients-progress-${req.workspaceId}`, {
+      type: 'error',
+      message: 'Erreur lors de la synchronisation'
+    });
+    
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

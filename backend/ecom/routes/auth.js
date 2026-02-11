@@ -1,11 +1,18 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import { Resend } from 'resend';
 import EcomUser from '../models/EcomUser.js';
 import Workspace from '../models/Workspace.js';
+import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
 
 const router = express.Router();
+
+// Rate limiting simple pour forgot-password (anti-abus)
+const forgotPasswordAttempts = new Map();
+const FORGOT_PASSWORD_LIMIT = 3; // max 3 demandes
+const FORGOT_PASSWORD_WINDOW = 15 * 60 * 1000; // par 15 minutes
 
 // POST /api/ecom/auth/login - Connexion
 router.post('/login', validateEmail, async (req, res) => {
@@ -227,8 +234,13 @@ router.get('/me', async (req, res) => {
     
     const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
     
+    console.log('🔍 Recherche utilisateur avec ID:', decoded.id);
     const user = await EcomUser.findById(decoded.id).select('-password');
+    console.log('👤 Utilisateur trouvé:', user ? user.email : 'Non trouvé');
+    console.log('🔑 Utilisateur actif:', user?.isActive);
+    
     if (!user || !user.isActive) {
+      console.log('❌ Utilisateur non trouvé ou inactif');
       return res.status(401).json({
         success: false,
         message: 'Utilisateur non trouvé ou inactif'
@@ -302,6 +314,165 @@ router.put('/profile', async (req, res) => {
     });
   } catch (error) {
     console.error('Erreur update profile e-commerce:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/forgot-password - Demander une réinitialisation
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = req.body;
+    
+    if (!email || !email.trim()) {
+      return res.status(400).json({ success: false, message: 'Email requis' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Rate limiting
+    const now = Date.now();
+    const key = normalizedEmail;
+    const attempts = forgotPasswordAttempts.get(key) || { count: 0, firstAttempt: now };
+    
+    if (now - attempts.firstAttempt > FORGOT_PASSWORD_WINDOW) {
+      attempts.count = 0;
+      attempts.firstAttempt = now;
+    }
+    
+    if (attempts.count >= FORGOT_PASSWORD_LIMIT) {
+      return res.status(429).json({
+        success: false,
+        message: 'Trop de tentatives. Veuillez réessayer dans 15 minutes.'
+      });
+    }
+    
+    attempts.count++;
+    forgotPasswordAttempts.set(key, attempts);
+
+    // Toujours répondre succès (sécurité : ne pas révéler si l'email existe)
+    const successMessage = 'Si un compte existe avec cet email, un lien de réinitialisation a été envoyé.';
+
+    const user = await EcomUser.findOne({ email: normalizedEmail, isActive: true });
+    if (!user) {
+      console.log(`\u26a0\ufe0f Forgot password: email ${normalizedEmail} non trouv\u00e9`);
+      return res.json({ success: true, message: successMessage });
+    }
+
+    // Générer le token
+    const resetToken = await PasswordResetToken.createToken(user._id);
+
+    // Construire le lien de réinitialisation
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/ecom/reset-password?token=${resetToken.token}`;
+
+    // Envoyer l'email via Resend
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.error('\u274c RESEND_API_KEY non configur\u00e9 - impossible d\'envoyer l\'email de r\u00e9initialisation');
+      return res.status(500).json({ success: false, message: 'Service email non configur\u00e9' });
+    }
+
+    const resend = new Resend(resendApiKey);
+    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
+
+    await resend.emails.send({
+      from: `Ecomstarter <${fromEmail}>`,
+      to: normalizedEmail,
+      subject: 'R\u00e9initialisation de votre mot de passe',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #1e40af; font-size: 24px; margin: 0;">R\u00e9initialisation du mot de passe</h1>
+          </div>
+          <div style="background: #f8fafc; border-radius: 12px; padding: 30px; border: 1px solid #e2e8f0;">
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Bonjour,</p>
+            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Vous avez demand\u00e9 la r\u00e9initialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${resetLink}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">R\u00e9initialiser mon mot de passe</a>
+            </div>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0 0 10px;">Ce lien expire dans <strong>1 heure</strong>.</p>
+            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0;">Si vous n'avez pas demand\u00e9 cette r\u00e9initialisation, ignorez simplement cet email.</p>
+          </div>
+          <div style="text-align: center; margin-top: 30px;">
+            <p style="color: #94a3b8; font-size: 12px;">Ecomstarter - Plateforme E-commerce</p>
+          </div>
+        </div>
+      `
+    });
+
+    console.log(`\u2705 Email de r\u00e9initialisation envoy\u00e9 \u00e0 ${normalizedEmail}`);
+    res.json({ success: true, message: successMessage });
+  } catch (error) {
+    console.error('Erreur forgot-password:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/reset-password - R\u00e9initialiser le mot de passe avec le token
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Token et nouveau mot de passe requis' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: 'Le mot de passe doit contenir au moins 6 caract\u00e8res' });
+    }
+
+    // V\u00e9rifier le token
+    const resetToken = await PasswordResetToken.verifyToken(token);
+    if (!resetToken) {
+      return res.status(400).json({
+        success: false,
+        message: 'Lien de r\u00e9initialisation invalide ou expir\u00e9. Veuillez faire une nouvelle demande.'
+      });
+    }
+
+    // Trouver l'utilisateur
+    const user = await EcomUser.findById(resetToken.userId);
+    if (!user || !user.isActive) {
+      return res.status(400).json({ success: false, message: 'Utilisateur non trouv\u00e9 ou inactif' });
+    }
+
+    // Mettre \u00e0 jour le mot de passe
+    user.password = newPassword;
+    await user.save();
+
+    // Marquer le token comme utilis\u00e9
+    resetToken.used = true;
+    await resetToken.save();
+
+    // Envoyer un email de confirmation
+    try {
+      const resendApiKey = process.env.RESEND_API_KEY;
+      if (resendApiKey) {
+        const resend = new Resend(resendApiKey);
+        const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
+        await resend.emails.send({
+          from: `Ecomstarter <${fromEmail}>`,
+          to: user.email,
+          subject: 'Votre mot de passe a \u00e9t\u00e9 modifi\u00e9',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+              <div style="background: #f0fdf4; border-radius: 12px; padding: 30px; border: 1px solid #bbf7d0;">
+                <h2 style="color: #166534; font-size: 20px; margin: 0 0 15px;">\u2705 Mot de passe modifi\u00e9</h2>
+                <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 15px;">Votre mot de passe a \u00e9t\u00e9 r\u00e9initialis\u00e9 avec succ\u00e8s.</p>
+                <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0;">Si vous n'\u00eates pas \u00e0 l'origine de cette modification, contactez imm\u00e9diatement le support.</p>
+              </div>
+            </div>
+          `
+        });
+      }
+    } catch (emailErr) {
+      console.error('Erreur envoi email confirmation:', emailErr);
+    }
+
+    console.log(`\u2705 Mot de passe r\u00e9initialis\u00e9 pour ${user.email}`);
+    res.json({ success: true, message: 'Mot de passe r\u00e9initialis\u00e9 avec succ\u00e8s' });
+  } catch (error) {
+    console.error('Erreur reset-password:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

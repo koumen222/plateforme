@@ -27,6 +27,7 @@ const ClientsList = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [deletingAll, setDeletingAll] = useState(false);
 
   const fetchClients = async () => {
     try {
@@ -70,6 +71,22 @@ const ClientsList = () => {
     } catch { setError('Erreur suppression'); }
   };
 
+  const handleDeleteAll = async () => {
+    if (!confirm('⚠️ ATTENTION ! Supprimer TOUS les clients ? Cette action est irréversible.')) return;
+    if (!confirm('Êtes-vous vraiment sûr ? Tous les clients seront définitivement supprimés.')) return;
+    setDeletingAll(true);
+    setError('');
+    try {
+      const res = await ecomApi.delete('/clients/bulk');
+      setSuccess(res.data.message);
+      fetchClients();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur suppression');
+    } finally {
+      setDeletingAll(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -89,12 +106,23 @@ const ClientsList = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Clients</h1>
           <p className="text-sm text-gray-500 mt-0.5">{stats.total || 0} client{(stats.total || 0) > 1 ? 's' : ''}</p>
         </div>
-        <Link
-          to="/ecom/clients/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
-        >
-          + Client
-        </Link>
+        <div className="flex items-center gap-2">
+          {user?.role === 'ecom_admin' && stats.total > 0 && (
+            <button
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              className="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {deletingAll ? 'Suppression...' : '🗑️ Tout supprimer'}
+            </button>
+          )}
+          <Link
+            to="/ecom/clients/new"
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+          >
+            + Client
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}
@@ -220,9 +248,11 @@ const ClientsList = () => {
                 </div>
                 <div className="flex items-center gap-2 mt-0.5 flex-wrap text-[11px] text-gray-400">
                   {c.phone && <span>{c.phone}</span>}
-                  {c.phone && c.city && <span>·</span>}
+                  {c.phone && (c.address || c.city) && <span>·</span>}
+                  {c.address && <span className="truncate max-w-[200px]" title={c.address}>{c.address}</span>}
+                  {c.address && c.city && <span>,</span>}
                   {c.city && <span>{c.city}</span>}
-                  {(c.phone || c.city) && c.source && <span>·</span>}
+                  {(c.phone || c.address || c.city) && c.source && <span>·</span>}
                   {c.source && <span>{sourceLabels[c.source]}</span>}
                   {c.totalOrders > 0 && (
                     <>

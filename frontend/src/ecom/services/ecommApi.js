@@ -23,31 +23,21 @@ ecomApi.interceptors.request.use(
 
     // Ajouter automatiquement le workspaceId aux requêtes
     const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-    console.log('🔍 Intercepteur requête - Workspace dans localStorage:', workspace);
-    console.log('🔍 Intercepteur requête - Méthode:', config.method?.toUpperCase());
-    console.log('🔍 Intercepteur requête - URL:', config.url);
-    console.log('🔍 Intercepteur requête - Params actuels:', config.params);
-    console.log('🔍 Intercepteur requête - Data actuelle:', config.data);
+    const wsId = workspace?._id || workspace?.id;
     
-    if (workspace && workspace._id) {
+    if (wsId) {
       // Ajouter workspaceId aux params si c'est une requête GET
       if (config.method === 'get' && config.params) {
-        config.params.workspaceId = workspace._id;
+        config.params.workspaceId = wsId;
       } else if (config.method === 'get' && !config.params) {
-        config.params = { workspaceId: workspace._id };
+        config.params = { workspaceId: wsId };
       }
       // Ajouter workspaceId au body si c'est une requête POST/PUT/DELETE
       else if (['post', 'put', 'patch'].includes(config.method) && config.data) {
-        config.data.workspaceId = workspace._id;
+        config.data.workspaceId = wsId;
       } else if (['post', 'put', 'patch'].includes(config.method) && !config.data) {
-        config.data = { workspaceId: workspace._id };
+        config.data = { workspaceId: wsId };
       }
-      
-      console.log(`🏢 Workspace ID ajouté à la requête ${config.method?.toUpperCase()} ${config.url}:`, workspace._id);
-      console.log('🔍 Params finaux:', config.params);
-      console.log('🔍 Data finale:', config.data);
-    } else {
-      console.log('⚠️ Aucun workspace trouvé dans localStorage');
     }
 
     return config;
@@ -227,6 +217,23 @@ export const decisionsApi = {
    // Liste des livreurs actifs (accessible par tous les authés)
    getLivreurs: () => ecomApi.get('/users/livreurs/list')
  };
+
+export const importApi = {
+  // Valider un spreadsheet
+  validate: (data) => ecomApi.post('/import/validate', data),
+
+  // Aperçu des données et colonnes
+  preview: (data) => ecomApi.post('/import/preview', data),
+
+  // Lancer l'import
+  run: (data, config = {}) => ecomApi.post('/import/run', data, { timeout: 180000, ...config }),
+
+  // Historique des imports
+  getHistory: (params = {}) => ecomApi.get('/import/history', { params }),
+
+  // Détail d'un import
+  getImportDetail: (id) => ecomApi.get(`/import/history/${id}`)
+};
 
 // Export par défaut l'instance axios pour usage direct
 export default ecomApi;

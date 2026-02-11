@@ -12,12 +12,14 @@ export const connectDB = async () => {
     
     // Options de connexion optimisées pour MongoDB Atlas
     const connectionOptions = {
-      serverSelectionTimeoutMS: 30000, // Timeout après 30s (au lieu de 5s)
-      socketTimeoutMS: 45000, // Timeout socket 45s
-      connectTimeoutMS: 30000, // Timeout connexion 30s
-      maxPoolSize: 10, // Nombre max de connexions dans le pool
-      minPoolSize: 2, // Nombre min de connexions dans le pool
+      serverSelectionTimeoutMS: 0, // Pas de timeout — attend indéfiniment le serveur
+      socketTimeoutMS: 0, // Pas de timeout socket
+      connectTimeoutMS: 0, // Pas de timeout connexion
+      heartbeatFrequencyMS: 10000, // Vérifier la connexion toutes les 10s
+      maxPoolSize: 10,
+      minPoolSize: 2,
       retryWrites: true,
+      retryReads: true,
       w: 'majority',
       // Pour MongoDB Atlas spécifiquement
       ...(MONGO_URI.includes('mongodb.net') && {
@@ -33,20 +35,38 @@ export const connectDB = async () => {
     console.log('🌐 Host:', mongoose.connection.host);
     console.log('🔌 Port:', mongoose.connection.port);
     
-    // Écouter les événements de connexion
+    // Suivi de déconnexion avec signalement périodique
+    let disconnectedSince = null;
+    let disconnectLogInterval = null;
+
     mongoose.connection.on('error', (err) => {
-      console.error('❌ Erreur MongoDB:', err);
+      console.error('❌ Erreur MongoDB:', err.message || err);
     });
     
     mongoose.connection.on('disconnected', () => {
-      console.log('⚠️  MongoDB déconnecté');
+      disconnectedSince = new Date();
+      console.log('⚠️  MongoDB déconnecté — en attente de reconnexion...');
+      // Signaler périodiquement sans arrêter
+      if (!disconnectLogInterval) {
+        disconnectLogInterval = setInterval(() => {
+          if (disconnectedSince) {
+            const sec = Math.round((Date.now() - disconnectedSince.getTime()) / 1000);
+            console.log(`⏳ MongoDB toujours déconnecté depuis ${sec}s — le serveur continue de tourner...`);
+          }
+        }, 15000);
+      }
     });
     
     mongoose.connection.on('reconnected', () => {
-      console.log('🔄 MongoDB reconnecté');
+      const downtime = disconnectedSince ? Math.round((Date.now() - disconnectedSince.getTime()) / 1000) : 0;
+      console.log(`🔄 MongoDB reconnecté${downtime > 0 ? ` (déconnecté pendant ${downtime}s)` : ''}`);
+      disconnectedSince = null;
+      if (disconnectLogInterval) {
+        clearInterval(disconnectLogInterval);
+        disconnectLogInterval = null;
+      }
     });
     
-    // Gestion de la reconnexion automatique
     mongoose.connection.on('close', () => {
       console.log('🔌 Connexion MongoDB fermée');
     });

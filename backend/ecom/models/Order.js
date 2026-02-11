@@ -33,6 +33,11 @@ const orderSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  address: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   product: {
     type: String,
     trim: true,
@@ -48,7 +53,6 @@ const orderSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled'],
     default: 'pending'
   },
   deliveryLocation: {
@@ -106,6 +110,7 @@ const orderSchema = new mongoose.Schema({
 });
 
 orderSchema.index({ workspaceId: 1, orderId: 1 });
+orderSchema.index({ workspaceId: 1, sheetRowId: 1 });
 orderSchema.index({ workspaceId: 1, status: 1 });
 orderSchema.index({ workspaceId: 1, date: -1 });
 

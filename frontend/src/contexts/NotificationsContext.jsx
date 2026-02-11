@@ -13,12 +13,17 @@ export function NotificationsProvider({ children }) {
 
   // Fonction pour récupérer le token
   const getAuthToken = () => {
-    return token || localStorage.getItem('token');
+    // Priorité: ecomToken (e-commerce) > token (app principale)
+    return token || localStorage.getItem('ecomToken') || localStorage.getItem('token');
   };
 
   // Charger les notifications
   const fetchNotifications = useCallback(async (options = {}) => {
-    if (!isAuthenticated) {
+    // Vérifier l'authentification principale ou e-commerce
+    const hasMainAuth = isAuthenticated;
+    const hasEcomAuth = !!(localStorage.getItem('ecomToken') && localStorage.getItem('ecomUser'));
+    
+    if (!hasMainAuth && !hasEcomAuth) {
       setNotifications([]);
       setUnreadCount(0);
       return;
@@ -64,7 +69,11 @@ export function NotificationsProvider({ children }) {
 
   // Charger le nombre de notifications non lues
   const fetchUnreadCount = useCallback(async () => {
-    if (!isAuthenticated) {
+    // Vérifier l'authentification principale ou e-commerce
+    const hasMainAuth = isAuthenticated;
+    const hasEcomAuth = !!(localStorage.getItem('ecomToken') && localStorage.getItem('ecomUser'));
+    
+    if (!hasMainAuth && !hasEcomAuth) {
       setUnreadCount(0);
       return;
     }
@@ -174,7 +183,11 @@ export function NotificationsProvider({ children }) {
 
   // Charger les notifications au montage et quand l'authentification change
   useEffect(() => {
-    if (isAuthenticated) {
+    // Vérifier l'authentification principale ou e-commerce
+    const hasMainAuth = isAuthenticated;
+    const hasEcomAuth = !!(localStorage.getItem('ecomToken') && localStorage.getItem('ecomUser'));
+    
+    if (hasMainAuth || hasEcomAuth) {
       fetchNotifications({ limit: 50 });
       // Rafraîchir le compteur toutes les 30 secondes
       const interval = setInterval(() => {

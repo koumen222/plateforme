@@ -45,6 +45,9 @@ import EcomLandingPage from './pages/LandingPage.jsx';
 import ProductResearchList from './pages/ProductResearchList.jsx';
 import ProductFinder from './pages/ProductFinder.jsx';
 import ProductFinderEdit from './pages/ProductFinderEdit.jsx';
+import ImportOrders from './pages/ImportOrders.jsx';
+import ForgotPassword from './pages/ForgotPassword.jsx';
+import ResetPassword from './pages/ResetPassword.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
 
 class ErrorBoundary extends React.Component {
@@ -192,6 +195,8 @@ const EcomApp = () => {
               <Route path="landing" element={<EcomLandingPage />} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
+              <Route path="forgot-password" element={<ForgotPassword />} />
+              <Route path="reset-password" element={<ResetPassword />} />
               <Route path="setup-admin" element={<SetupSuperAdmin />} />
               
               {/* Routes produits */}
@@ -248,6 +253,9 @@ const EcomApp = () => {
               {/* Routes commandes (admin + closeuse) */}
               <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
               <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
+              
+              {/* Route import commandes (admin) */}
+              <Route path="import" element={<LayoutRoute requiredRole="ecom_admin"><ImportOrders /></LayoutRoute>} />
               
               {/* Routes campagnes marketing (admin) */}
               <Route path="campaigns" element={<LayoutRoute requiredRole="ecom_admin"><CampaignsList /></LayoutRoute>} />

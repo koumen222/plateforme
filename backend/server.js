@@ -1928,6 +1928,16 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
     }
 
+    // Routes E-commerce Import (Google Sheets)
+    try {
+      const ecomImportModule = await import("./ecom/routes/import.js");
+      const ecomImportRoutes = ecomImportModule.default;
+      app.use("/api/ecom/import", ecomImportRoutes);
+      console.log('✅ Routes ecom/import.js chargées avec succès');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/import.js:', error.message);
+    }
+
     // Routes E-commerce Clients
     try {
       const ecomClientsModule = await import("./ecom/routes/clients.js");
