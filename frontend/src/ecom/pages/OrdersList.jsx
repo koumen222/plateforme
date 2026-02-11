@@ -27,6 +27,10 @@ const OrdersList = () => {
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [syncDisabled, setSyncDisabled] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState(null);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '', percentage: 0 });
+  const [syncController, setSyncController] = useState(null);
   const [backfilling, setBackfilling] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -199,10 +203,19 @@ const OrdersList = () => {
       });
       
       if (res.data.success) {
-        setSuccess('Source ajoutée avec succès !');
+        const newSourceId = res.data.data.source?._id || res.data.data.sourceId;
+        
+        setSuccess('Source ajoutée avec succès ! Lancement de la première synchronisation...');
         setShowAddSheetModal(false);
         setNewSheetData({ name: '', spreadsheetId: '', sheetName: 'Sheet1' });
         await fetchConfig();
+        
+        // Lancer automatiquement la première synchronisation pour la nouvelle source
+        if (newSourceId) {
+          setTimeout(() => {
+            handleSync(newSourceId);
+          }, 1000);
+        }
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de l\'ajout de la source');
@@ -229,57 +242,234 @@ const OrdersList = () => {
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t); } }, [success]);
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
 
-  // Auto-sync permanent en arrière-plan
+  // Auto-sync permanent en arrière-plan avec protection contre doubles appels
   useEffect(() => {
     if (!permanentSyncEnabled || !isAdmin || sources.length === 0) return;
 
     const interval = setInterval(async () => {
+      // Éviter les sync si une sync est déjà en cours
+      if (syncing) {
+        console.log('⏸️ Sync déjà en cours, skip auto-sync');
+        return;
+      }
+
       try {
-        // Appel direct à l'API de synchronisation sans bloquer l'interface
-        await ecomApi.post('/orders/sync-sheets', {});
+        // Sync uniquement la première source active si aucune source sélectionnée
+        let targetSourceId = selectedSourceId;
+        if (!targetSourceId && sources.length > 0) {
+          const activeSource = sources.find(s => s.isActive);
+          if (activeSource) {
+            targetSourceId = activeSource._id;
+          }
+        }
+
+        if (!targetSourceId) {
+          console.log('⚠️ Aucune source disponible pour auto-sync');
+          return;
+        }
+
+        console.log(`🔄 Auto-sync arrière-plan pour source: ${targetSourceId}`);
+        await ecomApi.post('/orders/sync-sheets', { sourceId: targetSourceId });
         
         // Mettre à jour l'heure du dernier auto-sync
         setLastAutoSync(new Date());
         
-        console.log('🔄 Auto-sync arrière-plan effectué à', new Date().toLocaleTimeString('fr-FR'));
+        console.log('✅ Auto-sync arrière-plan effectué à', new Date().toLocaleTimeString('fr-FR'));
       } catch (err) {
-        console.error('Auto-sync arrière-plan error:', err);
+        console.error('❌ Auto-sync arrière-plan error:', err);
         // Ne pas afficher d'erreur à l'utilisateur pour l'auto-sync
       }
-    }, 5000); // Toutes les 5 secondes pour réduire la charge
+    }, 30000); // Toutes les 30 secondes (au lieu de 5)
 
     return () => clearInterval(interval);
-  }, [permanentSyncEnabled, isAdmin, sources.length]);
+  }, [permanentSyncEnabled, isAdmin, sources.length, selectedSourceId, syncing]);
 
-  // Auto-sync normal pour le rafraîchissement des données
-  useEffect(() => {
-    if (!autoSyncEnabled || !isAdmin || sources.length === 0) return;
+  // Auto-sync normal pour le rafraîchissement des données - DÉSACTIVÉ pour éviter l'actualisation constante
+  // useEffect(() => {
+  //   if (!autoSyncEnabled || !isAdmin || sources.length === 0) return;
 
-    const interval = setInterval(async () => {
-      try {
-        // Rafraîchir les commandes
-        await fetchOrders();
+  //   const interval = setInterval(async () => {
+  //     try {
+  //       // Rafraîchir les commandes
+  //       await fetchOrders();
         
-        // Optionnel: aussi rafraîchir la config pour les temps de sync
-        await fetchConfig();
-      } catch (err) {
-        console.error('Auto-sync error:', err);
-        // Ne pas afficher d'erreur à l'utilisateur pour l'auto-sync
-      }
-    }, 1000); // Toutes les secondes
+  //       // Optionnel: aussi rafraîchir la config pour les temps de sync
+  //       await fetchConfig();
+  //     } catch (err) {
+  //       console.error('Auto-sync error:', err);
+  //       // Ne pas afficher d'erreur à l'utilisateur pour l'auto-sync
+  //     }
+  //   }, 1000); // Toutes les secondes
 
-    return () => clearInterval(interval);
-  }, [autoSyncEnabled, isAdmin, sources.length, selectedSourceId, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate]);
+  //   return () => clearInterval(interval);
+  // }, [autoSyncEnabled, isAdmin, sources.length, selectedSourceId, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate]);
 
-  const handleSync = async (sourceId = null) => {
-    setSyncing(true); setError('');
+  const handleSync = async (sourceId = null, options = {}) => {
+    // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés
+    const now = Date.now();
+    if (lastSyncTime && now - lastSyncTime < 2000 && !options.force) {
+      console.log('⏸️ Sync trop rapprochée, ignorée (debounce 2s)');
+      return;
+    }
+    
+    // Protection contre les appels multiples
+    if (syncing || syncDisabled) {
+      console.log('⏸️ Sync déjà en cours ou désactivée, ignorée');
+      return;
+    }
+
+    setSyncing(true); 
+    setSyncDisabled(true);
+    setLastSyncTime(now);
+    setError('');
+    setSyncProgress({ current: 0, total: 0, status: 'Initialisation...', percentage: 0 });
+    
+    // Créer AbortController pour pouvoir annuler
+    const controller = new AbortController();
+    setSyncController(controller);
+    
     try {
-      const res = await ecomApi.post('/orders/sync-sheets', { sourceId: sourceId || selectedSourceId }, { timeout: 120000 });
+      const targetSourceId = sourceId || selectedSourceId;
+      
+      if (!targetSourceId) {
+        setError('Veuillez sélectionner une source à synchroniser');
+        return;
+      }
+
+      console.log(`🔄 Début sync manuelle pour source: ${targetSourceId}`);
+      
+      // Construire l'URL absolue pour EventSource
+      const baseUrl = window.location.origin;
+      const eventSourceUrl = `${baseUrl}/api/ecom/orders/sync-progress?workspaceId=${user.workspaceId}&sourceId=${targetSourceId}`;
+      console.log(`🌐 URL EventSource: ${eventSourceUrl}`);
+      
+      // Créer EventSource pour suivre la progression
+      let eventSource = null;
+      
+      try {
+        // Tester d'abord si l'endpoint est accessible
+        console.log('🔍 Test de l\'endpoint SSE...');
+        
+        eventSource = new EventSource(eventSourceUrl);
+        
+        console.log('📡 EventSource créé, état:', eventSource.readyState);
+        
+        // Si pas de connexion après 2 secondes, afficher l'erreur
+        const connectionTimeout = setTimeout(() => {
+          if (eventSource.readyState === EventSource.CONNECTING) {
+            console.error('❌ Timeout de connexion EventSource');
+            eventSource.close();
+            setSyncProgress({
+              current: 0,
+              total: 100,
+              status: '❌ Impossible de se connecter au serveur de progression',
+              percentage: 0
+            });
+          }
+        }, 2000);
+        
+        eventSource.onopen = () => {
+          console.log('✅ EventSource connecté');
+          clearTimeout(connectionTimeout); // Nettoyer le timeout de connexion
+        };
+        
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('📊 Progression reçue:', data);
+            
+            // Arrondir le pourcentage pour éviter les sauts
+            const roundedPercentage = Math.round(data.percentage);
+            
+            setSyncProgress({
+              current: data.current || 0,
+              total: data.total || 100,
+              status: data.status || '',
+              percentage: roundedPercentage
+            });
+            
+            if (data.completed) {
+              console.log('✅ Progression terminée');
+              // Garder la barre visible 1 seconde après completion
+              setTimeout(() => {
+                eventSource.close();
+              }, 1000);
+            }
+          } catch (parseError) {
+            console.error('❌ Erreur parsing progression:', parseError);
+          }
+        };
+        
+        eventSource.onerror = (error) => {
+          console.error('❌ Erreur EventSource:', error);
+          console.log('📡 EventSource état erreur:', eventSource.readyState);
+          if (eventSource.readyState !== EventSource.CLOSED) {
+            eventSource.close();
+          }
+          
+          // Ne pas simuler - afficher l'erreur réelle
+          setSyncProgress({
+            current: 0,
+            total: 100,
+            status: '❌ Erreur de connexion au serveur de progression',
+            percentage: 0
+          });
+        };
+        
+        // Timeout pour EventSource (10 secondes)
+        setTimeout(() => {
+          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+            console.log('⏰ Timeout EventSource, fermeture');
+            eventSource.close();
+          }
+        }, 10000);
+        
+      } catch (eventError) {
+        console.error('❌ Erreur création EventSource:', eventError);
+      }
+      
+      const res = await ecomApi.post('/orders/sync-sheets', { sourceId: targetSourceId }, { 
+        timeout: 120000,
+        signal: controller.signal
+      });
+      
+      // Fermer EventSource après la sync
+      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
+        eventSource.close();
+      }
+      
       setSuccess(res.data.message);
       fetchConfig(); // Refresh sources for sync times
       fetchOrders();
-    } catch (err) { setError(err.response?.data?.message || 'Erreur synchronisation'); }
-    finally { setSyncing(false); }
+    } catch (err) { 
+      if (err.name === 'AbortError') {
+        console.log('🚫 Synchronisation annulée par l\'utilisateur');
+        setError('Synchronisation annulée');
+      } else {
+        const errorMsg = err.response?.data?.message || 'Erreur synchronisation';
+        setError(errorMsg);
+        console.error('❌ Erreur sync:', errorMsg);
+      }
+    }
+    finally { 
+      setSyncing(false);
+      setSyncProgress({ current: 0, total: 0, status: '', percentage: 0 });
+      setSyncController(null);
+      // Réactiver le bouton après un délai pour éviter les doubles clics
+      setTimeout(() => {
+        setSyncDisabled(false);
+      }, 1000);
+    }
+  };
+  
+  const handleCancelSync = () => {
+    if (syncController) {
+      syncController.abort();
+      setSyncController(null);
+    }
+    setSyncing(false);
+    setSyncProgress({ current: 0, total: 0, status: '', percentage: 0 });
+    setSyncDisabled(false);
   };
 
   const handleBackfillClients = async () => {
@@ -312,12 +502,59 @@ const OrdersList = () => {
   const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
 
   const getProductName = (o) => {
-    if (o.product && isNaN(o.product)) return o.product;
-    if (o.rawData) {
-      const entry = Object.entries(o.rawData).find(([k, v]) => v && isNaN(v) && /produit|product|article|item|d[eé]signation/i.test(k));
-      if (entry) return entry[1];
+    if (o.product && typeof o.product === 'string' && o.product.trim()) {
+      return o.product.trim();
     }
-    return o.product || '';
+    if (o.rawData && typeof o.rawData === 'object') {
+      const entry = Object.entries(o.rawData).find(([k, v]) => {
+        if (typeof v !== 'string' || !v.trim()) return false;
+        return /produit|product|article|item|d[eé]signation|libell[eé]/i.test(k);
+      });
+      if (entry && entry[1]) return entry[1].trim();
+    }
+    return o.product || 'Non spécifié';
+  };
+
+  const getClientName = (o) => {
+    if (o.clientName && typeof o.clientName === 'string' && o.clientName.trim()) {
+      return o.clientName.trim();
+    }
+    if (o.rawData && typeof o.rawData === 'object') {
+      const entry = Object.entries(o.rawData).find(([k, v]) => {
+        if (typeof v !== 'string' || !v.trim()) return false;
+        return /client|customer|nom|name|pr[eé]nom/i.test(k);
+      });
+      if (entry && entry[1]) return entry[1].trim();
+    }
+    return 'Client inconnu';
+  };
+
+  const getClientPhone = (o) => {
+    if (o.clientPhone && typeof o.clientPhone === 'string' && o.clientPhone.trim()) {
+      return o.clientPhone.trim();
+    }
+    if (o.rawData && typeof o.rawData === 'object') {
+      const entry = Object.entries(o.rawData).find(([k, v]) => {
+        if (typeof v !== 'string' || !v.trim()) return false;
+        return /t[eé]l[eé]phone|phone|contact|mobile/i.test(k);
+      });
+      if (entry && entry[1]) return entry[1].trim();
+    }
+    return '';
+  };
+
+  const getCity = (o) => {
+    if (o.city && typeof o.city === 'string' && o.city.trim()) {
+      return o.city.trim();
+    }
+    if (o.rawData && typeof o.rawData === 'object') {
+      const entry = Object.entries(o.rawData).find(([k, v]) => {
+        if (typeof v !== 'string' || !v.trim()) return false;
+        return /ville|city|localit[eé]/i.test(k);
+      });
+      if (entry && entry[1]) return entry[1].trim();
+    }
+    return '';
   };
 
   const sheetCols = useMemo(() => {
@@ -325,9 +562,9 @@ const OrdersList = () => {
     return hasRaw ? [...new Set(orders.flatMap(o => Object.keys(o.rawData || {})))] : [];
   }, [orders]);
 
-  const uniqueCities = useMemo(() => [...new Set(orders.map(o => o.city).filter(Boolean))].sort(), [orders]);
-  const uniqueProducts = useMemo(() => [...new Set(orders.map(o => getProductName(o)).filter(Boolean))].sort(), [orders]);
-  const uniqueTags = useMemo(() => [...new Set(orders.flatMap(o => o.tags || []))].sort(), [orders]);
+  const uniqueCities = useMemo(() => [...new Set(orders.map(o => getCity(o)).filter(Boolean))].sort(), [orders]);
+  const uniqueProducts = useMemo(() => [...new Set(orders.map(o => getProductName(o)).filter(p => p && p !== 'Non spécifié'))].sort(), [orders]);
+  const uniqueTags = useMemo(() => [...new Set(orders.flatMap(o => o.tags || []))].filter(Boolean).sort(), [orders]);
 
   const activeFiltersCount = [filterCity, filterProduct, filterTag, filterStartDate, filterEndDate].filter(Boolean).length;
 
@@ -546,6 +783,56 @@ const OrdersList = () => {
     <div className="p-3 sm:p-4 lg:p-6 max-w-[1400px] mx-auto">
       {success && <div className="mb-3 p-2.5 bg-green-50 text-green-800 rounded-lg text-sm border border-green-200 flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>{success}</div>}
       {error && <div className="mb-3 p-2.5 bg-red-50 text-red-800 rounded-lg text-sm border border-red-200 flex items-center gap-2"><svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"/></svg>{error}</div>}
+      
+      {/* Indicateur de préparation de synchronisation */}
+      {syncing && syncProgress.percentage <= 1 && (
+        <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="flex items-center gap-3">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-amber-600"></div>
+            <span className="text-sm font-medium text-amber-800">Préparation de la synchronisation...</span>
+            <button
+              onClick={handleCancelSync}
+              className="ml-auto px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+              title="Annuler"
+            >
+              Annuler
+            </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Barre de progression de synchronisation */}
+      {syncing && syncProgress.percentage > 1 && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-blue-800">Synchronisation en cours...</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-blue-600">{syncProgress.percentage}%</span>
+              <button
+                onClick={handleCancelSync}
+                className="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                title="Annuler la synchronisation"
+              >
+                Annuler
+              </button>
+            </div>
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2 mb-2">
+            <div 
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300 ease-out"
+              style={{ width: `${syncProgress.percentage}%` }}
+            />
+          </div>
+          <div className="flex items-center justify-between text-xs text-blue-700">
+            <span>{syncProgress.status || 'Préparation...'}</span>
+            <span>{syncProgress.current} / {syncProgress.total || 100}</span>
+          </div>
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-blue-600">
+            Debug: syncing={syncing.toString()}, percentage={syncProgress.percentage}, status="{syncProgress.status}"
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
@@ -615,11 +902,25 @@ const OrdersList = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
               </button>
+              <button onClick={() => handleSync()} disabled={syncing || syncDisabled} className="p-2 text-green-600 hover:text-green-700 hover:bg-green-50 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed" title="Synchroniser les sheets">
+                <svg className={`w-5 h-5 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+              </button>
+              <button onClick={() => {
+                if (window.confirm('Besoin d\'aide ?\n\n📞 Support rapide :\n- Vérifiez votre connexion internet\n- Assurez-vous que le Google Sheet est partagé\n- Contactez le support si le problème persiste\n\nVoulez-vous ouvrir la documentation ?')) {
+                  window.open('https://docs.google.com/document/d/your-doc-id', '_blank');
+                }
+              }} className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition" title="Aide d'urgence (SOS)">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </button>
               <button onClick={() => navigate('/ecom/settings')} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition" title="Gérer les sources">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c-.996.608 2.296.07 2.572-1.065z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
               </button>
               {!permanentSyncEnabled && (
-                <button onClick={() => handleSync()} disabled={syncing} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 flex items-center gap-1.5">
+                <button onClick={() => handleSync()} disabled={syncing || syncDisabled} className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5">
                   <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                   {syncing ? 'Sync...' : 'Sync Sheets'}
                 </button>
@@ -788,9 +1089,12 @@ const OrdersList = () => {
                     <td className="px-3 py-2 text-[10px] text-gray-400 font-mono">{(page - 1) * 50 + idx + 1}</td>
                     {sheetCols.map((col, i) => {
                       const val = o.rawData?.[col] || '';
+                      const displayVal = val && typeof val === 'string' ? val.trim() : val;
                       return (
                         <td key={i} className="px-3 py-2 text-xs text-gray-700 whitespace-nowrap max-w-[180px]">
-                          <span className="truncate block" title={val}>{val || <span className="text-gray-300">—</span>}</span>
+                          <span className="truncate block" title={displayVal}>
+                            {displayVal || <span className="text-gray-300">—</span>}
+                          </span>
                         </td>
                       );
                     })}
@@ -815,7 +1119,7 @@ const OrdersList = () => {
                 <div className="flex items-center gap-3">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-gray-900 truncate">{o.clientName || 'Sans nom'}</span>
+                      <span className="text-sm font-semibold text-gray-900 truncate">{getClientName(o)}</span>
                       <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${SC[o.status]}`}>{SL[o.status]}</span>
                       {o.orderId && o.orderId !== `#${o.sheetRowId?.split('_')[1]}` && (
                         <span className="text-[10px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded">{o.orderId}</span>
@@ -833,8 +1137,8 @@ const OrdersList = () => {
                       ))}
                     </div>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap text-[11px] text-gray-400">
-                      {o.clientPhone && <span className="flex items-center gap-0.5"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>{o.clientPhone}</span>}
-                      {o.city && <><span className="text-gray-300">·</span><span className="flex items-center gap-0.5"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>{o.city}</span></>}
+                      {getClientPhone(o) && <span className="flex items-center gap-0.5"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>{getClientPhone(o)}</span>}
+                      {getCity(o) && <><span className="text-gray-300">·</span><span className="flex items-center gap-0.5"><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>{getCity(o)}</span></>}
                       {getProductName(o) && <><span className="text-gray-300">·</span><span>{getProductName(o)}</span></>}
                     </div>
                   </div>
@@ -867,10 +1171,10 @@ const OrdersList = () => {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
-                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Client</p><p className="text-xs text-gray-700">{o.clientName || '—'}</p></div>
-                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Téléphone</p><p className="text-xs text-gray-700">{o.clientPhone || '—'}</p></div>
-                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Ville</p><p className="text-xs text-gray-700">{o.city || '—'}</p></div>
-                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Produit</p><p className="text-xs text-gray-700">{o.product || '—'}</p></div>
+                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Client</p><p className="text-xs text-gray-700">{getClientName(o)}</p></div>
+                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Téléphone</p><p className="text-xs text-gray-700">{getClientPhone(o) || '—'}</p></div>
+                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Ville</p><p className="text-xs text-gray-700">{getCity(o) || '—'}</p></div>
+                      <div><p className="text-[9px] text-gray-400 uppercase font-medium">Produit</p><p className="text-xs text-gray-700">{getProductName(o)}</p></div>
                       <div><p className="text-[9px] text-gray-400 uppercase font-medium">Prix</p><p className="text-xs text-gray-700">{o.price ? fmt(o.price) : '—'}</p></div>
                       <div><p className="text-[9px] text-gray-400 uppercase font-medium">Date</p><p className="text-xs text-gray-700">{fmtDate(o.date)}</p></div>
                       {o.notes && <div className="col-span-2 sm:col-span-3"><p className="text-[9px] text-gray-400 uppercase font-medium">Notes</p><p className="text-xs text-gray-700">{o.notes}</p></div>}

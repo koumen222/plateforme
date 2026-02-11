@@ -88,7 +88,7 @@ ecomUserSchema.methods.comparePassword = async function(candidatePassword) {
 // Méthode pour obtenir les permissions
 ecomUserSchema.methods.getPermissions = function() {
   const permissions = {
-    super_admin: ['admin:read', 'admin:write'],
+    super_admin: ['admin:read', 'admin:write', '*'], // Super admin a accès à tout
     ecom_admin: ['*'],
     ecom_closeuse: ['orders:read', 'orders:write'],
     ecom_compta: ['finance:read'],

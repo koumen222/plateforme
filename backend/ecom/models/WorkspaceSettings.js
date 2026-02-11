@@ -47,7 +47,14 @@ const workspaceSettingsSchema = new mongoose.Schema({
       },
       message: 'Le numéro WhatsApp doit commencer par 237 suivi d\'au moins 8 chiffres'
     }
-  }
+  },
+  syncLocks: [{
+    key: { type: String, required: true, index: true },
+    sourceId: { type: String, required: true },
+    userId: { type: mongoose.Schema.Types.ObjectId },
+    createdAt: { type: Date, default: Date.now, index: true },
+    expiresAt: { type: Date, required: true, index: true }
+  }]
 }, {
   timestamps: true,
   collection: 'ecom_workspace_settings'

@@ -65,9 +65,13 @@ router.get('/', requireEcomAuth, async (req, res) => {
     console.log('📦 GET /api/ecom/products - Liste des produits');
     console.log('👤 Utilisateur:', req.ecomUser?.email);
     console.log('🔍 Filtres:', req.query);
+    console.log('🏢 WorkspaceId utilisé:', req.workspaceId);
+    console.log('🎭 Mode incarnation:', req.query.workspaceId ? 'OUI' : 'NON');
     
     const { status, isActive, search } = req.query;
     const filter = { workspaceId: req.workspaceId };
+    
+    console.log('🔎 Filtre initial:', filter);
     
     // Ajout de la logique de recherche
     if (search) {
@@ -84,13 +88,18 @@ router.get('/', requireEcomAuth, async (req, res) => {
     }
     if (isActive !== undefined) filter.isActive = isActive === 'true';
 
-    console.log('🔎 Filtre appliqué:', filter);
+    console.log('🔎 Filtre final appliqué:', filter);
+    
     const products = await Product.find(filter)
       .populate('createdBy', 'email')
       .sort({ createdAt: -1 });
 
     console.log('📊 Produits trouvés:', products.length);
-    console.log('📋 Données brutes:', products);
+    console.log('📋 Premier produit (si existe):', products[0] ? {
+      name: products[0].name,
+      workspaceId: products[0].workspaceId,
+      isActive: products[0].isActive
+    } : 'Aucun');
 
     res.json({
       success: true,

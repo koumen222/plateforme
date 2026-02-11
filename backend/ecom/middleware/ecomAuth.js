@@ -10,6 +10,8 @@ export const requireEcomAuth = async (req, res, next) => {
     console.log(' Middleware requireEcomAuth appelé');
     const token = req.header('Authorization')?.replace('Bearer ', '');
     console.log(' Token reçu:', token ? 'Token présent' : 'Token manquant');
+    console.log('🔍 Params de la requête:', req.query);
+    console.log('🔍 URL complète:', req.originalUrl);
     
     if (!token) {
       console.log(' Token manquant');
@@ -45,7 +47,22 @@ export const requireEcomAuth = async (req, res, next) => {
 
     console.log(' Utilisateur authentifié avec succès');
     req.ecomUser = user;
-    req.workspaceId = user.workspaceId;
+    
+    // Gestion du workspaceId pour l'incarnation
+    if (req.query.workspaceId) {
+      // Mode incarnation : utiliser le workspaceId des params
+      req.workspaceId = req.query.workspaceId;
+      console.log('🎭 Mode incarnation - WorkspaceId depuis params:', req.workspaceId);
+    } else if (req.body && req.body.workspaceId) {
+      // Mode incarnation : utiliser le workspaceId du corps
+      req.workspaceId = req.body.workspaceId;
+      console.log('🎭 Mode incarnation - WorkspaceId depuis body:', req.workspaceId);
+    } else {
+      // Mode normal : utiliser le workspaceId de l'utilisateur
+      req.workspaceId = user.workspaceId;
+      console.log('👤 Mode normal - WorkspaceId depuis user:', req.workspaceId);
+    }
+    
     next();
   } catch (error) {
     console.error(' Erreur dans requireEcomAuth:', error.message);
@@ -116,10 +133,16 @@ export const validateEcomAccess = (resource, action) => {
 
     const userRole = req.ecomUser.role;
     const permission = `${resource}:${action}`;
+    
+    // Mode incarnation : Super Admin a accès à tout
+    if (req.query.workspaceId && userRole === 'super_admin') {
+      console.log('🎭 Mode incarnation - Super Admin accès autorisé pour:', permission);
+      return next();
+    }
 
     // Règles d'accès spécifiques
     const accessRules = {
-      'super_admin': ['admin:read', 'admin:write'],
+      'super_admin': ['admin:read', 'admin:write', '*'], // Super admin a accès à tout
       'ecom_admin': ['*'],
       'ecom_closeuse': ['orders:read', 'orders:write', 'reports:read', 'reports:write', 'products:read'],
       'ecom_compta': ['finance:read', 'finance:write', 'reports:read', 'reports:write', 'products:read'],
@@ -127,6 +150,12 @@ export const validateEcomAccess = (resource, action) => {
     };
 
     const userPermissions = accessRules[userRole] || [];
+    
+    // Le super_admin a accès à tout avec '*'
+    if (userPermissions.includes('*')) {
+      console.log('🎭 Super Admin accès autorisé pour:', permission);
+      return next();
+    }
     
     if (!userPermissions.includes('*') && !userPermissions.includes(permission)) {
       return res.status(403).json({ 

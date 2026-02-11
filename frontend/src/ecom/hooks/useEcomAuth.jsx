@@ -11,7 +11,11 @@ const initialState = {
   token: localStorage.getItem('ecomToken'),
   isAuthenticated: false,
   loading: true,
-  error: null
+  error: null,
+  // Mode incarnation pour Super Admin
+  isImpersonating: false,
+  originalUser: JSON.parse(localStorage.getItem('ecomOriginalUser') || 'null'),
+  impersonatedUser: JSON.parse(localStorage.getItem('ecomImpersonatedUser') || 'null')
 };
 
 // Reducer pour gérer les états d'authentification
@@ -83,6 +87,26 @@ const authReducer = (state, action) => {
         user: { ...state.user, ...action.payload },
       };
     
+    case 'START_IMPERSONATION':
+      return {
+        ...state,
+        isImpersonating: true,
+        originalUser: action.payload.originalUser,
+        impersonatedUser: action.payload.targetUser,
+        user: action.payload.targetUser,
+        workspace: action.payload.targetWorkspace
+      };
+    
+    case 'STOP_IMPERSONATION':
+      return {
+        ...state,
+        isImpersonating: false,
+        originalUser: null,
+        impersonatedUser: null,
+        user: action.payload.originalUser,
+        workspace: action.payload.originalWorkspace
+      };
+    
     default:
       return state;
   }
@@ -97,6 +121,8 @@ export const EcomAuthProvider = ({ children }) => {
     localStorage.removeItem('ecomToken');
     localStorage.removeItem('ecomUser');
     localStorage.removeItem('ecomWorkspace');
+    localStorage.removeItem('ecomOriginalUser');
+    localStorage.removeItem('ecomImpersonatedUser');
   };
 
   // Sauvegarder le token dans le localStorage
@@ -104,6 +130,19 @@ export const EcomAuthProvider = ({ children }) => {
     localStorage.setItem('ecomToken', token);
     localStorage.setItem('ecomUser', JSON.stringify(user));
     if (workspace) localStorage.setItem('ecomWorkspace', JSON.stringify(workspace));
+  };
+
+  // Sauvegarder l'état d'incarnation
+  const saveImpersonation = (originalUser, targetUser, targetWorkspace) => {
+    localStorage.setItem('ecomOriginalUser', JSON.stringify(originalUser));
+    localStorage.setItem('ecomImpersonatedUser', JSON.stringify(targetUser));
+    if (targetWorkspace) localStorage.setItem('ecomWorkspace', JSON.stringify(targetWorkspace));
+  };
+
+  // Effacer l'incarnation
+  const clearImpersonation = () => {
+    localStorage.removeItem('ecomOriginalUser');
+    localStorage.removeItem('ecomImpersonatedUser');
   };
 
   // Charger l'utilisateur depuis le token
@@ -243,6 +282,109 @@ export const EcomAuthProvider = ({ children }) => {
     }
   };
 
+  // Incarnation : Super Admin peut devenir n'importe quel utilisateur
+  const impersonateUser = async (targetUserId, targetUserData = null) => {
+    // Vérifier que l'utilisateur actuel est un Super Admin
+    if (state.user?.role !== 'super_admin') {
+      throw new Error('Seul le Super Admin peut utiliser l\'incarnation');
+    }
+
+    try {
+      let targetUser, targetWorkspace;
+
+      if (targetUserData) {
+        // Utiliser les données fournies directement (depuis la liste des utilisateurs)
+        targetUser = targetUserData;
+        targetWorkspace = targetUserData.workspaceId;
+        console.log('🎭 Incarnation avec données fournies:', targetUser.email);
+        console.log('🏢 Workspace cible:', targetWorkspace?.name || 'Sans workspace');
+      } else {
+        // Approche de secours avec données simulées
+        targetUser = {
+          _id: targetUserId,
+          email: 'user_' + targetUserId.substring(0, 8) + '@example.com',
+          role: 'ecom_admin',
+          workspaceId: null
+        };
+        targetWorkspace = null;
+        console.log('🎭 Incarnation avec données simulées');
+      }
+
+      // Démarrer l'incarnation
+      dispatch({
+        type: 'START_IMPERSONATION',
+        payload: {
+          originalUser: state.user,
+          targetUser,
+          targetWorkspace
+        }
+      });
+
+      // Sauvegarder l'état d'incarnation et le workspace
+      saveImpersonation(state.user, targetUser, targetWorkspace);
+      
+      // Mettre à jour le workspace actif dans localStorage
+      if (targetWorkspace) {
+        localStorage.setItem('ecomWorkspace', JSON.stringify(targetWorkspace));
+        console.log('💾 Workspace sauvegardé:', targetWorkspace.name);
+      }
+
+      console.log('🎭 Incarnation réussie pour:', targetUser.email, 'workspace:', targetWorkspace?.name);
+      return { success: true, targetUser, targetWorkspace };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Erreur lors de l\'incarnation';
+      throw new Error(errorMessage);
+    }
+  };
+
+  // Arrêter l'incarnation et revenir au Super Admin
+  const stopImpersonation = () => {
+    if (!state.isImpersonating) {
+      throw new Error('Aucune incarnation en cours');
+    }
+
+    // Restaurer l'utilisateur original
+    dispatch({
+      type: 'STOP_IMPERSONATION',
+      payload: {
+        originalUser: state.originalUser,
+        originalWorkspace: state.originalUser?.workspace
+      }
+    });
+
+    // Effacer l'état d'incarnation
+    clearImpersonation();
+    
+    // Restaurer le workspace original du Super Admin
+    if (state.originalUser?.workspace) {
+      localStorage.setItem('ecomWorkspace', JSON.stringify(state.originalUser.workspace));
+      console.log('🔄 Workspace original restauré:', state.originalUser.workspace?.name);
+    } else {
+      localStorage.removeItem('ecomWorkspace');
+      console.log('🔄 Workspace supprimé (Super Admin sans workspace)');
+    }
+
+    // Naviguer vers le dashboard Super Admin
+    window.location.href = '/ecom/super-admin';
+  };
+
+  // Restaurer l'incarnation au chargement
+  const restoreImpersonation = () => {
+    const originalUser = JSON.parse(localStorage.getItem('ecomOriginalUser') || 'null');
+    const impersonatedUser = JSON.parse(localStorage.getItem('ecomImpersonatedUser') || 'null');
+
+    if (originalUser && impersonatedUser && originalUser.role === 'super_admin') {
+      dispatch({
+        type: 'START_IMPERSONATION',
+        payload: {
+          originalUser,
+          targetUser: impersonatedUser,
+          targetWorkspace: impersonatedUser.workspace
+        }
+      });
+    }
+  };
+
   // Vérifier les permissions de l'utilisateur
   const hasPermission = (permission) => {
     if (!state.user) return false;
@@ -272,6 +414,8 @@ export const EcomAuthProvider = ({ children }) => {
   useEffect(() => {
     console.log('🚀 EcomAuthProvider monté, début du loadUser');
     loadUser();
+    // Restaurer l'incarnation si elle existe
+    restoreImpersonation();
   }, []);
 
   const value = {
@@ -284,7 +428,9 @@ export const EcomAuthProvider = ({ children }) => {
     hasPermission,
     hasRole,
     clearError,
-    loadUser
+    loadUser,
+    impersonateUser,
+    stopImpersonation
   };
 
   return (

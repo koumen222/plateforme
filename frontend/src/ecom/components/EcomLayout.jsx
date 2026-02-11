@@ -4,12 +4,16 @@ import { useEcomAuth } from '../hooks/useEcomAuth';
 import CurrencySelector from './CurrencySelector.jsx';
 
 const EcomLayout = ({ children }) => {
-  const { user, workspace, logout } = useEcomAuth();
+  const { user, workspace, logout, isImpersonating, impersonatedUser, stopImpersonation } = useEcomAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
+
+  // Utiliser l'utilisateur incarné si en mode incarnation, sinon l'utilisateur normal
+  const displayUser = isImpersonating ? impersonatedUser : user;
+  const displayWorkspace = isImpersonating ? impersonatedUser?.workspaceId : workspace;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -22,8 +26,12 @@ const EcomLayout = ({ children }) => {
   }, []);
 
   const handleLogout = () => {
-    logout();
-    navigate('/ecom/login');
+    if (isImpersonating) {
+      stopImpersonation();
+    } else {
+      logout();
+      navigate('/ecom/login');
+    }
   };
 
   const roleDashboardMap = {
@@ -34,7 +42,7 @@ const EcomLayout = ({ children }) => {
     'ecom_livreur': '/ecom/orders'
   };
 
-  const dashboardPath = roleDashboardMap[user?.role] || '/ecom/dashboard';
+  const dashboardPath = roleDashboardMap[displayUser?.role] || '/ecom/dashboard';
 
   const roleLabel = {
     'super_admin': 'Super Admin',
@@ -176,7 +184,7 @@ const EcomLayout = ({ children }) => {
     return location.pathname.startsWith(href);
   };
 
-  const initial = user?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || 'U';
+  const initial = displayUser?.name?.charAt(0)?.toUpperCase() || displayUser?.email?.charAt(0)?.toUpperCase() || 'U';
 
   const NavLink = ({ item }) => {
     const active = isActive(item.href);
@@ -262,12 +270,19 @@ const EcomLayout = ({ children }) => {
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
                   className="flex items-center gap-2.5 pl-2.5 pr-3 py-1.5 rounded-xl hover:bg-gray-100 transition-all"
                 >
-                  <div className={`w-8 h-8 ${roleColors[user?.role] || 'bg-blue-600'} rounded-lg flex items-center justify-center`}>
+                  <div className={`w-8 h-8 ${roleColors[displayUser?.role] || 'bg-blue-600'} rounded-lg flex items-center justify-center`}>
                     <span className="text-white text-xs font-bold">{initial}</span>
                   </div>
                   <div className="text-left hidden xl:block">
-                    <p className="text-sm font-medium text-gray-700 leading-tight truncate max-w-[140px]">{user?.name || user?.email?.split('@')[0]}</p>
-                    <p className="text-[10px] text-gray-400">{roleLabel[user?.role]}</p>
+                    <p className="text-sm font-medium text-gray-700 leading-tight truncate max-w-[140px]">
+                      {isImpersonating && (
+                        <span className="text-xs text-purple-600 mr-1">🎭</span>
+                      )}
+                      {displayUser?.name || displayUser?.email?.split('@')[0]}
+                    </p>
+                    <p className="text-[10px] text-gray-400">
+                      {isImpersonating ? `${roleLabel[displayUser?.role]} (Incarné)` : roleLabel[displayUser?.role]}
+                    </p>
                   </div>
                   <svg className={`w-4 h-4 text-gray-400 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -278,8 +293,16 @@ const EcomLayout = ({ children }) => {
                 {userMenuOpen && (
                   <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-200 overflow-hidden z-50">
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <p className="text-sm font-semibold text-gray-900">{user?.name || user?.email?.split('@')[0]}</p>
-                      <p className="text-xs text-gray-500 truncate">{user?.email}</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {isImpersonating && (
+                          <span className="text-xs text-purple-600 mr-1">🎭</span>
+                        )}
+                        {displayUser?.name || displayUser?.email?.split('@')[0]}
+                      </p>
+                      <p className="text-xs text-gray-500 truncate">{displayUser?.email}</p>
+                      {isImpersonating && (
+                        <p className="text-xs text-purple-600 mt-1">Mode Incarnation</p>
+                      )}
                     </div>
                     <div className="py-1">
                       <Link
@@ -304,15 +327,33 @@ const EcomLayout = ({ children }) => {
                       </Link>
                     </div>
                     <div className="border-t border-gray-100 py-1">
-                      <button
-                        onClick={() => { setUserMenuOpen(false); handleLogout(); }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 w-full transition"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        Déconnexion
-                      </button>
+                      {isImpersonating ? (
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            stopImpersonation();
+                          }}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-purple-600 hover:bg-purple-50 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                          </svg>
+                          Revenir Super Admin
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setUserMenuOpen(false);
+                            handleLogout();
+                          }}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                          </svg>
+                          Déconnexion
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
@@ -320,7 +361,7 @@ const EcomLayout = ({ children }) => {
 
               {/* Mobile: avatar link to profile */}
               <Link to="/ecom/profile" className="lg:hidden">
-                <div className={`w-8 h-8 ${roleColors[user?.role] || 'bg-blue-600'} rounded-lg flex items-center justify-center`}>
+                <div className={`w-8 h-8 ${roleColors[displayUser?.role] || 'bg-blue-600'} rounded-lg flex items-center justify-center`}>
                   <span className="text-white text-xs font-bold">{initial}</span>
                 </div>
               </Link>

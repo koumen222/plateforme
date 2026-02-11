@@ -7,8 +7,12 @@ import EcomUser from '../models/EcomUser.js';
 import Notification from '../../models/Notification.js';
 import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+import { EventEmitter } from 'events';
 
 const router = express.Router();
+
+// Créer un EventEmitter global pour la progression
+const syncProgressEmitter = new EventEmitter();
 
 // GET /api/ecom/orders - Liste des commandes
 router.get('/', requireEcomAuth, async (req, res) => {
@@ -393,249 +397,695 @@ async function sendOrderToCustomNumber(order, workspaceId) {
 
 // POST /api/ecom/orders/sync-sheets - Synchroniser depuis Google Sheets
 router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
-  try {
-    const { sourceId } = req.body;
-    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+  const startTime = Date.now();
+  const syncId = `sync_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Vérifier si la requête a été annulée
+  if (req.signal?.aborted) {
+    console.log(`🚫 [${syncId}] Sync annulée avant le début`);
+    return res.status(499).json({ success: false, message: 'Synchronisation annulée' });
+  }
+  
+  // Nettoyer les locks si la requête est annulée
+  const cleanupOnAbort = () => {
+    const sourceId = req.body?.sourceId || 'unknown';
+    const lockKey = `sync_lock_${req.workspaceId}_${sourceId}`;
+    WorkspaceSettings.updateOne(
+      { workspaceId: req.workspaceId },
+      { $pull: { syncLocks: { key: lockKey } } }
+    ).catch(() => {}); // Ignorer les erreurs de nettoyage
+  };
+  
+  req.signal?.addEventListener('abort', cleanupOnAbort);
+  
+    try {
+      const { sourceId } = req.body;
+      
+      // Vérifier si annulé pendant le traitement
+      if (req.signal?.aborted) {
+        console.log(`� [${syncId}] Sync annulée pendant le traitement`);
+        return res.status(499).json({ success: false, message: 'Synchronisation annulée' });
+      }
+      
+      // � VALIDATION STRICTE sourceId
+      if (!sourceId || typeof sourceId !== 'string') {
+        console.log('❌ sourceId manquant ou invalide:', sourceId);
+        return res.status(400).json({ 
+          success: false, 
+          message: 'sourceId est requis et doit être une chaîne de caractères valide' 
+        });
+      }
     
-    if (!settings) {
-      return res.status(400).json({ success: false, message: 'Paramètres introuvables.' });
+    console.log(`🔄 [${syncId}] POST /sync-sheets - Workspace:`, req.workspaceId);
+    console.log(`🔄 [${syncId}] SourceId validé:`, sourceId);
+    
+    // Émettre la progression initiale
+    syncProgressEmitter.emit('progress', {
+      workspaceId: req.workspaceId,
+      sourceId,
+      current: 0,
+      total: 100,
+      status: '🔍 Vérification des paramètres...',
+      percentage: 0
+    });
+    
+    // 🔒 VÉRIFICATION LOCK SYNCHRONISATION
+    const lockKey = `sync_lock_${req.workspaceId}_${sourceId}`;
+    
+    // Émettre progression: vérification du lock
+    syncProgressEmitter.emit('progress', {
+      workspaceId: req.workspaceId,
+      sourceId,
+      current: 2,
+      total: 100,
+      status: '🔒 Vérification des verrous...',
+      percentage: 2
+    });
+    
+    try {
+      const existingLock = await WorkspaceSettings.findOne({ 
+        workspaceId: req.workspaceId,
+        'syncLocks.key': lockKey 
+      });
+      
+      if (existingLock && existingLock.syncLocks?.[0]?.expiresAt > new Date()) {
+        const lockAge = Math.floor((Date.now() - existingLock.syncLocks[0].createdAt) / 1000);
+        console.log(`⏸️ [${syncId}] Sync déjà en cours (lock existant depuis ${lockAge}s)`);
+        return res.status(429).json({ 
+          success: false, 
+          message: 'Synchronisation déjà en cours pour cette source. Veuillez patienter.',
+          retryAfter: Math.ceil((existingLock.syncLocks[0].expiresAt - Date.now()) / 1000)
+        });
+      }
+    } catch (lockError) {
+      // Si le champ syncLocks n'existe pas encore, on continue
+      if (lockError.name === 'MongoServerError' && lockError.message.includes('syncLocks')) {
+        console.log(`ℹ️ [${syncId}] Champ syncLocks non encore initialisé, continuation...`);
+      } else {
+        throw lockError;
+      }
     }
+    
+    // 🔒 CRÉATION LOCK TEMPORAIRE (2 minutes)
+    const lockExpiresAt = new Date(Date.now() + 120000); // 2 minutes
+    let settings = null;
+    
+    // Émettre progression: création du lock
+    syncProgressEmitter.emit('progress', {
+      workspaceId: req.workspaceId,
+      sourceId,
+      current: 4,
+      total: 100,
+      status: '🔒 Création du verrou de synchronisation...',
+      percentage: 4
+    });
+    
+    try {
+      // D'abord, s'assurer que le document existe avec syncLocks
+      settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+      
+      if (!settings) {
+        // Créer le document s'il n'existe pas
+        settings = new WorkspaceSettings({
+          workspaceId: req.workspaceId,
+          googleSheets: { apiKey: '', spreadsheetId: '', sheetName: 'Sheet1' },
+          sources: [],
+          syncLocks: []
+        });
+        await settings.save();
+        console.log(`✅ [${syncId}] WorkspaceSettings créé avec syncLocks`);
+      } else if (!settings.syncLocks) {
+        // Ajouter le champ syncLocks s'il n'existe pas
+        settings.syncLocks = [];
+        await settings.save();
+        console.log(`🔧 [${syncId}] Champ syncLocks ajouté au document existant`);
+      }
+      
+      // Maintenant ajouter le lock
+      const lockData = {
+        key: lockKey,
+        createdAt: new Date(),
+        expiresAt: lockExpiresAt,
+        sourceId,
+        userId: req.ecomUser?._id
+      };
+      
+      // Nettoyer les anciens locks expirés d'abord
+      settings.syncLocks = settings.syncLocks.filter(lock => lock.expiresAt > new Date());
+      
+      // Vérifier si un lock actif existe déjà
+      const existingActiveLock = settings.syncLocks.find(lock => lock.key === lockKey);
+      if (existingActiveLock) {
+        console.log(`⏸️ [${syncId}] Lock déjà actif, annulation`);
+        return res.status(429).json({
+          success: false,
+          message: 'Synchronisation déjà en cours pour cette source.',
+          retryAfter: Math.ceil((existingActiveLock.expiresAt - Date.now()) / 1000)
+        });
+      }
+      
+      // Ajouter le nouveau lock
+      settings.syncLocks.push(lockData);
+      await settings.save();
+      
+    } catch (lockError) {
+      console.error(`❌ [${syncId}] Erreur création lock:`, lockError);
+      throw lockError;
+    }
+    
+    console.log(`🔒 [${syncId}] Lock créé pour ${sourceId}, expire à ${lockExpiresAt.toLocaleTimeString('fr-FR')}`);
 
-    let sourcesToSync = [];
+    console.log(`📋 [${syncId}] Sources disponibles:`, settings.sources?.length || 0);
+    console.log(`📋 [${syncId}] Google Sheets legacy:`, settings.googleSheets?.spreadsheetId ? 'OUI' : 'NON');
 
-    if (sourceId) {
-      const source = settings.sources.id(sourceId);
-      if (!source) return res.status(404).json({ success: false, message: 'Source non trouvée.' });
-      sourcesToSync = [source];
-    } else if (settings.sources && settings.sources.length > 0) {
-      sourcesToSync = settings.sources.filter(s => s.isActive);
-    } else if (settings.googleSheets?.spreadsheetId) {
-      // Fallback compatibilité
-      sourcesToSync = [{
+    let sourceToSync = null;
+    
+    // 🔍 RECHERCHE SPÉCIFIQUE DE LA SOURCE
+    if (sourceId === 'legacy') {
+      if (!settings.googleSheets?.spreadsheetId) {
+        await WorkspaceSettings.updateOne(
+          { workspaceId: req.workspaceId },
+          { $pull: { syncLocks: { key: lockKey } } }
+        );
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Source legacy non configurée. Veuillez configurer Google Sheets par défaut.' 
+        });
+      }
+      sourceToSync = {
         _id: 'legacy',
         name: 'Commandes Zendo',
         spreadsheetId: settings.googleSheets.spreadsheetId,
         sheetName: settings.googleSheets.sheetName || 'Sheet1'
-      }];
+      };
+    } else {
+      const source = settings.sources.id(sourceId);
+      if (!source) {
+        await WorkspaceSettings.updateOne(
+          { workspaceId: req.workspaceId },
+          { $pull: { syncLocks: { key: lockKey } } }
+        );
+        return res.status(404).json({ 
+          success: false, 
+          message: 'Source non trouvée. Veuillez vérifier l\'ID de la source.' 
+        });
+      }
+      
+      if (!source.isActive) {
+        await WorkspaceSettings.updateOne(
+          { workspaceId: req.workspaceId },
+          { $pull: { syncLocks: { key: lockKey } } }
+        );
+        return res.status(400).json({ 
+          success: false, 
+          message: 'Source désactivée. Activez-la d\'abord dans les paramètres.' 
+        });
+      }
+      
+      sourceToSync = source;
     }
 
-    if (sourcesToSync.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Aucune source Google Sheets configurée ou active.'
+      console.log(`🎯 [${syncId}] Synchronisation de la source:`, sourceToSync.name);
+      
+      // Émettre progression: connexion
+      syncProgressEmitter.emit('progress', {
+        workspaceId: req.workspaceId,
+        sourceId,
+        current: 8,
+        total: 100,
+        status: '🌐 Connexion à Google Sheets...',
+        percentage: 8
       });
-    }
 
     let totalImported = 0;
     let totalUpdated = 0;
-    let totalClientsCreated = 0;
-    let totalClientsUpdated = 0;
-    let syncResults = [];
+    let syncError = null;
 
-    for (const source of sourcesToSync) {
-      const spreadsheetId = extractSpreadsheetId(source.spreadsheetId);
-      if (!spreadsheetId) continue;
-
-      const sheetName = source.sheetName || 'Sheet1';
+    // 📊 SYNCHRONISATION DE LA SOURCE UNIQUE
+    const spreadsheetId = extractSpreadsheetId(sourceToSync.spreadsheetId);
+    if (!spreadsheetId) {
+      syncError = 'ID de spreadsheet invalide';
+    } else {
+      const sheetName = sourceToSync.sheetName || 'Sheet1';
       const csvUrl = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
 
       try {
+        console.log(`🌐 [${syncId}] Appel API Google Sheets...`);
+        
+        // Vérifier si annulé avant l'appel API
+        if (req.signal?.aborted) {
+          console.log(`🚫 [${syncId}] Sync annulée avant appel API Google Sheets`);
+          return res.status(499).json({ success: false, message: 'Synchronisation annulée' });
+        }
+        
+        // Émettre progression: récupération des données
+        syncProgressEmitter.emit('progress', {
+          workspaceId: req.workspaceId,
+          sourceId,
+          current: 20,
+          total: 100,
+          status: '📥 Récupération des données depuis Google Sheets...',
+          percentage: 20
+        });
+        
         const response = await fetch(csvUrl);
-        if (!response.ok) throw new Error('Accès refusé au sheet');
+        if (!response.ok) throw new Error(`HTTP ${response.status}: Accès refusé au sheet`);
 
         const text = await response.text();
         const jsonStr = text.match(/google\.visualization\.Query\.setResponse\((.+)\);?$/);
-        if (!jsonStr) throw new Error('Format invalide');
+        if (!jsonStr) throw new Error('Format de réponse invalide');
 
         const json = JSON.parse(jsonStr[1]);
         const table = json.table;
-        if (!table || !table.rows || table.rows.length === 0) continue;
-
-        let headers = table.cols.map(col => col.label || '');
-        let dataStartIndex = 0;
-        const hasLabels = headers.some(h => h && h.trim());
-        if (!hasLabels && table.rows.length > 0) {
-          const firstRow = table.rows[0];
-          if (firstRow.c) {
-            headers = firstRow.c.map(cell => cell ? (cell.f || (cell.v != null ? String(cell.v) : '')) : '');
-            dataStartIndex = 1;
-          }
-        }
-
-        const columnMap = autoDetectColumns(headers);
-        const bulkOps = [];
-
-        for (let i = dataStartIndex; i < table.rows.length; i++) {
-          const row = table.rows[i];
-          if (!row.c || row.c.every(cell => !cell || !cell.v)) continue;
-
-          const getVal = (field) => {
-            const idx = columnMap[field];
-            if (idx === undefined || !row.c[idx]) return '';
-            const cell = row.c[idx];
-            return cell.f || (cell.v != null ? String(cell.v) : '');
-          };
-
-          const getNumVal = (field) => {
-            const idx = columnMap[field];
-            if (idx === undefined || !row.c[idx]) return 0;
-            return parseFloat(row.c[idx].v) || 0;
-          };
-
-          const getDateVal = (field) => {
-            const idx = columnMap[field];
-            if (idx === undefined || !row.c[idx]) return new Date();
-            const cell = row.c[idx];
-            if (typeof cell.v === 'string' && cell.v.startsWith('Date(')) {
-              const parts = cell.v.match(/Date\((\d+),(\d+),(\d+)/);
-              if (parts) return new Date(parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]));
+        if (!table || !table.rows || table.rows.length === 0) {
+          console.log(`📭 [${syncId}] Sheet vide ou sans données`);
+        } else {
+          let headers = table.cols.map(col => col.label || '');
+          let dataStartIndex = 0;
+          const hasLabels = headers.some(h => h && h.trim());
+          if (!hasLabels && table.rows.length > 0) {
+            const firstRow = table.rows[0];
+            if (firstRow.c) {
+              headers = firstRow.c.map(cell => cell ? (cell.f || (cell.v != null ? String(cell.v) : '')) : '');
+              dataStartIndex = 1;
             }
-            return parseFlexDate(cell.f || cell.v);
-          };
-
-          const rawData = {};
-          headers.forEach((header, idx) => {
-            if (header && row.c[idx]) {
-              const cell = row.c[idx];
-              rawData[header] = cell.f || (cell.v != null ? String(cell.v) : '');
-            }
-          });
-
-          const rowId = `source_${source._id}_row_${i + 2}`;
-          const statusMap = {
-            'en attente': 'pending', 'pending': 'pending', 'nouveau': 'pending', 'new': 'pending',
-            'confirmé': 'confirmed', 'confirmed': 'confirmed', 'confirme': 'confirmed',
-            'expédié': 'shipped', 'shipped': 'shipped', 'expedie': 'shipped', 'envoyé': 'shipped', 'envoye': 'shipped',
-            'livré': 'delivered', 'delivered': 'delivered', 'livre': 'delivered',
-            'retour': 'returned', 'returned': 'returned', 'retourné': 'returned', 'retourne': 'returned',
-            'annulé': 'cancelled', 'cancelled': 'cancelled', 'canceled': 'cancelled', 'annule': 'cancelled'
-          };
-          const mappedStatus = statusMap[(getVal('status') || '').toLowerCase().trim()] || 'pending';
-
-          const doc = {
-            orderId: getVal('orderId') || `#${source.name}_${i + 2}`,
-            date: getDateVal('date'),
-            clientName: getVal('clientName'),
-            clientPhone: getVal('clientPhone'),
-            city: getVal('city'),
-            product: getVal('product'),
-            quantity: parseInt(getNumVal('quantity')) || 1,
-            price: getNumVal('price'),
-            status: mappedStatus,
-            tags: [source.name],
-            notes: getVal('notes'),
-            rawData
-          };
-
-          // Vérifier si la commande existe déjà et si son statut a été modifié manuellement
-          const existingOrder = await Order.findOne({ 
-            workspaceId: req.workspaceId, 
-            sheetRowId: rowId 
-          });
-
-          // Si la commande existe et que le statut a été modifié manuellement, ne pas écraser le statut
-          if (existingOrder && existingOrder.statusModifiedManually) {
-            delete doc.status; // Ne pas mettre à jour le statut
           }
 
-          bulkOps.push({
-            updateOne: {
-              filter: { workspaceId: req.workspaceId, sheetRowId: rowId },
-              update: { $set: { ...doc, workspaceId: req.workspaceId, sheetRowId: rowId, source: 'google_sheets' } },
-              upsert: true
-            }
-          });
-        }
-
-        if (bulkOps.length > 0) {
-          const result = await Order.bulkWrite(bulkOps);
-          totalImported += result.upsertedCount || 0;
-          totalUpdated += result.modifiedCount || 0;
+          console.log(`📊 [${syncId}] Headers détectés:`, headers.length);
+          const columnMap = autoDetectColumns(headers);
+          const bulkOps = [];
           
-          // Détecter les nouvelles commandes et notifier les livreurs
-          if (result.upsertedCount > 0) {
-            // Récupérer les commandes qui viennent d'être insérées
-            const newOrders = [];
-            for (const op of bulkOps) {
-              if (op.updateOne.upsert && op.updateOne.filter.sheetRowId) {
-                newOrders.push(op.updateOne.filter.sheetRowId);
+          // Émettre progression: traitement
+          syncProgressEmitter.emit('progress', {
+            workspaceId: req.workspaceId,
+            sourceId,
+            current: 35,
+            total: 100,
+            status: '⚙️ Traitement des commandes...',
+            percentage: 35
+          });
+
+          for (let i = dataStartIndex; i < table.rows.length; i++) {
+            const row = table.rows[i];
+            if (!row.c || row.c.every(cell => !cell || !cell.v)) continue;
+
+            // Émettre progression pendant le traitement des lignes
+            const progress = 35 + Math.floor(((i - dataStartIndex) / (table.rows.length - dataStartIndex)) * 40;
+            if (i % Math.max(1, Math.ceil((table.rows.length - dataStartIndex) / 20)) === 0) { // Émettre toutes les 5% des lignes
+              syncProgressEmitter.emit('progress', {
+                workspaceId: req.workspaceId,
+                sourceId,
+                current: progress,
+                total: 100,
+                status: `⚙️ Traitement des commandes... ${i - dataStartIndex + 1}/${table.rows.length - dataStartIndex}`,
+                percentage: progress
+              });
+            }
+
+            const getVal = (field) => {
+              const idx = columnMap[field];
+              if (idx === undefined || !row.c[idx]) return '';
+              const cell = row.c[idx];
+              return cell.f || (cell.v != null ? String(cell.v) : '');
+            };
+
+            const getNumVal = (field) => {
+              const idx = columnMap[field];
+              if (idx === undefined || !row.c[idx]) return 0;
+              return parseFloat(row.c[idx].v) || 0;
+            };
+
+            const getDateVal = (field) => {
+              const idx = columnMap[field];
+              if (idx === undefined || !row.c[idx]) return new Date();
+              const cell = row.c[idx];
+              if (typeof cell.v === 'string' && cell.v.startsWith('Date(')) {
+                const parts = cell.v.match(/Date\((\d+),(\d+),(\d+)/);
+                if (parts) return new Date(parseInt(parts[1]), parseInt(parts[2]), parseInt(parts[3]));
               }
+              return parseFlexDate(cell.f || cell.v);
+            };
+
+            const rawData = {};
+            headers.forEach((header, idx) => {
+              if (header && row.c[idx]) {
+                const cell = row.c[idx];
+                rawData[header] = cell.f || (cell.v != null ? String(cell.v) : '');
+              }
+            });
+
+            const rowId = `source_${sourceToSync._id}_row_${i + 2}`;
+            const statusMap = {
+              'en attente': 'pending', 'pending': 'pending', 'nouveau': 'pending', 'new': 'pending',
+              'confirmé': 'confirmed', 'confirmed': 'confirmed', 'confirme': 'confirmed',
+              'expédié': 'shipped', 'shipped': 'shipped', 'expedie': 'shipped', 'envoyé': 'shipped', 'envoye': 'shipped',
+              'livré': 'delivered', 'delivered': 'delivered', 'livre': 'delivered',
+              'retour': 'returned', 'returned': 'returned', 'retourné': 'returned', 'retourne': 'returned',
+              'annulé': 'cancelled', 'cancelled': 'cancelled', 'canceled': 'cancelled', 'annule': 'cancelled'
+            };
+            const mappedStatus = statusMap[(getVal('status') || '').toLowerCase().trim()] || 'pending';
+
+            const doc = {
+              orderId: getVal('orderId') || `#${sourceToSync.name}_${i + 2}`,
+              date: getDateVal('date'),
+              clientName: getVal('clientName'),
+              clientPhone: getVal('clientPhone'),
+              city: getVal('city'),
+              product: getVal('product'),
+              quantity: parseInt(getNumVal('quantity')) || 1,
+              price: getNumVal('price'),
+              status: mappedStatus,
+              tags: [sourceToSync.name],
+              notes: getVal('notes'),
+              rawData
+            };
+
+            // Vérifier si la commande existe déjà
+            const existingOrder = await Order.findOne({ 
+              workspaceId: req.workspaceId, 
+              sheetRowId: rowId 
+            });
+
+            // Si la commande existe et que le statut a été modifié manuellement, ne pas écraser le statut
+            if (existingOrder && existingOrder.statusModifiedManually) {
+              delete doc.status;
+            }
+
+            bulkOps.push({
+              updateOne: {
+                filter: { workspaceId: req.workspaceId, sheetRowId: rowId },
+                update: { $set: { ...doc, workspaceId: req.workspaceId, sheetRowId: rowId, source: 'google_sheets' } },
+                upsert: true
+              }
+            });
+          }
+
+          if (bulkOps.length > 0) {
+            console.log(`💾 [${syncId}] Bulk write de ${bulkOps.length} opérations...`);
+            
+            // Vérifier si annulé avant le bulk write
+            if (req.signal?.aborted) {
+              console.log(`🚫 [${syncId}] Sync annulée avant bulk write`);
+              return res.status(499).json({ success: false, message: 'Synchronisation annulée' });
             }
             
-            if (newOrders.length > 0) {
-              // Récupérer uniquement la dernière commande (la plus récente)
-              const latestOrder = await Order.findOne({
-                workspaceId: req.workspaceId,
-                sheetRowId: { $in: newOrders },
-                status: { $in: ['pending', 'confirmed'] }, // Seulement les commandes en attente/confirmées
-                whatsappNotificationSent: { $ne: true } // IMPORTANT: Seulement si notification pas encore envoyée
-              })
-              .sort({ date: -1 }) // Trier par date décroissante pour obtenir la plus récente
-              .populate('assignedLivreur', 'name email phone');
+            // Émettre progression: sauvegarde
+            syncProgressEmitter.emit('progress', {
+              workspaceId: req.workspaceId,
+              sourceId,
+              current: 80,
+              total: 100,
+              status: '💾 Sauvegarde des commandes dans la base...',
+              percentage: 80
+            });
+            
+            const result = await Order.bulkWrite(bulkOps);
+            totalImported += result.upsertedCount || 0;
+            totalUpdated += result.modifiedCount || 0;
+            console.log(`✅ [${syncId}] Bulk write terminé: ${result.upsertedCount} insérés, ${result.modifiedCount} modifiés`);
+            
+            // Émettre progression: notifications
+            syncProgressEmitter.emit('progress', {
+              workspaceId: req.workspaceId,
+              sourceId,
+              current: 90,
+              total: 100,
+              status: '📱 Envoi des notifications WhatsApp...',
+              percentage: 90
+            });
+            
+            // Notifications pour nouvelles commandes
+            if (result.upsertedCount > 0) {
+              const newOrders = [];
+              for (const op of bulkOps) {
+                if (op.updateOne.upsert && op.updateOne.filter.sheetRowId) {
+                  newOrders.push(op.updateOne.filter.sheetRowId);
+                }
+              }
               
-              // Envoyer uniquement la dernière commande
-              if (latestOrder) {
-                await notifyLivreursOfNewOrder(latestOrder, req.workspaceId);
-                // Envoyer automatiquement au numéro WhatsApp personnalisé
-                await sendOrderToCustomNumber(latestOrder, req.workspaceId);
+              if (newOrders.length > 0) {
+                const latestOrder = await Order.findOne({
+                  workspaceId: req.workspaceId,
+                  sheetRowId: { $in: newOrders },
+                  status: { $in: ['pending', 'confirmed'] },
+                  whatsappNotificationSent: { $ne: true }
+                })
+                .sort({ date: -1 })
+                .populate('assignedLivreur', 'name email phone');
                 
-                // Marquer la notification comme envoyée
-                latestOrder.whatsappNotificationSent = true;
-                latestOrder.whatsappNotificationSentAt = new Date();
-                await latestOrder.save();
-                
-                console.log(`📱 WhatsApp envoyé uniquement pour la dernière commande: #${latestOrder.orderId}`);
+                if (latestOrder) {
+                  await notifyLivreursOfNewOrder(latestOrder, req.workspaceId);
+                  await sendOrderToCustomNumber(latestOrder, req.workspaceId);
+                  
+                  latestOrder.whatsappNotificationSent = true;
+                  latestOrder.whatsappNotificationSentAt = new Date();
+                  await latestOrder.save();
+                  
+                  console.log(`📱 [${syncId}] WhatsApp envoyé pour commande: #${latestOrder.orderId}`);
+                }
               }
             }
           }
-        }
 
-        // Update source stats
-        if (source._id !== 'legacy') {
-          const s = settings.sources.id(source._id);
-          s.lastSyncAt = new Date();
-          s.detectedHeaders = headers.filter(h => h);
-          s.detectedColumns = columnMap;
-        } else {
-          settings.googleSheets.lastSyncAt = new Date();
-          settings.googleSheets.detectedHeaders = headers.filter(h => h);
-          settings.googleSheets.detectedColumns = columnMap;
+          // Update source stats
+          if (sourceToSync._id !== 'legacy') {
+            const s = settings.sources.id(sourceToSync._id);
+            if (s) {
+              s.lastSyncAt = new Date();
+              s.detectedHeaders = headers.filter(h => h);
+              s.detectedColumns = columnMap;
+            }
+          } else {
+            settings.googleSheets.lastSyncAt = new Date();
+            settings.googleSheets.detectedHeaders = headers.filter(h => h);
+            settings.googleSheets.detectedColumns = columnMap;
+          }
         }
-        
-        syncResults.push({ name: source.name, imported: bulkOps.length });
 
       } catch (err) {
-        console.error(`Error syncing source ${source.name}:`, err);
+        console.error(`❌ [${syncId}] Erreur sync source ${sourceToSync.name}:`, err);
+        syncError = err.message;
       }
     }
 
+    // Émettre progression: finalisation
+    syncProgressEmitter.emit('progress', {
+      workspaceId: req.workspaceId,
+      sourceId,
+      current: 95,
+      total: 100,
+      status: '� Finalisation de la synchronisation...',
+      percentage: 95
+    });
+    
+    // Sauvegarder les settings
     settings.markModified('sources');
     settings.markModified('googleSheets');
     await settings.save();
+    
+    // �🔓 NETTOYAGE LOCK
+    try {
+      const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+      if (settings && settings.syncLocks) {
+        settings.syncLocks = settings.syncLocks.filter(lock => lock.key !== lockKey);
+        await settings.save();
+        console.log(`🔓 [${syncId}] Lock libéré`);
+      }
+    } catch (cleanupError) {
+      console.error(`❌ [${syncId}] Erreur nettoyage lock:`, cleanupError);
+    }
 
-    // Auto-création des clients/prospects (simplifié pour la réponse)
-    // ... (Logique client similaire à l'originale mais adaptée si besoin)
+    const duration = Math.floor((Date.now() - startTime) / 1000);
+    
+    if (syncError) {
+      console.log(`❌ [${syncId}] Sync échouée après ${duration}s:`, syncError);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Erreur synchronisation: ${syncError}`,
+        duration,
+        sourceId
+      });
+    }
 
+    console.log(`✅ [${syncId}] Sync réussie en ${duration}s: ${totalImported} importées, ${totalUpdated} mises à jour`);
+    
+    // Émettre progression: terminé
+    syncProgressEmitter.emit('progress', {
+      workspaceId: req.workspaceId,
+      sourceId,
+      current: 100,
+      total: 100,
+      status: `✅ Terminé! ${totalImported} nouvelles commandes, ${totalUpdated} mises à jour`,
+      percentage: 100,
+      completed: true
+    });
+    
+    // 📱 Envoyer notification push de synchronisation terminée
+    try {
+      // Importer le service push
+      const { sendPushNotification } = require('../../services/pushService');
+      
+      await sendPushNotification(req.workspaceId, {
+        title: '📊 Synchronisation terminée',
+        body: `${totalImported} nouvelles commandes importées, ${totalUpdated} mises à jour`,
+        icon: '/icons/sync-success.png',
+        badge: '/icons/badge.png',
+        tag: 'sync-completed',
+        data: {
+          type: 'sync-completed',
+          sourceId,
+          imported: totalImported,
+          updated: totalUpdated,
+          duration: Math.floor((Date.now() - startTime) / 1000)
+        },
+        actions: [
+          {
+            action: 'view-orders',
+            title: 'Voir les commandes'
+          },
+          {
+            action: 'dismiss',
+            title: 'Fermer'
+          }
+        ]
+      });
+      
+      console.log(`📱 [${syncId}] Notification push envoyée pour la synchronisation`);
+    } catch (pushError) {
+      console.error(`❌ [${syncId}] Erreur notification push:`, pushError);
+      // Ne pas échouer la sync si la notification échoue
+    }
+    
     res.json({
       success: true,
-      message: `Sync terminée: ${totalImported} importées, ${totalUpdated} mises à jour.`,
-      data: { imported: totalImported, updated: totalUpdated, sources: syncResults }
+      message: `Synchronisation terminée: ${totalImported} nouvelles commandes, ${totalUpdated} mises à jour.`,
+      data: { 
+        imported: totalImported, 
+        updated: totalUpdated, 
+        duration,
+        sourceId,
+        sourceName: sourceToSync.name
+      }
     });
 
   } catch (error) {
-    console.error('Erreur sync Google Sheets:', error);
-    res.status(500).json({ success: false, message: 'Erreur synchronisation: ' + error.message });
+    console.error(`💥 [${syncId}] Erreur critique sync:`, error);
+    
+    // 🔓 NETTOYAGE LOCK EN CAS D'ERREUR
+    try {
+      const sourceIdForCleanup = req.body?.sourceId || 'unknown';
+      const lockKey = `sync_lock_${req.workspaceId}_${sourceIdForCleanup}`;
+      const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+      if (settings && settings.syncLocks) {
+        settings.syncLocks = settings.syncLocks.filter(lock => lock.key !== lockKey);
+        await settings.save();
+        console.log(`🔓 [${syncId}] Lock d'urgence libéré`);
+      }
+    } catch (cleanupError) {
+      console.error(`❌ [${syncId}] Erreur nettoyage lock:`, cleanupError);
+    }
+    
+    res.status(500).json({ 
+      success: false, 
+      message: 'Erreur critique lors de la synchronisation: ' + error.message 
+    });
   }
+});
+
+
+// GET /api/ecom/orders/sync-progress - Endpoint SSE pour suivre la progression
+router.get('/sync-progress', requireEcomAuth, async (req, res) => {
+  const { workspaceId, sourceId } = req.query;
+  
+  console.log(`📡 SSE connecté - Workspace: ${workspaceId}, Source: ${sourceId}`);
+  
+  // Configuration SSE
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Cache-Control'
+  });
+  
+  // Envoyer la progression initiale immédiatement
+  const initialData = {
+    current: 1,
+    total: 100,
+    status: 'Initialisation...',
+    percentage: 1,
+    workspaceId,
+    sourceId
+  };
+  
+  console.log('📤 Envoi progression initiale:', initialData);
+  res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+  
+  // Écouter les événements de progression
+  const progressKey = `${workspaceId}_${sourceId}`;
+  console.log(`🔑 Clé d'écoute: ${progressKey}`);
+  
+  const progressHandler = (data) => {
+    console.log(`📡 Événement reçu pour ${progressKey}:`, data);
+    
+    if (data.workspaceId === workspaceId && data.sourceId === sourceId) {
+      console.log('📤 Envoi progression au client:', data);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+      
+      if (data.completed) {
+        console.log('✅ Progression terminée, fermeture SSE');
+        setTimeout(() => {
+          res.end();
+        }, 1000);
+      }
+    }
+  };
+  
+  // S'abonner aux événements
+  syncProgressEmitter.on('progress', progressHandler);
+  console.log(`👂 Abonné aux événements pour ${progressKey}`);
+  
+  // Envoyer un heartbeat toutes les 30 secondes pour maintenir la connexion
+  const heartbeatInterval = setInterval(() => {
+    res.write(': heartbeat\n\n');
+  }, 30000);
+  
+  // Nettoyer quand le client se déconnecte
+  req.on('close', () => {
+    console.log(`❌ Client déconnecté de ${progressKey}`);
+    syncProgressEmitter.off('progress', progressHandler);
+    clearInterval(heartbeatInterval);
+  });
+  
+  // Timeout de connexion (2 minutes)
+  setTimeout(() => {
+    if (!res.closed) {
+      console.log(`⏰ Timeout SSE pour ${progressKey}`);
+      res.end();
+    }
+  }, 120000);
 });
 
 
 // GET /api/ecom/orders/settings - Récupérer la config et les sources
 router.get('/settings', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
+    console.log('📋 GET /orders/settings - Récupération config et sources');
+    console.log('👤 Utilisateur:', req.ecomUser?.email);
+    console.log('🏢 WorkspaceId utilisé:', req.workspaceId);
+    console.log('🎭 Mode incarnation:', req.query.workspaceId ? 'OUI' : 'NON');
+    
     let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    console.log('📊 Settings trouvés:', settings ? 'OUI' : 'NON');
+    
     if (!settings) {
+      console.log('📝 Création nouveaux settings pour workspace:', req.workspaceId);
       settings = await WorkspaceSettings.create({ workspaceId: req.workspaceId });
     }
+    
+    console.log('📋 Sources trouvées:', settings.sources?.length || 0);
+    console.log('📋 Sources:', settings.sources);
+    
     res.json({ 
       success: true, 
       data: {

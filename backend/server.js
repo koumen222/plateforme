@@ -1963,6 +1963,16 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/ecore.js:', error.message);
     }
+    
+    // Routes E-commerce Push Notifications
+    try {
+      const ecomPushModule = await import("./ecom/routes/push.js");
+      const ecomPushRoutes = ecomPushModule.default;
+      app.use("/api/ecom/push", ecomPushRoutes);
+      console.log('✅ Routes E-commerce Push chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/push.js:', error.message);
+    }
 
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)

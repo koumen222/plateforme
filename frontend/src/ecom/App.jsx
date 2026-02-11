@@ -115,6 +115,10 @@ const ProtectedRoute = ({ children, requiredRole }) => {
 
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    // Le Super Admin peut accéder à toutes les routes
+    if (user?.role === 'super_admin') {
+      return children;
+    }
     if (!roles.includes(user?.role)) {
       // Rediriger vers le dashboard approprié selon le rôle
       const roleDashboardMap = {
