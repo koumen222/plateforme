@@ -25,11 +25,16 @@ function VisitTracker() {
     // Fonction pour obtenir la géolocalisation depuis l'IP
     const getLocationFromIP = async () => {
       try {
-        // Utiliser ipapi.co (gratuit, 1000 requêtes/jour)
-        const response = await fetch('https://ipapi.co/json/');
+        // Utiliser ip-api.com en HTTPS (plus fiable que ipapi.co)
+        const response = await fetch('https://ipapi.co/json/', {
+          mode: 'cors',
+          cache: 'no-cache'
+        });
+        
         if (!response.ok) {
-          throw new Error('Erreur récupération géolocalisation');
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
         const data = await response.json();
         return {
           country: data.country_name || 'Unknown',
@@ -38,10 +43,15 @@ function VisitTracker() {
           region: data.region || null
         };
       } catch (error) {
-        console.warn('Erreur géolocalisation IP:', error);
-        // Fallback sur ip-api.com si ipapi.co échoue
+        console.warn('Erreur géolocalisation IP (primaire):', error.message);
+        
+        // Fallback sur ip-api.com en HTTPS
         try {
-          const response = await fetch('http://ip-api.com/json/?fields=status,message,country,countryCode,city,regionName');
+          const response = await fetch('https://ip-api.com/json/?fields=status,message,country,countryCode,city,regionName', {
+            mode: 'cors',
+            cache: 'no-cache'
+          });
+          
           if (response.ok) {
             const data = await response.json();
             if (data.status === 'success') {
@@ -54,8 +64,9 @@ function VisitTracker() {
             }
           }
         } catch (fallbackError) {
-          console.warn('Erreur géolocalisation IP (fallback):', fallbackError);
+          console.warn('Erreur géolocalisation IP (fallback):', fallbackError.message);
         }
+        
         // Retourner des valeurs par défaut si tout échoue
         return {
           country: 'Unknown',

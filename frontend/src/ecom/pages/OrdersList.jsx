@@ -845,6 +845,20 @@ const OrdersList = () => {
     return '';
   };
 
+  const getNotes = (o) => {
+    if (o.notes && typeof o.notes === 'string' && o.notes.trim()) {
+      return o.notes.trim();
+    }
+    if (o.rawData && typeof o.rawData === 'object') {
+      const entry = Object.entries(o.rawData).find(([k, v]) => {
+        if (typeof v !== 'string' || !v.trim()) return false;
+        return /notes|note|commentaire|comment|remarque|observation|description|details|info/i.test(k);
+      });
+      if (entry && entry[1]) return entry[1].trim();
+    }
+    return o.notes || '';
+  };
+
   const sheetCols = useMemo(() => {
     const hasRaw = orders.some(o => o.rawData && Object.keys(o.rawData).length > 0);
     return hasRaw ? [...new Set(orders.flatMap(o => Object.keys(o.rawData || {})))] : [];
