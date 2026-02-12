@@ -25,12 +25,15 @@ const getStatusLabel = (s) => SL[s] || s;
 const getStatusColor = (s) => SC[s] || 'bg-indigo-100 text-indigo-800 border-indigo-200';
 const getStatusDot = (s) => SD[s] || 'border-l-indigo-400';
 
+
+
 const OrdersList = () => {
   const navigate = useNavigate();
   const { user } = useEcomAuth();
   const { fmt } = useMoney();
   const isAdmin = user?.role === 'ecom_admin';
-  const [orders, setOrders] = useState([]);
+
+    const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [syncClients, setSyncClients] = useState(false);
@@ -55,6 +58,7 @@ const OrdersList = () => {
   const [configLoading, setConfigLoading] = useState(false);
   const [sources, setSources] = useState([]);
   const [selectedSourceId, setSelectedSourceId] = useState('');
+  const [sourcesConfig, setSourcesConfig] = useState({});
   const [lastSyncs, setLastSyncs] = useState({});
   const [expandedId, setExpandedId] = useState(null);
   const [page, setPage] = useState(1);
@@ -78,6 +82,79 @@ const OrdersList = () => {
   const [savingOrder, setSavingOrder] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState(null);
   const [deletingAll, setDeletingAll] = useState(false);
+
+  // Fonction pour générer les champs à afficher selon les colonnes détectées
+  const getDisplayFields = (sourceId) => {
+    const config = sourcesConfig[sourceId];
+    if (!config || !config.detectedColumns) {
+      // Configuration par défaut si aucune détection
+      return [
+        { key: 'clientPhone', label: 'Téléphone', icon: 'phone', getValue: getClientPhone, priority: 1 },
+        { key: 'city', label: 'Ville', icon: 'location', getValue: getCity, priority: 2 },
+        { key: 'address', label: 'Adresse', icon: 'home', getValue: getAddress, priority: 3 },
+        { key: 'product', label: 'Produit', icon: 'package', getValue: getProductName, priority: 4 },
+        { key: 'notes', label: 'Notes', icon: 'note', getValue: getNotes, priority: 5 }
+      ];
+    }
+
+    const columns = config.detectedColumns;
+    const fields = [];
+
+    // Ordre de priorité des champs
+    const fieldPriority = {
+      clientPhone: 1,
+      city: 2,
+      address: 3,
+      product: 4,
+      notes: 5,
+      orderId: 6,
+      date: 7,
+      price: 8,
+      quantity: 9
+    };
+
+    // Mapper les colonnes détectées vers les champs d'affichage
+    Object.entries(columns).forEach(([field, columnIndex]) => {
+      const fieldConfig = {
+        clientPhone: { label: 'Téléphone', icon: 'phone', getValue: getClientPhone },
+        city: { label: 'Ville', icon: 'location', getValue: getCity },
+        address: { label: 'Adresse', icon: 'home', getValue: getAddress },
+        product: { label: 'Produit', icon: 'package', getValue: getProductName },
+        notes: { label: 'Notes', icon: 'note', getValue: getNotes },
+        orderId: { label: 'N°', icon: 'hashtag', getValue: getOrderId },
+        date: { label: 'Date', icon: 'calendar', getValue: getDate },
+        price: { label: 'Prix', icon: 'money', getValue: getPrice },
+        quantity: { label: 'Qté', icon: 'number', getValue: getQuantity }
+      }[field];
+
+      if (fieldConfig) {
+        fields.push({
+          key: field,
+          label: fieldConfig.label,
+          icon: fieldConfig.icon,
+          getValue: fieldConfig.getValue,
+          priority: fieldPriority[field] || 999,
+          columnIndex
+        });
+      }
+    });
+
+    // Trier par priorité
+    return fields.sort((a, b) => a.priority - b.priority);
+  };
+
+  // Fonctions de formatage
+  const fmtDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+  };
+
+  const fmtTime = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+  };
 
   const fetchOrders = async () => {
     try {
@@ -111,11 +188,25 @@ const OrdersList = () => {
               name: 'Commandes Zendo',
               sheetName: res.data.data.googleSheets.sheetName || 'Sheet1',
               isActive: true,
-              lastSyncAt: res.data.data.googleSheets.lastSyncAt
+              lastSyncAt: res.data.data.googleSheets.lastSyncAt,
+              detectedHeaders: res.data.data.googleSheets.detectedHeaders || [],
+              detectedColumns: res.data.data.googleSheets.detectedColumns || {}
             },
             ...allSources
           ];
         }
+
+        // Créer un objet de configuration des sources avec leurs colonnes détectées
+        const configMap = {};
+        allSources.forEach(source => {
+          configMap[source._id] = {
+            detectedHeaders: source.detectedHeaders || [],
+            detectedColumns: source.detectedColumns || {},
+            name: source.name
+          };
+        });
+        
+        setSourcesConfig(configMap);
         
         setSources(allSources);
         
@@ -668,9 +759,7 @@ const OrdersList = () => {
     }
   };
 
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: '2-digit' }) : '-';
-  const fmtTime = (d) => d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '';
-
+  
   const getProductName = (o) => {
     if (o.product && typeof o.product === 'string' && o.product.trim()) {
       return o.product.trim();
@@ -854,6 +943,23 @@ const OrdersList = () => {
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sources ({sources.length})</span>
             </div>
           </div>
+
+          {/* Information d'adaptation au Google Sheet */}
+          {selectedSourceId && sourcesConfig[selectedSourceId] && (
+            <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center gap-2 text-xs">
+                <svg className="w-3.5 h-3.5 text-blue-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span className="text-blue-700 font-medium">
+                  Affichage adapté à : {sourcesConfig[selectedSourceId].name}
+                </span>
+                {sourcesConfig[selectedSourceId].detectedHeaders.length > 0 && (
+                  <span className="text-blue-600">
+                    ({sourcesConfig[selectedSourceId].detectedHeaders.length} colonnes détectées)
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => { setSelectedSourceId(''); setPage(1); }}
@@ -1213,67 +1319,67 @@ const OrdersList = () => {
         </div>
       ) : (
         <>
-          {/* Vue tableau structuré — Desktop */}
+          {/* Vue tableau structuré — Desktop adapté au Google Sheet */}
           <div className="hidden md:block bg-white rounded-xl shadow-sm border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr className="bg-gray-50 border-b border-gray-200">
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">N° Commande</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Date</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nom complet</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Téléphone</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Adresse</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Ville</th>
+                    {/* Colonnes fixes */}
+                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Nom</th>
+                    
+                    {/* Colonnes dynamiques selon le Google Sheet */}
+                    {getDisplayFields(selectedSourceId).map(field => (
+                      <th key={field.key} className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                        {field.label}
+                      </th>
+                    ))}
+                    
+                    {/* Colonnes fixes */}
                     <th className="px-3 py-3 text-right text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Total</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Produit / Qté</th>
-                    <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">Note</th>
                     <th className="px-3 py-3 text-left text-[10px] font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap sticky right-0 bg-gray-50">Statut</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {orders.map((o) => {
                     const clientName = getClientName(o);
-                    const clientPhone = getClientPhone(o);
-                    const city = getCity(o);
-                    const address = getAddress(o);
-                    const productName = getProductName(o);
                     const totalPrice = (o.price || 0) * (o.quantity || 1);
-                    const notes = o.notes || '';
 
                     return (
                       <tr key={o._id} className="hover:bg-blue-50/40 transition-colors cursor-pointer group" onClick={() => navigate(`/ecom/orders/${o._id}`)}>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-xs font-mono text-blue-600 font-medium">{o.orderId || '—'}</span>
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <div className="text-xs text-gray-700">{fmtDate(o.date)}</div>
-                          <div className="text-[10px] text-gray-400">{fmtTime(o.date)}</div>
-                        </td>
+                        {/* Colonne nom fixe */}
                         <td className="px-3 py-2.5 whitespace-nowrap max-w-[160px]">
-                          <span className="text-xs font-medium text-gray-900 truncate block" title={clientName}>{clientName}</span>
+                          <span className="text-xs font-medium text-gray-900 truncate block" title={clientName}>{clientName || <span className="text-gray-300">—</span>}</span>
+                          {o.orderId && (
+                            <span className="text-[10px] font-mono text-blue-600 bg-blue-50 px-1 py-0.5 rounded border border-blue-100 mt-0.5 inline-block">{o.orderId}</span>
+                          )}
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-xs text-gray-600 font-mono">{clientPhone || <span className="text-gray-300">—</span>}</span>
-                        </td>
-                        <td className="px-3 py-2.5 max-w-[150px]">
-                          <span className="text-xs text-gray-600 truncate block" title={address}>{address || <span className="text-gray-300">—</span>}</span>
-                        </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap">
-                          <span className="text-xs text-gray-600">{city || <span className="text-gray-300">—</span>}</span>
-                        </td>
+                        
+                        {/* Colonnes dynamiques */}
+                        {getDisplayFields(selectedSourceId).map(field => {
+                          const value = field.getValue(o);
+                          return (
+                            <td key={field.key} className={`px-3 py-2.5 ${field.key === 'address' ? 'max-w-[150px]' : field.key === 'product' ? 'max-w-[140px]' : field.key === 'notes' ? 'max-w-[120px]' : 'whitespace-nowrap'}`}>
+                              {value ? (
+                                <span className={`text-xs ${field.key === 'clientPhone' ? 'text-gray-600 font-mono' : field.key === 'notes' ? 'text-gray-500' : 'text-gray-700'} truncate block`} title={String(value)}>
+                                  {field.key === 'price' ? fmt(value) : 
+                                   field.key === 'date' ? fmtDate(value) :
+                                   field.key === 'quantity' && o.quantity > 1 ? `${value}×${o.quantity}` :
+                                   String(value)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-300">—</span>
+                              )}
+                            </td>
+                          );
+                        })}
+                        
+                        {/* Colonne total fixe */}
                         <td className="px-3 py-2.5 whitespace-nowrap text-right">
                           <span className="text-xs font-semibold text-gray-900">{totalPrice > 0 ? fmt(totalPrice) : <span className="text-gray-300">—</span>}</span>
                         </td>
-                        <td className="px-3 py-2.5 whitespace-nowrap max-w-[140px]">
-                          <span className="text-xs text-gray-700 truncate block" title={productName}>
-                            {productName !== 'Non spécifié' ? productName : <span className="text-gray-300">—</span>}
-                          </span>
-                          {(o.quantity || 1) > 1 && <span className="text-[10px] text-gray-400 ml-1">×{o.quantity}</span>}
-                        </td>
-                        <td className="px-3 py-2.5 max-w-[120px]">
-                          <span className="text-[10px] text-gray-500 truncate block" title={notes}>{notes || <span className="text-gray-300">—</span>}</span>
-                        </td>
+                        
+                        {/* Colonne statut fixe */}
                         <td className="px-3 py-2.5 whitespace-nowrap sticky right-0 bg-white group-hover:bg-blue-50/40" onClick={(e) => e.stopPropagation()}>
                           <select value={o.status} onChange={(e) => { if (e.target.value === '__custom') { const c = prompt('Entrez le statut personnalisé :'); if (c && c.trim()) handleStatusChange(o._id, c.trim()); } else handleStatusChange(o._id, e.target.value); }}
                             className={`text-[10px] px-2 py-1 rounded-full font-medium border cursor-pointer focus:ring-2 focus:ring-blue-400 focus:outline-none ${getStatusColor(o.status)}`}>
@@ -1303,17 +1409,19 @@ const OrdersList = () => {
               return (
                 <div key={o._id} className={`bg-white rounded-xl shadow-sm border-l-4 ${getStatusDot(o.status)} overflow-hidden hover:shadow-md transition-all duration-200`}>
                   <div className="p-4 cursor-pointer" onClick={() => navigate(`/ecom/orders/${o._id}`)}>
-                    <div className="flex items-start justify-between mb-2">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                        <div className="flex items-center gap-2 mb-1">
                           <h3 className="text-sm font-semibold text-gray-900 truncate">{clientName}</h3>
-                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${getStatusColor(o.status)}`}>
+                          {o.orderId && (
+                            <span className="text-[10px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 flex-shrink-0">{o.orderId}</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border flex-shrink-0 ${getStatusColor(o.status)}`}>
                             {getStatusLabel(o.status)}
                           </span>
                         </div>
-                        {o.orderId && (
-                          <span className="text-[10px] font-mono text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">{o.orderId}</span>
-                        )}
                       </div>
                       <div className="text-right flex-shrink-0 ml-3">
                         {totalPrice > 0 && <p className="text-base font-bold text-gray-900">{fmt(totalPrice)}</p>}
@@ -1321,38 +1429,63 @@ const OrdersList = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 mt-3 text-xs">
-                      {clientPhone && (
-                        <div className="flex items-center gap-1.5 text-gray-600">
-                          <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>
-                          <span className="font-mono truncate">{clientPhone}</span>
-                        </div>
-                      )}
-                      {city && (
-                        <div className="flex items-center gap-1.5 text-gray-600">
-                          <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
-                          <span className="truncate">{city}</span>
-                        </div>
-                      )}
-                      {address && (
-                        <div className="flex items-center gap-1.5 text-gray-600 col-span-2">
-                          <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                          <span className="truncate">{address}</span>
-                        </div>
-                      )}
-                      {productName && productName !== 'Non spécifié' && (
-                        <div className="flex items-center gap-1.5 text-gray-600 col-span-2">
-                          <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
-                          <span className="truncate">{productName}</span>
-                          {(o.quantity || 1) > 1 && <span className="text-gray-400">×{o.quantity}</span>}
-                        </div>
-                      )}
-                      {o.notes && (
-                        <div className="flex items-start gap-1.5 text-gray-500 col-span-2 mt-1">
-                          <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>
-                          <span className="text-[10px] line-clamp-2">{o.notes}</span>
-                        </div>
-                      )}
+                    {/* Ligne unique avec tous les détails - Mobile adapté au Google Sheet */}
+                    <div className="mt-3 overflow-x-auto">
+                      <div className="flex items-center gap-3 text-xs whitespace-nowrap pb-1">
+                        {getDisplayFields(selectedSourceId).map(field => {
+                          const value = field.getValue(o);
+                          if (!value) return null;
+                          
+                          // Déterminer l'icône SVG selon le type
+                          const getIcon = (iconType) => {
+                            const icons = {
+                              phone: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/></svg>,
+                              location: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>,
+                              home: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>,
+                              package: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>,
+                              note: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z"/></svg>,
+                              hashtag: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>,
+                              calendar: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>,
+                              money: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"/></svg>,
+                              number: <svg className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14"/></svg>
+                            };
+                            return icons[iconType] || icons.note;
+                          };
+
+                          // Déterminer la largeur maximale selon le type
+                          const getMaxWidth = (fieldKey) => {
+                            const widths = {
+                              clientPhone: 'max-w-[100px]',
+                              city: 'max-w-[80px]',
+                              address: 'max-w-[120px]',
+                              product: 'max-w-[100px]',
+                              notes: 'max-w-[80px]',
+                              orderId: 'max-w-[60px]',
+                              date: 'max-w-[70px]',
+                              price: 'max-w-[60px]',
+                              quantity: 'max-w-[40px]'
+                            };
+                            return widths[fieldKey] || 'max-w-[80px]';
+                          };
+
+                          // Formatter la valeur selon le type
+                          const formatValue = (fieldKey, value, order) => {
+                            if (fieldKey === 'price') return fmt(value);
+                            if (fieldKey === 'date') return fmtDate(value);
+                            if (fieldKey === 'quantity' && order.quantity > 1) return `${value}×${order.quantity}`;
+                            return String(value);
+                          };
+
+                          return (
+                            <div key={field.key} className={`flex items-center gap-1.5 text-gray-600 flex-shrink-0`}>
+                              {getIcon(field.icon)}
+                              <span className={`truncate ${getMaxWidth(field.key)} ${field.key === 'notes' ? 'text-[10px]' : ''}`}>
+                                {formatValue(field.key, value, o)}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
 
