@@ -511,10 +511,12 @@ const OrdersList = () => {
   const syncingRef = useRef(syncing);
   const syncDisabledRef = useRef(syncDisabled);
   const lastSyncTimeRef = useRef(lastSyncTime);
+  const selectedSourceIdRef = useRef(selectedSourceId);
   useEffect(() => { sourcesRef.current = sources; }, [sources]);
   useEffect(() => { syncingRef.current = syncing; }, [syncing]);
   useEffect(() => { syncDisabledRef.current = syncDisabled; }, [syncDisabled]);
   useEffect(() => { lastSyncTimeRef.current = lastSyncTime; }, [lastSyncTime]);
+  useEffect(() => { selectedSourceIdRef.current = selectedSourceId; }, [selectedSourceId]);
 
   // Auto-sync Google Sheets : synchronise automatiquement toutes les 2 minutes
   useEffect(() => {
@@ -591,9 +593,10 @@ const OrdersList = () => {
       setAutoSyncStatus('🔄 Sync en cours...');
       console.log('🤖 Auto-click Sync bouton...');
       
-      const targetSourceId = selectedSourceId || (sources.length > 0 ? sources[0]._id : null);
-      if (targetSourceId) {
-        await handleSync(targetSourceId, { force: true });
+      // Utiliser le ref pour obtenir la valeur actuelle sans déclencher le useEffect
+      const currentSourceId = selectedSourceIdRef.current || (sources.length > 0 ? sources[0]._id : null);
+      if (currentSourceId) {
+        await handleSync(currentSourceId, { force: true });
         setAutoSyncStatus('✅ Terminé');
         setTimeout(() => setAutoSyncStatus(''), 2000);
       }
@@ -611,7 +614,7 @@ const OrdersList = () => {
       clearInterval(interval);
       console.log('🤖 Auto-click Sync désactivé');
     };
-  }, [isAdmin, sources.length, selectedSourceId]);
+  }, [isAdmin, sources.length]);
 
   const handleSync = async (sourceId = null, options = {}) => {
     // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés (10 secondes)
