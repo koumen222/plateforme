@@ -120,6 +120,8 @@ const OrdersList = () => {
   const [savingOrder, setSavingOrder] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState(null);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [nextSyncIn, setNextSyncIn] = useState(0);
+  const [autoSyncStatus, setAutoSyncStatus] = useState('');
 
   // Fonction pour générer les champs à afficher selon les colonnes détectées
   const getDisplayFields = (sourceId) => {
@@ -459,7 +461,7 @@ const OrdersList = () => {
   }, []);
 
   useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId, page]);
-  useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 4000); return () => clearTimeout(t); } }, [success]);
+  useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 10000); return () => clearTimeout(t); } }, [success]);
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
 
   // Auto-refresh intelligent - seulement si l'utilisateur est actif
@@ -507,14 +509,18 @@ const OrdersList = () => {
   // Refs pour l'auto-sync (éviter les closures stale)
   const sourcesRef = useRef(sources);
   const syncingRef = useRef(syncing);
+  const syncDisabledRef = useRef(syncDisabled);
+  const lastSyncTimeRef = useRef(lastSyncTime);
   useEffect(() => { sourcesRef.current = sources; }, [sources]);
   useEffect(() => { syncingRef.current = syncing; }, [syncing]);
+  useEffect(() => { syncDisabledRef.current = syncDisabled; }, [syncDisabled]);
+  useEffect(() => { lastSyncTimeRef.current = lastSyncTime; }, [lastSyncTime]);
 
   // Auto-sync Google Sheets : synchronise automatiquement toutes les 2 minutes
   useEffect(() => {
     if (!isAdmin || sources.length === 0 || !permanentSyncEnabled) return;
     
-    const AUTO_SYNC_INTERVAL = 120000; // 2 minutes
+    const AUTO_SYNC_INTERVAL = 330000; // 5 minutes 30 secondes
     let isAutoSyncing = false;
     
     const autoSyncSheets = async () => {
@@ -553,7 +559,7 @@ const OrdersList = () => {
     // Puis toutes les 2 minutes
     const interval = setInterval(autoSyncSheets, AUTO_SYNC_INTERVAL);
     
-    console.log('📡 Auto-sync activé (toutes les 2 min)');
+    console.log('📡 Auto-sync activé (toutes les 5min30)');
     
     return () => {
       clearTimeout(initialTimeout);
@@ -562,11 +568,57 @@ const OrdersList = () => {
     };
   }, [isAdmin, sources.length, permanentSyncEnabled]);
 
+  // Auto-click sync button toutes les 30 secondes
+  useEffect(() => {
+    if (!isAdmin || sources.length === 0) return;
+    
+    const AUTO_CLICK_INTERVAL = 1000; // 1 seconde
+    const DEBOUNCE_TIME = 10000; // 10 secondes minimum entre syncs
+    
+    const autoClickSync = async () => {
+      const now = Date.now();
+      const timeSinceLastSync = lastSyncTimeRef.current ? now - lastSyncTimeRef.current : DEBOUNCE_TIME;
+      const canSync = timeSinceLastSync >= DEBOUNCE_TIME && !syncingRef.current && !syncDisabledRef.current;
+      
+      if (!canSync) {
+        const waitTime = Math.max(0, DEBOUNCE_TIME - timeSinceLastSync);
+        setNextSyncIn(Math.ceil(waitTime / 1000));
+        setAutoSyncStatus('⏳ Attente...');
+        return;
+      }
+      
+      setNextSyncIn(0);
+      setAutoSyncStatus('🔄 Sync en cours...');
+      console.log('🤖 Auto-click Sync bouton...');
+      
+      const targetSourceId = selectedSourceId || (sources.length > 0 ? sources[0]._id : null);
+      if (targetSourceId) {
+        await handleSync(targetSourceId, { force: true });
+        setAutoSyncStatus('✅ Terminé');
+        setTimeout(() => setAutoSyncStatus(''), 2000);
+      }
+    };
+    
+    // Premier clic après 2 secondes
+    const initialClick = setTimeout(autoClickSync, 2000);
+    // Puis toutes les 1 secondes (vérifie si peut sync)
+    const interval = setInterval(autoClickSync, AUTO_CLICK_INTERVAL);
+    
+    console.log('🤖 Auto-click Sync activé (vérifie toutes les 1s)');
+    
+    return () => {
+      clearTimeout(initialClick);
+      clearInterval(interval);
+      console.log('🤖 Auto-click Sync désactivé');
+    };
+  }, [isAdmin, sources.length, selectedSourceId]);
+
   const handleSync = async (sourceId = null, options = {}) => {
-    // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés
+    // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés (10 secondes)
     const now = Date.now();
-    if (lastSyncTime && now - lastSyncTime < 2000 && !options.force) {
-      console.log('⏸️ Sync trop rapprochée, ignorée (debounce 2s)');
+    if (lastSyncTime && now - lastSyncTime < 10000 && !options.force) {
+      console.log('⏸️ Sync trop rapprochée, ignorée (debounce 10s)');
+      setError('Veuillez attendre 10 secondes entre chaque synchronisation');
       return;
     }
     
@@ -696,7 +748,8 @@ const OrdersList = () => {
         eventSource.close();
       }
       
-      setSuccess(res.data.message);
+      // Pas de message de succès affiché (silencieux)
+      console.log('✅ Sync terminée:', res.data?.message);
       fetchConfig(); // Refresh sources for sync times
       fetchOrders();
     } catch (err) { 
@@ -716,7 +769,7 @@ const OrdersList = () => {
       // Réactiver le bouton après un délai pour éviter les doubles clics
       setTimeout(() => {
         setSyncDisabled(false);
-      }, 1000);
+      }, 5000);
     }
   };
   
@@ -1073,6 +1126,45 @@ const OrdersList = () => {
                 Ajouter
               </button>
               <button
+                onClick={() => {
+                  if (selectedSourceId) {
+                    handleSync(selectedSourceId);
+                  } else if (sources.length > 0) {
+                    handleSync(sources[0]._id);
+                  } else {
+                    setError('Aucune source configurée à synchroniser');
+                  }
+                }}
+                disabled={syncing || syncDisabled}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition text-xs font-medium ${
+                  syncing
+                    ? 'bg-orange-500 text-white cursor-wait'
+                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                }`}
+                title="Synchroniser Google Sheet (import commandes)"
+              >
+                <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                {syncing ? 'Sync Sheet...' : 'Sync Sheet'}
+              </button>
+              {/* Compteur auto-sync visuel */}
+              {autoSyncStatus && (
+                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${
+                  autoSyncStatus.includes('⏳') ? 'bg-amber-100 text-amber-700' :
+                  autoSyncStatus.includes('🔄') ? 'bg-blue-100 text-blue-700' :
+                  'bg-green-100 text-green-700'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${
+                    autoSyncStatus.includes('⏳') ? 'bg-amber-500 animate-pulse' :
+                    autoSyncStatus.includes('🔄') ? 'bg-blue-500 animate-spin' :
+                    'bg-green-500'
+                  }`}></span>
+                  {autoSyncStatus}
+                  {nextSyncIn > 0 && (
+                    <span className="font-bold">({nextSyncIn}s)</span>
+                  )}
+                </div>
+              )}
+              <button
                 onClick={() => navigate('/ecom/import')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium"
               >
@@ -1114,7 +1206,7 @@ const OrdersList = () => {
                     ? 'bg-green-100 text-green-800 border border-green-200'
                     : 'bg-gray-100 text-gray-500 border border-gray-200'
                 }`}
-                title={permanentSyncEnabled ? 'Auto-sync actif (toutes les 2 min)' : 'Auto-sync désactivé'}
+                title={permanentSyncEnabled ? 'Auto-sync actif (toutes les 5min30)' : 'Auto-sync désactivé'}
               >
                 <span className={`w-2 h-2 rounded-full ${permanentSyncEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
                 {permanentSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
