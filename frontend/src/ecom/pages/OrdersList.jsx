@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
 import { useMoney } from '../hooks/useMoney.js';
@@ -504,46 +504,63 @@ const OrdersList = () => {
     };
   }, [loading, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId]);
 
+  // Refs pour l'auto-sync (éviter les closures stale)
+  const sourcesRef = useRef(sources);
+  const syncingRef = useRef(syncing);
+  useEffect(() => { sourcesRef.current = sources; }, [sources]);
+  useEffect(() => { syncingRef.current = syncing; }, [syncing]);
+
   // Auto-sync Google Sheets : synchronise automatiquement toutes les 2 minutes
   useEffect(() => {
     if (!isAdmin || sources.length === 0 || !permanentSyncEnabled) return;
     
     const AUTO_SYNC_INTERVAL = 120000; // 2 minutes
+    let isAutoSyncing = false;
     
     const autoSyncSheets = async () => {
-      // Ne pas lancer si une sync manuelle est en cours ou si la page n'est pas visible
-      if (syncing || document.visibilityState !== 'visible') return;
+      // Ne pas lancer si une sync manuelle est en cours, ou auto-sync déjà en cours, ou page non visible
+      if (syncingRef.current || isAutoSyncing || document.visibilityState !== 'visible') {
+        console.log('⏭️ Auto-sync ignoré:', syncingRef.current ? 'sync manuelle' : isAutoSyncing ? 'déjà en cours' : 'page non visible');
+        return;
+      }
+      
+      isAutoSyncing = true;
+      console.log('🔄 Auto-sync démarré...');
       
       try {
-        // Synchroniser chaque source active silencieusement
-        for (const source of sources) {
-          if (!source.isActive) continue;
+        const currentSources = sourcesRef.current;
+        for (const source of currentSources) {
+          if (!source.isActive && source._id !== 'legacy') continue;
           
-          const targetSourceId = source._id;
-          
-          await ecomApi.post('/orders/sync-sheets', { sourceId: targetSourceId });
+          console.log(`🔄 Auto-sync source: ${source.name} (${source._id})`);
+          await ecomApi.post('/orders/sync-sheets', { sourceId: source._id });
         }
         
         // Rafraîchir la liste des commandes après la sync
         await fetchOrders();
         setLastAutoSync(new Date());
+        console.log('✅ Auto-sync terminé');
       } catch (err) {
-        // Ne pas afficher d'erreur pour l'auto-sync silencieux
-        console.warn('Auto-sync silencieux:', err.message);
+        console.warn('⚠️ Auto-sync erreur:', err.response?.data?.message || err.message);
+      } finally {
+        isAutoSyncing = false;
       }
     };
     
-    // Lancer la première auto-sync après 30 secondes
-    const initialTimeout = setTimeout(autoSyncSheets, 30000);
+    // Lancer la première auto-sync après 10 secondes
+    const initialTimeout = setTimeout(autoSyncSheets, 10000);
     
     // Puis toutes les 2 minutes
     const interval = setInterval(autoSyncSheets, AUTO_SYNC_INTERVAL);
     
+    console.log('📡 Auto-sync activé (toutes les 2 min)');
+    
     return () => {
       clearTimeout(initialTimeout);
       clearInterval(interval);
+      console.log('📡 Auto-sync désactivé');
     };
-  }, [isAdmin, sources.length, permanentSyncEnabled, syncing]);
+  }, [isAdmin, sources.length, permanentSyncEnabled]);
 
   const handleSync = async (sourceId = null, options = {}) => {
     // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés
