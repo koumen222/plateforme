@@ -14,6 +14,140 @@ const router = express.Router();
 // Créer un EventEmitter global pour la progression
 const syncProgressEmitter = new EventEmitter();
 
+// Fonction pour détecter le pays depuis le numéro de téléphone ou la ville
+const detectCountry = (phone, city) => {
+  // Détection par indicatif téléphonique
+  if (phone) {
+    const cleanPhone = phone.replace(/\D/g, '');
+    
+    // Cameroun
+    if (cleanPhone.startsWith('237')) return { code: 'CM', name: 'Cameroun' };
+    // France
+    if (cleanPhone.startsWith('33') || cleanPhone.startsWith('263')) return { code: 'FR', name: 'France' };
+    // Côte d'Ivoire
+    if (cleanPhone.startsWith('225')) return { code: 'CI', name: 'Côte d\'Ivoire' };
+    // Sénégal
+    if (cleanPhone.startsWith('221')) return { code: 'SN', name: 'Sénégal' };
+    // Mali
+    if (cleanPhone.startsWith('223')) return { code: 'ML', name: 'Mali' };
+    // Burkina Faso
+    if (cleanPhone.startsWith('226')) return { code: 'BF', name: 'Burkina Faso' };
+    // Niger
+    if (cleanPhone.startsWith('227')) return { code: 'NE', name: 'Niger' };
+    // Togo
+    if (cleanPhone.startsWith('228')) return { code: 'TG', name: 'Togo' };
+    // Bénin
+    if (cleanPhone.startsWith('229')) return { code: 'BJ', name: 'Bénin' };
+    // Gabon
+    if (cleanPhone.startsWith('241')) return { code: 'GA', name: 'Gabon' };
+    // Congo RDC
+    if (cleanPhone.startsWith('243')) return { code: 'CD', name: 'Congo RDC' };
+    // Congo Brazzaville
+    if (cleanPhone.startsWith('242')) return { code: 'CG', name: 'Congo Brazzaville' };
+    // Canada
+    if (cleanPhone.startsWith('1')) return { code: 'CA', name: 'Canada' };
+    // USA
+    if (cleanPhone.startsWith('1')) return { code: 'US', name: 'États-Unis' };
+    // Royaume-Uni
+    if (cleanPhone.startsWith('44')) return { code: 'GB', name: 'Royaume-Uni' };
+    // Belgique
+    if (cleanPhone.startsWith('32')) return { code: 'BE', name: 'Belgique' };
+    // Suisse
+    if (cleanPhone.startsWith('41')) return { code: 'CH', name: 'Suisse' };
+    // Luxembourg
+    if (cleanPhone.startsWith('352')) return { code: 'LU', name: 'Luxembourg' };
+    // Maroc
+    if (cleanPhone.startsWith('212')) return { code: 'MA', name: 'Maroc' };
+    // Tunisie
+    if (cleanPhone.startsWith('216')) return { code: 'TN', name: 'Tunisie' };
+    // Algérie
+    if (cleanPhone.startsWith('213')) return { code: 'DZ', name: 'Algérie' };
+    // Égypte
+    if (cleanPhone.startsWith('20')) return { code: 'EG', name: 'Égypte' };
+  }
+  
+  // Détection par nom de ville
+  if (city) {
+    const cleanCity = city.toLowerCase().trim();
+    
+    // Villes camerounaises
+    if (['douala', 'yaoundé', 'yaounde', 'bafoussam', 'garoua', 'maroua', 'bamenda', 'kumba', 'limbé', 'nkongsamba', 'bertoua', 'ebolowa', 'buea', 'kribi'].includes(cleanCity)) {
+      return { code: 'CM', name: 'Cameroun' };
+    }
+    
+    // Villes françaises
+    if (['paris', 'marseille', 'lyon', 'toulouse', 'nice', 'nantes', 'strasbourg', 'montpellier', 'bordeaux', 'lille'].includes(cleanCity)) {
+      return { code: 'FR', name: 'France' };
+    }
+    
+    // Villes ivoiriennes
+    if (['abidjan', 'yamoussoukro', 'bouaké', 'korhogo', 'daloa', 'san-pedro'].includes(cleanCity)) {
+      return { code: 'CI', name: 'Côte d\'Ivoire' };
+    }
+    
+    // Villes sénégalaises
+    if (['dakar', 'thiès', 'kaolack', 'mbour', 'saint-louis', 'touba'].includes(cleanCity)) {
+      return { code: 'SN', name: 'Sénégal' };
+    }
+  }
+  
+  // Par défaut, retourner Cameroun
+  return { code: 'CM', name: 'Cameroun' };
+};
+
+// Fonction pour envoyer automatiquement les détails d'une nouvelle commande via WhatsApp
+const sendOrderNotification = async (order, workspaceId) => {
+  try {
+    // Récupérer les paramètres du workspace
+    const settings = await WorkspaceSettings.findOne({ workspaceId });
+    if (!settings) return;
+    
+    // Détecter le pays de la commande
+    const country = detectCountry(order.clientPhone, order.city);
+    
+    // Trouver le numéro WhatsApp configuré pour ce pays
+    const whatsappConfig = settings.whatsappNumbers?.find(w => 
+      w.country === country.code && w.isActive && w.autoNotifyOrders
+    );
+    
+    // Si pas de configuration spécifique, utiliser le numéro par défaut
+    const targetNumber = whatsappConfig?.phoneNumber || settings.customWhatsAppNumber;
+    if (!targetNumber) return;
+    
+    // Créer le message de notification
+    const message = `🔔 *NOUVELLE COMMANDE* 🔔
+
+📋 *Détails de la commande:*
+🔹 *ID:* ${order.orderId}
+👤 *Client:* ${order.clientName || 'Non spécifié'}
+📱 *Téléphone:* ${order.clientPhone || 'Non spécifié'}
+🏙️ *Ville:* ${order.city || 'Non spécifié'}
+📍 *Adresse:* ${order.address || 'Non spécifié'}
+📦 *Produit:* ${order.product || 'Non spécifié'}
+🔢 *Quantité:* ${order.quantity || 1}
+💰 *Prix:* ${order.price || 0} FCFA
+📊 *Statut:* ${order.status || 'pending'}
+📝 *Notes:* ${order.notes || 'Aucune'}
+
+🌍 *Pays détecté:* ${country.name}
+⏰ *Date:* ${new Date(order.date).toLocaleString('fr-FR')}
+
+🚀 *Prenez cette commande rapidement!*`;
+
+    // Envoyer le message WhatsApp
+    await sendWhatsAppMessage({
+      to: targetNumber,
+      message: message,
+      userId: 'system',
+      firstName: 'Système'
+    });
+    
+    console.log(`✅ Notification WhatsApp envoyée pour la commande ${order.orderId} vers ${country.name}`);
+  } catch (error) {
+    console.error('Erreur envoi notification WhatsApp:', error);
+  }
+};
+
 // POST /api/ecom/orders - Créer une commande manuellement
 router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -39,6 +173,10 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
       sheetRowId: `manual_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`
     });
     await order.save();
+    
+    // Envoyer la notification WhatsApp automatiquement
+    await sendOrderNotification(order, req.workspaceId);
+    
     res.status(201).json({ success: true, message: 'Commande créée', data: order });
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -1859,20 +1997,11 @@ router.post('/config/whatsapp', requireEcomAuth, validateEcomAccess('products', 
   try {
     const { customWhatsAppNumber } = req.body;
     
-    if (!customWhatsAppNumber) {
-      return res.status(400).json({ success: false, message: 'Numéro WhatsApp requis' });
+    // Validation du format du numéro
+    if (customWhatsAppNumber && !/^237\d{8,}$/.test(customWhatsAppNumber)) {
+      return res.status(400).json({ success: false, message: 'Format invalide. Le numéro doit commencer par 237 suivi d\'au moins 8 chiffres' });
     }
-
-    // Valider le format du numéro (doit commencer par 237 et contenir uniquement des chiffres)
-    const cleanNumber = customWhatsAppNumber.replace(/\D/g, '');
-    if (!cleanNumber.startsWith('237') || cleanNumber.length < 9) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Format invalide. Le numéro doit commencer par 237 et contenir au moins 9 chiffres (ex: 237612345678)' 
-      });
-    }
-
-    // Mettre à jour les settings du workspace
+    
     const settings = await WorkspaceSettings.findOneAndUpdate(
       { workspaceId: req.workspaceId },
       { $set: { customWhatsAppNumber: cleanNumber } },
@@ -1902,13 +2031,169 @@ router.get('/config/whatsapp', requireEcomAuth, validateEcomAccess('products', '
       success: true,
       data: {
         customWhatsAppNumber: settings?.customWhatsAppNumber || null,
-        environmentNumber: process.env.CUSTOM_WHATSAPP_NUMBER || null
+        environmentNumber: process.env.CUSTOM_WHATSAPP_NUMBER || null,
+        whatsappNumbers: settings?.whatsappNumbers || []
       }
     });
 
   } catch (error) {
     console.error('Erreur récupération config WhatsApp:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/orders/whatsapp-numbers - Lister tous les numéros WhatsApp configurés
+router.get('/whatsapp-numbers', requireEcomAuth, validateEcomAccess('products', 'read'), async (req, res) => {
+  try {
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    const whatsappNumbers = settings?.whatsappNumbers || [];
+    res.json({ success: true, data: whatsappNumbers });
+  } catch (error) {
+    console.error('Erreur récupération numéros WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/whatsapp-numbers - Ajouter un numéro WhatsApp pour un pays
+router.post('/whatsapp-numbers', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { country, countryName, phoneNumber, isActive = true, autoNotifyOrders = true } = req.body;
+    
+    // Validation
+    if (!country || !countryName || !phoneNumber) {
+      return res.status(400).json({ success: false, message: 'Pays, nom du pays et numéro requis' });
+    }
+    
+    if (!/^\+\d{10,15}$/.test(phoneNumber)) {
+      return res.status(400).json({ success: false, message: 'Format invalide. Le numéro doit être au format international (+country_code + number)' });
+    }
+    
+    const settings = await WorkspaceSettings.findOneAndUpdate(
+      { workspaceId: req.workspaceId },
+      { 
+        $push: { 
+          whatsappNumbers: {
+            country,
+            countryName,
+            phoneNumber,
+            isActive,
+            autoNotifyOrders,
+            createdAt: new Date()
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
+    
+    res.json({ success: true, message: 'Numéro WhatsApp ajouté', data: settings });
+  } catch (error) {
+    console.error('Erreur ajout numéro WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/ecom/orders/whatsapp-numbers/:id - Mettre à jour un numéro WhatsApp
+router.put('/whatsapp-numbers/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { country, countryName, phoneNumber, isActive, autoNotifyOrders } = req.body;
+    
+    if (phoneNumber && !/^\+\d{10,15}$/.test(phoneNumber)) {
+      return res.status(400).json({ success: false, message: 'Format invalide. Le numéro doit être au format international (+country_code + number)' });
+    }
+    
+    const settings = await WorkspaceSettings.findOneAndUpdate(
+      { workspaceId: req.workspaceId, 'whatsappNumbers._id': id },
+      { 
+        $set: { 
+          'whatsappNumbers.$.country': country,
+          'whatsappNumbers.$.countryName': countryName,
+          'whatsappNumbers.$.phoneNumber': phoneNumber,
+          'whatsappNumbers.$.isActive': isActive,
+          'whatsappNumbers.$.autoNotifyOrders': autoNotifyOrders
+        }
+      },
+      { new: true }
+    );
+    
+    if (!settings) {
+      return res.status(404).json({ success: false, message: 'Numéro WhatsApp non trouvé' });
+    }
+    
+    res.json({ success: true, message: 'Numéro WhatsApp mis à jour', data: settings });
+  } catch (error) {
+    console.error('Erreur mise à jour numéro WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/ecom/orders/whatsapp-numbers/:id - Supprimer un numéro WhatsApp
+router.delete('/whatsapp-numbers/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const settings = await WorkspaceSettings.findOneAndUpdate(
+      { workspaceId: req.workspaceId },
+      { $pull: { whatsappNumbers: { _id: id } } },
+      { new: true }
+    );
+    
+    if (!settings) {
+      return res.status(404).json({ success: false, message: 'Numéro WhatsApp non trouvé' });
+    }
+    
+    res.json({ success: true, message: 'Numéro WhatsApp supprimé', data: settings });
+  } catch (error) {
+    console.error('Erreur suppression numéro WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/orders/test-whatsapp - Tester l'envoi WhatsApp
+router.post('/test-whatsapp', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+  try {
+    const { country } = req.body;
+    
+    // Récupérer les paramètres du workspace
+    const settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings) {
+      return res.status(404).json({ success: false, message: 'Configuration non trouvée' });
+    }
+    
+    let targetNumber;
+    if (country) {
+      // Trouver le numéro pour le pays spécifié
+      const whatsappConfig = settings.whatsappNumbers?.find(w => w.country === country && w.isActive);
+      targetNumber = whatsappConfig?.phoneNumber;
+    } else {
+      // Utiliser le numéro par défaut
+      targetNumber = settings.customWhatsAppNumber;
+    }
+    
+    if (!targetNumber) {
+      return res.status(400).json({ success: false, message: 'Aucun numéro WhatsApp configuré pour ce pays' });
+    }
+    
+    const testMessage = `🧪 *TEST DE NOTIFICATION* 🧪
+
+✅ Le système de notification WhatsApp fonctionne correctement!
+📅 Heure du test: ${new Date().toLocaleString('fr-FR')}
+🌍 Pays: ${country || 'Défaut'}
+📱 Numéro: ${targetNumber}
+
+🚀 Prêt à recevoir les notifications des nouvelles commandes!`;
+    
+    await sendWhatsAppMessage({
+      to: targetNumber,
+      message: testMessage,
+      userId: req.user._id,
+      firstName: req.user.name || 'Admin'
+    });
+    
+    res.json({ success: true, message: 'Message de test envoyé avec succès' });
+  } catch (error) {
+    console.error('Erreur test WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi du message de test' });
   }
 });
 

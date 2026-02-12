@@ -27,6 +27,33 @@ const getStatusDot = (s) => SD[s] || 'border-l-indigo-400';
 
 
 
+// Liste des pays avec leurs codes et noms
+const COUNTRIES = [
+  { code: 'CM', name: 'Cameroun', flag: '🇨🇲', dialCode: '+237' },
+  { code: 'FR', name: 'France', flag: '🇫🇷', dialCode: '+33' },
+  { code: 'CI', name: 'Côte d\'Ivoire', flag: '🇨🇮', dialCode: '+225' },
+  { code: 'SN', name: 'Sénégal', flag: '🇸🇳', dialCode: '+221' },
+  { code: 'ML', name: 'Mali', flag: '🇲🇱', dialCode: '+223' },
+  { code: 'BF', name: 'Burkina Faso', flag: '🇧🇫', dialCode: '+226' },
+  { code: 'NE', name: 'Niger', flag: '🇳🇪', dialCode: '+227' },
+  { code: 'TG', name: 'Togo', flag: '🇹🇬', dialCode: '+228' },
+  { code: 'BJ', name: 'Bénin', flag: '🇧🇯', dialCode: '+229' },
+  { code: 'GA', name: 'Gabon', flag: '🇬🇦', dialCode: '+241' },
+  { code: 'CD', name: 'Congo RDC', flag: '🇨🇩', dialCode: '+243' },
+  { code: 'CG', name: 'Congo Brazzaville', flag: '🇨🇬', dialCode: '+242' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦', dialCode: '+1' },
+  { code: 'US', name: 'États-Unis', flag: '🇺🇸', dialCode: '+1' },
+  { code: 'GB', name: 'Royaume-Uni', flag: '🇬🇧', dialCode: '+44' },
+  { code: 'BE', name: 'Belgique', flag: '🇧🇪', dialCode: '+32' },
+  { code: 'CH', name: 'Suisse', flag: '🇨🇭', dialCode: '+41' },
+  { code: 'LU', name: 'Luxembourg', flag: '🇱🇺', dialCode: '+352' },
+  { code: 'MA', name: 'Maroc', flag: '🇲🇦', dialCode: '+212' },
+  { code: 'TN', name: 'Tunisie', flag: '🇹🇳', dialCode: '+216' },
+  { code: 'DZ', name: 'Algérie', flag: '🇩🇿', dialCode: '+213' },
+  { code: 'EG', name: 'Égypte', flag: '🇪🇬', dialCode: '+20' },
+  { code: 'OTHER', name: 'Autre', flag: '🌍', dialCode: '+' }
+];
+
 const OrdersList = () => {
   const navigate = useNavigate();
   const { user } = useEcomAuth();
@@ -68,6 +95,17 @@ const OrdersList = () => {
   const [showWhatsAppConfig, setShowWhatsAppConfig] = useState(false);
   const [customWhatsAppNumber, setCustomWhatsAppNumber] = useState('');
   const [savingWhatsAppConfig, setSavingWhatsAppConfig] = useState(false);
+  const [whatsappNumbers, setWhatsappNumbers] = useState([]);
+  const [showWhatsAppMultiConfig, setShowWhatsAppMultiConfig] = useState(false);
+  const [editingWhatsAppNumber, setEditingWhatsAppNumber] = useState(null);
+  const [whatsappForm, setWhatsappForm] = useState({
+    country: '',
+    countryName: '',
+    phoneNumber: '',
+    isActive: true,
+    autoNotifyOrders: true
+  });
+  const [savingWhatsAppNumber, setSavingWhatsAppNumber] = useState(false);
   const [deletingSource, setDeletingSource] = useState(null);
   const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
   const [lastAutoSync, setLastAutoSync] = useState(new Date());
@@ -224,11 +262,85 @@ const OrdersList = () => {
   const fetchWhatsAppConfig = async () => {
     try {
       const res = await ecomApi.get('/orders/config/whatsapp');
-      if (res.data.success) {
-        setCustomWhatsAppNumber(res.data.data.customWhatsAppNumber || '');
-      }
+      setCustomWhatsAppNumber(res.data.data.customWhatsAppNumber || '');
+      setWhatsappNumbers(res.data.data.whatsappNumbers || []);
     } catch (err) {
-      console.error('Error fetching WhatsApp config:', err);
+      console.error('Erreur récupération config WhatsApp:', err);
+    }
+  };
+
+  const fetchWhatsAppNumbers = async () => {
+    try {
+      const res = await ecomApi.get('/orders/whatsapp-numbers');
+      setWhatsappNumbers(res.data.data || []);
+    } catch (err) {
+      console.error('Erreur récupération numéros WhatsApp:', err);
+    }
+  };
+
+  const saveWhatsAppNumber = async () => {
+    setSavingWhatsAppNumber(true);
+    setError('');
+    try {
+      if (editingWhatsAppNumber) {
+        // Mise à jour
+        const res = await ecomApi.put(`/orders/whatsapp-numbers/${editingWhatsAppNumber._id}`, whatsappForm);
+        setSuccess(res.data.message);
+      } else {
+        // Ajout
+        const res = await ecomApi.post('/orders/whatsapp-numbers', whatsappForm);
+        setSuccess(res.data.message);
+      }
+      
+      await fetchWhatsAppNumbers();
+      setShowWhatsAppMultiConfig(false);
+      setEditingWhatsAppNumber(null);
+      setWhatsappForm({
+        country: '',
+        countryName: '',
+        phoneNumber: '',
+        isActive: true,
+        autoNotifyOrders: true
+      });
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors de la sauvegarde');
+    } finally {
+      setSavingWhatsAppNumber(false);
+    }
+  };
+
+  const editWhatsAppNumber = (number) => {
+    setEditingWhatsAppNumber(number);
+    setWhatsappForm({
+      country: number.country,
+      countryName: number.countryName,
+      phoneNumber: number.phoneNumber,
+      isActive: number.isActive,
+      autoNotifyOrders: number.autoNotifyOrders
+    });
+    setShowWhatsAppMultiConfig(true);
+  };
+
+  const deleteWhatsAppNumber = async (id) => {
+    if (!window.confirm('Êtes-vous sûr de vouloir supprimer ce numéro WhatsApp ?')) {
+      return;
+    }
+    
+    try {
+      const res = await ecomApi.delete(`/orders/whatsapp-numbers/${id}`);
+      setSuccess(res.data.message);
+      await fetchWhatsAppNumbers();
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors de la suppression');
+    }
+  };
+
+  const testWhatsAppNumber = async (country) => {
+    try {
+      const res = await ecomApi.post('/orders/test-whatsapp', { country });
+      setSuccess(res.data.message);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur lors du test');
     }
   };
 
@@ -392,25 +504,46 @@ const OrdersList = () => {
     };
   }, [loading, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId]);
 
-  // Auto-sync normal pour le rafraîchissement des données - DÉSACTIVÉ pour éviter l'actualisation constante
-  // useEffect(() => {
-  //   if (!autoSyncEnabled || !isAdmin || sources.length === 0) return;
-
-  //   const interval = setInterval(async () => {
-  //     try {
-  //       // Rafraîchir les commandes
-  //       await fetchOrders();
+  // Auto-sync Google Sheets : synchronise automatiquement toutes les 2 minutes
+  useEffect(() => {
+    if (!isAdmin || sources.length === 0 || !permanentSyncEnabled) return;
+    
+    const AUTO_SYNC_INTERVAL = 120000; // 2 minutes
+    
+    const autoSyncSheets = async () => {
+      // Ne pas lancer si une sync manuelle est en cours ou si la page n'est pas visible
+      if (syncing || document.visibilityState !== 'visible') return;
+      
+      try {
+        // Synchroniser chaque source active silencieusement
+        for (const source of sources) {
+          if (!source.isActive) continue;
+          
+          const targetSourceId = source._id;
+          
+          await ecomApi.post('/orders/sync-sheets', { sourceId: targetSourceId });
+        }
         
-  //       // Optionnel: aussi rafraîchir la config pour les temps de sync
-  //       await fetchConfig();
-  //     } catch (err) {
-  //       console.error('Auto-sync error:', err);
-  //       // Ne pas afficher d'erreur à l'utilisateur pour l'auto-sync
-  //     }
-  //   }, 1000); // Toutes les secondes
-
-  //   return () => clearInterval(interval);
-  // }, [autoSyncEnabled, isAdmin, sources.length, selectedSourceId, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate]);
+        // Rafraîchir la liste des commandes après la sync
+        await fetchOrders();
+        setLastAutoSync(new Date());
+      } catch (err) {
+        // Ne pas afficher d'erreur pour l'auto-sync silencieux
+        console.warn('Auto-sync silencieux:', err.message);
+      }
+    };
+    
+    // Lancer la première auto-sync après 30 secondes
+    const initialTimeout = setTimeout(autoSyncSheets, 30000);
+    
+    // Puis toutes les 2 minutes
+    const interval = setInterval(autoSyncSheets, AUTO_SYNC_INTERVAL);
+    
+    return () => {
+      clearTimeout(initialTimeout);
+      clearInterval(interval);
+    };
+  }, [isAdmin, sources.length, permanentSyncEnabled, syncing]);
 
   const handleSync = async (sourceId = null, options = {}) => {
     // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés
@@ -955,6 +1088,25 @@ const OrdersList = () => {
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sources ({sources.length})</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPermanentSyncEnabled(!permanentSyncEnabled)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
+                  permanentSyncEnabled
+                    ? 'bg-green-100 text-green-800 border border-green-200'
+                    : 'bg-gray-100 text-gray-500 border border-gray-200'
+                }`}
+                title={permanentSyncEnabled ? 'Auto-sync actif (toutes les 2 min)' : 'Auto-sync désactivé'}
+              >
+                <span className={`w-2 h-2 rounded-full ${permanentSyncEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
+                {permanentSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
+              </button>
+              {permanentSyncEnabled && lastAutoSync && (
+                <span className="text-[10px] text-gray-400">
+                  {new Date(lastAutoSync).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
           </div>
 
@@ -1629,10 +1781,15 @@ const OrdersList = () => {
 
       {showWhatsAppConfig && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowWhatsAppConfig(false)}>
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Configuration WhatsApp Automatique</h3>
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Configuration WhatsApp Multi-Pays</h3>
+              <button onClick={() => setShowWhatsAppConfig(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
             <p className="text-sm text-gray-600 mb-4">
-              Configurez un numéro WhatsApp pour recevoir automatiquement les détails des nouvelles commandes
+              Configurez des numéros WhatsApp pour recevoir automatiquement les détails des nouvelles commandes selon le pays
             </p>
             
             <div className="space-y-4">
@@ -1648,48 +1805,221 @@ const OrdersList = () => {
                 <p className="text-xs text-gray-500 mt-1">
                   Format: 237 + numéro (sans + ni espaces)
                 </p>
+                <button
+                  onClick={() => testWhatsAppNumber()}
+                  disabled={savingWhatsAppConfig}
+                  className="mt-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-xs"
+                >
+                  Tester par défaut
+                </button>
+              </div>
+
+              {/* Numéros par pays */}
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="font-medium text-gray-900">Numéros par pays</h4>
+                  <button
+                    onClick={() => setShowWhatsAppMultiConfig(true)}
+                    className="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 text-xs"
+                  >
+                    Ajouter un pays
+                  </button>
+                </div>
+                
+                {whatsappNumbers.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-4">
+                    Aucun numéro configuré. Ajoutez des numéros pour recevoir les notifications par pays.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {whatsappNumbers.map((number) => {
+                      const country = COUNTRIES.find(c => c.code === number.country);
+                      return (
+                        <div key={number._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <span className="text-lg">{country?.flag || '🌍'}</span>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{number.countryName}</p>
+                              <p className="text-xs text-gray-600">{number.phoneNumber}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              number.isActive ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {number.isActive ? 'Actif' : 'Inactif'}
+                            </span>
+                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              number.autoNotifyOrders ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {number.autoNotifyOrders ? 'Auto' : 'Manuel'}
+                            </span>
+                            <button
+                              onClick={() => testWhatsAppNumber(number.country)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Tester"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                            </button>
+                            <button
+                              onClick={() => editWhatsAppNumber(number)}
+                              className="p-1 text-gray-600 hover:bg-gray-100 rounded"
+                              title="Modifier"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                            </button>
+                            <button
+                              onClick={() => deleteWhatsAppNumber(number._id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              title="Supprimer"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-blue-700 mb-2">Ce qui sera envoyé automatiquement :</p>
                 <ul className="text-xs text-blue-600 space-y-1">
-                  <li>- Toutes les nouvelles commandes détectées</li>
-                  <li>- Détails complets (client, produit, prix, etc.)</li>
+                  <li>- Détails complets de la commande (client, produit, prix, etc.)</li>
+                  <li>- Détection automatique du pays (par téléphone ou ville)</li>
                   <li>- Message formaté et professionnel</li>
+                  <li>- Envoi vers le numéro configuré pour le pays détecté</li>
                 </ul>
               </div>
 
               <div className="bg-yellow-50 rounded-lg p-3">
                 <p className="text-xs font-medium text-yellow-700 mb-2">Important :</p>
                 <ul className="text-xs text-yellow-600 space-y-1">
-                  <li>- Le numéro doit être valide et actif sur WhatsApp</li>
-                  <li>- Les messages seront envoyés automatiquement</li>
-                  <li>- Vous pouvez désactiver cette fonctionnalité à tout moment</li>
+                  <li>- Les numéros doivent être valides et actives sur WhatsApp</li>
+                  <li>- Format international: +indicatif + numéro</li>
+                  <li>- Les messages seront envoyés automatiquement pour les nouvelles commandes</li>
+                  <li>- Vous pouvez activer/désactiver les notifications par pays</li>
                 </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-4 border-t">
+              <button
+                type="button"
+                onClick={() => setShowWhatsAppConfig(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
+              >
+                Fermer
+              </button>
+              <button
+                type="button"
+                onClick={saveWhatsAppConfig}
+                disabled={savingWhatsAppConfig}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
+              >
+                {savingWhatsAppConfig ? 'Enregistrement...' : 'Enregistrer par défaut'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal pour ajouter/modifier un numéro WhatsApp */}
+      {showWhatsAppMultiConfig && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowWhatsAppMultiConfig(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {editingWhatsAppNumber ? 'Modifier le numéro WhatsApp' : 'Ajouter un numéro WhatsApp'}
+            </h3>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pays</label>
+                <select
+                  value={whatsappForm.country}
+                  onChange={(e) => {
+                    const country = COUNTRIES.find(c => c.code === e.target.value);
+                    setWhatsappForm({
+                      ...whatsappForm,
+                      country: e.target.value,
+                      countryName: country?.name || '',
+                      phoneNumber: country?.dialCode || ''
+                    });
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                >
+                  <option value="">Sélectionner un pays</option>
+                  {COUNTRIES.map(country => (
+                    <option key={country.code} value={country.code}>
+                      {country.flag} {country.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Numéro WhatsApp</label>
+                <input
+                  type="text"
+                  value={whatsappForm.phoneNumber}
+                  onChange={(e) => setWhatsappForm({ ...whatsappForm, phoneNumber: e.target.value })}
+                  placeholder="+237676463725"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Format: +indicatif + numéro (ex: +237676463725)
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.isActive}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, isActive: e.target.checked })}
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Numéro actif</span>
+                </label>
+                
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={whatsappForm.autoNotifyOrders}
+                    onChange={(e) => setWhatsappForm({ ...whatsappForm, autoNotifyOrders: e.target.checked })}
+                    className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                  />
+                  <span className="text-sm text-gray-700">Notifier automatiquement</span>
+                </label>
               </div>
             </div>
 
             <div className="flex gap-3 pt-4">
               <button
                 type="button"
-                onClick={() => setShowWhatsAppConfig(false)}
+                onClick={() => {
+                  setShowWhatsAppMultiConfig(false);
+                  setEditingWhatsAppNumber(null);
+                  setWhatsappForm({
+                    country: '',
+                    countryName: '',
+                    phoneNumber: '',
+                    isActive: true,
+                    autoNotifyOrders: true
+                  });
+                }}
                 className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm"
               >
                 Annuler
               </button>
               <button
-                onClick={saveWhatsAppConfig}
-                disabled={savingWhatsAppConfig}
-                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2"
+                type="button"
+                onClick={saveWhatsAppNumber}
+                disabled={savingWhatsAppNumber}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
               >
-                {savingWhatsAppConfig ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Enregistrement...
-                  </>
-                ) : (
-                  'Enregistrer'
-                )}
+                {savingWhatsAppNumber ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
           </div>

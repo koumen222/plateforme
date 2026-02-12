@@ -48,6 +48,29 @@ const workspaceSettingsSchema = new mongoose.Schema({
       message: 'Le numéro WhatsApp doit commencer par 237 suivi d\'au moins 8 chiffres'
     }
   },
+  // Configuration multi-pays pour WhatsApp
+  whatsappNumbers: [{
+    country: { 
+      type: String, 
+      required: true,
+      enum: ['CM', 'FR', 'CI', 'SN', 'ML', 'BF', 'NE', 'TG', 'BJ', 'GA', 'CD', 'CG', 'CA', 'US', 'GB', 'BE', 'CH', 'LU', 'MA', 'TN', 'DZ', 'EG', 'OTHER']
+    },
+    countryName: { type: String, required: true },
+    phoneNumber: { 
+      type: String, 
+      required: true,
+      validate: {
+        validator: function(v) {
+          // Validation plus flexible pour différents formats internationaux
+          return /^\+\d{10,15}$/.test(v);
+        },
+        message: 'Le numéro WhatsApp doit être au format international (+country_code + number)'
+      }
+    },
+    isActive: { type: Boolean, default: true },
+    autoNotifyOrders: { type: Boolean, default: true },
+    createdAt: { type: Date, default: Date.now }
+  }],
   syncLocks: [{
     key: { type: String, required: true, index: true },
     sourceId: { type: String, required: true },
