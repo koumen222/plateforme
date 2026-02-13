@@ -175,7 +175,7 @@ export default function NotificationPanel({ isOpen, onClose }) {
       />
       <div
         ref={panelRef}
-        className="fixed lg:absolute top-14 lg:top-auto lg:right-0 left-2 right-2 lg:left-auto lg:w-96 lg:mt-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50 max-h-[calc(100vh-80px)] lg:max-h-[400px]"
+        className="fixed lg:absolute top-14 lg:top-auto lg:right-0 left-4 right-4 lg:left-auto lg:w-96 lg:mt-1 bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden z-50 max-h-[calc(100vh-100px)] lg:max-h-[400px] mx-auto lg:mx-0"
       >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
