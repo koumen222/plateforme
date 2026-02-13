@@ -6,6 +6,7 @@ import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
+import { logAudit, rateLimit } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -14,13 +15,15 @@ const forgotPasswordAttempts = new Map();
 const FORGOT_PASSWORD_LIMIT = 3; // max 3 demandes
 const FORGOT_PASSWORD_WINDOW = 15 * 60 * 1000; // par 15 minutes
 
-// POST /api/ecom/auth/login - Connexion
-router.post('/login', validateEmail, async (req, res) => {
+// POST /api/ecom/auth/login - Connexion (rate limited: 10 tentatives/min)
+router.post('/login', rateLimit(10, 60000), validateEmail, async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await EcomUser.findOne({ email, isActive: true });
     if (!user) {
+      // Log tentative échouée (utilisateur introuvable)
+      console.warn(`⚠️ Tentative login échouée: ${email} (utilisateur non trouvé)`);
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -29,6 +32,9 @@ router.post('/login', validateEmail, async (req, res) => {
 
     const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
+      // Log tentative échouée (mauvais mot de passe)
+      req.ecomUser = user;
+      await logAudit(req, 'LOGIN_FAILED', `Tentative de connexion échouée pour ${email}`, 'auth');
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -40,6 +46,10 @@ router.post('/login', validateEmail, async (req, res) => {
     await user.save();
 
     const token = generateEcomToken(user);
+    
+    // Log connexion réussie
+    req.ecomUser = user;
+    await logAudit(req, 'LOGIN', `Connexion réussie: ${user.email} (${user.role})`, 'auth', user._id);
 
     // Charger le workspace
     let workspace = null;
@@ -91,7 +101,15 @@ router.get('/super-admin-exists', async (req, res) => {
 // POST /api/ecom/auth/register - Création d'un compte + workspace
 router.post('/register', validateEmail, validatePassword, async (req, res) => {
   try {
-    const { email, password, workspaceName, inviteCode, superAdmin, selectedRole } = req.body;
+    const { email, password, name, phone, workspaceName, inviteCode, superAdmin, selectedRole, acceptPrivacy } = req.body;
+
+    // Vérifier l'acceptation de la politique de confidentialité
+    if (!superAdmin && !acceptPrivacy) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous devez accepter la politique de confidentialité pour créer un compte'
+      });
+    }
 
     // Vérifier si l'utilisateur existe déjà
     const existingUser = await EcomUser.findOne({ email });
@@ -168,6 +186,8 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
     const user = new EcomUser({
       email,
       password,
+      name: name?.trim() || '',
+      phone: phone?.trim() || '',
       role
     });
 
@@ -289,23 +309,38 @@ router.get('/me', async (req, res) => {
 router.put('/profile', async (req, res) => {
   try {
     const { name, phone } = req.body;
+    console.log('🔧 [Profile Update] Données reçues:', { name, phone, body: req.body });
+    
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
     if (!token || !token.startsWith('ecom:')) {
+      console.log('❌ [Profile Update] Token invalide:', token?.substring(0, 20));
       return res.status(401).json({ success: false, message: 'Token invalide' });
     }
 
     const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
     const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    console.log('👤 [Profile Update] Token décodé, userId:', decoded.id);
     
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
+      console.log('❌ [Profile Update] Utilisateur non trouvé ou inactif:', decoded.id);
       return res.status(401).json({ success: false, message: 'Utilisateur non trouvé ou inactif' });
     }
 
+    console.log('📋 [Profile Update] Avant modification:', { 
+      id: user._id, 
+      name: user.name, 
+      phone: user.phone,
+      email: user.email 
+    });
+
     if (name !== undefined) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
+    
+    console.log('💾 [Profile Update] Sauvegarde en cours...');
     await user.save();
+    console.log('✅ [Profile Update] Sauvegarde réussie!');
 
     res.json({
       success: true,
@@ -313,7 +348,7 @@ router.put('/profile', async (req, res) => {
       data: { name: user.name, phone: user.phone }
     });
   } catch (error) {
-    console.error('Erreur update profile e-commerce:', error);
+    console.error('❌ [Profile Update] Erreur:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

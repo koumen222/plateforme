@@ -235,6 +235,14 @@ export const importApi = {
   getImportDetail: (id) => ecomApi.get(`/import/history/${id}`)
 };
 
+export const notificationsApi = {
+  getNotifications: (params = {}) => ecomApi.get('/notifications', { params }),
+  getUnreadCount: () => ecomApi.get('/notifications/unread-count'),
+  markAsRead: (id) => ecomApi.put(`/notifications/${id}/read`),
+  markAllAsRead: () => ecomApi.put('/notifications/read-all'),
+  deleteNotification: (id) => ecomApi.delete(`/notifications/${id}`)
+};
+
 // Export par défaut l'instance axios pour usage direct
 export default ecomApi;
 

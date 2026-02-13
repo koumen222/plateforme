@@ -27,6 +27,10 @@ const LandingPage = () => {
             <a href="#advantages" className="px-3 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg">Avantages</a>
             <a href="#roles" className="px-3 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg">Rôles</a>
             <a href="#pricing" className="px-3 py-2 text-sm text-gray-400 hover:text-white transition rounded-lg">Tarifs</a>
+            <a href="#security" className="px-3 py-2 text-sm text-emerald-400 hover:text-emerald-300 transition rounded-lg flex items-center gap-1">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              Sécurité
+            </a>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => navigate('/ecom/login')} className="hidden sm:block px-4 py-2 text-sm text-gray-300 hover:text-white transition">
@@ -46,6 +50,7 @@ const LandingPage = () => {
             <a href="#advantages" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg">Avantages</a>
             <a href="#roles" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg">Rôles</a>
             <a href="#pricing" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg">Tarifs</a>
+            <a href="#security" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-emerald-400 hover:text-emerald-300 rounded-lg">Sécurité</a>
             <button onClick={() => navigate('/ecom/login')} className="block w-full text-left px-3 py-2 text-sm text-gray-300">Connexion</button>
           </div>
         )}
@@ -481,6 +486,42 @@ const LandingPage = () => {
         </div>
       </section>
 
+      {/* ═══════════════════ SÉCURITÉ & CONFIDENTIALITÉ ═══════════════════ */}
+      <section id="security" className="py-20 sm:py-28 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-sm font-medium mb-5">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+              Sécurité certifiée
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-black mb-5">Vos données sont <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent">en sécurité</span></h2>
+            <p className="text-gray-400 text-lg max-w-2xl mx-auto">Nous protégeons vos données avec les standards les plus élevés — même nos propres administrateurs ne peuvent pas y accéder.</p>
+          </div>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { icon: '🔐', title: 'Chiffrement total', desc: 'Mots de passe hashés avec bcrypt (irréversible). Communications protégées par HTTPS/TLS. Aucun admin ne peut lire vos mots de passe.' },
+              { icon: '🏗️', title: 'Isolation des espaces', desc: 'Chaque workspace est complètement cloisonné. Les données d\'un espace ne sont jamais accessibles depuis un autre.' },
+              { icon: '🚫', title: 'Zéro tracking', desc: 'Aucun cookie publicitaire, aucun Google Analytics, aucun Facebook Pixel. Nous ne revendons jamais vos données.' },
+              { icon: '👁️', title: 'Transparence totale', desc: 'Consultez, exportez ou supprimez vos données à tout moment. Vous gardez le contrôle total sur vos informations.' },
+              { icon: '⚖️', title: 'Accès par rôle strict', desc: 'Chaque utilisateur n\'accède qu\'aux données nécessaires à sa fonction. Principe du moindre privilège appliqué.' },
+              { icon: '📋', title: 'Journalisation', desc: 'Toute action administrative est tracée et horodatée. Les accès sont surveillés en permanence pour votre protection.' },
+            ].map((item, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 hover:border-emerald-500/30 hover:bg-emerald-500/[0.03] transition group">
+                <div className="text-3xl mb-3">{item.icon}</div>
+                <h3 className="text-base font-bold text-white mb-2 group-hover:text-emerald-300 transition">{item.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{item.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-8">
+            <button onClick={() => navigate('/ecom/privacy')} className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-semibold transition">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+              Lire notre politique de confidentialité complète
+            </button>
+          </div>
+        </div>
+      </section>
+
       {/* ═══════════════════ FINAL CTA ═══════════════════ */}
       <section className="py-20 sm:py-32 px-4">
         <div className="max-w-4xl mx-auto">
@@ -510,7 +551,7 @@ const LandingPage = () => {
       {/* ═══════════════════ FOOTER ═══════════════════ */}
       <footer className="border-t border-white/5 py-12 px-4">
         <div className="max-w-7xl mx-auto">
-          <div className="grid sm:grid-cols-4 gap-8 mb-10">
+          <div className="grid sm:grid-cols-5 gap-8 mb-10">
             <div className="sm:col-span-2">
               <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-14 object-contain mb-4" />
               <p className="text-sm text-gray-500 max-w-sm leading-relaxed">
@@ -533,10 +574,21 @@ const LandingPage = () => {
                 <li><button onClick={() => navigate('/ecom/login')} className="text-sm text-gray-500 hover:text-gray-300 transition">Se connecter</button></li>
               </ul>
             </div>
+            <div>
+              <h4 className="text-sm font-semibold mb-4 text-gray-300">Légal & Sécurité</h4>
+              <ul className="space-y-2.5">
+                <li><button onClick={() => navigate('/ecom/privacy')} className="text-sm text-gray-500 hover:text-gray-300 transition">Politique de confidentialité</button></li>
+                <li><a href="#security" className="text-sm text-gray-500 hover:text-gray-300 transition">Sécurité des données</a></li>
+              </ul>
+            </div>
           </div>
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Ecom Cockpit. Tous droits réservés.</p>
-            <p className="text-xs text-gray-600">Fait avec ❤️ pour les e-commerçants africains</p>
+            <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/ecom/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
+              <span className="text-gray-700">•</span>
+              <p className="text-xs text-gray-600">Fait avec ❤️ pour les e-commerçants africains</p>
+            </div>
           </div>
         </div>
       </footer>

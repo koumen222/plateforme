@@ -9,6 +9,7 @@ import Order from '../models/Order.js';
 import ImportHistory from '../models/ImportHistory.js';
 import WorkspaceSettings from '../models/WorkspaceSettings.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+import { notifyImportCompleted } from '../services/notificationHelper.js';
 import {
   validateSpreadsheet,
   fetchSheetData,
@@ -416,6 +417,11 @@ router.post('/run', requireEcomAuth, validateEcomAccess('products', 'write'), as
       } catch (pushErr) {
         console.error('Push notification error (non-blocking):', pushErr.message);
       }
+    }
+
+    // Notification interne
+    if (successCount > 0 || updatedCount > 0) {
+      notifyImportCompleted(req.workspaceId, { imported: successCount, updated: updatedCount, errors: errors.length }).catch(() => {});
     }
 
     // Finalize import record

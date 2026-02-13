@@ -354,7 +354,7 @@ router.get('/:id', requireEcomAuth, async (req, res) => {
 // POST /api/ecom/campaigns - Créer une campagne
 router.post('/', requireEcomAuth, async (req, res) => {
   try {
-    const { name, type, messageTemplate, targetFilters, scheduledAt, tags } = req.body;
+    const { name, type, messageTemplate, targetFilters, scheduledAt, tags, selectedClientIds } = req.body;
     if (!name || !messageTemplate) {
       return res.status(400).json({ success: false, message: 'Nom et message requis' });
     }
@@ -381,10 +381,16 @@ router.post('/', requireEcomAuth, async (req, res) => {
       console.warn('⚠️ Campagne marketing à risque moyen:', analysis.warnings);
     }
 
-    // Compter les clients ciblés
-    const filter = buildClientFilter(req.workspaceId, targetFilters || {});
-    filter.phone = { $exists: true, $ne: '' };
-    const targetedCount = await Client.countDocuments(filter);
+    // Compter les clients ciblés - utiliser selectedClientIds si présent
+    let targetedCount;
+    if (selectedClientIds && selectedClientIds.length > 0) {
+      targetedCount = selectedClientIds.length;
+      console.log(`📋 Campagne avec ${targetedCount} clients sélectionnés manuellement`);
+    } else {
+      const filter = buildClientFilter(req.workspaceId, targetFilters || {});
+      filter.phone = { $exists: true, $ne: '' };
+      targetedCount = await Client.countDocuments(filter);
+    }
 
     const campaign = new Campaign({
       workspaceId: req.workspaceId,
@@ -392,6 +398,7 @@ router.post('/', requireEcomAuth, async (req, res) => {
       type: type || 'custom',
       messageTemplate,
       targetFilters: targetFilters || {},
+      selectedClientIds: selectedClientIds || [],
       scheduledAt: scheduledAt || null,
       status: scheduledAt ? 'scheduled' : 'draft',
       stats: { targeted: targetedCount },
@@ -436,15 +443,19 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Impossible de modifier une campagne en cours ou envoyée' });
     }
 
-    const allowedFields = ['name', 'type', 'messageTemplate', 'targetFilters', 'scheduledAt', 'tags', 'status'];
+    const allowedFields = ['name', 'type', 'messageTemplate', 'targetFilters', 'scheduledAt', 'tags', 'status', 'selectedClientIds'];
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) campaign[field] = req.body[field];
     });
 
-    // Recompter les clients ciblés
-    const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
-    filter.phone = { $exists: true, $ne: '' };
-    campaign.stats.targeted = await Client.countDocuments(filter);
+    // Recompter les clients ciblés - priorité aux selectedClientIds
+    if (campaign.selectedClientIds && campaign.selectedClientIds.length > 0) {
+      campaign.stats.targeted = campaign.selectedClientIds.length;
+    } else {
+      const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+      filter.phone = { $exists: true, $ne: '' };
+      campaign.stats.targeted = await Client.countDocuments(filter);
+    }
 
     await campaign.save();
     res.json({ success: true, message: 'Campagne modifiée', data: campaign });
@@ -495,10 +506,22 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       });
     }
 
-    // Récupérer les clients ciblés
-    const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
-    filter.phone = { $exists: true, $ne: '' };
-    const clients = await Client.find(filter);
+    // Récupérer les clients ciblés - priorité aux selectedClientIds
+    let clients;
+    if (campaign.selectedClientIds && campaign.selectedClientIds.length > 0) {
+      // Utiliser les clients sélectionnés manuellement
+      clients = await Client.find({
+        _id: { $in: campaign.selectedClientIds },
+        workspaceId: req.workspaceId,
+        phone: { $exists: true, $ne: '' }
+      });
+      console.log(`📋 Campagne avec ${clients.length} clients sélectionnés manuellement`);
+    } else {
+      // Utiliser les filtres
+      const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+      filter.phone = { $exists: true, $ne: '' };
+      clients = await Client.find(filter);
+    }
 
     campaign.status = 'sending';
     campaign.stats.targeted = clients.length;

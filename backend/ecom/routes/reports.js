@@ -7,6 +7,7 @@ import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateDailyReport } from '../middleware/validation.js';
 import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
+import { notifyReportCreated } from '../services/notificationHelper.js';
 
 const router = express.Router();
 
@@ -448,6 +449,89 @@ router.get('/stats/financial',
   }
 );
 
+// GET /api/ecom/reports/stats/financial/daily - Données financières quotidiennes pour le graphique
+router.get('/stats/financial/daily',
+  requireEcomAuth,
+  validateEcomAccess('finance', 'read'),
+  async (req, res) => {
+    try {
+      const { days = 14 } = req.query;
+      const daysCount = Math.min(parseInt(days) || 14, 90);
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - daysCount);
+      startDate.setHours(0, 0, 0, 0);
+
+      const dailyStats = await DailyReport.aggregate([
+        {
+          $match: {
+            workspaceId: new mongoose.Types.ObjectId(req.workspaceId),
+            date: { $gte: startDate }
+          }
+        },
+        {
+          $lookup: {
+            from: 'ecom_products',
+            localField: 'productId',
+            foreignField: '_id',
+            as: 'product'
+          }
+        },
+        { $unwind: '$product' },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: '%Y-%m-%d', date: '$date' }
+            },
+            revenue: {
+              $sum: { $multiply: ['$ordersDelivered', '$product.sellingPrice'] }
+            },
+            cost: {
+              $sum: {
+                $add: [
+                  { $multiply: ['$ordersDelivered', '$product.productCost'] },
+                  { $multiply: ['$ordersDelivered', '$product.deliveryCost'] },
+                  '$adSpend'
+                ]
+              }
+            },
+            ordersDelivered: { $sum: '$ordersDelivered' },
+            ordersReceived: { $sum: '$ordersReceived' }
+          }
+        },
+        {
+          $addFields: {
+            profit: { $subtract: ['$revenue', '$cost'] }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ]);
+
+      // Fill gaps with zero-days
+      const result = [];
+      const dataMap = new Map(dailyStats.map(d => [d._id, d]));
+      for (let i = 0; i < daysCount; i++) {
+        const d = new Date(startDate);
+        d.setDate(d.getDate() + i);
+        const key = d.toISOString().split('T')[0];
+        const existing = dataMap.get(key);
+        result.push({
+          date: key,
+          revenue: existing?.revenue || 0,
+          profit: existing?.profit || 0,
+          cost: existing?.cost || 0,
+          ordersDelivered: existing?.ordersDelivered || 0,
+          ordersReceived: existing?.ordersReceived || 0
+        });
+      }
+
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('Erreur financial daily stats:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
 // GET /api/ecom/reports/:id - Détail d'un rapport
 router.get('/:id', requireEcomAuth, async (req, res) => {
   try {
@@ -550,6 +634,9 @@ router.post('/',
 
       const report = new DailyReport(reportData);
       await report.save();
+
+      // Notification interne
+      notifyReportCreated(req.workspaceId, report, req.ecomUser?.name || req.ecomUser?.email).catch(() => {});
 
       // Décrémenter le stock du produit selon les commandes livrées
       if (ordersDelivered > 0) {

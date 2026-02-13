@@ -38,10 +38,23 @@ export default function NotificationsDropdown() {
   useEffect(() => {
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
-      setPosition({
-        top: rect.bottom + window.scrollY + 8, // 8px de marge
-        right: window.innerWidth - rect.right + window.scrollX
-      });
+      const isMobile = window.innerWidth < 768;
+      
+      if (isMobile) {
+        // Sur mobile : positionner en dessous du header fixe, centré
+        setPosition({
+          top: rect.bottom + window.scrollY + 8,
+          right: 16, // marge de 16px depuis la droite
+          left: 16,  // marge de 16px depuis la gauche
+          maxWidth: window.innerWidth - 32
+        });
+      } else {
+        // Sur desktop : positionnement normal
+        setPosition({
+          top: rect.bottom + window.scrollY + 8,
+          right: window.innerWidth - rect.right + window.scrollX
+        });
+      }
     }
   }, [isOpen]);
 

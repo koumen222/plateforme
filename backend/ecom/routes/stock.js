@@ -4,6 +4,7 @@ import Product from '../models/Product.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateStockOrder } from '../middleware/validation.js';
 import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
+import { notifyStockReceived } from '../services/notificationHelper.js';
 
 const router = express.Router();
 
@@ -246,6 +247,9 @@ router.put('/orders/:id/receive',
           delta: order.quantity
         });
       }
+
+      // Notification interne
+      notifyStockReceived(req.workspaceId, { _id: order._id, quantity: order.quantity, productName: order.productName || product?.name }).catch(() => {});
 
       const updatedOrder = await StockOrder.findById(order._id)
         .populate('productId', 'name')

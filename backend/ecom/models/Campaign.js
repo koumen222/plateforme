@@ -32,6 +32,11 @@ const campaignSchema = new mongoose.Schema({
     maxOrders: { type: Number, default: 0 },
     lastContactBefore: { type: Date }
   },
+  // IDs des clients sélectionnés manuellement (prioritaire sur targetFilters)
+  selectedClientIds: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Client'
+  }],
   // Template du message WhatsApp
   messageTemplate: {
     type: String,

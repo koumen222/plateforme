@@ -77,7 +77,19 @@ const workspaceSettingsSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId },
     createdAt: { type: Date, default: Date.now, index: true },
     expiresAt: { type: Date, required: true, index: true }
-  }]
+  }],
+  // Configuration de la synchronisation automatique
+  autoSync: {
+    enabled: { type: Boolean, default: true },
+    interval: { 
+      type: String, 
+      enum: ['1min', '5min', '15min', '30min', '1hour'], 
+      default: '5min' 
+    },
+    lastRunAt: { type: Date },
+    updatedAt: { type: Date, default: Date.now },
+    notifyOnChanges: { type: Boolean, default: true }
+  }
 }, {
   timestamps: true,
   collection: 'ecom_workspace_settings'

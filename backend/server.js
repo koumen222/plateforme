@@ -105,6 +105,10 @@ app.use(express.urlencoded({ extended: true })); // Pour les requêtes POST avec
 app.use(cookieParser());
 app.use(referralCapture);
 
+// Sécurité — Headers HTTP de protection
+import { securityHeaders } from './ecom/middleware/security.js';
+app.use(securityHeaders);
+
 // Corriger les fautes fréquentes dans les routes (fallback)
 app.use((req, res, next) => {
   if (req.url.startsWith('/api/adminn/')) {
@@ -1984,6 +1988,26 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/push.js:', error.message);
     }
 
+    // Routes E-commerce Notifications internes
+    try {
+      const ecomNotificationsModule = await import("./ecom/routes/notifications.js");
+      const ecomNotificationsRoutes = ecomNotificationsModule.default;
+      app.use("/api/ecom/notifications", ecomNotificationsRoutes);
+      console.log('✅ Routes E-commerce Notifications chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/notifications.js:', error.message);
+    }
+
+    // Routes E-commerce Auto-Synchronisation
+    try {
+      const ecomAutoSyncModule = await import("./ecom/routes/autoSync.js");
+      const ecomAutoSyncRoutes = ecomAutoSyncModule.default;
+      app.use("/api/ecom/auto-sync", ecomAutoSyncRoutes);
+      console.log('✅ Routes E-commerce Auto-Sync chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/autoSync.js:', error.message);
+    }
+
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {
@@ -2910,6 +2934,15 @@ const startServer = async () => {
       runSuccessRadarOnce();
     } else {
       console.warn('⚠️ Services Success Radar Cron non disponibles');
+    }
+
+    // Démarrer le service d'auto-synchronisation Google Sheets
+    try {
+      const autoSyncService = (await import("./services/autoSyncService.js")).default;
+      await autoSyncService.start();
+      console.log('✅ Service d\'auto-synchronisation Google Sheets démarré');
+    } catch (error) {
+      console.error('⚠️ Erreur démarrage auto-sync service:', error.message);
     }
     
     // Middleware de gestion des routes non trouvées (DOIT être après toutes les routes)

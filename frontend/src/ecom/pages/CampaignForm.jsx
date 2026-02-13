@@ -145,7 +145,9 @@ const CampaignForm = () => {
       const payload = {
         ...formData,
         tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
-        scheduledAt: formData.scheduledAt || null
+        scheduledAt: formData.scheduledAt || null,
+        // Envoyer les clients sélectionnés manuellement
+        selectedClientIds: selectedClients.size > 0 ? Array.from(selectedClients) : []
       };
       if (isEdit) {
         await ecomApi.put(`/campaigns/${id}`, payload);

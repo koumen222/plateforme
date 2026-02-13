@@ -46,9 +46,13 @@ import ProductResearchList from './pages/ProductResearchList.jsx';
 import ProductFinder from './pages/ProductFinder.jsx';
 import ProductFinderEdit from './pages/ProductFinderEdit.jsx';
 import ImportOrders from './pages/ImportOrders.jsx';
+import StatsPage from './pages/StatsPage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
 import EcomLayout from './components/EcomLayout.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import PrivacyBanner from './components/PrivacyBanner.jsx';
+import SecurityDashboard from './pages/SecurityDashboard.jsx';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -193,6 +197,8 @@ const EcomApp = () => {
               
               {/* Routes publiques (sans layout) */}
               <Route path="landing" element={<EcomLandingPage />} />
+              <Route path="privacy" element={<PrivacyPolicy />} />
+              <Route path="security" element={<LayoutRoute><SecurityDashboard /></LayoutRoute>} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="forgot-password" element={<ForgotPassword />} />
@@ -253,6 +259,7 @@ const EcomApp = () => {
               {/* Routes commandes (admin + closeuse) */}
               <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
               <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
+              <Route path="stats" element={<LayoutRoute requiredRole="ecom_admin"><StatsPage /></LayoutRoute>} />
               
               {/* Route import commandes (admin) */}
               <Route path="import" element={<LayoutRoute requiredRole="ecom_admin"><ImportOrders /></LayoutRoute>} />
@@ -290,6 +297,7 @@ const EcomApp = () => {
               <Route path="*" element={<Navigate to="/ecom/login" replace />} />
             </Routes>
           </ErrorBoundary>
+          <PrivacyBanner />
         </div>
       </CurrencyProvider>
     </EcomAuthProvider>

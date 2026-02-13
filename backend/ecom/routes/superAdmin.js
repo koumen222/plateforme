@@ -2,6 +2,7 @@ import express from 'express';
 import EcomUser from '../models/EcomUser.js';
 import Workspace from '../models/Workspace.js';
 import { requireEcomAuth, requireSuperAdmin } from '../middleware/ecomAuth.js';
+import { logAudit, auditSensitiveAccess, AuditLog } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -11,7 +12,7 @@ router.get('/users',
   requireSuperAdmin,
   async (req, res) => {
     try {
-      const { role, workspaceId, isActive, search, page = 1, limit = 50 } = req.query;
+      const { role, workspaceId, isActive, search, page = 1, limit = 1000 } = req.query;
       const filter = {};
 
       if (role) filter.role = role;
@@ -21,6 +22,9 @@ router.get('/users',
         filter.email = { $regex: search, $options: 'i' };
       }
 
+      console.log('🔍 [SuperAdmin Users] filter:', JSON.stringify(filter), 'limit:', limit, 'page:', page);
+      await logAudit(req, 'VIEW_USERS', `Consultation liste utilisateurs (filter: ${JSON.stringify(filter)})`, 'user');
+
       const users = await EcomUser.find(filter)
         .select('-password')
         .populate('workspaceId', 'name slug')
@@ -29,6 +33,8 @@ router.get('/users',
         .skip((page - 1) * limit);
 
       const total = await EcomUser.countDocuments(filter);
+      
+      console.log(`📊 [SuperAdmin Users] find() retourné: ${users.length}, countDocuments(filter): ${total}`);
 
       // Stats globales
       const stats = await EcomUser.aggregate([
@@ -74,15 +80,25 @@ router.get('/workspaces',
   requireSuperAdmin,
   async (req, res) => {
     try {
+      console.log('🔍 [SuperAdmin] Récupération de tous les workspaces...');
+      
       const workspaces = await Workspace.find()
         .populate('owner', 'email role')
         .sort({ createdAt: -1 });
+      
+      console.log(`📊 [SuperAdmin] ${workspaces.length} workspaces trouvés dans la base`);
+      
+      // Vérifier le nombre total sans filtre
+      const totalCount = await Workspace.countDocuments();
+      console.log(`📊 [SuperAdmin] Workspace.countDocuments() = ${totalCount}`);
 
       // Compter les membres par workspace
       const memberCounts = await EcomUser.aggregate([
         { $match: { workspaceId: { $ne: null } } },
         { $group: { _id: '$workspaceId', count: { $sum: 1 } } }
       ]);
+      
+      console.log(`📊 [SuperAdmin] ${memberCounts.length} workspaces avec membres`);
 
       const memberMap = {};
       memberCounts.forEach(m => { memberMap[m._id.toString()] = m.count; });
@@ -123,8 +139,10 @@ router.put('/users/:id/role',
         return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
       }
 
+      const oldRole = user.role;
       user.role = role;
       await user.save();
+      await logAudit(req, 'CHANGE_ROLE', `Changement rôle: ${user.email} ${oldRole} → ${role}`, 'user', user._id);
 
       res.json({
         success: true,
@@ -155,6 +173,7 @@ router.put('/users/:id/toggle',
 
       user.isActive = !user.isActive;
       await user.save();
+      await logAudit(req, 'TOGGLE_USER', `${user.isActive ? 'Activation' : 'Désactivation'} de ${user.email}`, 'user', user._id);
 
       res.json({
         success: true,
@@ -182,6 +201,7 @@ router.delete('/users/:id',
       if (!user) {
         return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
       }
+      await logAudit(req, 'DELETE_USER', `Suppression de ${user.email} (rôle: ${user.role})`, 'user', req.params.id);
 
       res.json({ success: true, message: 'Utilisateur supprimé' });
     } catch (error) {
@@ -204,6 +224,7 @@ router.put('/workspaces/:id/toggle',
 
       workspace.isActive = !workspace.isActive;
       await workspace.save();
+      await logAudit(req, 'TOGGLE_WORKSPACE', `${workspace.isActive ? 'Activation' : 'Désactivation'} de l'espace ${workspace.name}`, 'workspace', workspace._id);
 
       res.json({
         success: true,
@@ -212,6 +233,88 @@ router.put('/workspaces/:id/toggle',
       });
     } catch (error) {
       console.error('Erreur super-admin toggle workspace:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// GET /api/ecom/super-admin/audit-logs - Consulter les logs d'audit (immuables)
+router.get('/audit-logs',
+  requireEcomAuth,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { action, userId, page = 1, limit = 100 } = req.query;
+      const filter = {};
+      if (action) filter.action = action;
+      if (userId) filter.userId = userId;
+
+      await logAudit(req, 'VIEW_SENSITIVE_DATA', 'Consultation des logs d\'audit', 'audit_log');
+
+      const logs = await AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .limit(limit * 1)
+        .skip((page - 1) * limit)
+        .lean();
+
+      const total = await AuditLog.countDocuments(filter);
+
+      // Stats par action
+      const actionStats = await AuditLog.aggregate([
+        { $group: { _id: '$action', count: { $sum: 1 } } },
+        { $sort: { count: -1 } }
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          logs,
+          stats: { actionStats, total },
+          pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / limit) }
+        }
+      });
+    } catch (error) {
+      console.error('Erreur audit-logs:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// GET /api/ecom/super-admin/security-info - Infos sécurité (public pour les utilisateurs connectés)
+router.get('/security-info',
+  requireEcomAuth,
+  async (req, res) => {
+    try {
+      const totalLogs = await AuditLog.countDocuments();
+      const last24h = await AuditLog.countDocuments({ createdAt: { $gte: new Date(Date.now() - 86400000) } });
+      const failedLogins = await AuditLog.countDocuments({ action: 'LOGIN_FAILED', createdAt: { $gte: new Date(Date.now() - 86400000) } });
+      const lastActivity = await AuditLog.findOne().sort({ createdAt: -1 }).lean();
+
+      res.json({
+        success: true,
+        data: {
+          measures: [
+            { id: 'encryption', name: 'Chiffrement mots de passe', status: 'active', type: 'bcrypt (12 rounds)', desc: 'Irréversible — même les admins ne peuvent pas lire les mots de passe' },
+            { id: 'tls', name: 'Chiffrement en transit', status: 'active', type: 'HTTPS/TLS', desc: 'Toutes les communications sont chiffrées' },
+            { id: 'aes', name: 'Chiffrement données sensibles', status: 'active', type: 'AES-256-GCM', desc: 'Données sensibles chiffrées dans la base de données' },
+            { id: 'isolation', name: 'Isolation des workspaces', status: 'active', type: 'Filtrage MongoDB', desc: 'Chaque espace est cloisonné au niveau de la base de données' },
+            { id: 'rbac', name: 'Contrôle d\'accès par rôle', status: 'active', type: 'RBAC', desc: 'Principe du moindre privilège appliqué' },
+            { id: 'audit', name: 'Journalisation d\'audit', status: 'active', type: 'Logs immuables', desc: 'Chaque action est tracée et ne peut être ni modifiée ni supprimée' },
+            { id: 'headers', name: 'Headers de sécurité HTTP', status: 'active', type: 'HSTS, CSP, XSS', desc: 'Protection contre XSS, clickjacking, sniffing' },
+            { id: 'ratelimit', name: 'Protection brute force', status: 'active', type: 'Rate limiting', desc: 'Limitation des tentatives de connexion' },
+            { id: 'nocookies', name: 'Zéro cookie tracking', status: 'active', type: 'JWT uniquement', desc: 'Aucun cookie publicitaire ni outil de suivi tiers' },
+            { id: 'masking', name: 'Masquage des données', status: 'active', type: 'Data masking', desc: 'Les données sensibles sont masquées dans les réponses API' }
+          ],
+          stats: {
+            totalAuditLogs: totalLogs,
+            last24hActions: last24h,
+            failedLoginsLast24h: failedLogins,
+            lastActivity: lastActivity?.createdAt || null
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Erreur security-info:', error);
       res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
 import { useMoney } from '../hooks/useMoney.js';
@@ -59,17 +59,18 @@ const OrdersList = () => {
   const { user } = useEcomAuth();
   const { fmt } = useMoney();
   const isAdmin = user?.role === 'ecom_admin';
+  const isSuperAdmin = user?.role === 'super_admin';
 
     const [orders, setOrders] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
   const [syncClients, setSyncClients] = useState(false);
-  const [syncing, setSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState(null);
   const [syncDisabled, setSyncDisabled] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState(null);
   const [syncController, setSyncController] = useState(null);
   const [backfilling, setBackfilling] = useState(false);
+  const [showSyncClientsModal, setShowSyncClientsModal] = useState(false);
+  const [syncClientsStatuses, setSyncClientsStatuses] = useState(['delivered', 'confirmed', 'pending', 'shipped']);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [filterCity, setFilterCity] = useState('');
@@ -107,9 +108,6 @@ const OrdersList = () => {
   });
   const [savingWhatsAppNumber, setSavingWhatsAppNumber] = useState(false);
   const [deletingSource, setDeletingSource] = useState(null);
-  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true);
-  const [lastAutoSync, setLastAutoSync] = useState(new Date());
-  const [permanentSyncEnabled, setPermanentSyncEnabled] = useState(true);
   const [showAddSheetModal, setShowAddSheetModal] = useState(false);
   const [newSheetData, setNewSheetData] = useState({ name: '', spreadsheetId: '', sheetName: 'Sheet1' });
   const [savingSheet, setSavingSheet] = useState(false);
@@ -120,8 +118,7 @@ const OrdersList = () => {
   const [savingOrder, setSavingOrder] = useState(false);
   const [deletingOrderId, setDeletingOrderId] = useState(null);
   const [deletingAll, setDeletingAll] = useState(false);
-  const [nextSyncIn, setNextSyncIn] = useState(0);
-  const [autoSyncStatus, setAutoSyncStatus] = useState('');
+  const [viewAllWorkspaces, setViewAllWorkspaces] = useState(false);
 
   // Fonction pour générer les champs à afficher selon les colonnes détectées
   const getDisplayFields = (sourceId) => {
@@ -183,6 +180,11 @@ const OrdersList = () => {
     return fields.sort((a, b) => a.priority - b.priority);
   };
 
+  const getOrderId = (o) => o.orderId || '';
+  const getDate = (o) => fmtDate(o.date);
+  const getPrice = (o) => o.price != null ? `${o.price}` : '';
+  const getQuantity = (o) => o.quantity != null ? `${o.quantity}` : '';
+
   // Fonctions de formatage
   const fmtDate = (dateStr) => {
     if (!dateStr) return '';
@@ -207,11 +209,16 @@ const OrdersList = () => {
       if (filterStartDate) params.startDate = filterStartDate;
       if (filterEndDate) params.endDate = filterEndDate;
       if (selectedSourceId) params.sourceId = selectedSourceId;
+      // Si super admin et mode tous les espaces activé
+      if (isSuperAdmin && viewAllWorkspaces) params.allWorkspaces = 'true';
       const res = await ecomApi.get('/orders', { params });
       setOrders(res.data.data.orders);
       setStats(res.data.data.stats);
       setPagination(res.data.data.pagination || {});
-    } catch { setError('Erreur chargement commandes'); }
+    } catch (err) { 
+      console.error('❌ Erreur fetchOrders:', err);
+      setError(err.response?.data?.message || err.message || 'Erreur chargement commandes'); 
+    }
   };
 
   const fetchConfig = async () => {
@@ -460,184 +467,21 @@ const OrdersList = () => {
     init();
   }, []);
 
-  useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId, page]);
+  useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId, page, viewAllWorkspaces]);
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 10000); return () => clearTimeout(t); } }, [success]);
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
 
-  // Auto-refresh intelligent - seulement si l'utilisateur est actif
-  useEffect(() => {
-    if (loading) return;
-    
-    // Détecter l'activité utilisateur
-    let activityTimeout;
-    let refreshInterval;
-    let isActive = true;
-    
-    const resetActivity = () => {
-      isActive = true;
-      clearTimeout(activityTimeout);
-      activityTimeout = setTimeout(() => {
-        isActive = false;
-      }, 300000); // 5 minutes d'inactivité
-    };
-    
-    const startRefresh = () => {
-      refreshInterval = setInterval(() => {
-        if (isActive && document.visibilityState === 'visible') {
-          fetchOrders();
-        }
-      }, 90000); // 90 secondes au lieu de 60
-    };
-    
-    // Écouter les événements utilisateur
-    ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
-      document.addEventListener(event, resetActivity, true);
-    });
-    
-    resetActivity();
-    startRefresh();
-    
-    return () => {
-      clearInterval(refreshInterval);
-      clearTimeout(activityTimeout);
-      ['mousedown', 'keydown', 'scroll', 'touchstart'].forEach(event => {
-        document.removeEventListener(event, resetActivity, true);
-      });
-    };
-  }, [loading, page, search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId]);
-
-  // Refs pour l'auto-sync (éviter les closures stale)
-  const sourcesRef = useRef(sources);
-  const syncingRef = useRef(syncing);
-  const syncDisabledRef = useRef(syncDisabled);
-  const lastSyncTimeRef = useRef(lastSyncTime);
-  const selectedSourceIdRef = useRef(selectedSourceId);
-  useEffect(() => { sourcesRef.current = sources; }, [sources]);
-  useEffect(() => { syncingRef.current = syncing; }, [syncing]);
-  useEffect(() => { syncDisabledRef.current = syncDisabled; }, [syncDisabled]);
-  useEffect(() => { lastSyncTimeRef.current = lastSyncTime; }, [lastSyncTime]);
-  useEffect(() => { selectedSourceIdRef.current = selectedSourceId; }, [selectedSourceId]);
-
-  // Auto-sync Google Sheets : synchronise automatiquement toutes les 2 minutes
-  useEffect(() => {
-    if (!isAdmin || sources.length === 0 || !permanentSyncEnabled) return;
-    
-    const AUTO_SYNC_INTERVAL = 330000; // 5 minutes 30 secondes
-    let isAutoSyncing = false;
-    
-    const autoSyncSheets = async () => {
-      // Ne pas lancer si une sync manuelle est en cours, ou auto-sync déjà en cours, ou page non visible
-      if (syncingRef.current || isAutoSyncing || document.visibilityState !== 'visible') {
-        console.log('⏭️ Auto-sync ignoré:', syncingRef.current ? 'sync manuelle' : isAutoSyncing ? 'déjà en cours' : 'page non visible');
-        return;
-      }
-      
-      isAutoSyncing = true;
-      console.log('🔄 Auto-sync démarré...');
-      
-      try {
-        const currentSources = sourcesRef.current;
-        for (const source of currentSources) {
-          if (!source.isActive && source._id !== 'legacy') continue;
-          
-          console.log(`🔄 Auto-sync source: ${source.name} (${source._id})`);
-          await ecomApi.post('/orders/sync-sheets', { sourceId: source._id });
-        }
-        
-        // Rafraîchir la liste des commandes après la sync
-        await fetchOrders();
-        setLastAutoSync(new Date());
-        console.log('✅ Auto-sync terminé');
-      } catch (err) {
-        console.warn('⚠️ Auto-sync erreur:', err.response?.data?.message || err.message);
-      } finally {
-        isAutoSyncing = false;
-      }
-    };
-    
-    // Lancer la première auto-sync après 10 secondes
-    const initialTimeout = setTimeout(autoSyncSheets, 10000);
-    
-    // Puis toutes les 2 minutes
-    const interval = setInterval(autoSyncSheets, AUTO_SYNC_INTERVAL);
-    
-    console.log('📡 Auto-sync activé (toutes les 5min30)');
-    
-    return () => {
-      clearTimeout(initialTimeout);
-      clearInterval(interval);
-      console.log('📡 Auto-sync désactivé');
-    };
-  }, [isAdmin, sources.length, permanentSyncEnabled]);
-
-  // Auto-click sync button toutes les 30 secondes
-  useEffect(() => {
-    if (!isAdmin || sources.length === 0) return;
-    
-    const AUTO_CLICK_INTERVAL = 1000; // 1 seconde
-    const DEBOUNCE_TIME = 10000; // 10 secondes minimum entre syncs
-    
-    const autoClickSync = async () => {
-      const now = Date.now();
-      const timeSinceLastSync = lastSyncTimeRef.current ? now - lastSyncTimeRef.current : DEBOUNCE_TIME;
-      const canSync = timeSinceLastSync >= DEBOUNCE_TIME && !syncingRef.current && !syncDisabledRef.current;
-      
-      if (!canSync) {
-        const waitTime = Math.max(0, DEBOUNCE_TIME - timeSinceLastSync);
-        setNextSyncIn(Math.ceil(waitTime / 1000));
-        setAutoSyncStatus('⏳ Attente...');
-        return;
-      }
-      
-      setNextSyncIn(0);
-      setAutoSyncStatus('🔄 Sync en cours...');
-      console.log('🤖 Auto-click Sync bouton...');
-      
-      // Utiliser le ref pour obtenir la valeur actuelle sans déclencher le useEffect
-      const currentSourceId = selectedSourceIdRef.current || (sources.length > 0 ? sources[0]._id : null);
-      if (currentSourceId) {
-        await handleSync(currentSourceId, { force: true });
-        setAutoSyncStatus('✅ Terminé');
-        setTimeout(() => setAutoSyncStatus(''), 2000);
-      }
-    };
-    
-    // Premier clic après 2 secondes
-    const initialClick = setTimeout(autoClickSync, 2000);
-    // Puis toutes les 1 secondes (vérifie si peut sync)
-    const interval = setInterval(autoClickSync, AUTO_CLICK_INTERVAL);
-    
-    console.log('🤖 Auto-click Sync activé (vérifie toutes les 1s)');
-    
-    return () => {
-      clearTimeout(initialClick);
-      clearInterval(interval);
-      console.log('🤖 Auto-click Sync désactivé');
-    };
-  }, [isAdmin, sources.length]);
-
-  const handleSync = async (sourceId = null, options = {}) => {
-    // 🔒 DEBOUNCE - Empêcher les appels multiples rapprochés (10 secondes)
-    const now = Date.now();
-    if (lastSyncTime && now - lastSyncTime < 10000 && !options.force) {
-      console.log('⏸️ Sync trop rapprochée, ignorée (debounce 10s)');
-      setError('Veuillez attendre 10 secondes entre chaque synchronisation');
-      return;
-    }
-    
+  const handleSync = async (sourceId = null) => {
     // Protection contre les appels multiples
-    if (syncing || syncDisabled) {
-      console.log('⏸️ Sync déjà en cours ou désactivée, ignorée');
+    if (syncDisabled) {
+      console.log('⏸️ Sync déjà en cours, ignorée');
       return;
     }
 
-    setSyncing(true); 
     setSyncDisabled(true);
-    setLastSyncTime(now);
     setError('');
-    setSyncProgress({ current: 0, total: 0, status: 'Initialisation...', percentage: 0 });
+    setSuccess('🔄 Synchronisation en cours...');
     
-    // Créer AbortController pour pouvoir annuler
     const controller = new AbortController();
     setSyncController(controller);
     
@@ -649,130 +493,60 @@ const OrdersList = () => {
         return;
       }
 
-      console.log(`🔄 Début sync manuelle pour source: ${targetSourceId}`);
-      
-      // Construire l'URL absolue pour EventSource
-      const baseUrl = window.location.origin;
-      const eventSourceUrl = `${baseUrl}/api/ecom/orders/sync-progress?workspaceId=${user.workspaceId}&sourceId=${targetSourceId}`;
-      console.log(`🌐 URL EventSource: ${eventSourceUrl}`);
-      
-      // Créer EventSource pour suivre la progression
-      let eventSource = null;
-      
-      try {
-        // Tester d'abord si l'endpoint est accessible
-        console.log('🔍 Test de l\'endpoint SSE...');
-        
-        eventSource = new EventSource(eventSourceUrl);
-        
-        console.log('📡 EventSource créé, état:', eventSource.readyState);
-        
-        // Si pas de connexion après 2 secondes, afficher l'erreur
-        const connectionTimeout = setTimeout(() => {
-          if (eventSource.readyState === EventSource.CONNECTING) {
-            console.error('❌ Timeout de connexion EventSource');
-            eventSource.close();
-            setSyncProgress({
-              current: 0,
-              total: 100,
-              status: '❌ Impossible de se connecter au serveur de progression',
-              percentage: 0
-            });
-          }
-        }, 2000);
-        
-        eventSource.onopen = () => {
-          console.log('✅ EventSource connecté');
-          clearTimeout(connectionTimeout); // Nettoyer le timeout de connexion
-        };
-        
-        eventSource.onmessage = (event) => {
-          try {
-            const data = JSON.parse(event.data);
-            console.log('📊 Progression reçue:', data);
-            
-            // Arrondir le pourcentage pour éviter les sauts
-            const roundedPercentage = Math.round(data.percentage);
-            
-            setSyncProgress({
-              current: data.current || 0,
-              total: data.total || 100,
-              status: data.status || '',
-              percentage: roundedPercentage
-            });
-            
-            if (data.completed) {
-              console.log('✅ Progression terminée');
-              // Garder la barre visible 1 seconde après completion
-              setTimeout(() => {
-                eventSource.close();
-              }, 1000);
-            }
-          } catch (parseError) {
-            console.error('❌ Erreur parsing progression:', parseError);
-          }
-        };
-        
-        eventSource.onerror = (error) => {
-          console.error('❌ Erreur EventSource:', error);
-          console.log('📡 EventSource état erreur:', eventSource.readyState);
-          if (eventSource.readyState !== EventSource.CLOSED) {
-            eventSource.close();
-          }
-          
-          // Ne pas simuler - afficher l'erreur réelle
-          setSyncProgress({
-            current: 0,
-            total: 100,
-            status: '❌ Erreur de connexion au serveur de progression',
-            percentage: 0
-          });
-        };
-        
-        // Timeout pour EventSource (10 secondes)
-        setTimeout(() => {
-          if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-            console.log('⏰ Timeout EventSource, fermeture');
-            eventSource.close();
-          }
-        }, 10000);
-        
-      } catch (eventError) {
-        console.error('❌ Erreur création EventSource:', eventError);
-      }
+      console.log(`🔄 Sync manuelle pour source: ${targetSourceId}`);
       
       const res = await ecomApi.post('/orders/sync-sheets', { sourceId: targetSourceId }, { 
         timeout: 120000,
         signal: controller.signal
       });
       
-      // Fermer EventSource après la sync
-      if (eventSource && eventSource.readyState !== EventSource.CLOSED) {
-        eventSource.close();
+      console.log('✅ Sync Google Sheets terminée');
+      
+      // Récupérer les nouvelles commandes
+      const newOrdersRes = await ecomApi.get('/orders', { 
+        params: { 
+          sourceId: targetSourceId, 
+          page: 1, 
+          limit: 100,
+          sortBy: 'createdAt',
+          sortOrder: 'desc'
+        } 
+      });
+      
+      // Merge nouvelles commandes avec existantes (éviter les doublons)
+      const newOrders = newOrdersRes.data.data.orders || [];
+      const existingOrderIds = new Set(orders.map(o => o._id));
+      const uniqueNewOrders = newOrders.filter(o => !existingOrderIds.has(o._id));
+      
+      if (uniqueNewOrders.length > 0) {
+        setOrders(prev => [...uniqueNewOrders, ...prev]);
+        setStats(prev => ({
+          ...prev,
+          total: (prev.total || 0) + uniqueNewOrders.length
+        }));
+        setSuccess(`✅ ${uniqueNewOrders.length} nouvelle${uniqueNewOrders.length > 1 ? 's' : ''} commande${uniqueNewOrders.length > 1 ? 's' : ''} ajoutée${uniqueNewOrders.length > 1 ? 's' : ''}`);
+      } else {
+        setSuccess('✅ Synchronisation terminée, aucune nouvelle commande');
       }
       
-      // Pas de message de succès affiché (silencieux)
-      console.log('✅ Sync terminée:', res.data?.message);
-      fetchConfig(); // Refresh sources for sync times
-      fetchOrders();
+      // Sync clients auto après sync sheets
+      ecomApi.post('/orders/sync-clients', { 
+        statuses: ['delivered', 'confirmed', 'pending', 'shipped', 'returned'] 
+      }, { timeout: 120000 }).catch(err => {
+        console.warn('⚠️ Erreur sync clients auto:', err.message);
+      });
+      
+      fetchConfig();
+      
     } catch (err) { 
       if (err.name === 'AbortError') {
-        console.log('🚫 Synchronisation annulée par l\'utilisateur');
-        setError('Synchronisation annulée');
+        setSuccess('');
       } else {
-        const errorMsg = err.response?.data?.message || 'Erreur synchronisation';
-        setError(errorMsg);
-        console.error('❌ Erreur sync:', errorMsg);
+        setError(err.response?.data?.message || 'Erreur synchronisation');
       }
-    }
-    finally { 
-      setSyncing(false);
-      setSyncProgress({ current: 0, total: 0, status: '', percentage: 0 });
+    } finally { 
       setSyncController(null);
-      // Réactiver le bouton après un délai pour éviter les doubles clics
-      setTimeout(() => {
-        setSyncDisabled(false);
-      }, 5000);
+      setSyncDisabled(false);
     }
   };
   
@@ -781,8 +555,6 @@ const OrdersList = () => {
       syncController.abort();
       setSyncController(null);
     }
-    setSyncing(false);
-    setSyncProgress({ current: 0, total: 0, status: '', percentage: 0 });
     setSyncDisabled(false);
   };
 
@@ -845,17 +617,17 @@ const OrdersList = () => {
   };
 
   const handleSyncClients = async () => {
-    if (!confirm('Synchroniser tous les clients depuis les commandes ?\n\nCela va créer/mettre à jour les clients et les regrouper par statut pour les relances.')) return;
+    if (syncClientsStatuses.length === 0) {
+      setError('Veuillez sélectionner au moins un statut');
+      return;
+    }
     
     try {
-      // Initialize progress state
       setSyncProgress({ type: 'start', message: 'Démarrage de la synchronisation...', percentage: 0 });
       
-      // Start the sync and get results
-      const res = await ecomApi.post('/orders/sync-clients', {}, { timeout: 120000 }); // 2 minutes timeout
+      const res = await ecomApi.post('/orders/sync-clients', { statuses: syncClientsStatuses }, { timeout: 120000 });
       const { created, updated, total, statusGroups } = res.data.data;
       
-      // Show completion
       setSyncProgress({ 
         type: 'complete', 
         message: 'Synchronisation terminée avec succès !',
@@ -865,7 +637,6 @@ const OrdersList = () => {
         total
       });
       
-      // Show results immediately
       let message = `✅ Synchronisation terminée !\n\n`;
       message += `📊 ${total} clients traités (${created} créés, ${updated} mis à jour)\n\n`;
       message += `📈 Répartition par statut :\n`;
@@ -882,6 +653,7 @@ const OrdersList = () => {
       
       alert(message);
       setSyncProgress(null);
+      setShowSyncClientsModal(false);
       
     } catch (error) {
       setError('Erreur lors de la synchronisation des clients');
@@ -1112,6 +884,23 @@ const OrdersList = () => {
           <p className="text-xs text-gray-400 mt-0.5">{stats.total || 0} commandes au total</p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Toggle tous les espaces pour Super Admin */}
+          {isSuperAdmin && (
+            <button
+              onClick={() => setViewAllWorkspaces(!viewAllWorkspaces)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition text-xs font-medium ${
+                viewAllWorkspaces
+                  ? 'bg-purple-600 text-white hover:bg-purple-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+              title={viewAllWorkspaces ? 'Voir toutes les commandes de tous les espaces' : 'Voir uniquement les commandes de mon espace'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={viewAllWorkspaces ? "M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" : "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"} />
+              </svg>
+              {viewAllWorkspaces ? '🌍 Tous les espaces' : '🏢 Mon espace'}
+            </button>
+          )}
           {isAdmin && (
             <>
               <button onClick={() => setShowGuide(!showGuide)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition" title="Guide d'utilisation">
@@ -1129,50 +918,28 @@ const OrdersList = () => {
                 Ajouter
               </button>
               <button
-                onClick={() => {
-                  if (selectedSourceId) {
-                    handleSync(selectedSourceId);
-                  } else if (sources.length > 0) {
-                    handleSync(sources[0]._id);
-                  } else {
-                    setError('Aucune source configurée à synchroniser');
-                  }
-                }}
-                disabled={syncing || syncDisabled}
-                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg transition text-xs font-medium ${
-                  syncing
-                    ? 'bg-orange-500 text-white cursor-wait'
-                    : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                }`}
-                title="Synchroniser Google Sheet (import commandes)"
-              >
-                <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-                {syncing ? 'Sync Sheet...' : 'Sync Sheet'}
-              </button>
-              {/* Compteur auto-sync visuel */}
-              {autoSyncStatus && (
-                <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full text-[10px] font-medium ${
-                  autoSyncStatus.includes('⏳') ? 'bg-amber-100 text-amber-700' :
-                  autoSyncStatus.includes('🔄') ? 'bg-blue-100 text-blue-700' :
-                  'bg-green-100 text-green-700'
-                }`}>
-                  <span className={`w-2 h-2 rounded-full ${
-                    autoSyncStatus.includes('⏳') ? 'bg-amber-500 animate-pulse' :
-                    autoSyncStatus.includes('🔄') ? 'bg-blue-500 animate-spin' :
-                    'bg-green-500'
-                  }`}></span>
-                  {autoSyncStatus}
-                  {nextSyncIn > 0 && (
-                    <span className="font-bold">({nextSyncIn}s)</span>
-                  )}
-                </div>
-              )}
-              <button
                 onClick={() => navigate('/ecom/import')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                 Importer
+              </button>
+              <button
+                onClick={() => handleSync()}
+                disabled={syncDisabled}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Synchroniser les commandes depuis Google Sheets"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Sync
+              </button>
+              <button
+                onClick={() => navigate('/ecom/stats')}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium"
+                title="Voir les statistiques globales"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                Stats
               </button>
               {orders.length > 0 && (
                 <button
@@ -1196,30 +963,9 @@ const OrdersList = () => {
       {/* Sources */}
       {isAdmin && (
         <div className="mb-4 bg-white rounded-xl border border-gray-200 shadow-sm p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-              <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sources ({sources.length})</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setPermanentSyncEnabled(!permanentSyncEnabled)}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
-                  permanentSyncEnabled
-                    ? 'bg-green-100 text-green-800 border border-green-200'
-                    : 'bg-gray-100 text-gray-500 border border-gray-200'
-                }`}
-                title={permanentSyncEnabled ? 'Auto-sync actif (toutes les 5min30)' : 'Auto-sync désactivé'}
-              >
-                <span className={`w-2 h-2 rounded-full ${permanentSyncEnabled ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`}></span>
-                {permanentSyncEnabled ? 'Auto-sync ON' : 'Auto-sync OFF'}
-              </button>
-              {permanentSyncEnabled && lastAutoSync && (
-                <span className="text-[10px] text-gray-400">
-                  {new Date(lastAutoSync).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-                </span>
-              )}
-            </div>
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Sources ({sources.length})</span>
           </div>
 
           {/* Information d'adaptation au Google Sheet */}
@@ -1304,7 +1050,7 @@ const OrdersList = () => {
               <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Synchronisation clients</span>
             </div>
             <button
-              onClick={handleSyncClients}
+              onClick={() => setShowSyncClientsModal(true)}
               disabled={syncProgress !== null}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-600 text-white rounded-lg text-xs font-medium hover:bg-green-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -2132,6 +1878,86 @@ const OrdersList = () => {
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm"
               >
                 {savingWhatsAppNumber ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sync Clients Modal */}
+      {showSyncClientsModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSyncClientsModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Synchroniser les clients</h3>
+              <button onClick={() => setShowSyncClientsModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Sélectionnez les statuts de commandes à synchroniser :
+            </p>
+            
+            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+              {[
+                { key: 'delivered', label: 'Livré', color: 'bg-green-500' },
+                { key: 'confirmed', label: 'Confirmé', color: 'bg-blue-500' },
+                { key: 'shipped', label: 'Expédié', color: 'bg-purple-500' },
+                { key: 'pending', label: 'En attente', color: 'bg-yellow-500' },
+                { key: 'returned', label: 'Retour', color: 'bg-orange-500' },
+                { key: 'cancelled', label: 'Annulé', color: 'bg-red-500' },
+                { key: 'unreachable', label: 'Injoignable', color: 'bg-gray-500' },
+                { key: 'called', label: 'Appelé', color: 'bg-cyan-500' },
+                { key: 'postponed', label: 'Reporté', color: 'bg-amber-500' }
+              ].map(status => (
+                <label key={status.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={syncClientsStatuses.includes(status.key)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSyncClientsStatuses([...syncClientsStatuses, status.key]);
+                      } else {
+                        setSyncClientsStatuses(syncClientsStatuses.filter(s => s !== status.key));
+                      }
+                    }}
+                    className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500"
+                  />
+                  <span className={`w-2 h-2 rounded-full ${status.color}`}></span>
+                  <span className="text-sm text-gray-700">{status.label}</span>
+                </label>
+              ))}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSyncClientsModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSyncClients}
+                disabled={syncProgress !== null || syncClientsStatuses.length === 0}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {syncProgress ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Sync...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Lancer la sync
+                  </>
+                )}
               </button>
             </div>
           </div>

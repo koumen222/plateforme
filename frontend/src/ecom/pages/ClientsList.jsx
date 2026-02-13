@@ -29,6 +29,22 @@ const ClientsList = () => {
   const [success, setSuccess] = useState('');
   const [deletingAll, setDeletingAll] = useState(false);
 
+  const [syncing, setSyncing] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [syncStatuses, setSyncStatuses] = useState(['delivered', 'confirmed', 'pending', 'shipped']);
+
+  const availableSyncStatuses = [
+    { key: 'delivered', label: 'Livré', color: 'bg-green-500', clientStatus: 'Client' },
+    { key: 'confirmed', label: 'Confirmé', color: 'bg-blue-500', clientStatus: 'Confirmé' },
+    { key: 'shipped', label: 'Expédié', color: 'bg-purple-500', clientStatus: 'Expédié' },
+    { key: 'pending', label: 'En attente', color: 'bg-yellow-500', clientStatus: 'En attente' },
+    { key: 'returned', label: 'Retour', color: 'bg-orange-500', clientStatus: 'Retour' },
+    { key: 'cancelled', label: 'Annulé', color: 'bg-red-500', clientStatus: 'Annulé' },
+    { key: 'unreachable', label: 'Injoignable', color: 'bg-gray-500', clientStatus: 'Injoignable' },
+    { key: 'called', label: 'Appelé', color: 'bg-cyan-500', clientStatus: 'Appelé' },
+    { key: 'postponed', label: 'Reporté', color: 'bg-amber-500', clientStatus: 'Reporté' }
+  ];
+
   const fetchClients = async () => {
     try {
       const params = {};
@@ -42,6 +58,34 @@ const ClientsList = () => {
       setClients(res.data.data.clients);
       setStats(res.data.data.stats);
     } catch { setError('Erreur chargement clients'); }
+  };
+
+  const handleSyncClients = async () => {
+    if (syncStatuses.length === 0) {
+      setError('Veuillez sélectionner au moins un statut');
+      return;
+    }
+    setSyncing(true);
+    setError('');
+    setSuccess('');
+    try {
+      const res = await ecomApi.post('/orders/sync-clients', { statuses: syncStatuses });
+      const { created, updated, total, statusGroups } = res.data?.data || {};
+      let message = `Synchronisation terminée !\n\n`;
+      message += `${total} clients traités (${created} créés, ${updated} mis à jour)\n\n`;
+      message += `Répartition par statut :\n`;
+      Object.entries(statusGroups || {}).forEach(([status, count]) => {
+        const labels = { prospect: 'Prospects', confirmed: 'Confirmés', delivered: 'Clients', returned: 'Retours' };
+        message += `• ${labels[status] || status}: ${count}\n`;
+      });
+      setSuccess(message);
+      fetchClients();
+      setShowSyncModal(false);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Erreur synchronisation');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   useEffect(() => { fetchClients().finally(() => setLoading(false)); }, []);
@@ -107,6 +151,31 @@ const ClientsList = () => {
           <p className="text-sm text-gray-500 mt-0.5">{stats.total || 0} client{(stats.total || 0) > 1 ? 's' : ''}</p>
         </div>
         <div className="flex items-center gap-2">
+          {user?.role === 'ecom_admin' && (
+            <button
+              onClick={() => setShowSyncModal(true)}
+              disabled={syncing}
+              className="px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
+              title="Synchroniser les clients depuis les commandes"
+            >
+              {syncing ? (
+                <>
+                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                  </svg>
+                  Sync...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Sync clients
+                </>
+              )}
+            </button>
+          )}
           {user?.role === 'ecom_admin' && stats.total > 0 && (
             <button
               onClick={handleDeleteAll}
@@ -303,6 +372,77 @@ const ClientsList = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Sync Modal */}
+      {showSyncModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowSyncModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Synchroniser les clients</h3>
+              <button onClick={() => setShowSyncModal(false)} className="text-gray-400 hover:text-gray-600">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Sélectionnez les statuts de commandes à synchroniser vers les clients :
+            </p>
+            
+            <div className="space-y-2 mb-6 max-h-64 overflow-y-auto">
+              {availableSyncStatuses.map(status => (
+                <label key={status.key} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={syncStatuses.includes(status.key)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSyncStatuses([...syncStatuses, status.key]);
+                      } else {
+                        setSyncStatuses(syncStatuses.filter(s => s !== status.key));
+                      }
+                    }}
+                    className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
+                  />
+                  <span className={`w-2 h-2 rounded-full ${status.color}`}></span>
+                  <span className="text-sm text-gray-700">{status.label}</span>
+                  <span className="text-xs text-gray-400 ml-auto">→ {status.clientStatus}</span>
+                </label>
+              ))}
+            </div>
+            
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSyncModal(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleSyncClients}
+                disabled={syncing || syncStatuses.length === 0}
+                className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {syncing ? (
+                  <>
+                    <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                    </svg>
+                    Sync...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Lancer la sync
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

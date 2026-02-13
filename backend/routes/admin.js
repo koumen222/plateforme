@@ -18,6 +18,7 @@ import Lesson from '../models/Lesson.js';
 import Comment from '../models/Comment.js';
 import CoachingReservation from '../models/CoachingReservation.js';
 import RessourcePdf from '../models/RessourcePdf.js';
+import { AuditLog, logAudit } from '../models/AuditLog.js';
 import Partenaire from '../models/Partenaire.js';
 import PartenaireAvis from '../models/PartenaireAvis.js';
 import PartenaireContact from '../models/PartenaireContact.js';
@@ -130,6 +131,9 @@ router.post('/validate/:id', async (req, res) => {
 
     user.status = 'active';
     await user.save();
+
+    // Log audit
+    await logAudit(req, 'VALIDATE_USER', `Validation de l'utilisateur ${user.email}`, 'user', user._id);
 
     res.json({
       success: true,
@@ -608,6 +612,9 @@ router.post('/users/:id/reset-progress', async (req, res) => {
     user.progress = [];
     await user.save();
 
+    // Log audit
+    await logAudit(req, 'RESET_PROGRESS', `Réinitialisation progression de ${user.email}`, 'user', user._id);
+
     console.log(`✅ Progression réinitialisée pour ${user.email}`);
 
     res.json({
@@ -647,6 +654,9 @@ router.put('/users/:id/status', async (req, res) => {
 
     user.status = status;
     await user.save();
+
+    // Log audit
+    await logAudit(req, 'CHANGE_STATUS', `Changement statut de ${user.email}: ${status}`, 'user', user._id);
 
     res.json({
       success: true,
@@ -702,6 +712,15 @@ router.put('/users/:id', async (req, res) => {
 
     await user.save();
 
+    // Log audit
+    const changes = [];
+    if (name) changes.push(`nom: ${name}`);
+    if (email) changes.push(`email: ${email}`);
+    if (phoneNumber) changes.push(`téléphone: ${phoneNumber}`);
+    if (status) changes.push(`statut: ${status}`);
+    if (role) changes.push(`rôle: ${role}`);
+    await logAudit(req, 'UPDATE_USER', `Modification de ${user.email} - ${changes.join(', ')}`, 'user', user._id);
+
     res.json({
       success: true,
       message: 'Utilisateur mis à jour avec succès',
@@ -746,6 +765,9 @@ router.delete('/users/:id', async (req, res) => {
 
     await User.findByIdAndDelete(id);
 
+    // Log audit
+    await logAudit(req, 'DELETE_USER', `Suppression de ${user.email} (rôle: ${user.role})`, 'user', id);
+
     res.json({
       success: true,
       message: 'Utilisateur supprimé avec succès'
@@ -767,6 +789,9 @@ router.post('/reset-all-progress', async (req, res) => {
     );
 
     console.log(`🔄 Progression réinitialisée pour ${result.modifiedCount} utilisateurs`);
+
+    // Log audit
+    await logAudit(req, 'RESET_ALL_PROGRESS', `Réinitialisation progression pour ${result.modifiedCount} utilisateurs`, 'user', 'all');
 
     res.json({
       success: true,

@@ -39,7 +39,7 @@ const SuperAdminDashboard = () => {
 
   const fetchUsers = async () => {
     try {
-      const params = {};
+      const params = { limit: 1000 };
       if (search) params.search = search;
       if (filterRole) params.role = filterRole;
       if (filterWorkspace) params.workspaceId = filterWorkspace;
@@ -425,6 +425,28 @@ const SuperAdminDashboard = () => {
 
           {/* Liste des personnes avec leurs interfaces */}
           <div className="space-y-4">
+            {/* Compteur d'utilisateurs affichés */}
+            <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600 flex items-center justify-between">
+              <span>
+                Affichage de <strong>
+                  {users.filter(user => {
+                    const matchesSearch = !personSearch || 
+                      user.email.toLowerCase().includes(personSearch.toLowerCase());
+                    const matchesRole = !selectedUserRole || user.role === selectedUserRole;
+                    return matchesSearch && matchesRole;
+                  }).length}
+                </strong> sur <strong>{users.length}</strong> personnes
+              </span>
+              {(personSearch || selectedUserRole) && (
+                <button 
+                  onClick={() => { setPersonSearch(''); setSelectedUserRole(''); }}
+                  className="text-red-600 hover:text-red-800 text-xs font-medium"
+                >
+                  Réinitialiser les filtres
+                </button>
+              )}
+            </div>
+            
             {users
               .filter(user => {
                 const matchesSearch = !personSearch || 

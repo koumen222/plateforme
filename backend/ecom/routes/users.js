@@ -1,6 +1,7 @@
 import express from 'express';
 import EcomUser from '../models/EcomUser.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+import { logAudit } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -103,6 +104,9 @@ router.post('/',
       const user = new EcomUser({ email, password, role, workspaceId: req.workspaceId, name: name || '', phone: phone || '' });
       await user.save();
 
+      // Log audit
+      await logAudit(req, 'CREATE_USER', `Création de l'utilisateur ${user.email} (${user.role})`, 'user', user._id);
+
       res.status(201).json({
         success: true,
         message: 'Utilisateur créé avec succès',
@@ -150,6 +154,14 @@ router.put('/:id',
 
       await user.save();
 
+      // Log audit
+      const changes = [];
+      if (role) changes.push(`rôle: ${role}`);
+      if (req.body.name !== undefined) changes.push(`nom: ${req.body.name}`);
+      if (req.body.phone !== undefined) changes.push(`téléphone: ${req.body.phone}`);
+      if (isActive !== undefined) changes.push(`statut: ${isActive ? 'actif' : 'inactif'}`);
+      await logAudit(req, 'UPDATE_USER', `Modification de ${user.email} - ${changes.join(', ')}`, 'user', user._id);
+
       res.json({
         success: true,
         message: 'Utilisateur mis à jour',
@@ -187,6 +199,9 @@ router.put('/:id/reset-password',
       user.password = newPassword;
       await user.save();
 
+      // Log audit
+      await logAudit(req, 'RESET_PASSWORD', `Réinitialisation du mot de passe de ${user.email}`, 'user', user._id);
+
       res.json({
         success: true,
         message: 'Mot de passe réinitialisé avec succès'
@@ -213,6 +228,9 @@ router.delete('/:id',
       if (!user) {
         return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
       }
+
+      // Log audit
+      await logAudit(req, 'DELETE_USER', `Suppression de ${user.email} (rôle: ${user.role})`, 'user', req.params.id);
 
       res.json({ success: true, message: 'Utilisateur supprimé' });
     } catch (error) {

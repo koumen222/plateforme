@@ -7,6 +7,7 @@ import EcomUser from '../models/EcomUser.js';
 import Notification from '../../models/Notification.js';
 import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
+import { notifyNewOrder, notifyOrderStatus } from '../services/notificationHelper.js';
 import { EventEmitter } from 'events';
 
 const router = express.Router();
@@ -177,6 +178,9 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
     // Envoyer la notification WhatsApp automatiquement
     await sendOrderNotification(order, req.workspaceId);
     
+    // Notification interne
+    notifyNewOrder(req.workspaceId, order).catch(() => {});
+    
     res.status(201).json({ success: true, message: 'Commande créée', data: order });
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -207,8 +211,13 @@ router.delete('/bulk', requireEcomAuth, validateEcomAccess('products', 'write'),
 // GET /api/ecom/orders - Liste des commandes
 router.get('/', requireEcomAuth, async (req, res) => {
   try {
-    const { status, search, startDate, endDate, city, product, tag, sourceId, page = 1, limit = 50 } = req.query;
-    const filter = { workspaceId: req.workspaceId };
+    const { status, search, startDate, endDate, city, product, tag, sourceId, page = 1, limit = 50, allWorkspaces } = req.query;
+    
+    // Si super_admin et allWorkspaces=true, ne pas filtrer par workspaceId
+    const isSuperAdmin = req.ecomUser.role === 'super_admin';
+    const viewAllWorkspaces = isSuperAdmin && allWorkspaces === 'true';
+    
+    const filter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
 
     if (status) filter.status = status;
     if (city) filter.city = { $regex: city, $options: 'i' };
@@ -249,7 +258,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     const total = await Order.countDocuments(filter);
 
     // Stats — use countDocuments per status (auto-casts workspaceId, always works)
-    const wsFilter = { workspaceId: req.workspaceId };
+    const wsFilter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
     const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
     
     const countPromises = statuses.map(s => 
@@ -284,8 +293,171 @@ router.get('/', requireEcomAuth, async (req, res) => {
   }
 });
 
+// GET /api/ecom/orders/stats/detailed - Statistiques détaillées pour la page stats
+router.get('/stats/detailed', requireEcomAuth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    // Pour .find()/.countDocuments() Mongoose cast auto string→ObjectId
+    const wsFilter = { workspaceId: req.workspaceId };
+    // Pour .aggregate() il faut un vrai ObjectId sinon ça ne matche pas
+    const wsFilterAgg = { workspaceId: new mongoose.Types.ObjectId(req.workspaceId) };
+    
+    // Date filter
+    if (startDate || endDate) {
+      wsFilter.date = {};
+      wsFilterAgg.date = {};
+      if (startDate) {
+        wsFilter.date.$gte = new Date(startDate);
+        wsFilterAgg.date.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        wsFilter.date.$lte = end;
+        const endAgg = new Date(endDate);
+        endAgg.setHours(23, 59, 59, 999);
+        wsFilterAgg.date.$lte = endAgg;
+      }
+    }
+
+    // Order stats by status
+    const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
+    const countPromises = statuses.map(s => Order.countDocuments({ ...wsFilter, status: s }));
+    const counts = await Promise.all(countPromises);
+    
+    const orderStats = { total: 0, totalRevenue: 0 };
+    statuses.forEach((s, i) => {
+      orderStats[s] = counts[i];
+      orderStats.total += counts[i];
+    });
+
+    // Revenue and average order value
+    const deliveredOrders = await Order.find({ ...wsFilter, status: 'delivered' }, { price: 1, quantity: 1 }).lean();
+    orderStats.totalRevenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
+    orderStats.avgOrderValue = deliveredOrders.length > 0 ? orderStats.totalRevenue / deliveredOrders.length : 0;
+
+    // Top products (only delivered)
+    const topProducts = await Order.aggregate([
+      { $match: { ...wsFilterAgg, status: 'delivered', product: { $exists: true, $ne: '' } } },
+      { $group: { 
+        _id: '$product', 
+        count: { $sum: 1 }, 
+        revenue: { $sum: { $multiply: [{ $ifNull: ['$price', 0] }, { $ifNull: ['$quantity', 1] }] } }
+      }},
+      { $sort: { count: -1 } },
+      { $limit: 15 }
+    ]);
+
+    // Top cities (only delivered)
+    const topCities = await Order.aggregate([
+      { $match: { ...wsFilterAgg, status: 'delivered', city: { $exists: true, $ne: '' } } },
+      { $group: { 
+        _id: '$city', 
+        count: { $sum: 1 },
+        revenue: { $sum: { $multiply: [{ $ifNull: ['$price', 0] }, { $ifNull: ['$quantity', 1] }] } }
+      }},
+      { $sort: { count: -1 } },
+      { $limit: 15 }
+    ]);
+
+    // Top clients by phone (only delivered)
+    const topClients = await Order.aggregate([
+      { $match: { ...wsFilterAgg, status: 'delivered', clientPhone: { $exists: true, $ne: '' } } },
+      { $group: { 
+        _id: '$clientPhone',
+        clientName: { $first: '$clientName' },
+        phone: { $first: '$clientPhone' },
+        orderCount: { $sum: 1 },
+        totalSpent: { $sum: { $multiply: [{ $ifNull: ['$price', 0] }, { $ifNull: ['$quantity', 1] }] } }
+      }},
+      { $sort: { totalSpent: -1 } },
+      { $limit: 10 }
+    ]);
+
+    // Client stats
+    const Client = (await import('../models/Client.js')).default;
+    const clientTotal = await Client.countDocuments({ workspaceId: req.workspaceId });
+    const clientDelivered = await Client.countDocuments({ workspaceId: req.workspaceId, status: 'delivered' });
+    const clientStats = { total: clientTotal, delivered: clientDelivered };
+
+    // Products sold by client and city - get raw orders first then process (only delivered)
+    const rawOrders = await Order.find({
+      ...wsFilter,
+      status: 'delivered',
+      clientName: { $exists: true, $ne: '' },
+      city: { $exists: true, $ne: '' }
+    }).lean();
+
+    // Process orders to extract real product names and group data
+    const productsByClientCityMap = new Map();
+    
+    rawOrders.forEach(order => {
+      const productName = getOrderProductName(order);
+      if (!productName) return;
+      
+      const key = `${order.clientName}|${order.city}|${productName}`;
+      const quantity = order.quantity || 1;
+      const revenue = (order.price || 0) * quantity;
+      
+      if (productsByClientCityMap.has(key)) {
+        const existing = productsByClientCityMap.get(key);
+        existing.quantity += quantity;
+        existing.revenue += revenue;
+        existing.orderCount += 1;
+      } else {
+        productsByClientCityMap.set(key, {
+          _id: {
+            client: order.clientName,
+            city: order.city,
+            product: productName
+          },
+          quantity: quantity,
+          revenue: revenue,
+          orderCount: 1,
+          phone: order.clientPhone
+        });
+      }
+    });
+
+    // Convert to array and sort by quantity
+    const productsByClientCity = Array.from(productsByClientCityMap.values())
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 20);
+
+    // Daily trend (last 30 days) - only delivered orders
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dailyTrend = await Order.aggregate([
+      { $match: { workspaceId: new mongoose.Types.ObjectId(req.workspaceId), status: 'delivered', date: { $gte: thirtyDaysAgo } } },
+      { $group: {
+        _id: { $dateToString: { format: '%Y-%m-%d', date: '$date' } },
+        count: { $sum: 1 },
+        revenue: { $sum: { $multiply: [{ $ifNull: ['$price', 0] }, { $ifNull: ['$quantity', 1] }] } }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        orderStats,
+        topProducts,
+        topCities,
+        topClients,
+        clientStats,
+        productsByClientCity,
+        dailyTrend
+      }
+    });
+  } catch (error) {
+    console.error('Erreur stats détaillées:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // Helper: extraire le vrai nom de produit d'une commande (fallback rawData si numérique)
 function getOrderProductName(order) {
+  // Si le produit est un vrai nom (non-numérique), le retourner directement
   if (order.product && isNaN(String(order.product).replace(/\s/g, ''))) return order.product;
   // Chercher dans rawData une colonne produit avec une valeur non-numérique
   if (order.rawData && typeof order.rawData === 'object') {
@@ -295,6 +467,8 @@ function getOrderProductName(order) {
       }
     }
   }
+  // Fallback: retourner le produit même s'il est numérique, plutôt que rien
+  if (order.product) return String(order.product);
   return '';
 }
 
@@ -1756,74 +1930,9 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
 
     await order.save();
 
-    // Auto-création/mise à jour du client/prospect selon le statut de la commande
-    if (req.body.status && order.clientName) {
-      try {
-        const orderStatusMap = {
-          delivered: { clientStatus: 'delivered', tag: 'Client' },
-          pending: { clientStatus: 'prospect', tag: 'En attente' },
-          confirmed: { clientStatus: 'confirmed', tag: 'Confirmé' },
-          shipped: { clientStatus: 'confirmed', tag: 'Expédié' },
-          cancelled: { clientStatus: 'prospect', tag: 'Annulé' },
-          returned: { clientStatus: 'returned', tag: 'Retour' },
-          unreachable: { clientStatus: 'prospect', tag: 'Injoignable' },
-          called: { clientStatus: 'prospect', tag: 'Appelé' },
-          postponed: { clientStatus: 'prospect', tag: 'Reporté' }
-        };
-        const statusPriority = { prospect: 1, confirmed: 2, returned: 3, delivered: 4, blocked: 5 };
-        const mapping = orderStatusMap[req.body.status];
-        if (mapping) {
-          const phone = (order.clientPhone || '').trim();
-          const nameParts = (order.clientName || '').trim().split(/\s+/);
-          const firstName = nameParts[0] || 'Client';
-          const lastName = nameParts.slice(1).join(' ') || '';
-          const orderTotal = (order.price || 0) * (order.quantity || 1);
-
-          let existingClient = null;
-          if (phone) {
-            existingClient = await Client.findOne({ workspaceId: req.workspaceId, phone });
-          }
-          if (!existingClient && firstName) {
-            existingClient = await Client.findOne({ workspaceId: req.workspaceId, firstName: { $regex: `^${firstName}$`, $options: 'i' }, lastName: { $regex: `^${lastName}$`, $options: 'i' } });
-          }
-
-          const productName = getOrderProductName(order);
-
-          if (existingClient) {
-            existingClient.totalOrders = (existingClient.totalOrders || 0) + 1;
-            existingClient.totalSpent = (existingClient.totalSpent || 0) + orderTotal;
-            if ((statusPriority[mapping.clientStatus] || 0) > (statusPriority[existingClient.status] || 0)) {
-              existingClient.status = mapping.clientStatus;
-            }
-            existingClient.lastContactAt = new Date();
-            if (order.city && !existingClient.city) existingClient.city = order.city;
-            if (mapping.tag && !existingClient.tags.includes(mapping.tag)) existingClient.tags.push(mapping.tag);
-            if (productName && !(existingClient.products || []).includes(productName)) {
-              existingClient.products = [...(existingClient.products || []), productName];
-            }
-            await existingClient.save();
-          } else {
-            await Client.create({
-              workspaceId: req.workspaceId,
-              firstName,
-              lastName,
-              phone,
-              city: order.city || '',
-              address: order.deliveryLocation || '',
-              source: 'other',
-              status: mapping.clientStatus,
-              totalOrders: 1,
-              totalSpent: orderTotal,
-              products: productName ? [productName] : [],
-              tags: [mapping.tag],
-              lastContactAt: new Date(),
-              createdBy: req.ecomUser._id
-            });
-          }
-        }
-      } catch (clientErr) {
-        console.error('Erreur auto-création client:', clientErr);
-      }
+    // Notification interne sur changement de statut
+    if (req.body.status) {
+      notifyOrderStatus(req.workspaceId, order, req.body.status).catch(() => {});
     }
 
     res.json({ success: true, message: 'Commande mise à jour', data: order });
@@ -2257,11 +2366,19 @@ router.post('/sync-clients', requireEcomAuth, async (req, res) => {
     const statusPriority = { prospect: 1, confirmed: 2, returned: 3, delivered: 4, blocked: 5 };
     console.log('📊 Priorité statuts:', statusPriority);
 
-    // Récupérer toutes les commandes avec clientPhone
+    // Récupérer les statuts demandés (ou tous par défaut)
+    const requestedStatuses = req.body.statuses;
+    const statusesToSync = requestedStatuses && requestedStatuses.length > 0 
+      ? requestedStatuses 
+      : Object.keys(orderStatusMap);
+    console.log('🎯 Statuts à synchroniser:', statusesToSync);
+
+    // Récupérer toutes les commandes avec clientPhone et statut filtré
     console.log('🔍 Recherche des commandes avec téléphone...');
     const orders = await Order.find({ 
       workspaceId: req.workspaceId,
-      clientPhone: { $exists: true, $ne: '' }
+      clientPhone: { $exists: true, $ne: '' },
+      status: { $in: statusesToSync }
     }).lean();
 
     console.log(`📦 ${orders.length} commandes trouvées pour synchronisation`);

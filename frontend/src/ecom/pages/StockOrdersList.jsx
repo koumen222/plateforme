@@ -22,7 +22,7 @@ const StockOrdersList = () => {
       const ordersData = response.data?.data?.orders || response.data?.data || [];
       setOrders(Array.isArray(ordersData) ? ordersData : []);
     } catch (error) {
-      setError('Erreur lors du chargement des commandes de stock');
+      setError('Erreur lors du chargement des commandes fournisseurs');
       console.error(error);
       setOrders([]);
     } finally {
@@ -55,12 +55,12 @@ const StockOrdersList = () => {
   return (
     <div className="p-3 sm:p-4 lg:p-6">
       <div className="flex justify-between items-center mb-4 sm:mb-6">
-        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Stock</h1>
+        <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Gestion des fournisseurs</h1>
         <Link
           to="/ecom/stock/orders/new"
           className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-blue-700 text-sm"
         >
-          + Commande
+          + Commande fournisseur
         </Link>
       </div>
 
@@ -107,7 +107,7 @@ const StockOrdersList = () => {
             {orders.length === 0 ? (
               <tr>
                 <td colSpan="9" className="px-4 py-4 text-center text-gray-500">
-                  Aucune commande de stock trouvée
+                  Aucune commande fournisseur trouvée
                 </td>
               </tr>
             ) : (
