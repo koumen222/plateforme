@@ -5,17 +5,16 @@ import AgentMessage from '../models/AgentMessage.js';
 import ProductConfig from '../models/ProductConfig.js';
 import Order from '../models/Order.js';
 import {
-  createConversationForOrder,
-  getConversationStats,
-  getConversationsNeedingRelance,
-  deactivateStaleConversations
-} from '../services/agentService.js';
-import {
-  handleIncomingWebhook,
+  getAgentConversations,
+  getAgentConversation,
+  updateAgentConversation,
+  getAgentMessages,
+  createManualMessage,
   sendInitialMessageForOrder,
   sendRelanceMessage,
   initAgentWhatsapp
 } from '../services/agentWhatsappService.js';
+import { handleIncomingMessage, initWhatsApp } from '../services/simpleWhatsappService.js';
 
 const router = express.Router();
 
@@ -35,9 +34,9 @@ router.post('/webhook', async (req, res) => {
   
   res.status(200).json({ success: true, message: 'Webhook reçu' });
   
-  // Traiter le webhook de manière asynchrone (après la réponse)
+  // Traiter le webhook avec le service simple (après la réponse)
   try {
-    const result = await handleIncomingWebhook(req.body);
+    const result = await handleIncomingMessage(req.body);
     console.log('✅ Webhook traité:', result?.processed ? 'message traité' : 'ignoré');
   } catch (error) {
     console.error('❌ Erreur webhook agent (async):', error.message);
