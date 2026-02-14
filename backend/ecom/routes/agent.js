@@ -22,6 +22,17 @@ const router = express.Router();
 router.post('/webhook', async (req, res) => {
   // Répondre IMMÉDIATEMENT à Green API pour éviter les timeouts et retries
   console.log('🔔 Webhook Agent reçu');
+  
+  // **🔥 LOGS CRITIQUES : Instance réelle et expéditeur réel**
+  console.log('🔍 ==================== WEBHOOK RÉEL REÇU ====================');
+  console.log('📱 Instance réelle:', req.body.instanceData?.wid || 'non défini');
+  console.log('👤 Expéditeur réel:', req.body.senderData?.sender || 'non défini');
+  console.log('💬 ChatId réel:', req.body.senderData?.chatId || 'non défini');
+  console.log('📨 Type webhook:', req.body.typeWebhook || 'non défini');
+  console.log('🆔 Message ID:', req.body.idMessage || 'non défini');
+  console.log('⏰ Timestamp:', req.body.timestamp || 'non défini');
+  console.log('🔍 =========================================================');
+  
   res.status(200).json({ success: true, message: 'Webhook reçu' });
   
   // Traiter le webhook de manière asynchrone (après la réponse)

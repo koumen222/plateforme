@@ -59,6 +59,7 @@ import TestNotificationsPage from './pages/TestNotificationsPage'
 import LiveReplaysPage from './pages/LiveReplaysPage'
 import EbookPage from './pages/EbookPage'
 import CoachingScale7Page from './pages/CoachingScale7Page'
+import WebhookTestPage from './pages/WebhookTestPage'
 import EcomApp from './ecom/App.jsx'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
@@ -217,6 +218,7 @@ function App() {
           <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
           <Route path="/test-notifications" element={<PlatformLayout><PrivateRoute><TestNotificationsPage /></PrivateRoute></PlatformLayout>} />
+          <Route path="/test-webhook" element={<WebhookTestPage />} />
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
           
           {/* Routes E-commerce */}
