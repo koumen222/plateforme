@@ -126,13 +126,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Servir les fichiers statiques (images uploadées et PDF)
-const uploadsPath = path.join(__dirname, 'uploads');
-app.use('/uploads', express.static(uploadsPath, {
-  dotfiles: 'ignore',
-  etag: true,
-  extensions: ['pdf', 'png', 'jpg', 'jpeg', 'gif', 'svg'],
-  index: false,
+// Servir les fichiers statiques du backend (pour l'interface de test)
+app.use(express.static(path.join(__dirname)));
+
+// Servir les fichiers statiques du frontend
+app.use(express.static(path.join(__dirname, '../frontend/dist'), {
   maxAge: '1d',
   redirect: false,
   setHeaders: (res, filePath) => {
@@ -2008,6 +2006,25 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/autoSync.js:', error.message);
     }
 
+    // Routes E-commerce Agent Vendeur WhatsApp
+    try {
+      const ecomAgentModule = await import("./ecom/routes/agent.js");
+      const ecomAgentRoutes = ecomAgentModule.default;
+      app.use("/api/ecom/agent", ecomAgentRoutes);
+      console.log('✅ Routes E-commerce Agent Vendeur chargées');
+      
+      // Charger les routes des nouvelles commandes agent
+      const ecomAgentCommandsModule = await import("./ecom/routes/agentCommands.js");
+      const ecomAgentCommandsRoutes = ecomAgentCommandsModule.default;
+      app.use("/api/ecom/agent/commands", ecomAgentCommandsRoutes);
+      console.log('✅ Routes E-commerce Agent Commandes chargées');
+      
+      // Démarrer les cron jobs de l'agent vendeur
+      const { startAgentCronJobs } = await import("./ecom/services/agentCronService.js");
+      startAgentCronJobs();
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/agent.js:', error.message);
+    }
 
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {

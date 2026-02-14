@@ -5,10 +5,11 @@ import { useMoney } from '../hooks/useMoney.js';
 
 const Profile = () => {
   const { user, workspace, logout, loadUser } = useEcomAuth();
-  const { fmt } = useMoney(); // 🆕 Hook pour formater les montants
+  const { fmt } = useMoney();
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
+  const [avatar, setAvatar] = useState('');
   const [saving, setSaving] = useState(false);
   const [profileMsg, setProfileMsg] = useState(null);
 
@@ -23,10 +24,10 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // 🆕 Initialiser les données utilisateur
     if (user) {
       setName(user.name || '');
       setPhone(user.phone || '');
+      setAvatar(user.avatar || '');
       setLoading(false);
     }
   }, [user]);
@@ -52,7 +53,7 @@ const Profile = () => {
     setSaving(true);
     setProfileMsg(null);
     try {
-      await authApi.updateProfile({ name, phone });
+      await authApi.updateProfile({ name, phone, avatar });
       if (loadUser) await loadUser();
       setProfileMsg({ type: 'success', text: 'Profil mis à jour avec succès' });
     } catch (err) {

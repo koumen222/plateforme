@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Webhook Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .btn { background: #4f46e5; color: white; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; margin: 10px; }
+        .logs { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 6px; font-family: monospace; max-height: 500px; overflow-y: auto; white-space: pre-wrap; }
+        .status { padding: 15px; border-radius: 6px; margin: 15px 0; font-weight: bold; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .info { background: #dbeafe; color: #1e40af; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .section { background: #f8fafc; padding: 20px; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Debug Webhook Client Messages</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Problème actuel:</strong> Le webhook ne reçoit PAS les messages des clients.<br>
+        <strong>Solution:</strong> Reconfigurez le webhook dans Green API Console.
+    </div>
+    
+    <div class="grid">
+        <div class="section">
+            <h3>🧪 Tests de Simulation</h3>
+            <button class="btn" onclick="testClientMessage()">📱 Test Message Client</button>
+            <button class="btn" onclick="testDifferentNumber()">📞 Test Autre Numéro</button>
+            <button class="btn" onclick="testWithoutSenderId()">❓ Test Sans Sender</button>
+            <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+        </div>
+        
+        <div class="section">
+            <h3>📊 État du Système</h3>
+            <button class="btn" onclick="checkWebhookHealth()">🏥 Santé Webhook</button>
+            <button class="btn" onclick="checkNgrokStatus()">🌐 Ngrok Status</button>
+            <button class="btn" onclick="startRealTimeCheck()">🔄 Monitoring Temps Réel</button>
+        </div>
+    </div>
+    
+    <div id="status"></div>
+    
+    <h3>📋 Logs Complets</h3>
+    <div class="logs" id="logs">En attente de tests...</div>
+    
+    <script>
+        let monitoringInterval = null;
+        
+        function updateStatus(message, type) {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function addLog(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').textContent = 'Logs effacés, en attente...\n';
+        }
+        
+        async function testClientMessage() {
+            addLog('🚀 Test message client normal...');
+            
+            const testData = {
+                typeWebhook: 'incomingMessageReceived',
+                instanceData: { idInstance: 7103497791, wid: '237676778377@c.us', typeInstance: 'whatsapp' },
+                timestamp: Math.floor(Date.now() / 1000),
+                idMessage: 'CLIENT_' + Date.now(),
+                senderData: {
+                    chatId: '237676778377@c.us',
+                    sender: '237676778377@c.us',
+                    senderName: 'Client Test',
+                    chatName: 'Client Test'
+                },
+                messageData: {
+                    typeMessage: 'textMessage',
+                    textMessageData: { textMessage: 'Bonjour, je veux commander une montre' }
+                }
+            };
+            
+            await sendWebhook(testData);
+        }
+        
+        async function testDifferentNumber() {
+            addLog('🚀 Test avec autre numéro...');
+            
+            const testData = {
+                typeWebhook: 'incomingMessageReceived',
+                instanceData: { idInstance: 7103497791, wid: '237676778377@c.us', typeInstance: 'whatsapp' },
+                timestamp: Math.floor(Date.now() / 1000),
+                idMessage: 'OTHER_' + Date.now(),
+                senderData: {
+                    chatId: '237123456789@c.us',
+                    sender: '237123456789@c.us',
+                    senderName: 'Autre Client',
+                    chatName: 'Autre Client'
+                },
+                messageData: {
+                    typeMessage: 'textMessage',
+                    textMessageData: { textMessage: 'Message depuis un autre numéro' }
+                }
+            };
+            
+            await sendWebhook(testData);
+        }
+        
+        async function testWithoutSenderId() {
+            addLog('🚀 Test sans senderId...');
+            
+            const testData = {
+                typeWebhook: 'incomingMessageReceived',
+                instanceData: { idInstance: 7103497791, wid: '237676778377@c.us', typeInstance: 'whatsapp' },
+                timestamp: Math.floor(Date.now() / 1000),
+                idMessage: 'NOSENDER_' + Date.now(),
+                senderData: {
+                    chatId: '237676778377@c.us',
+                    senderName: 'Client Sans ID',
+                    chatName: 'Client Sans ID'
+                },
+                messageData: {
+                    typeMessage: 'textMessage',
+                    textMessageData: { textMessage: 'Message sans sender ID' }
+                }
+            };
+            
+            await sendWebhook(testData);
+        }
+        
+        async function sendWebhook(testData) {
+            addLog('📤 Envoi: ' + JSON.stringify(testData, null, 2));
+            
+            try {
+                const response = await fetch('/api/ecom/agent/webhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                addLog('📥 Réponse: ' + JSON.stringify(result, null, 2));
+                
+                if (result.success || result.processed) {
+                    addLog('✅ Test réussi ! Le serveur traite bien les messages clients');
+                } else {
+                    addLog('❌ Test échoué: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                addLog('❌ Erreur réseau: ' + error.message);
+            }
+        }
+        
+        async function checkWebhookHealth() {
+            addLog('🏥 Vérification santé webhook...');
+            
+            try {
+                const response = await fetch('/api/ecom/agent/health');
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    addLog('✅ Webhook opérationnel');
+                } else {
+                    addLog('❌ Webhook non opérationnel');
+                }
+            } catch (error) {
+                addLog('❌ Erreur santé: ' + error.message);
+            }
+        }
+        
+        async function checkNgrokStatus() {
+            addLog('🌐 Vérification ngrok...');
+            
+            try {
+                const response = await fetch('http://127.0.0.1:4040/api/tunnels');
+                const data = await response.json();
+                
+                if (data.tunnels && data.tunnels.length > 0) {
+                    const tunnel = data.tunnels[0];
+                    addLog('✅ Ngrok actif: ' + tunnel.public_url);
+                } else {
+                    addLog('❌ Ngrok inactif');
+                }
+            } catch (error) {
+                addLog('❌ Erreur ngrok: ' + error.message);
+            }
+        }
+        
+        function startRealTimeCheck() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                addLog('⏹️ Monitoring arrêté');
+                return;
+            }
+            
+            addLog('🔄 Démarrage monitoring temps réel...');
+            monitoringInterval = setInterval(() => {
+                addLog('⏳ En attente de messages clients réels...');
+                addLog('💡 Envoyez un message WhatsApp au +237698459328');
+            }, 10000);
+        }
+        
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            setTimeout(checkWebhookHealth, 1000);
+        });
+    </script>
+</body>
+</html>

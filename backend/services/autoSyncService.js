@@ -1,11 +1,5 @@
-/**
- * Service de synchronisation automatique Google Sheets
- * Synchronise toutes les 10 secondes en arrière-plan.
- * - Hash-based delta detection (ne refetch que si les données ont changé)
- * - Aucune duplication (upsert par sheetRowId)
- * - Erreurs silencieuses (log uniquement, jamais de crash)
- * - lastSyncedAt tracking par workspace
- */
+
+
 
 import crypto from 'crypto';
 import Order from '../ecom/models/Order.js';
@@ -31,31 +25,33 @@ class AutoSyncService {
   async start() {
     if (this.isRunning) return;
     this.isRunning = true;
-    console.log('🚀 [AutoSync] Service démarré (intervalle: 10s)');
-    console.log(`📊 [AutoSync] SYNC_INTERVAL_MS = ${SYNC_INTERVAL_MS}ms, CONFIG_RELOAD_MS = ${CONFIG_RELOAD_MS}ms`);
+    // Logs AutoSync désactivés
+    // console.log('🚀 [AutoSync] Service démarré (intervalle: 10s)');
+    // console.log(`📊 [AutoSync] SYNC_INTERVAL_MS = ${SYNC_INTERVAL_MS}ms, CONFIG_RELOAD_MS = ${CONFIG_RELOAD_MS}ms`);
 
     // Charger les configs immédiatement
-    console.log('🔍 [AutoSync] Chargement initial des configurations...');
+    // Logs AutoSync désactivés
+    // console.log('🔍 [AutoSync] Chargement initial des configurations...');
     await this._loadConfigs();
-    console.log(`✅ [AutoSync] ${this._workspaceConfigs.length} workspace(s) configuré(s) pour la sync`);
+    // console.log(`✅ [AutoSync] ${this._workspaceConfigs.length} workspace(s) configuré(s) pour la sync`);
 
     // Timer principal : sync toutes les 10s
-    console.log('⏰ [AutoSync] Démarrage du timer principal de synchronisation...');
+    // console.log('⏰ [AutoSync] Démarrage du timer principal de synchronisation...');
     this._syncTimer = setInterval(() => {
-      console.log('🔄 [AutoSync] Cycle de synchronisation lancé...');
+      // console.log('🔄 [AutoSync] Cycle de synchronisation lancé...');
       this._runSyncCycle().catch(err => {
-        console.error('❌ [AutoSync] Erreur cycle sync:', err.message);
+        // console.error('❌ [AutoSync] Erreur cycle sync:', err.message);
       });
     }, SYNC_INTERVAL_MS);
 
     // Timer secondaire : recharger les configs toutes les 60s
-    console.log('⏰ [AutoSync] Démarrage du timer de rechargement des configs...');
+    // console.log('⏰ [AutoSync] Démarrage du timer de rechargement des configs...');
     this._configTimer = setInterval(() => {
-      console.log('🔄 [AutoSync] Rechargement des configurations...');
+      // console.log('🔄 [AutoSync] Rechargement des configurations...');
       this._loadConfigs().catch(() => {});
     }, CONFIG_RELOAD_MS);
     
-    console.log('✅ [AutoSync] Service entièrement démarré et opérationnel');
+    // console.log('✅ [AutoSync] Service entièrement démarré et opérationnel');
   }
 
   /**
@@ -70,7 +66,7 @@ class AutoSyncService {
     this.lastSyncHashes.clear();
     this._workspaceConfigs = [];
     this.isRunning = false;
-    console.log('[AutoSync] Service arrêté');
+    // console.log('[AutoSync] Service arrêté');
   }
 
   // ─── Internal: charger toutes les configs workspace ──────────────────────
@@ -83,13 +79,13 @@ class AutoSyncService {
         ]
       }).lean();
       this._workspaceConfigs = configs;
-      console.log(`📋 [AutoSync] ${configs.length} workspace(s) trouvé(s) avec Google Sheets`);
-      configs.forEach((ws, idx) => {
-        const sourcesCount = (ws.sources?.filter(s => s.isActive) || []).length + (ws.googleSheets?.spreadsheetId ? 1 : 0);
-        console.log(`   ${idx + 1}. Workspace ${ws.workspaceId} - ${sourcesCount} source(s) active(s)`);
-      });
+      // console.log(`📋 [AutoSync] ${configs.length} workspace(s) trouvé(s) avec Google Sheets`);
+      // configs.forEach((ws, idx) => {
+      //   const sourcesCount = (ws.sources?.filter(s => s.isActive) || []).length + (ws.googleSheets?.spreadsheetId ? 1 : 0);
+      //   console.log(`   ${idx + 1}. Workspace ${ws.workspaceId} - ${sourcesCount} source(s) active(s)`);
+      // });
     } catch (err) {
-      console.error('❌ [AutoSync] Erreur chargement configs:', err.message);
+      // console.error('❌ [AutoSync] Erreur chargement configs:', err.message);
       // Silencieux — on garde l'ancien cache
     }
   }
@@ -98,35 +94,35 @@ class AutoSyncService {
   async _runSyncCycle() {
     // Guard: ne pas lancer un cycle si le précédent tourne encore
     if (this._syncing) {
-      console.log('⏸️ [AutoSync] Cycle déjà en cours, ignoré');
+      // console.log('⏸️ [AutoSync] Cycle déjà en cours, ignoré');
       return;
     }
     this._syncing = true;
 
     try {
-      console.log(`🔄 [AutoSync] Début cycle de sync pour ${this._workspaceConfigs.length} workspace(s)`);
+      // console.log(`🔄 [AutoSync] Début cycle de sync pour ${this._workspaceConfigs.length} workspace(s)`);
       const startTime = Date.now();
       
       for (const settings of this._workspaceConfigs) {
         // Vérifier si auto-sync activé pour ce workspace
         if (settings.autoSync?.enabled === false) {
-          console.log(`⏸️ [AutoSync] Auto-sync désactivé pour workspace ${settings.workspaceId}`);
+          // console.log(`⏸️ [AutoSync] Auto-sync désactivé pour workspace ${settings.workspaceId}`);
           continue;
         }
 
         const workspaceId = settings.workspaceId.toString();
-        console.log(`🔄 [AutoSync] Traitement workspace ${workspaceId}...`);
+        // console.log(`🔄 [AutoSync] Traitement workspace ${workspaceId}...`);
 
         try {
           await this._syncWorkspace(workspaceId, settings);
         } catch (err) {
           // Erreur silencieuse par workspace — on continue les autres
-          console.error(`❌ [AutoSync] Erreur workspace ${workspaceId}:`, err.message);
+          // console.error(`❌ [AutoSync] Erreur workspace ${workspaceId}:`, err.message);
         }
       }
       
       const duration = Date.now() - startTime;
-      console.log(`✅ [AutoSync] Cycle terminé en ${duration}ms`);
+      // console.log(`✅ [AutoSync] Cycle terminé en ${duration}ms`);
     } finally {
       this._syncing = false;
     }
@@ -159,7 +155,7 @@ class AutoSyncService {
 
     // Mettre à jour lastSyncedAt si des changements
     if (totalImported > 0 || totalUpdated > 0) {
-      console.log(`📈 [AutoSync] ${workspaceId}: +${totalImported} nouvelles, ${totalUpdated} mises à jour`);
+      // console.log(`📈 [AutoSync] ${workspaceId}: +${totalImported} nouvelles, ${totalUpdated} mises à jour`);
       try {
         await WorkspaceSettings.updateOne(
           { workspaceId },
@@ -167,7 +163,7 @@ class AutoSyncService {
         );
       } catch (_) { /* silencieux */ }
     } else {
-      console.log(`📭 [AutoSync] ${workspaceId}: Aucun changement détecté`);
+      // console.log(`📭 [AutoSync] ${workspaceId}: Aucun changement détecté`);
     }
   }
 
@@ -181,7 +177,7 @@ class AutoSyncService {
       const { headers, rows, dataStartIndex } = sheetData;
 
       if (!rows || rows.length <= dataStartIndex) {
-        console.log(`📭 [AutoSync] Source "${source.name}": Sheet vide ou sans données`);
+        // console.log(`📭 [AutoSync] Source "${source.name}": Sheet vide ou sans données`);
         return { imported: 0, updated: 0 };
       }
 
@@ -189,11 +185,11 @@ class AutoSyncService {
       const dataRows = rows.slice(dataStartIndex);
       const dataHash = this._hash(dataRows);
       if (this.lastSyncHashes.get(sourceKey) === dataHash) {
-        console.log(`⏭️ [AutoSync] Source "${source.name}": Données inchangées, sync ignorée`);
+        // console.log(`⏭️ [AutoSync] Source "${source.name}": Données inchangées, sync ignorée`);
         return { imported: 0, updated: 0 };
       }
 
-      console.log(`📊 [AutoSync] Source "${source.name}": Changements détectés, début sync...`);
+      // console.log(`📊 [AutoSync] Source "${source.name}": Changements détectés, début sync...`);
 
       // 3) Détecter les colonnes
       const columnMap = autoDetectColumns(headers);
@@ -258,7 +254,7 @@ class AutoSyncService {
 
       // 8) Mettre à jour lastSyncAt sur la source
       if (imported > 0 || updated > 0) {
-        console.log(`✅ [AutoSync] Source "${source.name}": ${imported} nouvelles, ${updated} mises à jour`);
+        // console.log(`✅ [AutoSync] Source "${source.name}": ${imported} nouvelles, ${updated} mises à jour`);
         try {
           if (source._id === 'legacy') {
             await WorkspaceSettings.updateOne(
@@ -278,7 +274,11 @@ class AutoSyncService {
 
     } catch (err) {
       // Erreur silencieuse — on ne bloque rien
-      console.error(`❌ [AutoSync] Erreur source "${source.name}":`, err.message);
+      if (err.message.includes('HTTP 404')) {
+        // console.warn(`⚠️ [AutoSync] Source "${source.name}" inaccessible (404) - vérifiez l\'URL ou le partage du sheet`);
+      } else {
+        // console.error(`❌ [AutoSync] Erreur source "${source.name}":`, err.message);
+      }
       return { imported: 0, updated: 0 };
     }
   }
@@ -307,7 +307,7 @@ class AutoSyncService {
       await this._loadConfigs();
       return true;
     } catch (err) {
-      console.error('[AutoSync] Erreur toggle:', err.message);
+      // console.error('[AutoSync] Erreur toggle:', err.message);
       return false;
     }
   }
@@ -338,7 +338,7 @@ class AutoSyncService {
         await this._syncWorkspace(workspaceId, settings);
       }
     } catch (err) {
-      console.error(`[AutoSync] Erreur sync forcée ${workspaceId}:`, err.message);
+      // console.error(`[AutoSync] Erreur sync forcée ${workspaceId}:`, err.message);
     }
   }
 }

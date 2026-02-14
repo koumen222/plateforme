@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Webhook Green API</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .btn { background: #4f46e5; color: white; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; margin: 10px; }
+        .logs { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 6px; font-family: monospace; max-height: 400px; overflow-y: auto; white-space: pre-wrap; }
+        .status { padding: 15px; border-radius: 6px; margin: 15px 0; font-weight: bold; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Direct Webhook Green API</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Instructions:</strong>
+        <ol>
+            <li>Configurez le webhook dans Green API Console</li>
+            <li>URL: https://neda-unspilled-rebbeca.ngrok-free.dev/api/ecom/agent/webhook</li>
+            <li>Cochez: incomingMessageReceived</li>
+            <li>Cliquez "Test webhook" ci-dessous</li>
+            <li>Envoyez un message WhatsApp APRÈS le test</li>
+        </ol>
+    </div>
+    
+    <button class="btn" onclick="testWebhook()">🧪 Test Webhook Simulation</button>
+    <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+    
+    <div id="status"></div>
+    
+    <h3>📊 Logs en Temps Réel</h3>
+    <div class="logs" id="logs">En attente de tests...</div>
+    
+    <script>
+        let logCount = 0;
+        
+        function updateStatus(message, type) {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function addLog(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+            logCount++;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').textContent = 'Logs effacés, en attente...\n';
+            logCount = 0;
+        }
+        
+        async function testWebhook() {
+            updateStatus('🔄 Test du webhook en cours...', 'warning');
+            addLog('🚀 Début du test webhook simulation');
+            
+            const testData = {
+                typeWebhook: 'incomingMessageReceived',
+                instanceData: {
+                    idInstance: 7103497791,
+                    wid: '237676778377@c.us',
+                    typeInstance: 'whatsapp'
+                },
+                timestamp: Math.floor(Date.now() / 1000),
+                idMessage: 'TEST_' + Date.now(),
+                senderData: {
+                    chatId: '237698459328@c.us',
+                    sender: '237698459328@c.us',
+                    senderName: 'Test Client',
+                    chatName: 'Test Client'
+                },
+                messageData: {
+                    typeMessage: 'textMessage',
+                    textMessageData: {
+                        textMessage: 'Bonjour, ceci est un message test'
+                    }
+                }
+            };
+            
+            addLog('📤 Envoi test webhook: ' + JSON.stringify(testData, null, 2));
+            
+            try {
+                const response = await fetch('/api/ecom/agent/webhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                addLog('📥 Réponse reçue: ' + JSON.stringify(result, null, 2));
+                
+                if (result.success || result.processed) {
+                    updateStatus('✅ Test webhook réussi! Le serveur traite bien les messages.', 'success');
+                    addLog('✅ Le serveur fonctionne correctement');
+                    
+                    if (result.responseSent) {
+                        addLog('✅ Message de réponse envoyé avec succès');
+                    }
+                } else {
+                    updateStatus('❌ Test webhook échoué: ' + (result.error || 'Erreur inconnue'), 'error');
+                    addLog('❌ Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                updateStatus('❌ Erreur réseau: ' + error.message, 'error');
+                addLog('❌ Erreur réseau: ' + error.message);
+            }
+        }
+        
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            setTimeout(testWebhook, 1000);
+        });
+        
+        // Vérifier périodiquement s'il y a de nouveaux logs côté serveur
+        let lastLogCount = 0;
+        setInterval(() => {
+            // Simuler la vérification de nouveaux logs
+            if (logCount === lastLogCount && logCount > 0) {
+                addLog('⏳ En attente de messages WhatsApp réels...');
+                addLog('💡 Envoyez maintenant un message au +237676778377');
+            }
+            lastLogCount = logCount;
+        }, 30000);
+    </script>
+</body>
+</html>

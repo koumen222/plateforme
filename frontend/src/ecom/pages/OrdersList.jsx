@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
 import { useMoney } from '../hooks/useMoney.js';
@@ -470,6 +470,59 @@ const OrdersList = () => {
   useEffect(() => { if (!loading) fetchOrders(); }, [search, filterStatus, filterCity, filterProduct, filterTag, filterStartDate, filterEndDate, selectedSourceId, page, viewAllWorkspaces]);
   useEffect(() => { if (success) { const t = setTimeout(() => setSuccess(''), 10000); return () => clearTimeout(t); } }, [success]);
   useEffect(() => { if (error) { const t = setTimeout(() => setError(''), 5000); return () => clearTimeout(t); } }, [error]);
+
+  // ─── Silent background polling (10s) — no loader, no messages ───────────
+  const lastPollRef = useRef(new Date().toISOString());
+  const pollingRef = useRef(false);
+
+  const silentPoll = useCallback(async () => {
+    if (pollingRef.current || loading) return;
+    pollingRef.current = true;
+    try {
+      const params = { since: lastPollRef.current };
+      if (selectedSourceId) params.sourceId = selectedSourceId;
+      const res = await ecomApi.get('/orders/new-since', { params });
+      const { orders: newOrders, count, serverTime } = res.data?.data || {};
+      if (serverTime) lastPollRef.current = serverTime;
+      if (count > 0 && Array.isArray(newOrders)) {
+        console.log(`🔄 [Frontend Poll] ${count} nouvelle(s) commande(s) détectée(s)`);
+        setOrders(prev => {
+          const map = new Map(prev.map(o => [o._id, o]));
+          let changed = false;
+          let newCount = 0;
+          let updatedCount = 0;
+          for (const o of newOrders) {
+            if (!map.has(o._id)) {
+              changed = true;
+              newCount++;
+            } else {
+              const existing = prev.find(p => p._id === o._id);
+              if (existing && JSON.stringify(existing) !== JSON.stringify(o)) {
+                changed = true;
+                updatedCount++;
+              }
+            }
+            map.set(o._id, o);
+          }
+          if (changed) {
+            console.log(`📈 [Frontend Poll] ${newCount} nouvelles, ${updatedCount} mises à jour`);
+          }
+          if (!changed) return prev;
+          return Array.from(map.values()).sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+        });
+      }
+    } catch (err) { 
+      console.error('❌ [Frontend Poll] Erreur polling:', err.message);
+      /* silent — never show errors from polling */ 
+    }
+    pollingRef.current = false;
+  }, [loading, selectedSourceId]);
+
+  useEffect(() => {
+    if (loading) return;
+    const id = setInterval(silentPoll, 10000);
+    return () => clearInterval(id);
+  }, [silentPoll, loading]);
 
   const handleSync = async (sourceId = null) => {
     // Protection contre les appels multiples
