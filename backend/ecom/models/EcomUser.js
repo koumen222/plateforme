@@ -24,6 +24,11 @@ const ecomUserSchema = new mongoose.Schema({
     trim: true,
     default: ''
   },
+  avatar: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   role: {
     type: String,
     enum: ['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'],

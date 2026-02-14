@@ -25,8 +25,14 @@ const userSchema = new mongoose.Schema({
   phone: {
     type: String,
     trim: true,
+    default: '',
     sparse: true,
     match: [/^[\d\s\-\+\(\)]+$/, 'Numéro de téléphone invalide']
+  },
+  avatar: {
+    type: String,
+    trim: true,
+    default: ''
   },
   phoneNumber: {
     type: String,

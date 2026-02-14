@@ -208,16 +208,104 @@ router.delete('/bulk', requireEcomAuth, validateEcomAccess('products', 'write'),
   }
 });
 
+// GET /api/ecom/orders/new-since - Silent polling endpoint for frontend
+// Returns only orders created/updated after a given timestamp (lightweight)
+router.get('/new-since', requireEcomAuth, async (req, res) => {
+  try {
+    const { since, sourceId } = req.query;
+    if (!since) {
+      return res.json({ success: true, data: { orders: [], count: 0, serverTime: new Date().toISOString() } });
+    }
+
+    const sinceDate = new Date(since);
+    if (isNaN(sinceDate.getTime())) {
+      return res.json({ success: true, data: { orders: [], count: 0, serverTime: new Date().toISOString() } });
+    }
+
+    const filter = {
+      workspaceId: req.workspaceId,
+      updatedAt: { $gt: sinceDate }
+    };
+    if (sourceId) {
+      filter.sheetRowId = { $regex: `^source_${sourceId}_` };
+    }
+
+    const orders = await Order.find(filter)
+      .sort({ updatedAt: -1 })
+      .limit(200)
+      .lean();
+
+    // Log de polling (seulement si des commandes sont trouvées)
+    if (orders.length > 0) {
+      console.log(`📡 [Polling Endpoint] ${orders.length} commande(s) retournée(s) pour workspace ${req.workspaceId}`);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        orders,
+        count: orders.length,
+        serverTime: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    // Silent — never break the frontend polling
+    console.error('❌ [Polling Endpoint] Erreur:', error.message);
+    res.json({ success: true, data: { orders: [], count: 0, serverTime: new Date().toISOString() } });
+  }
+});
+
 // GET /api/ecom/orders - Liste des commandes
 router.get('/', requireEcomAuth, async (req, res) => {
   try {
-    const { status, search, startDate, endDate, city, product, tag, sourceId, page = 1, limit = 50, allWorkspaces } = req.query;
+    const { status, search, startDate, endDate, city, product, tag, sourceId, page = 1, limit = 50, allWorkspaces, period } = req.query;
     
     // Si super_admin et allWorkspaces=true, ne pas filtrer par workspaceId
     const isSuperAdmin = req.ecomUser.role === 'super_admin';
     const viewAllWorkspaces = isSuperAdmin && allWorkspaces === 'true';
     
     const filter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
+
+    // Gestion des filtres de période prédéfinis
+    if (period) {
+      const now = new Date();
+      let periodStart, periodEnd;
+      
+      switch (period) {
+        case 'today':
+          periodStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+          periodEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+          break;
+        case '7days':
+          periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          periodEnd = new Date();
+          break;
+        case '30days':
+          periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+          periodEnd = new Date();
+          break;
+        case '90days':
+          periodStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+          periodEnd = new Date();
+          break;
+        default:
+          // Période non reconnue, ignorer
+          break;
+      }
+      
+      if (periodStart && periodEnd) {
+        filter.date = { $gte: periodStart, $lt: periodEnd };
+      }
+    } else if (startDate || endDate) {
+      // Filtres de dates manuels (comportement existant)
+      filter.date = {};
+      if (startDate) filter.date.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.date.$lte = end;
+      }
+    }
 
     if (status) filter.status = status;
     if (city) filter.city = { $regex: city, $options: 'i' };
@@ -238,15 +326,6 @@ router.get('/', requireEcomAuth, async (req, res) => {
         { city: { $regex: search, $options: 'i' } },
         { orderId: { $regex: search, $options: 'i' } }
       ];
-    }
-    if (startDate || endDate) {
-      filter.date = {};
-      if (startDate) filter.date.$gte = new Date(startDate);
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        filter.date.$lte = end;
-      }
     }
 
     const orders = await Order.find(filter)
@@ -278,6 +357,36 @@ router.get('/', requireEcomAuth, async (req, res) => {
       { price: 1, quantity: 1 }
     ).lean();
     stats.totalRevenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
+
+    // Calculer le revenu livré par période si un filtre de période est utilisé
+    if (period) {
+      stats.periodRevenue = 0;
+      const periodDeliveredOrders = await Order.find(
+        { ...wsFilter, status: 'delivered', date: filter.date },
+        { price: 1, quantity: 1 }
+      ).lean();
+      stats.periodRevenue = periodDeliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
+      
+      // Ajouter des informations sur la période
+      const now = new Date();
+      switch (period) {
+        case 'today':
+          stats.periodLabel = "Aujourd'hui";
+          break;
+        case '7days':
+          stats.periodLabel = "7 derniers jours";
+          break;
+        case '30days':
+          stats.periodLabel = "30 derniers jours";
+          break;
+        case '90days':
+          stats.periodLabel = "90 derniers jours";
+          break;
+        default:
+          stats.periodLabel = "Période personnalisée";
+          break;
+      }
+    }
 
     res.json({
       success: true,
@@ -2559,6 +2668,100 @@ router.post('/sync-clients', requireEcomAuth, async (req, res) => {
       message: 'Erreur lors de la synchronisation'
     });
     
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/orders/revenue-periods - Statistiques des revenus par période
+router.get('/revenue-periods', requireEcomAuth, async (req, res) => {
+  try {
+    const { allWorkspaces } = req.query;
+    
+    // Si super_admin et allWorkspaces=true, ne pas filtrer par workspaceId
+    const isSuperAdmin = req.ecomUser.role === 'super_admin';
+    const viewAllWorkspaces = isSuperAdmin && allWorkspaces === 'true';
+    
+    const baseFilter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
+    const now = new Date();
+    
+    // Définir les périodes
+    const periods = [
+      {
+        key: 'today',
+        label: "Aujourd'hui",
+        start: new Date(now.getFullYear(), now.getMonth(), now.getDate()),
+        end: new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)
+      },
+      {
+        key: '7days',
+        label: '7 derniers jours',
+        start: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+        end: new Date()
+      },
+      {
+        key: '30days',
+        label: '30 derniers jours',
+        start: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000),
+        end: new Date()
+      },
+      {
+        key: '90days',
+        label: '90 derniers jours',
+        start: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000),
+        end: new Date()
+      }
+    ];
+    
+    // Calculer les revenus pour chaque période
+    const revenueStats = await Promise.all(
+      periods.map(async (period) => {
+        const deliveredOrders = await Order.find(
+          {
+            ...baseFilter,
+            status: 'delivered',
+            date: { $gte: period.start, $lt: period.end }
+          },
+          { price: 1, quantity: 1 }
+        ).lean();
+        
+        const revenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
+        const orderCount = deliveredOrders.length;
+        
+        return {
+          period: period.key,
+          label: period.label,
+          revenue,
+          orderCount,
+          avgOrderValue: orderCount > 0 ? revenue / orderCount : 0,
+          startDate: period.start,
+          endDate: period.end
+        };
+      })
+    );
+    
+    // Statistiques globales
+    const totalDeliveredOrders = await Order.find(
+      { ...baseFilter, status: 'delivered' },
+      { price: 1, quantity: 1 }
+    ).lean();
+    
+    const totalRevenue = totalDeliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
+    const totalOrderCount = totalDeliveredOrders.length;
+    
+    res.json({
+      success: true,
+      data: {
+        periods: revenueStats,
+        total: {
+          revenue: totalRevenue,
+          orderCount: totalOrderCount,
+          avgOrderValue: totalOrderCount > 0 ? totalRevenue / totalOrderCount : 0
+        },
+        generatedAt: new Date()
+      }
+    });
+  } catch (error) {
+    console.error('Erreur revenue periods:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });

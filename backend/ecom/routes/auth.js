@@ -636,4 +636,98 @@ router.put('/currency', async (req, res) => {
   }
 });
 
+// PUT /api/ecom/auth/avatar - Mettre à jour l'avatar
+router.put('/avatar', async (req, res) => {
+  try {
+    const { avatar } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const user = await EcomUser.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé ou inactif'
+      });
+    }
+
+    // Mettre à jour l'avatar
+    if (avatar !== undefined) {
+      user.avatar = avatar.trim();
+      await user.save();
+    }
+
+    res.json({
+      success: true,
+      message: 'Avatar mis à jour avec succès',
+      data: { avatar: user.avatar }
+    });
+  } catch (error) {
+    console.error('Erreur update avatar e-commerce:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/ecom/auth/me - Retourner les infos utilisateur avec avatar
+router.get('/me', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const user = await EcomUser.findById(decoded.id).select('-password');
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé ou inactif'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          phone: user.phone,
+          avatar: user.avatar,
+          role: user.role,
+          isActive: user.isActive,
+          lastLogin: user.lastLogin,
+          createdAt: user.createdAt,
+          workspaceId: user.workspaceId,
+          currency: user.currency
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur get profile e-commerce:', error);
+    res.status(401).json({
+      success: false,
+      message: 'Token invalide'
+    });
+  }
+});
+
 export default router;

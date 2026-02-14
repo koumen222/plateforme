@@ -462,7 +462,7 @@ router.post('/login', async (req, res) => {
 // PUT /api/profile - Mettre à jour le profil de l'utilisateur connecté
 router.put('/profile', authenticate, async (req, res) => {
   try {
-    const { name, phoneNumber } = req.body;
+    const { name, phoneNumber, avatar } = req.body;
     const userId = req.user._id;
 
     // Validation
@@ -499,6 +499,11 @@ router.put('/profile', authenticate, async (req, res) => {
         return res.status(400).json({ error: 'Ce numéro de téléphone est déjà utilisé' });
       }
       user.phoneNumber = phoneNumber.trim();
+    }
+
+    // Mettre à jour l'avatar si fourni
+    if (avatar !== undefined) {
+      user.avatar = avatar.trim();
     }
 
     await user.save();
@@ -763,6 +768,7 @@ router.get('/user/me', authenticate, async (req, res) => {
         name: user.name,
         email: user.email,
         phoneNumber: user.phoneNumber,
+        avatar: user.avatar,
         status: user.status,
         accountStatus: user.accountStatus,
         emailVerified: user.emailVerified,

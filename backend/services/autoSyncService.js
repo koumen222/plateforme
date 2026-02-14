@@ -1,243 +1,214 @@
 /**
  * Service de synchronisation automatique Google Sheets
- * Surveille et synchronise automatiquement les modifications des Google Sheets
+ * Synchronise toutes les 10 secondes en arrière-plan.
+ * - Hash-based delta detection (ne refetch que si les données ont changé)
+ * - Aucune duplication (upsert par sheetRowId)
+ * - Erreurs silencieuses (log uniquement, jamais de crash)
+ * - lastSyncedAt tracking par workspace
  */
 
-import cron from 'node-cron';
+import crypto from 'crypto';
 import Order from '../ecom/models/Order.js';
 import WorkspaceSettings from '../ecom/models/WorkspaceSettings.js';
 import { fetchSheetData, autoDetectColumns, parseOrderRow } from '../ecom/services/googleSheetsImport.js';
-import { sendPushNotification } from './pushService.js';
+
+const SYNC_INTERVAL_MS = 10_000; // 10 secondes
+const CONFIG_RELOAD_MS = 60_000; // Recharger les configs toutes les 60s
 
 class AutoSyncService {
   constructor() {
     this.isRunning = false;
-    this.syncJobs = new Map(); // workspace -> cron job
-    this.lastSyncHashes = new Map(); // workspace_source -> hash
-    this.syncIntervals = {
-      '1min': '*/1 * * * *',
-      '5min': '*/5 * * * *', 
-      '15min': '*/15 * * * *',
-      '30min': '*/30 * * * *',
-      '1hour': '0 * * * *'
-    };
+    this._syncTimer = null;
+    this._configTimer = null;
+    this._syncing = false; // guard contre les exécutions concurrentes
+    this.lastSyncHashes = new Map(); // workspace_source -> md5 hash
+    this._workspaceConfigs = []; // cache des settings
   }
 
   /**
-   * Démarre le service de synchronisation automatique
+   * Démarre le service de synchronisation automatique (10s interval)
    */
   async start() {
-    if (this.isRunning) {
-      console.log('🔄 AutoSyncService déjà en cours d\'exécution');
-      return;
-    }
-
+    if (this.isRunning) return;
     this.isRunning = true;
-    console.log('🚀 Démarrage du service de synchronisation automatique');
+    console.log('🚀 [AutoSync] Service démarré (intervalle: 10s)');
+    console.log(`📊 [AutoSync] SYNC_INTERVAL_MS = ${SYNC_INTERVAL_MS}ms, CONFIG_RELOAD_MS = ${CONFIG_RELOAD_MS}ms`);
 
-    // Charger toutes les configurations de workspace
-    await this.loadAllWorkspaceConfigs();
+    // Charger les configs immédiatement
+    console.log('🔍 [AutoSync] Chargement initial des configurations...');
+    await this._loadConfigs();
+    console.log(`✅ [AutoSync] ${this._workspaceConfigs.length} workspace(s) configuré(s) pour la sync`);
 
-    // Démarrer la surveillance des configurations (toutes les 5 minutes)
-    cron.schedule('*/5 * * * *', () => {
-      this.loadAllWorkspaceConfigs().catch(console.error);
-    });
+    // Timer principal : sync toutes les 10s
+    console.log('⏰ [AutoSync] Démarrage du timer principal de synchronisation...');
+    this._syncTimer = setInterval(() => {
+      console.log('🔄 [AutoSync] Cycle de synchronisation lancé...');
+      this._runSyncCycle().catch(err => {
+        console.error('❌ [AutoSync] Erreur cycle sync:', err.message);
+      });
+    }, SYNC_INTERVAL_MS);
 
-    console.log('✅ AutoSyncService démarré avec succès');
+    // Timer secondaire : recharger les configs toutes les 60s
+    console.log('⏰ [AutoSync] Démarrage du timer de rechargement des configs...');
+    this._configTimer = setInterval(() => {
+      console.log('🔄 [AutoSync] Rechargement des configurations...');
+      this._loadConfigs().catch(() => {});
+    }, CONFIG_RELOAD_MS);
+    
+    console.log('✅ [AutoSync] Service entièrement démarré et opérationnel');
   }
 
   /**
-   * Arrête le service de synchronisation automatique
+   * Arrête le service proprement
    */
   stop() {
     if (!this.isRunning) return;
-
-    console.log('🛑 Arrêt du service de synchronisation automatique');
-    
-    // Arrêter tous les jobs cron
-    for (const [workspaceId, job] of this.syncJobs) {
-      job.destroy();
-      console.log(`🛑 Job de sync arrêté pour workspace: ${workspaceId}`);
-    }
-    
-    this.syncJobs.clear();
+    if (this._syncTimer) clearInterval(this._syncTimer);
+    if (this._configTimer) clearInterval(this._configTimer);
+    this._syncTimer = null;
+    this._configTimer = null;
     this.lastSyncHashes.clear();
+    this._workspaceConfigs = [];
     this.isRunning = false;
-    
-    console.log('✅ AutoSyncService arrêté');
+    console.log('[AutoSync] Service arrêté');
   }
 
-  /**
-   * Charge les configurations de tous les workspaces
-   */
-  async loadAllWorkspaceConfigs() {
+  // ─── Internal: charger toutes les configs workspace ──────────────────────
+  async _loadConfigs() {
     try {
-      const allSettings = await WorkspaceSettings.find({
+      const configs = await WorkspaceSettings.find({
         $or: [
           { 'googleSheets.spreadsheetId': { $exists: true, $ne: '' } },
           { 'sources.0': { $exists: true } }
         ]
+      }).lean();
+      this._workspaceConfigs = configs;
+      console.log(`📋 [AutoSync] ${configs.length} workspace(s) trouvé(s) avec Google Sheets`);
+      configs.forEach((ws, idx) => {
+        const sourcesCount = (ws.sources?.filter(s => s.isActive) || []).length + (ws.googleSheets?.spreadsheetId ? 1 : 0);
+        console.log(`   ${idx + 1}. Workspace ${ws.workspaceId} - ${sourcesCount} source(s) active(s)`);
       });
-
-      console.log(`🔍 ${allSettings.length} workspaces avec Google Sheets trouvés`);
-
-      for (const settings of allSettings) {
-        await this.setupWorkspaceSync(settings);
-      }
-    } catch (error) {
-      console.error('❌ Erreur lors du chargement des configurations:', error);
+    } catch (err) {
+      console.error('❌ [AutoSync] Erreur chargement configs:', err.message);
+      // Silencieux — on garde l'ancien cache
     }
   }
 
-  /**
-   * Configure la synchronisation pour un workspace
-   */
-  async setupWorkspaceSync(settings) {
-    const workspaceId = settings.workspaceId.toString();
-    
-    // Arrêter le job existant s'il y en a un
-    if (this.syncJobs.has(workspaceId)) {
-      this.syncJobs.get(workspaceId).destroy();
-    }
-
-    // Vérifier si l'auto-sync est activé
-    const autoSyncEnabled = settings.autoSync?.enabled !== false; // Par défaut activé
-    const syncInterval = settings.autoSync?.interval || '5min';
-
-    if (!autoSyncEnabled) {
-      console.log(`⏸️ Auto-sync désactivé pour workspace: ${workspaceId}`);
+  // ─── Internal: cycle de sync principal ───────────────────────────────────
+  async _runSyncCycle() {
+    // Guard: ne pas lancer un cycle si le précédent tourne encore
+    if (this._syncing) {
+      console.log('⏸️ [AutoSync] Cycle déjà en cours, ignoré');
       return;
     }
+    this._syncing = true;
 
-    const cronPattern = this.syncIntervals[syncInterval] || this.syncIntervals['5min'];
-    
-    // Créer le job cron
-    const job = cron.schedule(cronPattern, async () => {
-      await this.syncWorkspace(workspaceId);
-    }, {
-      scheduled: true,
-      timezone: 'Europe/Paris'
-    });
-
-    this.syncJobs.set(workspaceId, job);
-    console.log(`⏰ Auto-sync configuré pour workspace ${workspaceId} (${syncInterval})`);
-  }
-
-  /**
-   * Synchronise un workspace spécifique
-   */
-  async syncWorkspace(workspaceId) {
     try {
-      console.log(`🔄 [AutoSync] Début sync workspace: ${workspaceId}`);
+      console.log(`🔄 [AutoSync] Début cycle de sync pour ${this._workspaceConfigs.length} workspace(s)`);
+      const startTime = Date.now();
       
-      const settings = await WorkspaceSettings.findOne({ workspaceId });
-      if (!settings) {
-        console.log(`⚠️ [AutoSync] Settings non trouvés pour workspace: ${workspaceId}`);
-        return;
-      }
-
-      let syncCount = 0;
-      let totalImported = 0;
-      let totalUpdated = 0;
-
-      // Synchroniser la source legacy si configurée
-      if (settings.googleSheets?.spreadsheetId) {
-        const result = await this.syncSource(workspaceId, {
-          _id: 'legacy',
-          name: 'Commandes Zendo',
-          spreadsheetId: settings.googleSheets.spreadsheetId,
-          sheetName: settings.googleSheets.sheetName || 'Sheet1'
-        });
-        
-        if (result.hasChanges) {
-          syncCount++;
-          totalImported += result.imported;
-          totalUpdated += result.updated;
+      for (const settings of this._workspaceConfigs) {
+        // Vérifier si auto-sync activé pour ce workspace
+        if (settings.autoSync?.enabled === false) {
+          console.log(`⏸️ [AutoSync] Auto-sync désactivé pour workspace ${settings.workspaceId}`);
+          continue;
         }
-      }
 
-      // Synchroniser toutes les sources actives
-      for (const source of settings.sources || []) {
-        if (!source.isActive) continue;
+        const workspaceId = settings.workspaceId.toString();
+        console.log(`🔄 [AutoSync] Traitement workspace ${workspaceId}...`);
 
-        const result = await this.syncSource(workspaceId, source);
-        if (result.hasChanges) {
-          syncCount++;
-          totalImported += result.imported;
-          totalUpdated += result.updated;
-        }
-      }
-
-      // Envoyer notification si des changements ont été détectés
-      if (syncCount > 0) {
-        console.log(`✅ [AutoSync] ${syncCount} sources synchronisées: ${totalImported} nouvelles, ${totalUpdated} mises à jour`);
-        
         try {
-          await sendPushNotification(workspaceId, {
-            title: '🔄 Synchronisation automatique',
-            body: `${totalImported} nouvelles commandes, ${totalUpdated} mises à jour`,
-            tag: 'auto-sync',
-            data: {
-              type: 'auto-sync',
-              imported: totalImported,
-              updated: totalUpdated,
-              sources: syncCount
-            }
-          });
-        } catch (pushError) {
-          console.error('❌ [AutoSync] Erreur notification push:', pushError);
+          await this._syncWorkspace(workspaceId, settings);
+        } catch (err) {
+          // Erreur silencieuse par workspace — on continue les autres
+          console.error(`❌ [AutoSync] Erreur workspace ${workspaceId}:`, err.message);
         }
       }
-
-    } catch (error) {
-      console.error(`❌ [AutoSync] Erreur sync workspace ${workspaceId}:`, error);
+      
+      const duration = Date.now() - startTime;
+      console.log(`✅ [AutoSync] Cycle terminé en ${duration}ms`);
+    } finally {
+      this._syncing = false;
     }
   }
 
-  /**
-   * Synchronise une source spécifique
-   */
-  async syncSource(workspaceId, source) {
+  // ─── Internal: sync un workspace ─────────────────────────────────────────
+  async _syncWorkspace(workspaceId, settings) {
+    let totalImported = 0;
+    let totalUpdated = 0;
+
+    // Source legacy
+    if (settings.googleSheets?.spreadsheetId) {
+      const result = await this._syncSource(workspaceId, {
+        _id: 'legacy',
+        name: 'Commandes Zendo',
+        spreadsheetId: settings.googleSheets.spreadsheetId,
+        sheetName: settings.googleSheets.sheetName || 'Sheet1'
+      });
+      totalImported += result.imported;
+      totalUpdated += result.updated;
+    }
+
+    // Sources custom
+    for (const source of settings.sources || []) {
+      if (!source.isActive) continue;
+      const result = await this._syncSource(workspaceId, source);
+      totalImported += result.imported;
+      totalUpdated += result.updated;
+    }
+
+    // Mettre à jour lastSyncedAt si des changements
+    if (totalImported > 0 || totalUpdated > 0) {
+      console.log(`📈 [AutoSync] ${workspaceId}: +${totalImported} nouvelles, ${totalUpdated} mises à jour`);
+      try {
+        await WorkspaceSettings.updateOne(
+          { workspaceId },
+          { $set: { 'autoSync.lastRunAt': new Date() } }
+        );
+      } catch (_) { /* silencieux */ }
+    } else {
+      console.log(`📭 [AutoSync] ${workspaceId}: Aucun changement détecté`);
+    }
+  }
+
+  // ─── Internal: sync une source ───────────────────────────────────────────
+  async _syncSource(workspaceId, source) {
     const sourceKey = `${workspaceId}_${source._id}`;
-    
+
     try {
-      // Récupérer les données du sheet
+      // 1) Fetch les données du sheet
       const sheetData = await fetchSheetData(source.spreadsheetId, source.sheetName);
       const { headers, rows, dataStartIndex } = sheetData;
 
       if (!rows || rows.length <= dataStartIndex) {
-        return { hasChanges: false, imported: 0, updated: 0 };
+        console.log(`📭 [AutoSync] Source "${source.name}": Sheet vide ou sans données`);
+        return { imported: 0, updated: 0 };
       }
 
-      // Calculer un hash des données pour détecter les changements
-      const dataHash = this.calculateDataHash(rows.slice(dataStartIndex));
-      const lastHash = this.lastSyncHashes.get(sourceKey);
-
-      if (lastHash === dataHash) {
-        // Aucun changement détecté
-        return { hasChanges: false, imported: 0, updated: 0 };
+      // 2) Hash delta — skip si rien n'a changé
+      const dataRows = rows.slice(dataStartIndex);
+      const dataHash = this._hash(dataRows);
+      if (this.lastSyncHashes.get(sourceKey) === dataHash) {
+        console.log(`⏭️ [AutoSync] Source "${source.name}": Données inchangées, sync ignorée`);
+        return { imported: 0, updated: 0 };
       }
 
-      console.log(`📊 [AutoSync] Changements détectés dans ${source.name}`);
+      console.log(`📊 [AutoSync] Source "${source.name}": Changements détectés, début sync...`);
 
-      // Détecter les colonnes
+      // 3) Détecter les colonnes
       const columnMap = autoDetectColumns(headers);
-      
-      // Traiter les lignes
-      const bulkOps = [];
+
+      // 4) Charger les commandes existantes (pour respecter statusModifiedManually)
       const existingOrders = await Order.find(
-        { 
-          workspaceId, 
-          $or: [
-            { sheetRowId: { $regex: `^source_${source._id}_` } },
-            { tags: source.name }
-          ]
-        },
-        { sheetRowId: 1, orderId: 1, statusModifiedManually: 1 }
+        { workspaceId, sheetRowId: { $regex: `^source_${source._id}_` } },
+        { sheetRowId: 1, statusModifiedManually: 1 }
       ).lean();
+      const manualSet = new Set(
+        existingOrders.filter(o => o.statusModifiedManually).map(o => o.sheetRowId)
+      );
 
-      const existingByRowId = new Map(existingOrders.map(o => [o.sheetRowId, o]));
-
+      // 5) Construire les opérations bulk
+      const bulkOps = [];
       for (let i = dataStartIndex; i < rows.length; i++) {
         const row = rows[i];
         if (!row.c || row.c.every(cell => !cell || !cell.v)) continue;
@@ -247,11 +218,10 @@ class AutoSyncService {
 
         const doc = parsed.data;
         const sheetRowId = `source_${source._id}_row_${i + 1}`;
-        
-        // Vérifier si la commande existe et si le statut a été modifié manuellement
-        const existingOrder = existingByRowId.get(sheetRowId);
-        if (existingOrder?.statusModifiedManually) {
-          delete doc.status; // Ne pas écraser le statut modifié manuellement
+
+        // Ne pas écraser le statut modifié manuellement
+        if (manualSet.has(sheetRowId)) {
+          delete doc.status;
         }
 
         bulkOps.push({
@@ -270,47 +240,62 @@ class AutoSyncService {
         });
       }
 
-      // Exécuter les opérations en lot
+      // 6) Exécuter en batch
       let imported = 0;
       let updated = 0;
 
       if (bulkOps.length > 0) {
-        const result = await Order.bulkWrite(bulkOps);
-        imported = result.upsertedCount || 0;
-        updated = result.modifiedCount || 0;
+        const BATCH = 500;
+        for (let b = 0; b < bulkOps.length; b += BATCH) {
+          const result = await Order.bulkWrite(bulkOps.slice(b, b + BATCH));
+          imported += result.upsertedCount || 0;
+          updated += result.modifiedCount || 0;
+        }
       }
 
-      // Mettre à jour le hash
+      // 7) Mettre à jour le hash seulement après succès
       this.lastSyncHashes.set(sourceKey, dataHash);
 
-      return { hasChanges: true, imported, updated };
+      // 8) Mettre à jour lastSyncAt sur la source
+      if (imported > 0 || updated > 0) {
+        console.log(`✅ [AutoSync] Source "${source.name}": ${imported} nouvelles, ${updated} mises à jour`);
+        try {
+          if (source._id === 'legacy') {
+            await WorkspaceSettings.updateOne(
+              { workspaceId },
+              { $set: { 'googleSheets.lastSyncAt': new Date() } }
+            );
+          } else {
+            await WorkspaceSettings.updateOne(
+              { workspaceId, 'sources._id': source._id },
+              { $set: { 'sources.$.lastSyncAt': new Date() } }
+            );
+          }
+        } catch (_) { /* silencieux */ }
+      }
 
-    } catch (error) {
-      console.error(`❌ [AutoSync] Erreur sync source ${source.name}:`, error);
-      return { hasChanges: false, imported: 0, updated: 0 };
+      return { imported, updated };
+
+    } catch (err) {
+      // Erreur silencieuse — on ne bloque rien
+      console.error(`❌ [AutoSync] Erreur source "${source.name}":`, err.message);
+      return { imported: 0, updated: 0 };
     }
   }
 
-  /**
-   * Calcule un hash des données pour détecter les changements
-   */
-  calculateDataHash(rows) {
-    const crypto = require('crypto');
-    const dataString = JSON.stringify(rows.map(row => 
-      row.c ? row.c.map(cell => cell?.v || '') : []
-    ));
-    return crypto.createHash('md5').update(dataString).digest('hex');
+  // ─── Utilitaire: hash MD5 des données pour delta detection ───────────────
+  _hash(rows) {
+    const str = JSON.stringify(rows.map(r => r.c ? r.c.map(c => c?.v || '') : []));
+    return crypto.createHash('md5').update(str).digest('hex');
   }
 
-  /**
-   * Active/désactive l'auto-sync pour un workspace
-   */
+  // ─── API publique: toggle auto-sync ──────────────────────────────────────
   async toggleAutoSync(workspaceId, enabled, interval = '5min') {
     try {
       await WorkspaceSettings.updateOne(
         { workspaceId },
-        { 
-          $set: { 
+        {
+          $set: {
             'autoSync.enabled': enabled,
             'autoSync.interval': interval,
             'autoSync.updatedAt': new Date()
@@ -318,49 +303,42 @@ class AutoSyncService {
         },
         { upsert: true }
       );
-
-      if (enabled) {
-        // Recharger la configuration pour ce workspace
-        const settings = await WorkspaceSettings.findOne({ workspaceId });
-        if (settings) {
-          await this.setupWorkspaceSync(settings);
-        }
-      } else {
-        // Arrêter le job pour ce workspace
-        const job = this.syncJobs.get(workspaceId.toString());
-        if (job) {
-          job.destroy();
-          this.syncJobs.delete(workspaceId.toString());
-        }
-      }
-
-      console.log(`🔄 Auto-sync ${enabled ? 'activé' : 'désactivé'} pour workspace: ${workspaceId}`);
+      // Recharger les configs pour prendre en compte le changement
+      await this._loadConfigs();
       return true;
-    } catch (error) {
-      console.error('❌ Erreur toggle auto-sync:', error);
+    } catch (err) {
+      console.error('[AutoSync] Erreur toggle:', err.message);
       return false;
     }
   }
 
-  /**
-   * Obtient le statut de l'auto-sync pour un workspace
-   */
+  // ─── API publique: statut ────────────────────────────────────────────────
   async getAutoSyncStatus(workspaceId) {
     try {
-      const settings = await WorkspaceSettings.findOne({ workspaceId });
-      const hasJob = this.syncJobs.has(workspaceId.toString());
-      
+      const settings = await WorkspaceSettings.findOne({ workspaceId }).lean();
       return {
         enabled: settings?.autoSync?.enabled !== false,
-        interval: settings?.autoSync?.interval || '5min',
-        isRunning: hasJob,
+        interval: '10s',
+        isRunning: this.isRunning,
+        lastRunAt: settings?.autoSync?.lastRunAt || null,
         lastUpdate: settings?.autoSync?.updatedAt,
-        sourcesCount: (settings?.sources?.filter(s => s.isActive) || []).length + 
+        sourcesCount: (settings?.sources?.filter(s => s.isActive) || []).length +
                      (settings?.googleSheets?.spreadsheetId ? 1 : 0)
       };
-    } catch (error) {
-      console.error('❌ Erreur get auto-sync status:', error);
+    } catch (err) {
       return { enabled: false, isRunning: false };
+    }
+  }
+
+  // ─── API publique: forcer une sync immédiate ─────────────────────────────
+  async syncWorkspace(workspaceId) {
+    try {
+      const settings = await WorkspaceSettings.findOne({ workspaceId }).lean();
+      if (settings) {
+        await this._syncWorkspace(workspaceId, settings);
+      }
+    } catch (err) {
+      console.error(`[AutoSync] Erreur sync forcée ${workspaceId}:`, err.message);
     }
   }
 }

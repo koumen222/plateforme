@@ -110,9 +110,10 @@ const orderSchema = new mongoose.Schema({
 });
 
 orderSchema.index({ workspaceId: 1, orderId: 1 });
-orderSchema.index({ workspaceId: 1, sheetRowId: 1 });
+orderSchema.index({ workspaceId: 1, sheetRowId: 1 }, { unique: true, sparse: true });
 orderSchema.index({ workspaceId: 1, status: 1 });
 orderSchema.index({ workspaceId: 1, date: -1 });
+orderSchema.index({ workspaceId: 1, updatedAt: -1 });
 
 const Order = mongoose.model('Order', orderSchema);
 export default Order;
