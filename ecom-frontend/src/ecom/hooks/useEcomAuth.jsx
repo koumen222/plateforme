@@ -400,37 +400,75 @@ export const EcomAuthProvider = ({ children }) => {
     return userPermissions.includes('*') || userPermissions.includes(permission);
   };
 
+  // Helper pour convertir la clé VAPID
+  const urlBase64ToUint8Array = (base64String) => {
+    try {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+      }
+      return outputArray;
+    } catch (error) {
+      console.error('Erreur conversion VAPID key:', error);
+      throw new Error('Erreur lors de la conversion de la clé VAPID');
+    }
+  };
+
   // Enregistrement de l'appareil pour les notifications push
   const registerDevice = async () => {
     try {
+      console.log('📱 Début enregistrement appareil...');
+      
       // Vérifier si le navigateur supporte les notifications push
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('Notifications push non supportées par ce navigateur');
+        console.warn('⚠️ Notifications push non supportées par ce navigateur');
         return;
       }
 
       // Vérifier si on est en contexte sécurisé (HTTPS ou localhost)
       if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
-        console.warn('Les notifications push nécessitent HTTPS ou localhost');
+        console.warn('⚠️ Les notifications push nécessitent HTTPS ou localhost');
         return;
       }
 
+      console.log('🔍 Vérification service worker...');
       // Récupérer le service worker
-      const registration = await navigator.serviceWorker.ready;
+      let registration;
+      try {
+        registration = await navigator.serviceWorker.ready;
+        console.log('✅ Service worker prêt');
+      } catch (error) {
+        console.error('❌ Erreur service worker:', error);
+        throw new Error('Service worker non disponible');
+      }
       
+      console.log('🔍 Vérification souscription push...');
       // Obtenir la souscription existante ou en créer une nouvelle
       let subscription = await registration.pushManager.getSubscription();
       
       if (!subscription) {
-        // Créer une nouvelle souscription
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            'BLb1e5X9lTqH8QzR7K2J8V4F5W6Y7Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4'
-          )
-        });
+        console.log('📝 Création nouvelle souscription...');
+        try {
+          // Créer une nouvelle souscription
+          subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(
+              'BLb1e5X9lTqH8QzR7K2J8V4F5W6Y7Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4'
+            )
+          });
+          console.log('✅ Souscription créée');
+        } catch (error) {
+          console.error('❌ Erreur création souscription:', error);
+          throw new Error('Impossible de créer la souscription push');
+        }
+      } else {
+        console.log('✅ Souscription existante trouvée');
       }
 
+      console.log('📤 Envoi souscription au serveur...');
       // Envoyer la souscription au serveur
       const response = await authApi.registerDevice({
         subscription: subscription,
@@ -448,18 +486,6 @@ export const EcomAuthProvider = ({ children }) => {
       console.error('❌ Erreur lors de l\'enregistrement de l\'appareil:', error);
       throw error;
     }
-  };
-
-  // Helper pour convertir la clé VAPID
-  const urlBase64ToUint8Array = (base64String) => {
-    const padding = '='.repeat((4 - base64String.length % 4) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-    return outputArray;
   };
 
   // Vérifier si l'utilisateur a un rôle spécifique

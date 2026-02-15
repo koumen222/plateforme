@@ -31,14 +31,21 @@ const Login = () => {
   const handleRegisterDevice = async () => {
     setRegisteringDevice(true);
     try {
+      // Vérifier que registerDevice est bien une fonction
+      if (typeof registerDevice !== 'function') {
+        console.error('❌ registerDevice n\'est pas une fonction');
+        throw new Error('registerDevice n\'est pas disponible');
+      }
+      
+      console.log('📱 Appel de registerDevice...');
       await registerDevice();
       setShowDevicePopup(false);
-      navigate('/ecom/dashboard');
+      navigate('/dashboard');
     } catch (error) {
       console.error('Erreur enregistrement appareil:', error);
       // Continuer vers le dashboard même si l'enregistrement échoue
       setShowDevicePopup(false);
-      navigate('/ecom/dashboard');
+      navigate('/dashboard');
     } finally {
       setRegisteringDevice(false);
     }
@@ -46,7 +53,7 @@ const Login = () => {
 
   const handleSkipDevice = () => {
     setShowDevicePopup(false);
-    navigate('/ecom/dashboard');
+    navigate('/dashboard');
   };
 
   const handleInputChange = (e) => {
