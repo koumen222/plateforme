@@ -193,13 +193,11 @@ const EcomApp = () => {
         <div className="min-h-screen bg-gray-50">
           <ErrorBoundary>
             <Routes>
-              {/* Route racine - landing page */}
+              {/* Route racine - landing page ecom UNIQUEMENT */}
               <Route path="/" element={<EcomLandingPage />} />
               
               {/* Routes publiques (sans layout) */}
               <Route path="landing" element={<EcomLandingPage />} />
-              <Route path="privacy" element={<PrivacyPolicy />} />
-              <Route path="security" element={<LayoutRoute><SecurityDashboard /></LayoutRoute>} />
               <Route path="login" element={<Login />} />
               <Route path="register" element={<Register />} />
               <Route path="forgot-password" element={<ForgotPassword />} />
@@ -210,7 +208,6 @@ const EcomApp = () => {
               <Route path="products" element={<LayoutRoute requiredRole="ecom_admin"><ProductsList /></LayoutRoute>} />
               <Route path="products/new" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
               <Route path="products/:id" element={<LayoutRoute><ProductDetail /></LayoutRoute>} />
-              <Route path="products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
               
               {/* Routes rapports */}
               <Route path="reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
