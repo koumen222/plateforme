@@ -362,13 +362,13 @@ const EcomLayout = ({ children }) => {
                       <p className="text-xs text-gray-500">{displayUser?.email}</p>
                     </div>
                     <div className="py-1">
-                      <Link to="/ecom/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <Link to="/profile" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                         </svg>
                         Profil
                       </Link>
-                      <Link to="/ecom/settings" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                      <Link to="/settings" onClick={() => setUserMenuOpen(false)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">
                         <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                         </svg>
@@ -415,11 +415,11 @@ const EcomLayout = ({ children }) => {
                 key={item.name}
                 to={item.href}
                 onClick={() => setMoreMenuOpen(false)}
-                className={`flex flex-col items-center justify-center flex-1 h-full pt-1 transition-colors ${
+                className={`flex flex-col items-center justify-center flex-1 h-full pt-1 transition-colors touch-manipulation ${
                   active ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'
                 }`}
               >
-                <span className={active ? 'text-blue-600' : 'text-gray-400'}>{item.icon}</span>
+                <span className={`text-xl ${active ? 'text-blue-600' : 'text-gray-400'}`}>{item.icon}</span>
                 <span className={`text-[10px] mt-0.5 font-medium ${active ? 'text-blue-600' : 'text-gray-400'}`}>
                   {item.shortName}
                 </span>
@@ -432,7 +432,7 @@ const EcomLayout = ({ children }) => {
             <div className="relative flex-1">
               <button
                 onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                className={`flex flex-col items-center justify-center w-full h-16 pt-1 transition-colors ${
+                className={`flex flex-col items-center justify-center w-full h-16 pt-1 transition-colors touch-manipulation ${
                   moreMenuOpen ? 'text-blue-600' : 'text-gray-400 active:text-gray-600'
                 }`}
               >
@@ -453,7 +453,7 @@ const EcomLayout = ({ children }) => {
                           key={item.name}
                           to={item.href}
                           onClick={() => setMoreMenuOpen(false)}
-                          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors ${
+                          className={`flex items-center gap-3 px-4 py-3 text-sm font-medium transition-colors touch-manipulation ${
                             active ? 'bg-blue-50 text-blue-600' : 'text-gray-700 hover:bg-gray-50'
                           }`}
                         >
@@ -464,9 +464,9 @@ const EcomLayout = ({ children }) => {
                     })}
                     <div className="border-t border-gray-100">
                       <Link
-                        to="/ecom/profile"
+                        to="/profile"
                         onClick={() => setMoreMenuOpen(false)}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-50 touch-manipulation"
                       >
                         <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -475,7 +475,7 @@ const EcomLayout = ({ children }) => {
                       </Link>
                       <button
                         onClick={() => { setMoreMenuOpen(false); handleLogout(); }}
-                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 w-full"
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 w-full text-left touch-manipulation"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

@@ -68,7 +68,7 @@ ecomApi.interceptors.response.use(
       localStorage.removeItem('ecomUser');
       localStorage.removeItem('ecomOriginalUser');
       localStorage.removeItem('ecomImpersonatedUser');
-      window.location.href = '/ecom/login';
+      window.location.href = '/login';
     }
     
     // Gérer les erreurs réseau
