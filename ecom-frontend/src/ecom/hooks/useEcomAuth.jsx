@@ -400,6 +400,68 @@ export const EcomAuthProvider = ({ children }) => {
     return userPermissions.includes('*') || userPermissions.includes(permission);
   };
 
+  // Enregistrement de l'appareil pour les notifications push
+  const registerDevice = async () => {
+    try {
+      // Vérifier si le navigateur supporte les notifications push
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        console.warn('Notifications push non supportées par ce navigateur');
+        return;
+      }
+
+      // Vérifier si on est en contexte sécurisé (HTTPS ou localhost)
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+        console.warn('Les notifications push nécessitent HTTPS ou localhost');
+        return;
+      }
+
+      // Récupérer le service worker
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Obtenir la souscription existante ou en créer une nouvelle
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        // Créer une nouvelle souscription
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(
+            'BLb1e5X9lTqH8QzR7K2J8V4F5W6Y7Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4'
+          )
+        });
+      }
+
+      // Envoyer la souscription au serveur
+      const response = await authApi.registerDevice({
+        subscription: subscription,
+        deviceInfo: {
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          language: navigator.language,
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      console.log('✅ Appareil enregistré avec succès:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('❌ Erreur lors de l\'enregistrement de l\'appareil:', error);
+      throw error;
+    }
+  };
+
+  // Helper pour convertir la clé VAPID
+  const urlBase64ToUint8Array = (base64String) => {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  };
+
   // Vérifier si l'utilisateur a un rôle spécifique
   const hasRole = (role) => {
     return state.user?.role === role;
@@ -423,6 +485,7 @@ export const EcomAuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    registerDevice,
     changePassword,
     changeCurrency,
     hasPermission,

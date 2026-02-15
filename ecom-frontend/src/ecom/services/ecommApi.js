@@ -106,7 +106,10 @@ export const authApi = {
   changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords),
   
   // Changer la devise
-  changeCurrency: (data) => ecomApi.put('/auth/currency', data)
+  changeCurrency: (data) => ecomApi.put('/auth/currency', data),
+  
+  // Enregistrer un appareil pour les notifications push
+  registerDevice: (deviceData) => ecomApi.post('/auth/register-device', deviceData)
 };
 
 export const productsApi = {
