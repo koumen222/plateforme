@@ -1,9 +1,9 @@
 # Cloudflare Pages Build Configuration
 
 [build]
-command = "cd frontend && npm install && npm run build"
+command = "cd frontend && npm install && npm run build && cp -r dist/* ../"
 cwd = "/"
-publish = "frontend/dist"
+publish = "."
 
 [build.environment]
 NODE_VERSION = "18"
