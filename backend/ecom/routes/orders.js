@@ -7,7 +7,7 @@ import EcomUser from '../models/EcomUser.js';
 import Notification from '../../models/Notification.js';
 import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
-import { notifyNewOrder, notifyOrderStatus } from '../services/notificationHelper.js';
+import { notifyNewOrder, notifyOrderStatus, notifyTeamOrderCreated, notifyTeamOrderStatusChanged } from '../services/notificationHelper.js';
 import { EventEmitter } from 'events';
 
 const router = express.Router();
@@ -180,6 +180,9 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
     
     // Notification interne
     notifyNewOrder(req.workspaceId, order).catch(() => {});
+    
+    // Notification d'équipe (exclure l'acteur)
+    notifyTeamOrderCreated(req.workspaceId, req.ecomUser._id, order, req.ecomUser.email).catch(() => {});
     
     res.status(201).json({ success: true, message: 'Commande créée', data: order });
   } catch (error) {
@@ -2042,6 +2045,9 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
     // Notification interne sur changement de statut
     if (req.body.status) {
       notifyOrderStatus(req.workspaceId, order, req.body.status).catch(() => {});
+      
+      // Notification d'équipe (exclure l'acteur)
+      notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, order, req.body.status, req.ecomUser.email).catch(() => {});
     }
 
     res.json({ success: true, message: 'Commande mise à jour', data: order });

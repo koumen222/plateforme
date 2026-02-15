@@ -36,7 +36,21 @@ const notificationSchema = new mongoose.Schema({
       'campaign_sent',
       'import_completed',
       'system',
-      'info'
+      'info',
+      // Notifications d'équipe
+      'team_order_created',
+      'team_order_updated',
+      'team_order_deleted',
+      'team_order_status_changed',
+      'team_product_created',
+      'team_product_updated',
+      'team_product_deleted',
+      'team_campaign_created',
+      'team_campaign_sent',
+      'team_report_generated',
+      'team_member_action',
+      'team_inventory_update',
+      'team_settings_changed'
     ],
     required: true,
     index: true

@@ -176,3 +176,146 @@ export const notifySystem = async (workspaceId, title, message, link = null) => 
     link
   });
 };
+
+/**
+ * Notify team about member action (excluding the actor)
+ */
+export const notifyTeamMemberAction = async (workspaceId, actorId, action, details = {}) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId }, // Notifier tous sauf l'acteur
+    type: 'team_member_action',
+    title: 'Action d\'équipe',
+    message: `${details.actorName || 'Un membre'} a ${action}`,
+    icon: 'team',
+    link: details.link,
+    metadata: { actorId, action, ...details }
+  });
+};
+
+/**
+ * Notify team about order creation
+ */
+export const notifyTeamOrderCreated = async (workspaceId, actorId, order, actorName) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_order_created',
+    title: 'Nouvelle commande créée',
+    message: `${actorName} a créé une commande: ${order.clientName || 'Client'} — ${order.product || 'Produit'}`,
+    icon: 'order',
+    link: `/ecom/orders/${order._id}`,
+    metadata: { orderId: order._id, actorId }
+  });
+};
+
+/**
+ * Notify team about order status change
+ */
+export const notifyTeamOrderStatusChanged = async (workspaceId, actorId, order, newStatus, actorName) => {
+  const statusLabels = {
+    confirmed: 'confirmée',
+    shipped: 'expédiée', 
+    delivered: 'livrée',
+    cancelled: 'annulée',
+    returned: 'retournée',
+    pending: 'mise en attente'
+  };
+
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_order_status_changed',
+    title: 'Statut de commande modifié',
+    message: `${actorName} a marqué la commande comme ${statusLabels[newStatus] || newStatus}`,
+    icon: 'order',
+    link: `/ecom/orders/${order._id}`,
+    metadata: { orderId: order._id, newStatus, actorId }
+  });
+};
+
+/**
+ * Notify team about campaign creation
+ */
+export const notifyTeamCampaignCreated = async (workspaceId, actorId, campaign, actorName) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_campaign_created',
+    title: 'Nouvelle campagne créée',
+    message: `${actorName} a créé une nouvelle campagne marketing`,
+    icon: 'campaign',
+    link: `/ecom/campaigns/${campaign._id}`,
+    metadata: { campaignId: campaign._id, actorId }
+  });
+};
+
+/**
+ * Notify team about campaign sent
+ */
+export const notifyTeamCampaignSent = async (workspaceId, actorId, campaign, stats, actorName) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_campaign_sent',
+    title: 'Campagne envoyée',
+    message: `${actorName} a envoyé une campagne à ${stats.sent || 0} clients`,
+    icon: 'campaign',
+    link: `/ecom/campaigns/${campaign._id}`,
+    metadata: { campaignId: campaign._id, stats, actorId }
+  });
+};
+
+/**
+ * Notify team about product creation/update
+ */
+export const notifyTeamProductAction = async (workspaceId, actorId, product, action, actorName) => {
+  const actionLabels = {
+    created: 'créé',
+    updated: 'modifié',
+    deleted: 'supprimé'
+  };
+
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: `team_product_${action}`,
+    title: `Produit ${actionLabels[action]}`,
+    message: `${actorName} a ${actionLabels[action]} le produit: ${product.name}`,
+    icon: 'product',
+    link: action !== 'deleted' ? `/ecom/products/${product._id}` : '/ecom/products',
+    metadata: { productId: product._id, action, actorId }
+  });
+};
+
+/**
+ * Notify team about report generation
+ */
+export const notifyTeamReportGenerated = async (workspaceId, actorId, report, actorName) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_report_generated',
+    title: 'Rapport généré',
+    message: `${actorName} a généré un rapport ${report.type || ''}`,
+    icon: 'report',
+    link: `/ecom/reports/${report._id}`,
+    metadata: { reportId: report._id, actorId }
+  });
+};
+
+/**
+ * Notify team about inventory update
+ */
+export const notifyTeamInventoryUpdate = async (workspaceId, actorId, product, change, actorName) => {
+  return createNotification({
+    workspaceId,
+    userId: { $ne: actorId },
+    type: 'team_inventory_update',
+    title: 'Inventaire mis à jour',
+    message: `${actorName} a modifié le stock de ${product.name}: ${change.previous} → ${change.new}`,
+    icon: 'inventory',
+    link: `/ecom/products/${product._id}`,
+    metadata: { productId: product._id, change, actorId }
+  });
+};
