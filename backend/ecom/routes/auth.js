@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 import EcomUser from '../models/EcomUser.js';
+import Device from '../models/Device.js';
 import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken } from '../middleware/ecomAuth.js';
@@ -57,6 +58,57 @@ router.post('/login', rateLimit(10, 60000), validateEmail, async (req, res) => {
       workspace = await Workspace.findById(user.workspaceId);
     }
 
+    // Vérifier si l'appareil est déjà enregistré
+    const userAgent = req.headers['user-agent'] || '';
+    const ip = req.ip || req.connection.remoteAddress || '';
+    const acceptLanguage = req.headers['accept-language'] || '';
+    const fingerprint = Device.generateFingerprint(userAgent, ip, acceptLanguage);
+    
+    let existingDevice = await Device.findOne({ 
+      fingerprint, 
+      userId: user._id,
+      isActive: true 
+    });
+
+    let deviceInfo = null;
+    if (existingDevice) {
+      // Mettre à jour la dernière utilisation
+      await existingDevice.updateLastUsed();
+      deviceInfo = {
+        id: existingDevice._id,
+        name: existingDevice.deviceName,
+        trusted: existingDevice.trusted,
+        firstTime: false
+      };
+    } else {
+      // Créer un nouvel appareil
+      const deviceId = Device.generateDeviceId();
+      const deviceName = getDeviceName(userAgent);
+      const deviceType = getDeviceType(userAgent);
+      
+      const newDevice = new Device({
+        userId: user._id,
+        deviceId,
+        deviceName,
+        deviceType,
+        platform: getPlatform(userAgent),
+        userAgent,
+        fingerprint,
+        location: {
+          ip
+        }
+      });
+      
+      await newDevice.save();
+      
+      deviceInfo = {
+        id: newDevice._id,
+        name: newDevice.deviceName,
+        trusted: newDevice.trusted,
+        firstTime: true
+      };
+    }
+
     res.json({
       success: true,
       message: 'Connexion réussie',
@@ -75,7 +127,8 @@ router.post('/login', rateLimit(10, 60000), validateEmail, async (req, res) => {
           name: workspace.name,
           slug: workspace.slug,
           inviteCode: user.role === 'ecom_admin' ? workspace.inviteCode : undefined
-        } : null
+        } : null,
+        device: deviceInfo
       }
     });
   } catch (error) {
@@ -726,6 +779,296 @@ router.get('/me', async (req, res) => {
     res.status(401).json({
       success: false,
       message: 'Token invalide'
+    });
+  }
+});
+
+// Fonctions utilitaires pour la détection d'appareil
+function getDeviceName(userAgent) {
+  if (!userAgent) return 'Appareil inconnu';
+  
+  if (userAgent.includes('iPhone')) return 'iPhone';
+  if (userAgent.includes('iPad')) return 'iPad';
+  if (userAgent.includes('Android')) return 'Android';
+  if (userAgent.includes('Windows Phone')) return 'Windows Phone';
+  if (userAgent.includes('Macintosh')) return 'Mac';
+  if (userAgent.includes('Windows')) return 'Windows PC';
+  if (userAgent.includes('Linux')) return 'Linux';
+  
+  return 'Appareil inconnu';
+}
+
+function getDeviceType(userAgent) {
+  if (!userAgent) return 'unknown';
+  
+  if (userAgent.includes('Mobile') || userAgent.includes('Android') || userAgent.includes('iPhone')) {
+    return 'mobile';
+  }
+  if (userAgent.includes('iPad') || userAgent.includes('Tablet')) {
+    return 'tablet';
+  }
+  if (userAgent.includes('Windows') || userAgent.includes('Macintosh') || userAgent.includes('Linux')) {
+    return 'desktop';
+  }
+  
+  return 'unknown';
+}
+
+function getPlatform(userAgent) {
+  if (!userAgent) return '';
+  
+  if (userAgent.includes('Windows')) return 'Windows';
+  if (userAgent.includes('Mac')) return 'macOS';
+  if (userAgent.includes('Linux')) return 'Linux';
+  if (userAgent.includes('Android')) return 'Android';
+  if (userAgent.includes('iOS') || userAgent.includes('iPhone') || userAgent.includes('iPad')) return 'iOS';
+  
+  return '';
+}
+
+// POST /api/ecom/auth/device-login - Connexion automatique par appareil
+router.post('/device-login', async (req, res) => {
+  try {
+    const { email, deviceId } = req.body;
+    
+    if (!email || !deviceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email et deviceId requis'
+      });
+    }
+
+    // Récupérer l'utilisateur
+    const user = await EcomUser.findOne({ email, isActive: true });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé'
+      });
+    }
+
+    // Vérifier si l'appareil est enregistré et approuvé
+    const device = await Device.findOne({ 
+      deviceId, 
+      userId: user._id,
+      isActive: true,
+      trusted: true 
+    });
+
+    if (!device) {
+      return res.status(401).json({
+        success: false,
+        message: 'Appareil non reconnu ou non approuvé',
+        requiresPassword: true
+      });
+    }
+
+    // Mettre à jour la dernière utilisation
+    await device.updateLastUsed();
+
+    // Générer le token
+    const token = generateEcomToken(user);
+    
+    // Mettre à jour lastLogin
+    user.lastLogin = new Date();
+    await user.save();
+
+    // Log connexion automatique
+    req.ecomUser = user;
+    await logAudit(req, 'AUTO_LOGIN', `Connexion automatique: ${user.email} via ${device.deviceName}`, 'auth', user._id);
+
+    // Charger le workspace
+    let workspace = null;
+    if (user.workspaceId) {
+      workspace = await Workspace.findById(user.workspaceId);
+    }
+
+    res.json({
+      success: true,
+      message: 'Connexion automatique réussie',
+      data: {
+        token,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          currency: user.currency,
+          lastLogin: user.lastLogin,
+          workspaceId: user.workspaceId
+        },
+        workspace: workspace ? {
+          id: workspace._id,
+          name: workspace.name,
+          slug: workspace.slug,
+          inviteCode: user.role === 'ecom_admin' ? workspace.inviteCode : undefined
+        } : null,
+        device: {
+          id: device._id,
+          name: device.deviceName,
+          trusted: device.trusted,
+          firstTime: false
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur device login:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// POST /api/ecom/auth/trust-device - Approuver un appareil
+router.post('/trust-device', async (req, res) => {
+  try {
+    const { deviceId } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const user = await EcomUser.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé ou inactif'
+      });
+    }
+
+    const device = await Device.findOne({ 
+      deviceId, 
+      userId: user._id,
+      isActive: true 
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appareil non trouvé'
+      });
+    }
+
+    device.trusted = true;
+    await device.save();
+
+    await logAudit(req, 'DEVICE_TRUSTED', `Appareil approuvé: ${device.deviceName} par ${user.email}`, 'auth', user._id);
+
+    res.json({
+      success: true,
+      message: 'Appareil approuvé avec succès',
+      data: {
+        device: {
+          id: device._id,
+          name: device.deviceName,
+          trusted: device.trusted
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur trust device:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// GET /api/ecom/auth/my-devices - Lister les appareils de l'utilisateur
+router.get('/my-devices', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const devices = await Device.find({ 
+      userId: decoded.id,
+      isActive: true 
+    }).sort({ lastUsed: -1 });
+
+    res.json({
+      success: true,
+      data: {
+        devices: devices.map(device => ({
+          id: device._id,
+          deviceId: device.deviceId,
+          name: device.deviceName,
+          type: device.deviceType,
+          platform: device.platform,
+          trusted: device.trusted,
+          lastUsed: device.lastUsed,
+          firstUsed: device.createdAt,
+          location: device.location
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Erreur get devices:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
+// DELETE /api/ecom/auth/device/:deviceId - Supprimer un appareil
+router.delete('/device/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token || !token.startsWith('ecom:')) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    
+    const device = await Device.findOne({ 
+      deviceId, 
+      userId: decoded.id,
+      isActive: true 
+    });
+
+    if (!device) {
+      return res.status(404).json({
+        success: false,
+        message: 'Appareil non trouvé'
+      });
+    }
+
+    device.isActive = false;
+    await device.save();
+
+    await logAudit(req, 'DEVICE_REMOVED', `Appareil supprimé: ${device.deviceName}`, 'auth', decoded.id);
+
+    res.json({
+      success: true,
+      message: 'Appareil supprimé avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur delete device:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
     });
   }
 });
