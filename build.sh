@@ -28,8 +28,18 @@ if [ -d "dist" ]; then
     echo "📁 Les fichiers sont dans: frontend/dist/"
     
     # Copier les fichiers build à la racine pour certains hébergeurs
+    echo "📋 Copie des fichiers à la racine..."
     cp -r dist/* ../
-    echo "📋 Fichiers copiés à la racine"
+    
+    # Copier aussi les fichiers PWA importants
+    cp -r public/icons/* ../icons/ 2>/dev/null || true
+    cp public/manifest.json ../ 2>/dev/null || true
+    cp public/sw.js ../ 2>/dev/null || true
+    cp public/browserconfig.xml ../ 2>/dev/null || true
+    
+    echo "🎯 Fichiers PWA copiés à la racine"
+    echo "📁 Structure finale:"
+    ls -la ../ | grep -E "(index\.html|assets|icons|manifest|sw\.js)"
 else
     echo "❌ Erreur: Le build a échoué"
     exit 1
