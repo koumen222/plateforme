@@ -1,5 +1,5 @@
 {
-  "name": "plateforme-formation-react",
+  "name": "plateforme-ecom",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -32,6 +32,6 @@
     "vite": "^5.4.21"
   },
   "engines": {
-    "node": ">=18 <21"
+    "node": ">=18"
   }
 }
