@@ -5,6 +5,7 @@ import { CurrencyProvider } from './contexts/CurrencyContext.jsx';
 import { useEcomAuth } from './hooks/useEcomAuth.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
+import HomePage from './pages/HomePage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import CloseuseDashboard from './pages/CloseuseDashboard.jsx';
 import ComptaDashboard from './pages/ComptaDashboard.jsx';
@@ -42,7 +43,10 @@ import Settings from './pages/Settings.jsx';
 import Data from './pages/Data.jsx';
 import Goals from './pages/Goals.jsx';
 import LivreurDashboard from './pages/LivreurDashboard.jsx';
-import EcomLandingPage from './pages/LandingPage.jsx';
+import EcomLayout from './components/EcomLayout.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import PrivacyBanner from './components/PrivacyBanner.jsx';
+import SecurityDashboard from './pages/SecurityDashboard.jsx';
 import ProductResearchList from './pages/ProductResearchList.jsx';
 import ProductFinder from './pages/ProductFinder.jsx';
 import ProductFinderEdit from './pages/ProductFinderEdit.jsx';
@@ -193,11 +197,11 @@ const EcomApp = () => {
         <div className="min-h-screen bg-gray-50">
           <ErrorBoundary>
             <Routes>
-              {/* Route racine - landing page ecom UNIQUEMENT */}
-              <Route path="/" element={<EcomLandingPage />} />
+              {/* Route racine - page d'accueil avec logique de redirection */}
+              <Route path="/" element={<HomePage />} />
               
               {/* Routes publiques (sans layout) */}
-              <Route path="/landing" element={<EcomLandingPage />} />
+              <Route path="/landing" element={<HomePage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
