@@ -64,6 +64,16 @@ const ecomUserSchema = new mongoose.Schema({
       'USD', 'EUR', 'GBP', 'CAD', 'CNY'
     ]
   },
+  deviceToken: {
+    type: String,
+    default: null
+  },
+  deviceInfo: {
+    deviceId: String,
+    userAgent: String,
+    platform: String,
+    lastSeen: Date
+  },
   createdAt: {
     type: Date,
     default: Date.now

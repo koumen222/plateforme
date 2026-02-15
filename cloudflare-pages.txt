@@ -1,4 +1,0 @@
-# Configuration pour Cloudflare Pages
-# Build command: cd frontend && npm install && npm run build && cp -r dist/* ./
-# Build output directory: ./
-# Node version: 18

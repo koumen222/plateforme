@@ -1,8 +1,43 @@
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import EcomUser from '../models/EcomUser.js';
 
 // Clé secrète pour les tokens e-commerce (différente du système principal)
 const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+
+// Fonction pour générer un identifiant d'appareil unique
+const generateDeviceId = () => {
+  return 'device_' + crypto.randomBytes(16).toString('hex');
+};
+
+// Fonction pour générer un token permanent par appareil
+export const generatePermanentToken = (user, deviceInfo) => {
+  const deviceId = generateDeviceId();
+  const permanentToken = 'perm:' + jwt.sign(
+    { 
+      id: user._id,
+      email: user.email,
+      role: user.role,
+      workspaceId: user.workspaceId,
+      deviceId: deviceId,
+      type: 'permanent'
+    },
+    ECOM_JWT_SECRET,
+    { expiresIn: '365d' } // Valide 1 an
+  );
+
+  // Sauvegarder le token et les infos de l'appareil
+  user.deviceToken = permanentToken;
+  user.deviceInfo = {
+    deviceId: deviceId,
+    userAgent: deviceInfo?.userAgent || '',
+    platform: deviceInfo?.platform || 'unknown',
+    lastSeen: new Date()
+  };
+  user.save();
+
+  return permanentToken;
+};
 
 // Middleware pour vérifier l'authentification e-commerce
 export const requireEcomAuth = async (req, res, next) => {
@@ -21,31 +56,85 @@ export const requireEcomAuth = async (req, res, next) => {
       });
     }
 
-    // Vérifier que le token est bien un token e-commerce
-    if (!token.startsWith('ecom:')) {
-      console.log(' Token invalide (ne commence pas par ecom:)');
+    let decoded;
+    let user;
+
+    // Vérifier si c'est un token permanent
+    if (token.startsWith('perm:')) {
+      console.log(' Token permanent détecté');
+      try {
+        decoded = jwt.verify(token.replace('perm:', ''), ECOM_JWT_SECRET);
+        console.log(' Token permanent décodé:', decoded);
+        
+        user = await EcomUser.findById(decoded.id).select('-password');
+        if (!user || !user.isActive) {
+          console.log(' Utilisateur non trouvé ou inactif');
+          return res.status(401).json({ 
+            success: false,
+            message: 'Utilisateur e-commerce non trouvé ou inactif' 
+          });
+        }
+
+        // Vérifier que le token permanent correspond à celui sauvegardé
+        if (user.deviceToken !== token) {
+          console.log(' Token permanent ne correspond pas à celui sauvegardé');
+          return res.status(401).json({ 
+            success: false,
+            message: 'Token permanent invalide' 
+          });
+        }
+
+        // Mettre à jour le lastSeen de l'appareil
+        if (user.deviceInfo) {
+          user.deviceInfo.lastSeen = new Date();
+          await user.save();
+        }
+
+        console.log(' Token permanent validé avec succès');
+      } catch (error) {
+        console.log(' Erreur validation token permanent:', error.message);
+        return res.status(401).json({ 
+          success: false,
+          message: 'Token permanent invalide ou expiré' 
+        });
+      }
+    }
+    // Token normal e-commerce
+    else if (token.startsWith('ecom:')) {
+      console.log(' Token e-commerce normal détecté');
+      try {
+        decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+        console.log(' Token e-commerce décodé avec succès:', decoded);
+        
+        user = await EcomUser.findById(decoded.id).select('-password');
+        console.log(' Utilisateur trouvé:', user ? user.email : 'Non trouvé');
+        
+        if (!user || !user.isActive) {
+          console.log(' Utilisateur non trouvé ou inactif');
+          return res.status(401).json({ 
+            success: false,
+            message: 'Utilisateur e-commerce non trouvé ou inactif' 
+          });
+        }
+
+        console.log(' Utilisateur authentifié avec succès');
+      } catch (error) {
+        console.log(' Erreur validation token e-commerce:', error.message);
+        return res.status(401).json({ 
+          success: false,
+          message: 'Token e-commerce invalide ou expiré' 
+        });
+      }
+    }
+    // Token invalide
+    else {
+      console.log(' Token invalide (format non reconnu)');
       return res.status(401).json({ 
         success: false,
         message: 'Token e-commerce invalide' 
       });
     }
 
-    console.log(' Token format valide, tentative de décodage...');
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
-    console.log(' Token décodé avec succès:', decoded);
-    
-    const user = await EcomUser.findById(decoded.id).select('-password');
-    console.log(' Utilisateur trouvé:', user ? user.email : 'Non trouvé');
-    
-    if (!user || !user.isActive) {
-      console.log(' Utilisateur non trouvé ou inactif');
-      return res.status(401).json({ 
-        success: false,
-        message: 'Utilisateur e-commerce non trouvé ou inactif' 
-      });
-    }
-
-    console.log(' Utilisateur authentifié avec succès');
     req.ecomUser = user;
     
     // Gestion du workspaceId pour l'incarnation
@@ -66,12 +155,6 @@ export const requireEcomAuth = async (req, res, next) => {
     next();
   } catch (error) {
     console.error(' Erreur dans requireEcomAuth:', error.message);
-    if (error.name === 'JsonWebTokenError') {
-      return res.status(401).json({ 
-        success: false,
-        message: 'Token invalide ou expiré' 
-      });
-    }
     return res.status(500).json({ 
       success: false,
       message: 'Erreur serveur authentification'
