@@ -90,6 +90,8 @@ const app = express();
 app.use(cors({
   origin: [
     "https://www.safitech.shop",
+    "https://ecomcookpit.site",
+    "https://plateformecp.pages.dev",
     "http://localhost:5173",
     "http://localhost:8081"
   ],
