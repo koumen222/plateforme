@@ -4,11 +4,13 @@ import { useEcomAuth } from '../hooks/useEcomAuth';
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useEcomAuth();
+  const { login, registerDevice } = useEcomAuth();
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showDevicePopup, setShowDevicePopup] = useState(false);
+  const [registeringDevice, setRegisteringDevice] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,12 +19,34 @@ const Login = () => {
 
     try {
       await login(formData.email, formData.password);
-      navigate('/ecom/dashboard');
+      // Afficher la popup d'enregistrement d'appareil
+      setShowDevicePopup(true);
     } catch (error) {
       setError(error.response?.data?.message || 'Erreur de connexion');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRegisterDevice = async () => {
+    setRegisteringDevice(true);
+    try {
+      await registerDevice();
+      setShowDevicePopup(false);
+      navigate('/ecom/dashboard');
+    } catch (error) {
+      console.error('Erreur enregistrement appareil:', error);
+      // Continuer vers le dashboard même si l'enregistrement échoue
+      setShowDevicePopup(false);
+      navigate('/ecom/dashboard');
+    } finally {
+      setRegisteringDevice(false);
+    }
+  };
+
+  const handleSkipDevice = () => {
+    setShowDevicePopup(false);
+    navigate('/ecom/dashboard');
   };
 
   const handleInputChange = (e) => {
@@ -191,6 +215,82 @@ const Login = () => {
           </div>
         </div>
       </div>
+
+      {/* Popup d'enregistrement d'appareil */}
+      {showDevicePopup && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-6 max-w-md w-full mx-auto shadow-2xl">
+            {/* Icon */}
+            <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+            </div>
+
+            {/* Content */}
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-semibold text-white mb-2">
+                📱 Enregistrer cet appareil ?
+              </h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Ne plus jamais vous reconnecter sur cet appareil.<br />
+                Votre session restera active même après fermeture du navigateur.
+              </p>
+            </div>
+
+            {/* Benefits */}
+            <div className="space-y-2 mb-6">
+              {[
+                { icon: '✅', text: 'Connexion automatique à chaque visite' },
+                { icon: '🔒', text: 'Session sécurisée et persistante' },
+                { icon: '⚡', text: 'Accès instantané à votre espace' }
+              ].map((benefit, i) => (
+                <div key={i} className="flex items-center gap-3 text-sm">
+                  <span className="text-green-400">{benefit.icon}</span>
+                  <span className="text-gray-300">{benefit.text}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Buttons */}
+            <div className="flex gap-3">
+              <button
+                onClick={handleSkipDevice}
+                disabled={registeringDevice}
+                className="flex-1 px-4 py-2.5 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-sm font-medium text-gray-300 transition disabled:opacity-50"
+              >
+                Plus tard
+              </button>
+              <button
+                onClick={handleRegisterDevice}
+                disabled={registeringDevice}
+                className="flex-1 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {registeringDevice ? (
+                  <>
+                    <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    📱 Enregistrer
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Note */}
+            <div className="mt-4 text-center">
+              <p className="text-xs text-gray-500">
+                Vous pourrez révoquer l'accès à tout moment depuis vos paramètres
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
