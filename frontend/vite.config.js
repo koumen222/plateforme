@@ -23,11 +23,13 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['react-icons']
+          'ui-vendor': ['react-icons', 'lucide-react'],
+          'utils': ['axios', 'papaparse', 'xlsx'],
+          'socket': ['socket.io-client', 'engine.io-client']
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1500
   },
   publicDir: 'public'
 })
