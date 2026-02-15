@@ -14,22 +14,26 @@ import {
 
 const router = express.Router();
 
-// Helper: remplacer les variables dans le template
+// Helper: remplacer les variables dans le template (priorité aux données de commande)
 function renderMessage(template, client, orderData = null) {
+  // Utiliser les données de commande si disponibles, sinon utiliser les données client
+  const orderInfo = orderData || client;
+  
   let msg = template
-    .replace(/\{firstName\}/g, client.firstName || '')
-    .replace(/\{lastName\}/g, client.lastName || '')
-    .replace(/\{fullName\}/g, [client.firstName, client.lastName].filter(Boolean).join(' '))
-    .replace(/\{phone\}/g, client.phone || '')
-    .replace(/\{city\}/g, client.city || '')
-    .replace(/\{product\}/g, (client.products || []).join(', ') || '')
-    .replace(/\{totalOrders\}/g, String(client.totalOrders || 0))
-    .replace(/\{totalSpent\}/g, String(client.totalSpent || 0))
-    .replace(/\{status\}/g, client._orderStatus || '')
-    .replace(/\{price\}/g, client._orderPrice ? String(client._orderPrice) : '')
-    .replace(/\{orderDate\}/g, client._orderDate ? new Date(client._orderDate).toLocaleDateString('fr-FR') : '')
-    .replace(/\{address\}/g, client.address || '')
-    .replace(/\{lastContact\}/g, client.lastContactAt ? new Date(client.lastContactAt).toLocaleDateString('fr-FR') : '');
+    .replace(/\{firstName\}/g, client.firstName || orderInfo.clientName?.split(' ')[0] || '')
+    .replace(/\{lastName\}/g, client.lastName || orderInfo.clientName?.split(' ').slice(1).join(' ') || '')
+    .replace(/\{fullName\}/g, client.firstName && client.lastName ? [client.firstName, client.lastName].join(' ') : (orderInfo.clientName || ''))
+    .replace(/\{phone\}/g, client.phone || orderInfo.clientPhone || '')
+    .replace(/\{city\}/g, client.city || orderInfo.city || '')
+    .replace(/\{product\}/g, (client.products || []).join(', ') || orderInfo.product || '')
+    .replace(/\{totalOrders\}/g, String(client.totalOrders || 1))
+    .replace(/\{totalSpent\}/g, String(client.totalSpent || (orderInfo.price || 0) * (orderInfo.quantity || 1)))
+    .replace(/\{status\}/g, client._orderStatus || orderInfo.status || '')
+    .replace(/\{price\}/g, client._orderPrice ? String(client._orderPrice) : String(orderInfo.price || 0))
+    .replace(/\{quantity\}/g, client._orderQuantity ? String(client._orderQuantity) : String(orderInfo.quantity || 1))
+    .replace(/\{orderDate\}/g, client._orderDate ? new Date(client._orderDate).toLocaleDateString('fr-FR') : (orderInfo.date ? new Date(orderInfo.date).toLocaleDateString('fr-FR') : ''))
+    .replace(/\{address\}/g, client.address || orderInfo.address || '')
+    .replace(/\{lastContact\}/g, client.lastContactAt ? new Date(client.lastContactAt).toLocaleDateString('fr-FR') : (orderInfo.date ? new Date(orderInfo.date).toLocaleDateString('fr-FR') : ''));
   return msg;
 }
 
@@ -220,7 +224,7 @@ router.get('/templates', requireEcomAuth, async (req, res) => {
       name: 'Promo par produit',
       type: 'promo',
       message: 'Bonjour {firstName} 🎁\n\nVous avez aimé {product} ? Nous avons des nouveautés et offres spéciales sur cette gamme !\n\nContactez-nous pour en profiter.',
-      targetFilters: { clientStatus: 'delivered' }
+      targetFilters: { orderStatus: 'delivered' }
     },
     {
       id: 'followup',
@@ -234,7 +238,7 @@ router.get('/templates', requireEcomAuth, async (req, res) => {
       name: 'Relance réachat',
       type: 'custom',
       message: 'Bonjour {firstName} 👋\n\nCela fait un moment ! Nos produits vous manquent ?\n\nNous avons de nouvelles offres qui pourraient vous intéresser. Contactez-nous !',
-      targetFilters: { clientStatus: 'delivered' }
+      targetFilters: { orderStatus: 'delivered' }
     },
     {
       id: 'relance_shipped',
@@ -254,52 +258,77 @@ router.post('/preview', requireEcomAuth, async (req, res) => {
     const tf = targetFilters || {};
     console.log('🔍 Campaign preview - targetFilters reçus:', tf);
 
-    // Check if order-based filters are used
-    const hasOrderFilters = tf.orderStatus || tf.orderCity || tf.orderAddress || tf.orderProduct || tf.orderDateFrom || tf.orderDateTo || tf.orderSourceId || tf.orderMinPrice || tf.orderMaxPrice;
-    console.log('📊 Has order filters:', hasOrderFilters);
-
-    let clients;
-
-    if (hasOrderFilters) {
-      // Order-based targeting: find orders matching filters, then map to clients
-      const orderMap = await getClientsFromOrderFilters(req.workspaceId, tf);
-      console.log('📦 Orders found:', orderMap.size, 'phones:', [...orderMap.keys()].slice(0, 5));
-
-      // Also apply client-level filters if present
-      const clientFilter = buildClientFilter(req.workspaceId, tf);
-      clientFilter.phone = { $exists: true, $ne: '' };
-
-      // If we have order filters, restrict to phones found in orders
-      if (orderMap.size > 0) {
-        clientFilter.phone = { $in: [...orderMap.keys()] };
-      } else {
-        // No orders matched -> no clients
-        console.log('❌ No orders matched filters');
-        return res.json({ success: true, data: { count: 0, clients: [] } });
+    // Si un statut de commande est sélectionné, n'afficher que ces personnes
+    if (tf.orderStatus) {
+      console.log(`📊 Filtre par statut de commande: ${tf.orderStatus}`);
+      
+      // Utiliser directement les commandes avec ce statut
+      const orderFilter = { 
+        workspaceId: req.workspaceId, 
+        status: tf.orderStatus,
+        clientPhone: { $exists: true, $ne: '' }
+      };
+      
+      // Ajouter les autres filtres de commande seulement s'ils sont présents
+      if (tf.orderCity) orderFilter.city = { $regex: tf.orderCity, $options: 'i' };
+      if (tf.orderProduct) orderFilter.product = { $regex: tf.orderProduct, $options: 'i' };
+      if (tf.orderDateFrom) orderFilter.date = { ...orderFilter.date, $gte: new Date(tf.orderDateFrom) };
+      if (tf.orderDateTo) {
+        const end = new Date(tf.orderDateTo);
+        end.setHours(23, 59, 59, 999);
+        orderFilter.date = { ...orderFilter.date, $lte: end };
       }
+      if (tf.orderSourceId) {
+        if (tf.orderSourceId === 'legacy') {
+          orderFilter.sheetRowId = { $not: /^source_/ };
+        } else {
+          orderFilter.sheetRowId = { $regex: `^source_${tf.orderSourceId}_` };
+        }
+      }
+      if (tf.orderMinPrice > 0) orderFilter.price = { ...orderFilter.price, $gte: tf.orderMinPrice };
+      if (tf.orderMaxPrice > 0) orderFilter.price = { ...orderFilter.price, $lte: tf.orderMaxPrice };
 
-      const rawClients = await Client.find(clientFilter).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').limit(500).lean();
-      console.log('👥 Raw clients found:', rawClients.length);
+      const orders = await Order.find(orderFilter)
+        .select('clientName clientPhone city address product price date status quantity')
+        .limit(500)
+        .lean();
 
-      // Enrich clients with order data for message variables
-      clients = rawClients.map(c => {
-        const od = orderMap.get(c.phone);
-        return {
-          ...c,
-          _orderStatus: od?.status || '',
-          _orderPrice: od?.price || 0,
-          _orderDate: od?.date || null,
-          _orderProduct: od?.product || ''
-        };
-      });
-    } else {
-      // Client-only targeting
-      const filter = buildClientFilter(req.workspaceId, tf);
-      filter.phone = { $exists: true, $ne: '' };
-      clients = await Client.find(filter).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').limit(500).lean();
+      console.log(`📦 Commandes trouvées pour le statut ${tf.orderStatus}: ${orders.length}`);
+
+      // Convertir les commandes en structure pour le marketing
+      const clients = orders.map(order => ({
+        firstName: order.clientName?.split(' ')[0] || '',
+        lastName: order.clientName?.split(' ').slice(1).join(' ') || '',
+        phone: order.clientPhone,
+        city: order.city || '',
+        address: order.address || '',
+        products: order.product ? [order.product] : [],
+        totalOrders: 1,
+        totalSpent: (order.price || 0) * (order.quantity || 1),
+        status: order.status || '',
+        tags: [],
+        lastContactAt: order.date || new Date(),
+        _id: order._id,
+        _orderStatus: order.status || '',
+        _orderPrice: order.price || 0,
+        _orderDate: order.date || null,
+        _orderProduct: order.product || '',
+        _orderQuantity: order.quantity || 1
+      }));
+
+      console.log(`✅ Preview: ${clients.length} personnes avec le statut ${tf.orderStatus}`);
+      return res.json({ success: true, data: { count: clients.length, clients } });
     }
 
-    console.log('✅ Final clients count:', clients.length);
+    // Si aucun statut de commande, utiliser les filtres clients (ancienne méthode)
+    const filter = buildClientFilter(req.workspaceId, tf);
+    filter.phone = { $exists: true, $ne: '' };
+    const clients = await Client.find(filter)
+      .select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt')
+      .limit(500)
+      .lean();
+
+    console.log(`✅ Preview: ${clients.length} clients (filtres clients)`);
     res.json({ success: true, data: { count: clients.length, clients } });
   } catch (error) {
     console.error('Erreur preview campaign:', error);
@@ -506,8 +535,20 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       });
     }
 
-    // Récupérer les clients ciblés - priorité aux selectedClientIds
+    // Récupérer les clients ciblés - utiliser directement les commandes si des filtres de commande sont présents
     let clients;
+    const hasOrderFilters = campaign.targetFilters && (
+      campaign.targetFilters.orderStatus || 
+      campaign.targetFilters.orderCity || 
+      campaign.targetFilters.orderAddress || 
+      campaign.targetFilters.orderProduct || 
+      campaign.targetFilters.orderDateFrom || 
+      campaign.targetFilters.orderDateTo || 
+      campaign.targetFilters.orderSourceId || 
+      campaign.targetFilters.orderMinPrice || 
+      campaign.targetFilters.orderMaxPrice
+    );
+
     if (campaign.selectedClientIds && campaign.selectedClientIds.length > 0) {
       // Utiliser les clients sélectionnés manuellement
       clients = await Client.find({
@@ -516,8 +557,33 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         phone: { $exists: true, $ne: '' }
       });
       console.log(`📋 Campagne avec ${clients.length} clients sélectionnés manuellement`);
+    } else if (hasOrderFilters) {
+      // Utiliser directement les commandes
+      const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
+      console.log(`📦 Campagne basée sur ${orderMap.size} commandes`);
+
+      // Convertir les commandes en structure compatible
+      clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
+        firstName: orderData.clientName?.split(' ')[0] || '',
+        lastName: orderData.clientName?.split(' ').slice(1).join(' ') || '',
+        phone: phone,
+        city: orderData.city || '',
+        address: orderData.address || '',
+        products: orderData.product ? [orderData.product] : [],
+        totalOrders: 1,
+        totalSpent: (orderData.price || 0) * (orderData.quantity || 1),
+        status: orderData.status || '',
+        tags: [],
+        lastContactAt: orderData.date || new Date(),
+        _id: orderData._id, // ID de la commande pour le suivi
+        _orderStatus: orderData.status || '',
+        _orderPrice: orderData.price || 0,
+        _orderDate: orderData.date || null,
+        _orderProduct: orderData.product || '',
+        _orderQuantity: orderData.quantity || 1
+      }));
     } else {
-      // Utiliser les filtres
+      // Utiliser les filtres clients (ancienne méthode)
       const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
       filter.phone = { $exists: true, $ne: '' };
       clients = await Client.find(filter);
@@ -542,7 +608,20 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     const MSG_PAUSE_MS = 5000; // Augmenté de 2s à 5s
 
     for (const client of clients) {
-      const message = renderMessage(campaign.messageTemplate, client);
+      // Utiliser les données de commande si disponibles
+      const orderData = hasOrderFilters ? {
+        clientName: `${client.firstName} ${client.lastName}`.trim(),
+        clientPhone: client.phone,
+        city: client.city,
+        address: client.address,
+        product: client._orderProduct,
+        price: client._orderPrice,
+        quantity: client._orderQuantity,
+        date: client._orderDate,
+        status: client._orderStatus
+      } : null;
+      
+      const message = renderMessage(campaign.messageTemplate, client, orderData);
       const cleanedPhone = (client.phone || '').replace(/\D/g, '');
       
       if (!cleanedPhone || cleanedPhone.length < 8) {
@@ -600,10 +679,15 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
           sent++;
           messageCount++;
           
-          // Mettre à jour le dernier contact du client
-          client.lastContactAt = new Date();
-          if (!client.tags.includes('Relancé')) client.tags.push('Relancé');
-          await client.save();
+          // Mettre à jour le dernier contact si c'est un vrai client
+          if (!hasOrderFilters) {
+            const realClient = await Client.findById(client._id);
+            if (realClient) {
+              realClient.lastContactAt = new Date();
+              if (!realClient.tags.includes('Relancé')) realClient.tags.push('Relancé');
+              await realClient.save();
+            }
+          }
           
           console.log(`✅ Message envoyé à ${client.firstName} ${client.lastName} (${cleanedPhone})`);
         } else {
