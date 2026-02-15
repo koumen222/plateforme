@@ -21,14 +21,35 @@ export default defineConfig({
     minify: 'esbuild',
     rollupOptions: {
       output: {
-        manualChunks: {
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['react-icons'],
-          'utils': ['axios', 'date-fns']
+        manualChunks: (id) => {
+          // Vendor chunks
+          if (id.includes('node_modules')) {
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router')) {
+              return 'react-vendor';
+            }
+            if (id.includes('axios') || id.includes('date-fns')) {
+              return 'utils';
+            }
+            if (id.includes('react-icons') || id.includes('lucide')) {
+              return 'icons';
+            }
+            return 'vendor';
+          }
+          
+          // App chunks
+          if (id.includes('/src/components/')) {
+            return 'components';
+          }
+          if (id.includes('/src/pages/') || id.includes('/src/screens/')) {
+            return 'pages';
+          }
+          if (id.includes('/src/services/') || id.includes('/src/contexts/')) {
+            return 'app-logic';
+          }
         }
       }
     },
-    chunkSizeWarningLimit: 1500
+    chunkSizeWarningLimit: 800
   },
   publicDir: 'public'
 })
