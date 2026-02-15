@@ -12,8 +12,24 @@
  */
 
 // Version du Service Worker (incrémenter pour forcer la mise à jour)
-const CACHE_VERSION = '1.0.0';
-const CACHE_NAME = `safitech-push-${CACHE_VERSION}`;
+const CACHE_VERSION = '2.0.0';
+const CACHE_NAME = `safitech-pwa-${CACHE_VERSION}`;
+
+// Ressources à mettre en cache pour PWA
+const STATIC_CACHE_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icons/icon-72x72.png',
+  '/icons/icon-96x96.png',
+  '/icons/icon-128x128.png',
+  '/icons/icon-144x144.png',
+  '/icons/icon-152x152.png',
+  '/icons/icon-192x192.png',
+  '/icons/icon-384x384.png',
+  '/icons/icon-512x512.png',
+  '/browserconfig.xml'
+];
 
 // ============================================
 // 1. INSTALLATION DU SERVICE WORKER
@@ -27,16 +43,13 @@ self.addEventListener('install', (event) => {
   console.log('[Service Worker] Installation...', CACHE_VERSION);
   
   // Forcer l'activation immédiate du nouveau Service Worker
-  // (skipWaiting permet d'activer sans attendre la fermeture de tous les onglets)
   self.skipWaiting();
   
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('[Service Worker] Cache ouvert:', CACHE_NAME);
-      // Vous pouvez ajouter des ressources à mettre en cache ici si nécessaire
-      return cache.addAll([
-        // Exemple : '/icon-192x192.png', '/icon-512x512.png'
-      ]);
+      // Mettre en cache les ressources statiques pour PWA
+      return cache.addAll(STATIC_CACHE_URLS);
     }).catch((error) => {
       console.error('[Service Worker] Erreur lors de l\'installation:', error);
     })
@@ -309,9 +322,78 @@ function log(message, data = null) {
 }
 
 // ============================================
-// 9. INITIALISATION
+// 10. GESTION DU CACHE PWA (MODE HORS LIGNE)
 // ============================================
 
-console.log('[Service Worker] Service Worker chargé et prêt');
+/**
+ * Intercepter les requêtes réseau pour servir depuis le cache
+ * Permet le fonctionnement hors ligne
+ */
+self.addEventListener('fetch', (event) => {
+  // Ignorer les requêtes non GET (POST, PUT, DELETE, etc.)
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Stratégie: Cache First avec fallback réseau
+  event.respondWith(
+    caches.match(event.request)
+      .then((response) => {
+        // Si trouvé dans le cache, le retourner
+        if (response) {
+          console.log('[Service Worker] Servi depuis le cache:', event.request.url);
+          return response;
+        }
+
+        // Sinon, faire la requête réseau
+        return fetch(event.request)
+          .then((response) => {
+            // Vérifier si la réponse est valide
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+
+            // Cloner la réponse pour la mettre en cache
+            const responseToCache = response.clone();
+            
+            // Mettre en cache les nouvelles ressources
+            if (STATIC_CACHE_URLS.includes(event.request.url) || 
+                event.request.url.startsWith('/icons/') ||
+                event.request.url.endsWith('.png') ||
+                event.request.url.endsWith('.jpg') ||
+                event.request.url.endsWith('.svg')) {
+              caches.open(CACHE_NAME)
+                .then((cache) => {
+                  cache.put(event.request, responseToCache);
+                  console.log('[Service Worker] Ressource mise en cache:', event.request.url);
+                });
+            }
+
+            return response;
+          })
+          .catch((error) => {
+            console.error('[Service Worker] Erreur réseau:', error);
+            
+            // Pour les requêtes de page, servir la page offline
+            if (event.request.destination === 'document') {
+              return caches.match('/index.html');
+            }
+            
+            // Pour les autres ressources, retourner une erreur
+            return new Response('Hors ligne', {
+              status: 503,
+              statusText: 'Service Unavailable'
+            });
+          });
+      })
+  );
+});
+
+// ============================================
+// 11. INITIALISATION
+// ============================================
+
+console.log('[Service Worker] Service Worker PWA chargé et prêt');
 console.log('[Service Worker] Version:', CACHE_VERSION);
 console.log('[Service Worker] Domaine:', self.location.origin);
+console.log('[Service Worker] Mode: PWA + Notifications Push');
