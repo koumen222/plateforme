@@ -23,11 +23,12 @@ export default defineConfig({
       output: {
         manualChunks: {
           'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-          'ui-vendor': ['react-icons']
+          'ui-vendor': ['react-icons'],
+          'utils': ['axios', 'date-fns']
         }
       }
     },
-    chunkSizeWarningLimit: 1000
+    chunkSizeWarningLimit: 1500
   },
   publicDir: 'public'
 })
