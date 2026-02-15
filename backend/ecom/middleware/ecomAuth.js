@@ -137,19 +137,34 @@ export const requireEcomAuth = async (req, res, next) => {
 
     req.ecomUser = user;
     
-    // Gestion du workspaceId pour l'incarnation
+    // Mode incarnation : utiliser le workspaceId des params
     if (req.query.workspaceId) {
-      // Mode incarnation : utiliser le workspaceId des params
+      // Vérifier que l'utilisateur a accès à ce workspace
+      if (!user.hasWorkspaceAccess(req.query.workspaceId)) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Accès non autorisé à ce workspace' 
+        });
+      }
       req.workspaceId = req.query.workspaceId;
-      console.log('🎭 Mode incarnation - WorkspaceId depuis params:', req.workspaceId);
+      req.ecomUserRole = user.getRoleInWorkspace(req.query.workspaceId);
+      console.log('🎭 Mode incarnation - WorkspaceId depuis params:', req.workspaceId, 'Role:', req.ecomUserRole);
     } else if (req.body && req.body.workspaceId) {
-      // Mode incarnation : utiliser le workspaceId du corps
+      // Vérifier que l'utilisateur a accès à ce workspace
+      if (!user.hasWorkspaceAccess(req.body.workspaceId)) {
+        return res.status(403).json({ 
+          success: false,
+          message: 'Accès non autorisé à ce workspace' 
+        });
+      }
       req.workspaceId = req.body.workspaceId;
-      console.log('🎭 Mode incarnation - WorkspaceId depuis body:', req.workspaceId);
+      req.ecomUserRole = user.getRoleInWorkspace(req.body.workspaceId);
+      console.log('🎭 Mode incarnation - WorkspaceId depuis body:', req.workspaceId, 'Role:', req.ecomUserRole);
     } else {
-      // Mode normal : utiliser le workspaceId de l'utilisateur
+      // Mode normal : utiliser le workspaceId principal de l'utilisateur
       req.workspaceId = user.workspaceId;
-      console.log('👤 Mode normal - WorkspaceId depuis user:', req.workspaceId);
+      req.ecomUserRole = user.getRoleInWorkspace(user.workspaceId) || user.role;
+      console.log('👤 Mode normal - WorkspaceId depuis user:', req.workspaceId, 'Role:', req.ecomUserRole);
     }
     
     next();
@@ -214,7 +229,7 @@ export const validateEcomAccess = (resource, action) => {
       });
     }
 
-    const userRole = req.ecomUser.role;
+    const userRole = req.ecomUserRole || req.ecomUser.role;
     const permission = `${resource}:${action}`;
     
     // Mode incarnation : Super Admin a accès à tout
@@ -227,7 +242,7 @@ export const validateEcomAccess = (resource, action) => {
     const accessRules = {
       'super_admin': ['admin:read', 'admin:write', '*'], // Super admin a accès à tout
       'ecom_admin': ['*'],
-      'ecom_closeuse': ['orders:read', 'orders:write', 'reports:read', 'reports:write', 'products:read'],
+      'ecom_closeuse': ['orders:read', 'orders:write', 'reports:read', 'reports:write', 'products:read', 'campaigns:read', 'campaigns:write'],
       'ecom_compta': ['finance:read', 'finance:write', 'reports:read', 'reports:write', 'products:read'],
       'ecom_livreur': ['orders:read']
     };

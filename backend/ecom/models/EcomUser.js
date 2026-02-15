@@ -39,6 +39,32 @@ const ecomUserSchema = new mongoose.Schema({
     ref: 'EcomWorkspace',
     default: null
   },
+  workspaces: [{
+    workspaceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomWorkspace',
+      required: true
+    },
+    role: {
+      type: String,
+      enum: ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'],
+      required: true
+    },
+    joinedAt: {
+      type: Date,
+      default: Date.now
+    },
+    invitedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomUser',
+      default: null
+    },
+    status: {
+      type: String,
+      enum: ['active', 'pending', 'suspended'],
+      default: 'active'
+    }
+  }],
   isActive: {
     type: Boolean,
     default: true
@@ -98,6 +124,66 @@ ecomUserSchema.pre('save', async function() {
 // Méthode de vérification du mot de passe
 ecomUserSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Méthode pour ajouter un workspace à l'utilisateur
+ecomUserSchema.methods.addWorkspace = function(workspaceId, role, invitedBy = null) {
+  // Vérifier si l'utilisateur n'est pas déjà dans ce workspace
+  const existingWorkspace = this.workspaces.find(w => 
+    w.workspaceId.toString() === workspaceId.toString()
+  );
+  
+  if (existingWorkspace) {
+    return false; // Déjà membre
+  }
+  
+  this.workspaces.push({
+    workspaceId,
+    role,
+    invitedBy,
+    joinedAt: new Date(),
+    status: 'active'
+  });
+  
+  return true;
+};
+
+// Méthode pour vérifier si l'utilisateur a accès à un workspace
+ecomUserSchema.methods.hasWorkspaceAccess = function(workspaceId) {
+  return this.workspaces.some(w => 
+    w.workspaceId.toString() === workspaceId.toString() && 
+    w.status === 'active'
+  );
+};
+
+// Méthode pour obtenir le rôle dans un workspace spécifique
+ecomUserSchema.methods.getRoleInWorkspace = function(workspaceId) {
+  const workspace = this.workspaces.find(w => 
+    w.workspaceId.toString() === workspaceId.toString() && 
+    w.status === 'active'
+  );
+  
+  return workspace ? workspace.role : null;
+};
+
+// Méthode pour obtenir tous les workspaces actifs de l'utilisateur
+ecomUserSchema.methods.getActiveWorkspaces = function() {
+  return this.workspaces.filter(w => w.status === 'active');
+};
+
+// Méthode pour quitter un workspace
+ecomUserSchema.methods.leaveWorkspace = function(workspaceId) {
+  this.workspaces = this.workspaces.filter(w => 
+    w.workspaceId.toString() !== workspaceId.toString()
+  );
+  
+  // Si c'était le workspace principal, le mettre à null
+  if (this.workspaceId && this.workspaceId.toString() === workspaceId.toString()) {
+    const remainingWorkspaces = this.getActiveWorkspaces();
+    this.workspaceId = remainingWorkspaces.length > 0 ? remainingWorkspaces[0].workspaceId : null;
+  }
+  
+  return true;
 };
 
 // Méthode pour obtenir les permissions

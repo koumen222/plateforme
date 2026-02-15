@@ -31,6 +31,7 @@ import OrdersList from './pages/OrdersList.jsx';
 import OrderDetail from './pages/OrderDetail.jsx';
 import CampaignsList from './pages/CampaignsList.jsx';
 import CampaignForm from './pages/CampaignForm.jsx';
+import AssignmentsManager from './pages/AssignmentsManager.jsx';
 import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import SuperAdminUsers from './pages/SuperAdminUsers.jsx';
 import SuperAdminWorkspaces from './pages/SuperAdminWorkspaces.jsx';
@@ -264,13 +265,16 @@ const EcomApp = () => {
               {/* Route import commandes (admin) */}
               <Route path="import" element={<LayoutRoute requiredRole="ecom_admin"><ImportOrders /></LayoutRoute>} />
               
-              {/* Routes campagnes marketing (admin) */}
-              <Route path="campaigns" element={<LayoutRoute requiredRole="ecom_admin"><CampaignsList /></LayoutRoute>} />
-              <Route path="campaigns/new" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
-              <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><CampaignForm /></LayoutRoute>} />
+              {/* Routes campagnes marketing (admin + closeuse) */}
+              <Route path="campaigns" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignsList /></LayoutRoute>} />
+              <Route path="campaigns/new" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
+              <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
               
               {/* Routes gestion utilisateurs (admin) */}
               <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
+              
+              {/* Routes gestion affectations (admin) */}
+              <Route path="assignments" element={<LayoutRoute requiredRole="ecom_admin"><AssignmentsManager /></LayoutRoute>} />
               
               {/* Route Paramètres */}
               <Route path="settings" element={<LayoutRoute><Settings /></LayoutRoute>} />

@@ -8,15 +8,14 @@ const CloseuseDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState([]);
   const [todayReports, setTodayReports] = useState([]);
-  const [formData, setFormData] = useState({
-    date: new Date().toISOString().split('T')[0],
-    productId: '',
-    ordersReceived: '',
-    ordersDelivered: '',
-    notes: ''
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [myAssignments, setMyAssignments] = useState({ orderSources: [], productAssignments: [] });
+  const [stats, setStats] = useState({
+    todayOrders: 0,
+    pendingOrders: 0,
+    deliveredToday: 0,
+    weeklyPerformance: 0
   });
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState('');
 
   useEffect(() => {
     loadDashboardData();
@@ -26,54 +25,75 @@ const CloseuseDashboard = () => {
     try {
       setLoading(true);
       
-      // Charger uniquement les produits actifs et les rapports du jour
-      const [productsRes, reportsRes] = await Promise.all([
+      const today = new Date().toISOString().split('T')[0];
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      
+      // Charger toutes les données nécessaires pour la closeuse
+      const [productsRes, reportsRes, ordersRes, assignmentsRes] = await Promise.all([
         ecomApi.get('/products?isActive=true'),
-        ecomApi.get('/reports?date=' + new Date().toISOString().split('T')[0])
+        ecomApi.get('/reports?date=' + today),
+        ecomApi.get('/orders?limit=10&sort=-createdAt'), // Commandes récentes
+        ecomApi.get('/assignments/my-assignments') // Mes affectations
       ]);
 
-      setProducts(productsRes.data.data);
       setTodayReports(reportsRes.data.data.reports || []);
+      setRecentOrders(ordersRes.data.data.orders || []);
+      setMyAssignments(assignmentsRes.data.data);
+
+      // Filtrer les produits selon les affectations
+      let filteredProducts = productsRes.data.data;
+      if (assignmentsRes.data.data.productAssignments && assignmentsRes.data.data.productAssignments.length > 0) {
+        const assignedProductIds = assignmentsRes.data.data.productAssignments.flatMap(pa => pa.productIds.map(p => p._id));
+        filteredProducts = filteredProducts.filter(product => assignedProductIds.includes(product._id));
+      }
+      setProducts(filteredProducts);
+
+      // Filtrer les commandes selon les sources assignées
+      let filteredOrders = ordersRes.data.data.orders || [];
+      if (assignmentsRes.data.data.orderSources && assignmentsRes.data.data.orderSources.length > 0) {
+        const assignedSourceIds = assignmentsRes.data.data.orderSources.map(os => os.sourceId._id);
+        filteredOrders = filteredOrders.filter(order => {
+          // Si la commande a un champ sourceId, le vérifier
+          return !order.sourceId || assignedSourceIds.includes(order.sourceId);
+        });
+      }
+      setRecentOrders(filteredOrders);
+
+      // Calculer les statistiques
+      const todayOrders = filteredOrders.filter(order => 
+        new Date(order.date).toISOString().split('T')[0] === today
+      ).length;
+
+      const pendingOrders = filteredOrders.filter(order => 
+        order.status === 'pending' || order.status === 'confirmed'
+      ).length;
+
+      const deliveredToday = reportsRes.data.data.reports?.reduce((sum, report) => 
+        sum + (report.ordersDelivered || 0), 0
+      ) || 0;
+
+      // Performance hebdomadaire
+      const weekReports = await ecomApi.get('/reports?startDate=' + weekAgo + '&endDate=' + today);
+      const weekTotal = weekReports.data.data.reports?.reduce((sum, report) => 
+        sum + (report.ordersReceived || 0), 0
+      ) || 0;
+      const weekDelivered = weekReports.data.data.reports?.reduce((sum, report) => 
+        sum + (report.ordersDelivered || 0), 0
+      ) || 0;
+      const weeklyPerformance = weekTotal > 0 ? Math.round((weekDelivered / weekTotal) * 100) : 0;
+
+      setStats({
+        todayOrders,
+        pendingOrders,
+        deliveredToday,
+        weeklyPerformance
+      });
+
     } catch (error) {
       console.error('Erreur chargement dashboard closeuse:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
-    setMessage('');
-
-    try {
-      const reportData = {
-        ...formData,
-        ordersReceived: parseInt(formData.ordersReceived),
-        ordersDelivered: parseInt(formData.ordersDelivered),
-        adSpend: 0
-      };
-
-      await ecomApi.post('/reports', reportData);
-      
-      setMessage('Rapport enregistré avec succès!');
-      setFormData({ date: formData.date, productId: '', ordersReceived: '', ordersDelivered: '', notes: '' });
-      
-      // Recharger les données
-      await loadDashboardData();
-    } catch (error) {
-      setMessage(error.response?.data?.message || 'Erreur lors de l\'enregistrement');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
   };
 
   const getStatusColor = (status) => {
@@ -98,182 +118,229 @@ const CloseuseDashboard = () => {
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-7xl mx-auto">
-        {/* Message */}
-        {message && (
-          <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-lg text-sm ${
-            message.includes('succès') ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-          }`}>
-            {message}
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-8">
-          {/* Formulaire de saisie */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Saisie des Commandes</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                {new Date().toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-              </p>
-            </div>
-            <div className="p-3 sm:p-6">
-              <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Date du rapport *
-                  </label>
-                  <input
-                    type="date"
-                    name="date"
-                    value={formData.date}
-                    onChange={handleInputChange}
-                    required
-                    max={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Produit *
-                  </label>
-                  <select
-                    name="productId"
-                    value={formData.productId}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                  >
-                    <option value="">Sélectionner un produit</option>
-                    {products.map((product) => (
-                      <option key={product._id} value={product._id}>
-                        {product.name} (Stock: {product.stock})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Commandes Reçues *
-                    </label>
-                    <input
-                      type="number"
-                      name="ordersReceived"
-                      value={formData.ordersReceived}
-                      onChange={handleInputChange}
-                      min="0"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Commandes Livrées *
-                    </label>
-                    <input
-                      type="number"
-                      name="ordersDelivered"
-                      value={formData.ordersDelivered}
-                      onChange={handleInputChange}
-                      min="0"
-                      required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                      placeholder="0"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Notes (optionnel)
-                  </label>
-                  <textarea
-                    name="notes"
-                    value={formData.notes}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                    placeholder="Observations sur la journée..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        {/* Header */}
+        <div className="mb-6">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+            Dashboard Closeuse 👩‍💼
+          </h1>
+          <p className="text-gray-600 mt-1">
+            Bienvenue {user?.name || user?.email} - Vue d'ensemble de vos commandes
+          </p>
+          
+          {/* Sources assignées */}
+          {myAssignments.orderSources && myAssignments.orderSources.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="text-sm text-gray-500">Vos sources:</span>
+              {myAssignments.orderSources.map((os) => (
+                <span
+                  key={os.sourceId._id}
+                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                  style={{ backgroundColor: os.sourceId.color + '20', color: os.sourceId.color }}
                 >
-                  {submitting ? 'Enregistrement...' : 'Enregistrer le rapport'}
-                </button>
-              </form>
+                  {os.sourceId.icon} {os.sourceId.name}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Widgets de statistiques */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Commandes du jour</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.todayOrders}</p>
+              </div>
             </div>
           </div>
 
-          {/* Produits Actifs */}
-          <div className="bg-white rounded-lg shadow">
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Produits Actifs</h3>
-              <p className="text-xs sm:text-sm text-gray-500 mt-1">
-                {products.length} produit{products.length > 1 ? 's' : ''} en cours
-              </p>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-yellow-100 rounded-full">
+                <svg className="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">En attente</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.pendingOrders}</p>
+              </div>
             </div>
-            <div className="p-3 sm:p-6">
-              <div className="space-y-3">
-                {products.map((product) => {
-                  const todayReport = todayReports.find(r => (r.productId?._id || r.productId)?.toString() === product._id?.toString());
-                  return (
-                    <div key={product._id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <Link to={`/ecom/products/${product._id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(product.status)}`}>
-                          {product.status}
-                        </span>
-                      </div>
-                      
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-gray-500">Stock:</span>
-                          <span className="ml-2 font-medium">{product.stock}</span>
-                        </div>
-                        <div>
-                          <span className="text-gray-500">Prix:</span>
-                          <span className="ml-2 font-medium">{product.sellingPrice} FCFA</span>
-                        </div>
-                      </div>
+          </div>
 
-                      {todayReport && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div>
-                              <span className="text-gray-500">Reçues:</span>
-                              <span className="ml-2 font-medium">{todayReport.ordersReceived}</span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Livrées:</span>
-                              <span className="ml-2 font-medium">{todayReport.ordersDelivered}</span>
-                            </div>
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-full">
+                <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Livrées aujourd'hui</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.deliveredToday}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow p-4">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-full">
+                <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-gray-500">Performance semaine</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.weeklyPerformance}%</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Widget Marketing */}
+          <Link to="/ecom/campaigns" className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg shadow p-4 hover:from-pink-600 hover:to-purple-700 transition-all transform hover:scale-105">
+            <div className="flex items-center text-white">
+              <div className="p-3 bg-white/20 rounded-full">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6 0 3 3 0 000 6zM13.73 21a2.765 2.765 0 00-3.46 0" />
+                </svg>
+              </div>
+              <div className="ml-4">
+                <p className="text-sm text-white/90">Marketing</p>
+                <p className="text-lg font-bold text-white">Campagnes</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Colonnes de droite */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Commandes récentes */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Commandes Récentes</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  Dernières commandes enregistrées
+                </p>
+              </div>
+              <div className="p-3 sm:p-6">
+                <div className="space-y-3">
+                  {recentOrders.slice(0, 5).map((order) => (
+                    <div key={order._id} className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 transition">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-gray-900">{order.clientName}</span>
+                            <span className="text-gray-400">•</span>
+                            <span className="text-sm text-gray-600">{order.product}</span>
                           </div>
-                          {todayReport.notes && (
-                            <p className="mt-2 text-xs text-gray-600 italic">
-                              "{todayReport.notes}"
-                            </p>
-                          )}
+                          <div className="flex items-center gap-4 mt-1">
+                            <span className="text-sm text-gray-500">{order.quantity}x</span>
+                            <span className="text-sm font-medium text-gray-900">{order.price} FCFA</span>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(order.status)}`}>
+                              {order.status}
+                            </span>
+                          </div>
                         </div>
-                      )}
-
-                      {!todayReport && (
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          <p className="text-xs text-gray-500 italic">
-                            Pas encore de rapport pour aujourd'hui
-                          </p>
-                        </div>
-                      )}
+                        <Link 
+                          to={`/ecom/orders/${order._id}`}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Voir
+                        </Link>
+                      </div>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+                
+                {recentOrders.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">
+                    Aucune commande récente
+                  </p>
+                )}
+
+                {recentOrders.length > 5 && (
+                  <div className="mt-4 text-center">
+                    <Link 
+                      to="/ecom/orders"
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      Voir toutes les commandes →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Produits Actifs */}
+            <div className="bg-white rounded-lg shadow">
+              <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900">Produits Actifs</h3>
+                <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                  {products.length} produit{products.length > 1 ? 's' : ''} en cours
+                </p>
+              </div>
+              <div className="p-3 sm:p-6">
+                <div className="space-y-3">
+                  {products.map((product) => {
+                    const todayReport = todayReports.find(r => (r.productId?._id || r.productId)?.toString() === product._id?.toString());
+                    return (
+                      <div key={product._id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <Link to={`/ecom/products/${product._id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(product.status)}`}>
+                            {product.status}
+                          </span>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-gray-500">Stock:</span>
+                            <span className="ml-2 font-medium">{product.stock}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-500">Prix:</span>
+                            <span className="ml-2 font-medium">{product.sellingPrice} FCFA</span>
+                          </div>
+                        </div>
+
+                        {todayReport && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="text-gray-500">Reçues:</span>
+                                <span className="ml-2 font-medium">{todayReport.ordersReceived}</span>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Livrées:</span>
+                                <span className="ml-2 font-medium">{todayReport.ordersDelivered}</span>
+                              </div>
+                            </div>
+                            {todayReport.notes && (
+                              <p className="mt-2 text-xs text-gray-600 italic">
+                                "{todayReport.notes}"
+                              </p>
+                            )}
+                          </div>
+                        )}
+
+                        {!todayReport && (
+                          <div className="mt-3 pt-3 border-t border-gray-100">
+                            <p className="text-xs text-gray-500 italic">
+                              Pas encore de rapport pour aujourd'hui
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>

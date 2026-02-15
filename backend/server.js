@@ -1998,6 +1998,26 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/notifications.js:', error.message);
     }
 
+    // Routes E-commerce Workspaces (Multi-workspaces)
+    try {
+      const ecomWorkspacesModule = await import("./ecom/routes/workspaces.js");
+      const ecomWorkspacesRoutes = ecomWorkspacesModule.default;
+      app.use("/api/ecom/workspaces", ecomWorkspacesRoutes);
+      console.log('✅ Routes E-commerce Workspaces chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/workspaces.js:', error.message);
+    }
+
+    // Routes E-commerce Affectations (Sources et Produits par closeuse)
+    try {
+      const ecomAssignmentsModule = await import("./ecom/routes/assignments.js");
+      const ecomAssignmentsRoutes = ecomAssignmentsModule.default;
+      app.use("/api/ecom/assignments", ecomAssignmentsRoutes);
+      console.log('✅ Routes E-commerce Assignments chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/assignments.js:', error.message);
+    }
+
     // Routes E-commerce Auto-Synchronisation
     try {
       const ecomAutoSyncModule = await import("./ecom/routes/autoSync.js");
