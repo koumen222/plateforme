@@ -1,5 +1,5 @@
 /* Styles spécifiques au module E-commerce Cockpit */
-/* Import de Tailwind CSS (déjà configuré dans le projet principal) */
+@import './tailwind-base.css';
 
 /* Variables CSS pour le thème e-commerce */
 :root {
