@@ -1,9 +1,10 @@
-# Cloudflare Pages Build Configuration
+# Cloudflare Pages Configuration
+name = "safitech-ecommerce"
+compatibility_date = "2024-02-15"
 
 [build]
-command = "cd frontend && npm install && npm run build && cp -r dist/* ../"
-cwd = "/"
-publish = "."
+command = "cd frontend && npm install && npm run build"
+pages_build_output_dir = "frontend/dist"
 
 [build.environment]
 NODE_VERSION = "18"
