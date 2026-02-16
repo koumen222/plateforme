@@ -5,7 +5,6 @@ import { CurrencyProvider } from './contexts/CurrencyContext.jsx';
 import { useEcomAuth } from './hooks/useEcomAuth.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
-import HomePage from './pages/HomePage.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
 import CloseuseDashboard from './pages/CloseuseDashboard.jsx';
 import ComptaDashboard from './pages/ComptaDashboard.jsx';
@@ -43,10 +42,7 @@ import Settings from './pages/Settings.jsx';
 import Data from './pages/Data.jsx';
 import Goals from './pages/Goals.jsx';
 import LivreurDashboard from './pages/LivreurDashboard.jsx';
-import EcomLayout from './components/EcomLayout.jsx';
-import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
-import PrivacyBanner from './components/PrivacyBanner.jsx';
-import SecurityDashboard from './pages/SecurityDashboard.jsx';
+import EcomLandingPage from './pages/LandingPage.jsx';
 import ProductResearchList from './pages/ProductResearchList.jsx';
 import ProductFinder from './pages/ProductFinder.jsx';
 import ProductFinderEdit from './pages/ProductFinderEdit.jsx';
@@ -54,6 +50,10 @@ import ImportOrders from './pages/ImportOrders.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
+import EcomLayout from './components/EcomLayout.jsx';
+import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
+import PrivacyBanner from './components/PrivacyBanner.jsx';
+import SecurityDashboard from './pages/SecurityDashboard.jsx';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -175,6 +175,51 @@ const DashboardRedirect = () => {
   return <Navigate to={dashboardPath} replace />;
 };
 
+// Composant pour gérer la route racine
+const HomeRoute = () => {
+  const { isAuthenticated, user, loading, isDeviceRegistered } = useEcomAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur est connecté, rediriger vers son dashboard
+  if (isAuthenticated && user) {
+    const roleDashboardMap = {
+      'super_admin': '/super-admin',
+      'ecom_admin': '/dashboard/admin',
+      'ecom_closeuse': '/dashboard/closeuse',
+      'ecom_compta': '/dashboard/compta',
+      'livreur': '/livreur'
+    };
+    
+    const dashboardPath = roleDashboardMap[user.role] || '/dashboard';
+    const deviceRegistered = isDeviceRegistered();
+    
+    // Si connecté ET appareil enregistré, redirection directe vers dashboard
+    if (deviceRegistered) {
+      console.log('🏠 Utilisateur connecté et appareil enregistré, redirection vers dashboard:', dashboardPath);
+      return <Navigate to={dashboardPath} replace />;
+    }
+    
+    // Si connecté mais appareil non enregistré, redirection vers dashboard aussi
+    // (l'enregistrement se fera en arrière-plan ou via le popup)
+    console.log('🏠 Utilisateur connecté, redirection vers dashboard (appareil non enregistré):', dashboardPath);
+    return <Navigate to={dashboardPath} replace />;
+  }
+
+  // Sinon, afficher la landing page
+  console.log('🏠 Utilisateur non connecté, affichage landing page');
+  return <EcomLandingPage />;
+};
+
 // Wrapper qui ajoute le layout aux routes protégées
 const LayoutRoute = ({ children, requiredRole }) => {
   return (
@@ -193,11 +238,11 @@ const EcomApp = () => {
         <div className="min-h-screen bg-gray-50">
           <ErrorBoundary>
             <Routes>
-              {/* Route racine - page d'accueil avec logique de redirection */}
-              <Route path="/" element={<HomePage />} />
+              {/* Route racine - redirection automatique selon l'état de connexion */}
+              <Route path="/" element={<HomeRoute />} />
               
               {/* Routes publiques (sans layout) */}
-              <Route path="/landing" element={<HomePage />} />
+              <Route path="/landing" element={<EcomLandingPage />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />

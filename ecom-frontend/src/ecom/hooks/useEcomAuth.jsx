@@ -481,6 +481,12 @@ export const EcomAuthProvider = ({ children }) => {
       });
 
       console.log('✅ Appareil enregistré avec succès:', response.data);
+      
+      // Sauvegarder l'état d'enregistrement de l'appareil
+      localStorage.setItem('ecomDeviceRegistered', 'true');
+      localStorage.setItem('ecomDeviceToken', response.data.deviceToken || 'registered');
+      localStorage.setItem('ecomDeviceRegisteredAt', new Date().toISOString());
+      
       return response.data;
     } catch (error) {
       console.error('❌ Erreur lors de l\'enregistrement de l\'appareil:', error);
@@ -488,32 +494,33 @@ export const EcomAuthProvider = ({ children }) => {
     }
   };
 
-  // Vérifier si l'appareil est déjà enregistré pour les notifications push
-  const checkDeviceRegistration = async () => {
-    try {
-      // Vérifier si le navigateur supporte les notifications push
-      if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.log('📱 Notifications push non supportées');
+  // Vérifier si l'appareil est déjà enregistré
+  const isDeviceRegistered = () => {
+    const deviceRegistered = localStorage.getItem('ecomDeviceRegistered') === 'true';
+    const hasDeviceToken = !!localStorage.getItem('ecomDeviceToken');
+    const registeredAt = localStorage.getItem('ecomDeviceRegisteredAt');
+    
+    // Si l'appareil a été enregistré il y a plus de 30 jours, considérer comme non enregistré
+    if (registeredAt) {
+      const registrationDate = new Date(registeredAt);
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      
+      if (registrationDate < thirtyDaysAgo) {
+        clearDeviceRegistration();
         return false;
       }
-
-      // Récupérer le service worker
-      const registration = await navigator.serviceWorker.ready;
-      
-      // Vérifier s'il y a déjà une souscription
-      const subscription = await registration.pushManager.getSubscription();
-      
-      if (subscription) {
-        console.log('✅ Appareil déjà enregistré pour les notifications');
-        return true;
-      } else {
-        console.log('📱 Appareil non enregistré pour les notifications');
-        return false;
-      }
-    } catch (error) {
-      console.log('⚠️ Impossible de vérifier l\'enregistrement de l\'appareil:', error);
-      return false;
     }
+    
+    return deviceRegistered || hasDeviceToken;
+  };
+
+  // Effacer l'enregistrement de l'appareil
+  const clearDeviceRegistration = () => {
+    localStorage.removeItem('ecomDeviceRegistered');
+    localStorage.removeItem('ecomDeviceToken');
+    localStorage.removeItem('ecomDeviceRegisteredAt');
+    console.log('🗑️ Enregistrement appareil effacé');
   };
 
   // Vérifier si l'utilisateur a un rôle spécifique
@@ -540,7 +547,8 @@ export const EcomAuthProvider = ({ children }) => {
     logout,
     register,
     registerDevice,
-    checkDeviceRegistration,
+    isDeviceRegistered,
+    clearDeviceRegistration,
     changePassword,
     changeCurrency,
     hasPermission,
