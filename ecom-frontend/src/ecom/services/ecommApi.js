@@ -238,6 +238,20 @@ export const importApi = {
   getImportDetail: (id) => ecomApi.get(`/import/history/${id}`)
 };
 
+export const pushApi = {
+  // Obtenir la clé publique VAPID
+  getVapidPublicKey: () => ecomApi.get('/push/vapid-public-key'),
+  
+  // S'abonner aux notifications push
+  subscribe: (subscription) => ecomApi.post('/push/subscribe', subscription),
+  
+  // Se désabonner
+  unsubscribe: (data) => ecomApi.delete('/push/unsubscribe', { data }),
+  
+  // Envoyer une notification de test
+  sendTest: () => ecomApi.post('/push/test')
+};
+
 export const notificationsApi = {
   getNotifications: (params = {}) => ecomApi.get('/notifications', { params }),
   getUnreadCount: () => ecomApi.get('/notifications/unread-count'),

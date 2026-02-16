@@ -215,6 +215,21 @@
   animation: slideIn 0.3s ease-out;
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slideDown 0.4s ease-out;
+}
+
 /* Scrollbar personnalisée */
 .ecom-app ::-webkit-scrollbar {
   width: 8px;

@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
 import CurrencySelector from './CurrencySelector.jsx';
 import NotificationPanel, { useNotifications } from './NotificationPanel.jsx';
+import PushNotificationBanner from './PushNotificationBanner.jsx';
+import InstallPrompt from './InstallPrompt.jsx';
 
 const EcomLayout = ({ children }) => {
   const { user, workspace, logout, isImpersonating, impersonatedUser, stopImpersonation } = useEcomAuth();
@@ -399,11 +401,17 @@ const EcomLayout = ({ children }) => {
           </div>
         </header>
 
+        {/* Push notification banner */}
+        <PushNotificationBanner />
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           {children}
         </main>
       </div>
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
 
       {/* Mobile Bottom Tab Bar */}
       <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 safe-area-bottom">

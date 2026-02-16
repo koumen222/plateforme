@@ -13,7 +13,7 @@
 
 // Version du Service Worker (incrémenter pour forcer la mise à jour)
 const CACHE_VERSION = '1.0.0';
-const CACHE_NAME = `safitech-push-${CACHE_VERSION}`;
+const CACHE_NAME = `ecom-cockpit-push-${CACHE_VERSION}`;
 
 // ============================================
 // 1. INSTALLATION DU SERVICE WORKER
@@ -91,10 +91,10 @@ self.addEventListener('push', (event) => {
   
   // Récupérer les données de la notification
   let notificationData = {
-    title: 'Notification',
+    title: 'Ecom Cockpit',
     body: 'Vous avez reçu une nouvelle notification',
-    icon: '/img/logo.svg',
-    badge: '/img/logo.svg',
+    icon: '/ecom-logo (1).png',
+    badge: '/icons/icon-72x72.png',
     tag: 'default',
     data: {
       url: '/',
@@ -144,7 +144,7 @@ self.addEventListener('push', (event) => {
       {
         action: 'open',
         title: 'Ouvrir',
-        icon: '/img/logo.svg'
+        icon: '/icons/icon-96x96.png'
       },
       {
         action: 'close',
