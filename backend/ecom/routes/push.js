@@ -1,8 +1,9 @@
-const express = require('express');
+import express from 'express';
+import Subscription from '../../models/Subscription.js';
+import { sendPushNotification } from '../../services/pushService.js';
+import { requireEcomAuth } from '../middleware/ecomAuth.js';
+
 const router = express.Router();
-const Subscription = require('../../models/Subscription');
-const { sendPushNotification } = require('../../services/pushService');
-const { requireEcomAuth } = require('../middleware/ecomAuth');
 
 /**
  * POST /api/ecom/push/subscribe - Ajouter un abonnement push
@@ -189,4 +190,4 @@ router.post('/cleanup', requireEcomAuth, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

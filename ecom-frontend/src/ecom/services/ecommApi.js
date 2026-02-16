@@ -68,7 +68,7 @@ ecomApi.interceptors.response.use(
       localStorage.removeItem('ecomUser');
       localStorage.removeItem('ecomOriginalUser');
       localStorage.removeItem('ecomImpersonatedUser');
-      window.location.href = '/ecom/login';
+      window.location.href = '/login';
     }
     
     // Gérer les erreurs réseau
@@ -106,7 +106,10 @@ export const authApi = {
   changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords),
   
   // Changer la devise
-  changeCurrency: (data) => ecomApi.put('/auth/currency', data)
+  changeCurrency: (data) => ecomApi.put('/auth/currency', data),
+  
+  // Enregistrer un appareil pour session persistante
+  registerDevice: (data) => ecomApi.post('/auth/register-device', data)
 };
 
 export const productsApi = {
@@ -233,6 +236,23 @@ export const importApi = {
 
   // Détail d'un import
   getImportDetail: (id) => ecomApi.get(`/import/history/${id}`)
+};
+
+export const pushApi = {
+  // Obtenir la clé publique VAPID (endpoint principal hors /api/ecom)
+  getVapidPublicKey: () => axios.get(`${API_BASE_URL}/api/push/public-key`).catch(() =>
+    // Fallback vers l'endpoint ecom
+    ecomApi.get('/push/vapid-public-key')
+  ),
+  
+  // S'abonner aux notifications push
+  subscribe: (subscription) => ecomApi.post('/push/subscribe', subscription),
+  
+  // Se désabonner
+  unsubscribe: (data) => ecomApi.delete('/push/unsubscribe', { data }),
+  
+  // Envoyer une notification de test
+  sendTest: () => ecomApi.post('/push/test')
 };
 
 export const notificationsApi = {
