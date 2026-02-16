@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
-import ConnectionDiagnostic from '../components/ConnectionDiagnostic';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,7 +11,6 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showDevicePopup, setShowDevicePopup] = useState(false);
   const [registeringDevice, setRegisteringDevice] = useState(false);
-  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -33,21 +31,14 @@ const Login = () => {
   const handleRegisterDevice = async () => {
     setRegisteringDevice(true);
     try {
-      // Vérifier que registerDevice est bien une fonction
-      if (typeof registerDevice !== 'function') {
-        console.error('❌ registerDevice n\'est pas une fonction');
-        throw new Error('registerDevice n\'est pas disponible');
-      }
-      
-      console.log('📱 Appel de registerDevice...');
       await registerDevice();
       setShowDevicePopup(false);
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } catch (error) {
       console.error('Erreur enregistrement appareil:', error);
       // Continuer vers le dashboard même si l'enregistrement échoue
       setShowDevicePopup(false);
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } finally {
       setRegisteringDevice(false);
     }
@@ -55,7 +46,7 @@ const Login = () => {
 
   const handleSkipDevice = () => {
     setShowDevicePopup(false);
-    navigate('/dashboard');
+    navigate('/ecom/dashboard');
   };
 
   const handleInputChange = (e) => {
@@ -188,16 +179,6 @@ const Login = () => {
               </button>
             </form>
 
-            {/* Diagnostic button */}
-            <div className="mt-4">
-              <button
-                onClick={() => setShowDiagnostic(!showDiagnostic)}
-                className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-xs font-medium text-gray-400 transition flex items-center justify-center gap-2"
-              >
-                🔍 Problèmes de connexion ?
-              </button>
-            </div>
-
             {/* Security badge */}
             <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-600">
               <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
@@ -306,26 +287,6 @@ const Login = () => {
               <p className="text-xs text-gray-500">
                 Vous pourrez révoquer l'accès à tout moment depuis vos paramètres
               </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Diagnostic Panel */}
-      {showDiagnostic && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold">🔍 Diagnostic de Connexion</h3>
-              <button
-                onClick={() => setShowDiagnostic(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-4">
-              <ConnectionDiagnostic onDiagnosticComplete={() => {}} />
             </div>
           </div>
         </div>

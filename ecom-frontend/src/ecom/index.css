@@ -1,5 +1,5 @@
 /* Styles spécifiques au module E-commerce Cockpit */
-@import './tailwind-base.css';
+/* Import de Tailwind CSS (déjà configuré dans le projet principal) */
 
 /* Variables CSS pour le thème e-commerce */
 :root {
@@ -76,61 +76,6 @@
     font-size: 16px; /* Évite le zoom sur iOS */
     padding: 12px 16px;
     border-radius: 8px;
-  }
-  
-  /* Correction des problèmes de scroll sur mobile */
-  body {
-    overflow-x: hidden;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-  
-  /* Amélioration du formulaire sur mobile */
-  @media (max-width: 768px) {
-    .min-h-screen {
-      min-height: 100vh;
-      min-height: -webkit-fill-available;
-    }
-    
-    /* Empêcher le zoom sur les inputs */
-    input[type="email"],
-    input[type="password"],
-    input[type="text"] {
-      font-size: 16px !important;
-    }
-    
-    /* Amélioration du touch sur mobile */
-    button, .btn {
-      touch-action: manipulation;
-      -webkit-tap-highlight-color: transparent;
-    }
-    
-    /* Correction du layout sur mobile */
-    .flex-col {
-      width: 100%;
-    }
-    
-    /* Espacement optimisé pour mobile */
-    .px-6 {
-      padding-left: 1rem;
-      padding-right: 1rem;
-    }
-    
-    .py-8 {
-      padding-top: 2rem;
-      padding-bottom: 2rem;
-    }
-  }
-  
-  /* Correction pour iPhone X et plus */
-  @supports (padding: max(0px)) {
-    .safe-area-inset-top {
-      padding-top: max(1rem, env(safe-area-inset-top));
-    }
-    
-    .safe-area-inset-bottom {
-      padding-bottom: max(1rem, env(safe-area-inset-bottom));
-    }
   }
   
   /* Cards optimisées pour mobile */
