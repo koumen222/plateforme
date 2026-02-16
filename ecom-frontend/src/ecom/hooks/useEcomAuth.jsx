@@ -145,12 +145,74 @@ export const EcomAuthProvider = ({ children }) => {
     localStorage.removeItem('ecomImpersonatedUser');
   };
 
+  // Générer un identifiant unique pour l'appareil
+  const generateDeviceId = () => {
+    const nav = window.navigator;
+    const screen = window.screen;
+    const fingerprint = [
+      nav.userAgent,
+      nav.language,
+      screen.width + 'x' + screen.height,
+      screen.colorDepth,
+      new Date().getTimezoneOffset()
+    ].join('|');
+    // Simple hash
+    let hash = 0;
+    for (let i = 0; i < fingerprint.length; i++) {
+      const char = fingerprint.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash |= 0;
+    }
+    return 'device_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
+  };
+
+  // Enregistrer l'appareil pour une session persistante
+  const registerDevice = async () => {
+    try {
+      let deviceId = localStorage.getItem('ecomDeviceId');
+      if (!deviceId) {
+        deviceId = generateDeviceId();
+      }
+      const deviceName = navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop';
+      
+      // Sauvegarder localement
+      localStorage.setItem('ecomDeviceId', deviceId);
+      localStorage.setItem('ecomDeviceRegistered', 'true');
+      localStorage.setItem('ecomDeviceRegisteredAt', new Date().toISOString());
+      
+      // Essayer d'enregistrer côté serveur (non bloquant)
+      try {
+        await authApi.registerDevice({ deviceId, deviceName });
+      } catch (e) {
+        console.warn('⚠️ Enregistrement serveur échoué, session locale persistante activée');
+      }
+      
+      console.log('📱 Appareil enregistré:', deviceId);
+      return { success: true, deviceId };
+    } catch (error) {
+      console.error('❌ Erreur enregistrement appareil:', error);
+      throw error;
+    }
+  };
+
+  // Vérifier si l'appareil est enregistré
+  const isDeviceRegistered = () => {
+    return localStorage.getItem('ecomDeviceRegistered') === 'true';
+  };
+
   // Charger l'utilisateur depuis le token
   const loadUser = async () => {
     const token = localStorage.getItem('ecomToken');
     console.log('🔍 Vérification du token:', token ? 'Token trouvé' : 'Pas de token');
     
     if (!token) {
+      // Si appareil enregistré mais pas de token, essayer de récupérer depuis le user stocké
+      const deviceRegistered = localStorage.getItem('ecomDeviceRegistered') === 'true';
+      const storedUser = JSON.parse(localStorage.getItem('ecomUser') || 'null');
+      if (deviceRegistered && storedUser) {
+        console.log('📱 Appareil enregistré, tentative de restauration de session...');
+        // La session a expiré côté serveur, on nettoie
+      }
       dispatch({ type: 'LOAD_USER_FAILURE' });
       return;
     }
@@ -423,6 +485,8 @@ export const EcomAuthProvider = ({ children }) => {
     login,
     logout,
     register,
+    registerDevice,
+    isDeviceRegistered,
     changePassword,
     changeCurrency,
     hasPermission,

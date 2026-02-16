@@ -186,6 +186,52 @@ const LayoutRoute = ({ children, requiredRole }) => {
   );
 };
 
+// Composant pour rediriger les utilisateurs déjà connectés depuis / vers leur dashboard
+const HomeRedirect = () => {
+  const { isAuthenticated, loading } = useEcomAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si connecté → dashboard, sinon → landing page
+  if (isAuthenticated) {
+    return <DashboardRedirect />;
+  }
+
+  return <EcomLandingPage />;
+};
+
+// Composant pour les routes publiques (login, register) — redirige si déjà connecté
+const PublicRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useEcomAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si déjà connecté, rediriger vers le dashboard
+  if (isAuthenticated) {
+    return <DashboardRedirect />;
+  }
+
+  return children;
+};
+
 const EcomApp = () => {
   return (
     <EcomAuthProvider>
@@ -193,15 +239,15 @@ const EcomApp = () => {
         <div className="min-h-screen bg-gray-50">
           <ErrorBoundary>
             <Routes>
-              {/* Route racine - landing page */}
-              <Route path="/" element={<EcomLandingPage />} />
+              {/* Route racine - redirige vers dashboard si connecté */}
+              <Route path="/" element={<HomeRedirect />} />
               
-              {/* Routes publiques (sans layout) */}
+              {/* Routes publiques (redirige vers dashboard si déjà connecté) */}
               <Route path="landing" element={<EcomLandingPage />} />
               <Route path="privacy" element={<PrivacyPolicy />} />
               <Route path="security" element={<LayoutRoute><SecurityDashboard /></LayoutRoute>} />
-              <Route path="login" element={<Login />} />
-              <Route path="register" element={<Register />} />
+              <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
+              <Route path="register" element={<PublicRoute><Register /></PublicRoute>} />
               <Route path="forgot-password" element={<ForgotPassword />} />
               <Route path="reset-password" element={<ResetPassword />} />
               <Route path="setup-admin" element={<SetupSuperAdmin />} />
