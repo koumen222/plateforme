@@ -49,11 +49,20 @@ const ConnectionDiagnostic = ({ onDiagnosticComplete }) => {
       setCurrentTest('Test de l\'API backend...');
       try {
         const startTime = Date.now();
-        const response = await ecomApi.get('/health', { timeout: 10000 });
+        // Utiliser un endpoint qui existe plutôt que /health
+        const response = await ecomApi.get('/auth/me', { timeout: 10000 });
         const endTime = Date.now();
-        addResult('API Backend', 'success', 
-          `Backend accessible (${endTime - startTime}ms)`,
-          `Status: ${response.status}\nData: ${JSON.stringify(response.data)}`);
+        
+        // Si on reçoit 401, c'est normal (non connecté) mais l'API répond
+        if (response.status === 401) {
+          addResult('API Backend', 'success', 
+            `Backend accessible (${endTime - startTime}ms)`,
+            `Status: ${response.status}\nAPI répond correctement (401 = non connecté)`);
+        } else {
+          addResult('API Backend', 'success', 
+            `Backend accessible (${endTime - startTime}ms)`,
+            `Status: ${response.status}\nData: ${JSON.stringify(response.data)}`);
+        }
       } catch (error) {
         if (error.code === 'ECONNREFUSED') {
           addResult('API Backend', 'error', 'Backend inaccessible (ECONNREFUSED)', 
@@ -62,8 +71,13 @@ const ConnectionDiagnostic = ({ onDiagnosticComplete }) => {
           addResult('API Backend', 'error', 'Erreur réseau (ERR_NETWORK)', 
             'Problème de réseau ou CORS.');
         } else if (error.response) {
-          addResult('API Backend', 'warning', 'Backend accessible mais erreur HTTP', 
-            `Status: ${error.response.status}\nMessage: ${error.response.data?.message || 'No message'}`);
+          if (error.response.status === 401) {
+            addResult('API Backend', 'success', 'Backend accessible (401 = non connecté)', 
+              'L\'API répond correctement mais nécessite une authentification.');
+          } else {
+            addResult('API Backend', 'warning', 'Backend accessible mais erreur HTTP', 
+              `Status: ${error.response.status}\nMessage: ${error.response.data?.message || 'No message'}`);
+          }
         } else {
           addResult('API Backend', 'error', 'Erreur inconnue', error.message);
         }

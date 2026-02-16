@@ -154,6 +154,9 @@ ecomApi.interceptors.response.use(
   }
 );
 
+// Exporter l'instance axios pour le diagnostic
+export { ecomApi };
+
 // Services d'API organisés par ressource
 export const authApi = {
   // Connexion
