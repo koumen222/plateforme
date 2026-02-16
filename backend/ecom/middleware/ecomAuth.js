@@ -169,7 +169,7 @@ export const validateEcomAccess = (resource, action) => {
     const permission = `${resource}:${action}`;
     
     // Mode incarnation : Super Admin a accès à tout
-    if (req.query.workspaceId && userRole === 'super_admin') {
+    if (req.user?.workspaceId && userRole === 'super_admin') {
       console.log('🎭 Mode incarnation - Super Admin accès autorisé pour:', permission);
       return next();
     }

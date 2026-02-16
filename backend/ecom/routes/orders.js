@@ -1713,7 +1713,7 @@ router.get('/settings', requireEcomAuth, validateEcomAccess('products', 'write')
     console.log('📋 GET /orders/settings - Récupération config et sources');
     console.log('👤 Utilisateur:', req.ecomUser?.email);
     console.log('🏢 WorkspaceId utilisé:', req.workspaceId);
-    console.log('🎭 Mode incarnation:', req.query.workspaceId ? 'OUI' : 'NON');
+    console.log('🎭 Mode incarnation:', req.user?.workspaceId ? 'OUI' : 'NON');
     
     let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
     console.log('📊 Settings trouvés:', settings ? 'OUI' : 'NON');

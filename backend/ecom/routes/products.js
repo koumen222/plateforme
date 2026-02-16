@@ -66,7 +66,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     console.log('👤 Utilisateur:', req.ecomUser?.email);
     console.log('🔍 Filtres:', req.query);
     console.log('🏢 WorkspaceId utilisé:', req.workspaceId);
-    console.log('🎭 Mode incarnation:', req.query.workspaceId ? 'OUI' : 'NON');
+    console.log('🎭 Mode incarnation:', req.user?.workspaceId ? 'OUI' : 'NON');
     
     const { status, isActive, search } = req.query;
     const filter = { workspaceId: req.workspaceId };

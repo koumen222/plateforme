@@ -135,7 +135,7 @@ router.post('/conversations/test', async (req, res) => {
 
 router.get('/conversations', async (req, res) => {
   try {
-    const workspaceId = req.user?.workspaceId || req.query.workspaceId;
+    const workspaceId = req.user?.workspaceId;
     const { state, active, page = 1, limit = 20 } = req.query;
 
     if (!workspaceId) {
@@ -263,7 +263,7 @@ router.post('/conversations/:id/relance', async (req, res) => {
 
 router.get('/stats', async (req, res) => {
   try {
-    const workspaceId = req.user?.workspaceId || req.query.workspaceId;
+    const workspaceId = req.user?.workspaceId;
     const { dateFrom, dateTo } = req.query;
 
     if (!workspaceId) {
@@ -281,7 +281,7 @@ router.get('/stats', async (req, res) => {
 
 router.get('/product-configs', async (req, res) => {
   try {
-    const workspaceId = req.user?.workspaceId || req.query.workspaceId;
+    const workspaceId = req.user?.workspaceId;
 
     if (!workspaceId) {
       return res.status(400).json({ error: 'workspaceId requis' });
