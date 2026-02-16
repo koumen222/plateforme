@@ -105,7 +105,7 @@ const TransactionForm = () => {
       } else {
         await ecomApi.post('/transactions', data);
       }
-      navigate('/transactions');
+      navigate('/ecom/transactions');
     } catch (e) {
       setError(e.response?.data?.message || 'Erreur lors de la sauvegarde');
     } finally {
@@ -206,7 +206,7 @@ const TransactionForm = () => {
         </div>
 
         <div className="flex justify-end space-x-4 pt-2">
-          <button type="button" onClick={() => navigate('/transactions')}
+          <button type="button" onClick={() => navigate('/ecom/transactions')}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50">
             Annuler
           </button>

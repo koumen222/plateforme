@@ -1,26 +1,8 @@
 import axios from 'axios';
 
-// Configuration simple: toujours localhost en priorité
-const getApiBaseUrl = () => {
-  // Variable d'environnement en priorité
-  const envUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL;
-  if (envUrl) {
-    console.log('🔗 Using environment URL:', envUrl);
-    return envUrl;
-  }
-
-  // Pour le développement, toujours utiliser localhost
-  const url = 'http://localhost:3000';
-  console.log('🏠 Using localhost backend:', url);
-  return url;
-
-};
-
 // Configuration de base pour l'API e-commerce
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 const ECOM_API_PREFIX = '/api/ecom';
-
-console.log('🔗 API Base URL:', API_BASE_URL);
 
 // Créer une instance axios avec configuration par défaut
 const ecomApi = axios.create({
@@ -31,14 +13,31 @@ const ecomApi = axios.create({
   }
 });
 
-// Intercepteur pour ajouter le token d'authentification
+// Intercepteur pour ajouter le token d'authentification et le workspaceId
 ecomApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ecomToken');
     if (token) {
-      // Nettoyer le token et l'envoyer proprement
-      const cleanToken = token.replace('ecom:', '');
-      config.headers.Authorization = `Bearer ${cleanToken}`;
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    // Ajouter automatiquement le workspaceId aux requêtes
+    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
+    const wsId = workspace?._id || workspace?.id;
+    
+    if (wsId) {
+      // Ajouter workspaceId aux params si c'est une requête GET
+      if (config.method === 'get' && config.params) {
+        config.params.workspaceId = wsId;
+      } else if (config.method === 'get' && !config.params) {
+        config.params = { workspaceId: wsId };
+      }
+      // Ajouter workspaceId au body si c'est une requête POST/PUT/DELETE
+      else if (['post', 'put', 'patch'].includes(config.method) && config.data) {
+        config.data.workspaceId = wsId;
+      } else if (['post', 'put', 'patch'].includes(config.method) && !config.data) {
+        config.data = { workspaceId: wsId };
+      }
     }
 
     return config;
@@ -48,36 +47,46 @@ ecomApi.interceptors.request.use(
   }
 );
 
-// Intercepteur pour gérer les erreurs
+// Intercepteur pour gérer les erreurs et logger les réponses
 ecomApi.interceptors.response.use(
   (response) => {
+    // Logger les réponses avec workspace pour le débogage
+    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
+    if (workspace && workspace._id) {
+      console.log(`✅ Réponse reçue pour ${response.config.method?.toUpperCase()} ${response.config.url} avec workspace ${workspace.name} (${workspace._id})`);
+      if (response.data && response.data.data) {
+        const dataCount = Array.isArray(response.data.data) ? response.data.data.length : Object.keys(response.data.data).length;
+        console.log(`📊 Données chargées: ${dataCount} éléments`);
+      }
+    }
     return response;
   },
   (error) => {
-    // Erreur réseau
-    if (!error.response) {
-      console.error('🔌 Erreur de connexion:', error.message);
-      return Promise.reject(error);
-    }
-
-    // Erreur 401 = token expiré
+    // Gérer l'expiration du token
     if (error.response?.status === 401) {
-      console.log('🔑 Token expiré, déconnexion...');
       localStorage.removeItem('ecomToken');
       localStorage.removeItem('ecomUser');
-      localStorage.removeItem('ecomWorkspace');
-      
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
-      }
+      localStorage.removeItem('ecomOriginalUser');
+      localStorage.removeItem('ecomImpersonatedUser');
+      window.location.href = '/ecom/login';
     }
-
-    return Promise.reject(error);
+    
+    // Gérer les erreurs réseau
+    if (!error.response) {
+      console.error('Erreur réseau:', error.message);
+      throw new Error('Impossible de contacter le serveur. Vérifiez votre connexion.');
+    }
+    
+    // Logger les erreurs avec workspace
+    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
+    if (workspace && workspace._id) {
+      console.error(`❌ Erreur pour ${error.config?.method?.toUpperCase()} ${error.config?.url} avec workspace ${workspace.name} (${workspace._id}):`, error.response?.data);
+    }
+    
+    // Propager l'erreur avec le message du serveur
+    throw error;
   }
 );
-
-// Exporter l'instance axios pour le diagnostic
-export { ecomApi };
 
 // Services d'API organisés par ressource
 export const authApi = {
@@ -97,10 +106,7 @@ export const authApi = {
   changePassword: (passwords) => ecomApi.put('/auth/change-password', passwords),
   
   // Changer la devise
-  changeCurrency: (data) => ecomApi.put('/auth/currency', data),
-  
-  // Enregistrer un appareil pour les notifications push
-  registerDevice: (deviceData) => ecomApi.post('/auth/register-device', deviceData)
+  changeCurrency: (data) => ecomApi.put('/auth/currency', data)
 };
 
 export const productsApi = {
