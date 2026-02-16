@@ -32,6 +32,7 @@ import OrderDetail from './pages/OrderDetail.jsx';
 import CampaignsList from './pages/CampaignsList.jsx';
 import CampaignForm from './pages/CampaignForm.jsx';
 import AssignmentsManager from './pages/AssignmentsManager.jsx';
+import CloseuseProduits from './pages/CloseuseProduits.jsx';
 import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import SuperAdminUsers from './pages/SuperAdminUsers.jsx';
 import SuperAdminWorkspaces from './pages/SuperAdminWorkspaces.jsx';
@@ -275,6 +276,9 @@ const EcomApp = () => {
               
               {/* Routes gestion affectations (admin) */}
               <Route path="assignments" element={<LayoutRoute requiredRole="ecom_admin"><AssignmentsManager /></LayoutRoute>} />
+              
+              {/* Route produits affectés (closeuse) */}
+              <Route path="assignments/produits" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseProduits /></LayoutRoute>} />
               
               {/* Route Paramètres */}
               <Route path="settings" element={<LayoutRoute><Settings /></LayoutRoute>} />
