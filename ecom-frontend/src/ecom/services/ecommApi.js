@@ -10,7 +10,7 @@ const getApiBaseUrl = () => {
   }
 
   // Pour le développement, toujours utiliser localhost
-  const url = 'http://localhost:5000';
+  const url = 'http://localhost:3000';
   console.log('🏠 Using localhost backend:', url);
   return url;
 
@@ -36,7 +36,9 @@ ecomApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ecomToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Nettoyer le token et l'envoyer proprement
+      const cleanToken = token.replace('ecom:', '');
+      config.headers.Authorization = `Bearer ${cleanToken}`;
     }
 
     return config;

@@ -43,10 +43,22 @@ export const generatePermanentToken = (user, deviceInfo) => {
 export const requireEcomAuth = async (req, res, next) => {
   try {
     console.log(' Middleware requireEcomAuth appelé');
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.header('Authorization');
+    
+    if (!authHeader) {
+      console.log(' Token manquant');
+      return res.status(401).json({ 
+        success: false,
+        message: 'Token manquant' 
+      });
+    }
+
+    // Extraire le token proprement (Bearer ecom:xxx ou ecom:xxx)
+    const token = authHeader.startsWith('Bearer ') 
+      ? authHeader.replace('Bearer ', '').replace('ecom:', '')
+      : authHeader.replace('ecom:', '');
+    
     console.log(' Token reçu:', token ? 'Token présent' : 'Token manquant');
-    console.log('🔍 Params de la requête:', req.query);
-    console.log('🔍 URL complète:', req.originalUrl);
     
     if (!token) {
       console.log(' Token manquant');
@@ -59,113 +71,37 @@ export const requireEcomAuth = async (req, res, next) => {
     let decoded;
     let user;
 
-    // Vérifier si c'est un token permanent
-    if (token.startsWith('perm:')) {
-      console.log(' Token permanent détecté');
-      try {
-        decoded = jwt.verify(token.replace('perm:', ''), ECOM_JWT_SECRET);
-        console.log(' Token permanent décodé:', decoded);
-        
-        user = await EcomUser.findById(decoded.id).select('-password');
-        if (!user || !user.isActive) {
-          console.log(' Utilisateur non trouvé ou inactif');
-          return res.status(401).json({ 
-            success: false,
-            message: 'Utilisateur e-commerce non trouvé ou inactif' 
-          });
-        }
-
-        // Vérifier que le token permanent correspond à celui sauvegardé
-        if (user.deviceToken !== token) {
-          console.log(' Token permanent ne correspond pas à celui sauvegardé');
-          return res.status(401).json({ 
-            success: false,
-            message: 'Token permanent invalide' 
-          });
-        }
-
-        // Mettre à jour le lastSeen de l'appareil
-        if (user.deviceInfo) {
-          user.deviceInfo.lastSeen = new Date();
-          await user.save();
-        }
-
-        console.log(' Token permanent validé avec succès');
-      } catch (error) {
-        console.log(' Erreur validation token permanent:', error.message);
+    try {
+      decoded = jwt.verify(token, ECOM_JWT_SECRET);
+      console.log(' Token décodé avec succès:', decoded);
+      
+      user = await EcomUser.findById(decoded.id).select('-password');
+      console.log(' Utilisateur trouvé:', user ? user.email : 'Non trouvé');
+      
+      if (!user || !user.isActive) {
+        console.log(' Utilisateur non trouvé ou inactif');
         return res.status(401).json({ 
           success: false,
-          message: 'Token permanent invalide ou expiré' 
+          message: 'Utilisateur e-commerce non trouvé ou inactif' 
         });
       }
-    }
-    // Token normal e-commerce
-    else if (token.startsWith('ecom:')) {
-      console.log(' Token e-commerce normal détecté');
-      try {
-        decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
-        console.log(' Token e-commerce décodé avec succès:', decoded);
-        
-        user = await EcomUser.findById(decoded.id).select('-password');
-        console.log(' Utilisateur trouvé:', user ? user.email : 'Non trouvé');
-        
-        if (!user || !user.isActive) {
-          console.log(' Utilisateur non trouvé ou inactif');
-          return res.status(401).json({ 
-            success: false,
-            message: 'Utilisateur e-commerce non trouvé ou inactif' 
-          });
-        }
 
-        console.log(' Utilisateur authentifié avec succès');
-      } catch (error) {
-        console.log(' Erreur validation token e-commerce:', error.message);
-        return res.status(401).json({ 
-          success: false,
-          message: 'Token e-commerce invalide ou expiré' 
-        });
-      }
-    }
-    // Token invalide
-    else {
-      console.log(' Token invalide (format non reconnu)');
+      console.log(' Utilisateur authentifié avec succès');
+    } catch (error) {
+      console.log(' Erreur validation token:', error.message);
       return res.status(401).json({ 
         success: false,
-        message: 'Token e-commerce invalide' 
+        message: 'Token e-commerce invalide ou expiré' 
       });
     }
 
-    req.ecomUser = user;
+    // Assigner l'utilisateur et le workspace à la requête
+    req.user = decoded; // Données du token (id, email, role, workspaceId)
+    req.ecomUser = user;  // Complète de la base de données
+    req.workspaceId = decoded.workspaceId; // Utiliser workspaceId du token
+    req.ecomUserRole = user.getRoleInWorkspace(decoded.workspaceId) || user.role;
     
-    // Mode incarnation : utiliser le workspaceId des params
-    if (req.query.workspaceId) {
-      // Vérifier que l'utilisateur a accès à ce workspace
-      if (!user.hasWorkspaceAccess(req.query.workspaceId)) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Accès non autorisé à ce workspace' 
-        });
-      }
-      req.workspaceId = req.query.workspaceId;
-      req.ecomUserRole = user.getRoleInWorkspace(req.query.workspaceId);
-      console.log('🎭 Mode incarnation - WorkspaceId depuis params:', req.workspaceId, 'Role:', req.ecomUserRole);
-    } else if (req.body && req.body.workspaceId) {
-      // Vérifier que l'utilisateur a accès à ce workspace
-      if (!user.hasWorkspaceAccess(req.body.workspaceId)) {
-        return res.status(403).json({ 
-          success: false,
-          message: 'Accès non autorisé à ce workspace' 
-        });
-      }
-      req.workspaceId = req.body.workspaceId;
-      req.ecomUserRole = user.getRoleInWorkspace(req.body.workspaceId);
-      console.log('🎭 Mode incarnation - WorkspaceId depuis body:', req.workspaceId, 'Role:', req.ecomUserRole);
-    } else {
-      // Mode normal : utiliser le workspaceId principal de l'utilisateur
-      req.workspaceId = user.workspaceId;
-      req.ecomUserRole = user.getRoleInWorkspace(user.workspaceId) || user.role;
-      console.log('👤 Mode normal - WorkspaceId depuis user:', req.workspaceId, 'Role:', req.ecomUserRole);
-    }
+    console.log('👤 Utilisateur authentifié - WorkspaceId:', req.workspaceId, 'Role:', req.ecomUserRole);
     
     next();
   } catch (error) {
