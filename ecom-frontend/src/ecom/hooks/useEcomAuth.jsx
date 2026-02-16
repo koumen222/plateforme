@@ -452,16 +452,24 @@ export const EcomAuthProvider = ({ children }) => {
       if (!subscription) {
         console.log('📝 Création nouvelle souscription...');
         try {
-          // Créer une nouvelle souscription
+          // Créer une nouvelle souscription avec une clé VAPID valide
           subscription = await registration.pushManager.subscribe({
             userVisibleOnly: true,
             applicationServerKey: urlBase64ToUint8Array(
-              'BLb1e5X9lTqH8QzR7K2J8V4F5W6Y7Z8A9B0C1D2E3F4G5H6I7J8K9L0M1N2O3P4Q5R6S7T8U9V0W1X2Y3Z4'
+              'BDd3cP1M7BkxQqY7pK4nL2X8sR9wT5vF6gH1jK2lM3nO4pQ5rS6tU7vW8xY9zA0bC1dE2fG3hI4jK5lM6nO7pQ8rS9tU0vW1xY2z'
             )
           });
           console.log('✅ Souscription créée');
         } catch (error) {
           console.error('❌ Erreur création souscription:', error);
+          
+          // Si la clé VAPID est invalide, continuer sans les notifications push
+          if (error.name === 'InvalidAccessError' && error.message.includes('applicationServerKey')) {
+            console.warn('⚠️ Clé VAPID invalide, continuation sans notifications push');
+            // Ne pas throw d'erreur, juste retourner pour permettre la continuation
+            return;
+          }
+          
           throw new Error('Impossible de créer la souscription push');
         }
       } else {

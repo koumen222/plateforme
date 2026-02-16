@@ -163,8 +163,24 @@ ecomApi.interceptors.response.use(
         } else if (error.response.status === 404) {
           alert('🔍 Page non trouvée\n\nLa ressource demandée n\'existe pas.');
         } else if (error.response.status === 403) {
-          alert('🚫 Accès refusé\n\nVous n\'avez pas les permissions nécessaires.');
+          const message = error.response.data?.message || 'Permissions insuffisantes';
+          alert('🚫 Accès refusé\n\n' + message + '\n\nVérifiez vos permissions ou contactez un administrateur.');
+        } else if (error.response.status === 401) {
+          alert('🔐 Session expirée\n\nVotre session a expiré. Veuillez vous reconnecter.');
         }
+      }
+      
+      // Pour les erreurs 403, logger des informations utiles pour le débogage
+      if (error.response.status === 403) {
+        const token = localStorage.getItem('ecomToken');
+        const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
+        console.error('🔍 Debug 403:', {
+          hasToken: !!token,
+          tokenPreview: token ? token.substring(0, 50) + '...' : 'none',
+          workspace: workspace ? { id: workspace._id, name: workspace.name } : 'none',
+          url: error.config?.url,
+          method: error.config?.method?.toUpperCase()
+        });
       }
     }
 
