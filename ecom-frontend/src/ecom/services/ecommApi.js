@@ -1,42 +1,19 @@
 import axios from 'axios';
 
-// Détection automatique de l'environnement
+// Configuration simple: toujours localhost en priorité
 const getApiBaseUrl = () => {
-  // En priorité: variable d'environnement
+  // Variable d'environnement en priorité
   const envUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL;
   if (envUrl) {
     console.log('🔗 Using environment URL:', envUrl);
     return envUrl;
   }
 
-  // Détection automatique selon l'environnement
-  const isLocalhost = window.location.hostname === 'localhost' || 
-                     window.location.hostname === '127.0.0.1' ||
-                     window.location.hostname.includes('192.168.') ||
-                     window.location.hostname.includes('10.') ||
-                     window.location.hostname.includes('172.');
-  
-  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  
-  // Forcer Railway en production pour éviter les problèmes de cache
-  const isProduction = !isLocalhost && !window.location.hostname.includes('localhost');
-  
-  if (isLocalhost && !isMobile) {
-    // Développement local sur desktop
-    const url = 'http://localhost:3000';
-    console.log('🏠 Local development URL:', url);
-    return url;
-  } else if (isLocalhost && isMobile) {
-    // Développement local sur mobile (connecté au même réseau)
-    const url = 'http://192.168.1.100:3000'; // À adapter selon votre IP locale
-    console.log('📱 Mobile local development URL:', url);
-    return url;
-  } else {
-    // Production ou mobile externe - FORCER Railway
-    const url = 'https://plateforme-backend-production-2ec6.up.railway.app';
-    console.log('🌐 Production URL (Railway):', url);
-    return url;
-  }
+  // Pour le développement, toujours utiliser localhost
+  const url = 'http://localhost:5000';
+  console.log('🏠 Using localhost backend:', url);
+  return url;
+
 };
 
 // Configuration de base pour l'API e-commerce
@@ -45,48 +22,21 @@ const ECOM_API_PREFIX = '/api/ecom';
 
 console.log('🔗 API Base URL:', API_BASE_URL);
 
-// Déterminer l'URL finale avec fallback vers Railway si nécessaire
-let finalApiUrl = API_BASE_URL;
-if (API_BASE_URL.includes('render.com')) {
-  console.warn('⚠️ Ancienne URL Render détectée, basculement vers Railway...');
-  finalApiUrl = 'https://plateforme-backend-production-2ec6.up.railway.app';
-  console.log('🔗 Corrected API URL:', finalApiUrl);
-}
-
 // Créer une instance axios avec configuration par défaut
 const ecomApi = axios.create({
-  baseURL: `${finalApiUrl}${ECOM_API_PREFIX}`,
+  baseURL: `${API_BASE_URL}${ECOM_API_PREFIX}`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// Intercepteur pour ajouter le token d'authentification et le workspaceId
+// Intercepteur pour ajouter le token d'authentification
 ecomApi.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('ecomToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    // Ajouter automatiquement le workspaceId aux requêtes
-    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-    const wsId = workspace?._id || workspace?.id;
-    
-    if (wsId) {
-      // Ajouter workspaceId aux params si c'est une requête GET
-      if (config.method === 'get' && config.params) {
-        config.params.workspaceId = wsId;
-      } else if (config.method === 'get' && !config.params) {
-        config.params = { workspaceId: wsId };
-      }
-      // Ajouter workspaceId au body si c'est une requête POST/PUT/DELETE
-      else if (['post', 'put', 'patch'].includes(config.method) && config.data) {
-        config.data.workspaceId = wsId;
-      } else if (['post', 'put', 'patch'].includes(config.method) && !config.data) {
-        config.data = { workspaceId: wsId };
-      }
     }
 
     return config;
@@ -96,117 +46,27 @@ ecomApi.interceptors.request.use(
   }
 );
 
-// Intercepteur pour gérer les erreurs et logger les réponses
+// Intercepteur pour gérer les erreurs
 ecomApi.interceptors.response.use(
   (response) => {
-    // Logger les réponses avec workspace pour le débogage
-    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-    if (workspace && workspace._id) {
-      console.log(`✅ Réponse reçue pour ${response.config.method?.toUpperCase()} ${response.config.url} avec workspace ${workspace.name} (${workspace._id})`);
-      if (response.data && response.data.data) {
-        const dataCount = Array.isArray(response.data.data) ? response.data.data.length : Object.keys(response.data.data).length;
-        console.log(`📊 Données chargées: ${dataCount} éléments`);
-      }
-    }
     return response;
   },
   (error) => {
-    // Gérer les erreurs de connexion
+    // Erreur réseau
     if (!error.response) {
-      // Erreur réseau ou connexion impossible
-      console.error('🔌 Erreur de connexion au backend:', error.message);
-      
-      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        console.error('❌ Backend inaccessible. Vérifiez:');
-        console.error('   1. Que le backend est démarré');
-        console.error('   2. L\'URL de l\'API:', API_BASE_URL);
-        console.error('   3. Votre connexion réseau');
-        
-        // Message utilisateur pour mobile
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-          alert('🔌 Problème de connexion\n\nLe backend est inaccessible.\n\nVérifiez:\n• Votre connexion internet\n• Que le backend est en ligne\n• L\'adresse du serveur\n\nURL: ' + API_BASE_URL);
-        }
-      } else if (error.code === 'ERR_NETWORK' || error.message.includes('ERR_NETWORK')) {
-        console.error('🌐 Erreur réseau. Vérifiez votre connexion WiFi/4G');
-        
-        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-          alert('🌐 Erreur réseau\n\nVérifiez votre connexion internet (WiFi/4G/5G).\n\nURL: ' + API_BASE_URL);
-        }
-      }
-      
-      return Promise.reject(new Error('Erreur de connexion au backend'));
+      console.error('🔌 Erreur de connexion:', error.message);
+      return Promise.reject(error);
     }
 
-    // Gérer l'expiration du token
+    // Erreur 401 = token expiré
     if (error.response?.status === 401) {
       console.log('🔑 Token expiré, déconnexion...');
       localStorage.removeItem('ecomToken');
       localStorage.removeItem('ecomUser');
       localStorage.removeItem('ecomWorkspace');
       
-      // Rediriger vers login si on n'y est pas déjà
       if (window.location.pathname !== '/login') {
         window.location.href = '/login';
-      }
-      
-      return Promise.reject(error);
-    }
-
-    // Gérer les autres erreurs HTTP
-    if (error.response) {
-      console.error(`❌ Erreur HTTP ${error.response.status}:`, error.response.data);
-      
-      // Messages spécifiques pour mobile
-      if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
-        if (error.response.status >= 500) {
-          alert('🔴 Erreur serveur\n\nLe backend rencontre un problème technique.\nRéessayez plus tard.');
-        } else if (error.response.status === 404) {
-          alert('🔍 Page non trouvée\n\nLa ressource demandée n\'existe pas.');
-        } else if (error.response.status === 403) {
-          const message = error.response.data?.message || 'Permissions insuffisantes';
-          
-          // Si c'est un problème d'accès au workspace, offrir des options
-          if (message.includes('workspace') || message.includes('Accès non autorisé')) {
-            const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-            const workspaceName = workspace?.name || 'ce workspace';
-            
-            const userAction = confirm(
-              '🚫 Accès refusé\n\n' + message + 
-              '\n\nWorkspace: ' + workspaceName +
-              '\n\nOptions:\n• OK pour réessayer\n• Annuler pour recharger la page'
-            );
-            
-            if (userAction === false) {
-              // Recharger la page pour réinitialiser la session
-              window.location.reload();
-            }
-          } else {
-            alert('🚫 Accès refusé\n\n' + message + '\n\nVérifiez vos permissions ou contactez un administrateur.');
-          }
-        } else if (error.response.status === 401) {
-          alert('🔐 Session expirée\n\nVotre session a expiré. Veuillez vous reconnecter.');
-        }
-      }
-      
-      // Pour les erreurs 403, logger des informations utiles pour le débogage
-      if (error.response.status === 403) {
-        const token = localStorage.getItem('ecomToken');
-        const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-        console.error('🔍 Debug 403:', {
-          hasToken: !!token,
-          tokenPreview: token ? token.substring(0, 50) + '...' : 'none',
-          workspace: workspace ? { id: workspace._id, name: workspace.name } : 'none',
-          url: error.config?.url,
-          method: error.config?.method?.toUpperCase()
-        });
-        
-        // Si c'est une erreur d'accès au workspace, nettoyer les données invalides
-        const message = error.response.data?.message || '';
-        if (message.includes('workspace') || message.includes('Accès non autorisé')) {
-          console.warn('🧹 Nettoyage des données de workspace invalides...');
-          // Optionnel: nettoyer le workspace pour forcer une re-sélection
-          // localStorage.removeItem('ecomWorkspace');
-        }
       }
     }
 
