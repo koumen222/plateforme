@@ -164,7 +164,25 @@ ecomApi.interceptors.response.use(
           alert('🔍 Page non trouvée\n\nLa ressource demandée n\'existe pas.');
         } else if (error.response.status === 403) {
           const message = error.response.data?.message || 'Permissions insuffisantes';
-          alert('🚫 Accès refusé\n\n' + message + '\n\nVérifiez vos permissions ou contactez un administrateur.');
+          
+          // Si c'est un problème d'accès au workspace, offrir des options
+          if (message.includes('workspace') || message.includes('Accès non autorisé')) {
+            const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
+            const workspaceName = workspace?.name || 'ce workspace';
+            
+            const userAction = confirm(
+              '🚫 Accès refusé\n\n' + message + 
+              '\n\nWorkspace: ' + workspaceName +
+              '\n\nOptions:\n• OK pour réessayer\n• Annuler pour recharger la page'
+            );
+            
+            if (userAction === false) {
+              // Recharger la page pour réinitialiser la session
+              window.location.reload();
+            }
+          } else {
+            alert('🚫 Accès refusé\n\n' + message + '\n\nVérifiez vos permissions ou contactez un administrateur.');
+          }
         } else if (error.response.status === 401) {
           alert('🔐 Session expirée\n\nVotre session a expiré. Veuillez vous reconnecter.');
         }
@@ -181,6 +199,14 @@ ecomApi.interceptors.response.use(
           url: error.config?.url,
           method: error.config?.method?.toUpperCase()
         });
+        
+        // Si c'est une erreur d'accès au workspace, nettoyer les données invalides
+        const message = error.response.data?.message || '';
+        if (message.includes('workspace') || message.includes('Accès non autorisé')) {
+          console.warn('🧹 Nettoyage des données de workspace invalides...');
+          // Optionnel: nettoyer le workspace pour forcer une re-sélection
+          // localStorage.removeItem('ecomWorkspace');
+        }
       }
     }
 
