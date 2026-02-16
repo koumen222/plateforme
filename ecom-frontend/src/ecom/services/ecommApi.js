@@ -1,8 +1,39 @@
 import axios from 'axios';
 
+// Détection automatique de l'environnement
+const getApiBaseUrl = () => {
+  // En priorité: variable d'environnement
+  const envUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL;
+  if (envUrl) {
+    return envUrl;
+  }
+
+  // Détection automatique selon l'environnement
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1' ||
+                     window.location.hostname.includes('192.168.') ||
+                     window.location.hostname.includes('10.') ||
+                     window.location.hostname.includes('172.');
+  
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  
+  if (isLocalhost && !isMobile) {
+    // Développement local sur desktop
+    return 'http://localhost:3000';
+  } else if (isLocalhost && isMobile) {
+    // Développement local sur mobile (connecté au même réseau)
+    return 'http://192.168.1.100:3000'; // À adapter selon votre IP locale
+  } else {
+    // Production ou mobile externe
+    return 'https://plateforme-backend.onrender.com';
+  }
+};
+
 // Configuration de base pour l'API e-commerce
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = getApiBaseUrl();
 const ECOM_API_PREFIX = '/api/ecom';
+
+console.log('🔗 API Base URL:', API_BASE_URL);
 
 // Créer une instance axios avec configuration par défaut
 const ecomApi = axios.create({
@@ -62,29 +93,64 @@ ecomApi.interceptors.response.use(
     return response;
   },
   (error) => {
+    // Gérer les erreurs de connexion
+    if (!error.response) {
+      // Erreur réseau ou connexion impossible
+      console.error('🔌 Erreur de connexion au backend:', error.message);
+      
+      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+        console.error('❌ Backend inaccessible. Vérifiez:');
+        console.error('   1. Que le backend est démarré');
+        console.error('   2. L\'URL de l\'API:', API_BASE_URL);
+        console.error('   3. Votre connexion réseau');
+        
+        // Message utilisateur pour mobile
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          alert('🔌 Problème de connexion\n\nLe backend est inaccessible.\n\nVérifiez:\n• Votre connexion internet\n• Que le backend est en ligne\n• L\'adresse du serveur\n\nURL: ' + API_BASE_URL);
+        }
+      } else if (error.code === 'ERR_NETWORK' || error.message.includes('ERR_NETWORK')) {
+        console.error('🌐 Erreur réseau. Vérifiez votre connexion WiFi/4G');
+        
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+          alert('🌐 Erreur réseau\n\nVérifiez votre connexion internet (WiFi/4G/5G).\n\nURL: ' + API_BASE_URL);
+        }
+      }
+      
+      return Promise.reject(new Error('Erreur de connexion au backend'));
+    }
+
     // Gérer l'expiration du token
     if (error.response?.status === 401) {
+      console.log('🔑 Token expiré, déconnexion...');
       localStorage.removeItem('ecomToken');
       localStorage.removeItem('ecomUser');
-      localStorage.removeItem('ecomOriginalUser');
-      localStorage.removeItem('ecomImpersonatedUser');
-      window.location.href = '/login';
+      localStorage.removeItem('ecomWorkspace');
+      
+      // Rediriger vers login si on n'y est pas déjà
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
+      
+      return Promise.reject(error);
     }
-    
-    // Gérer les erreurs réseau
-    if (!error.response) {
-      console.error('Erreur réseau:', error.message);
-      throw new Error('Impossible de contacter le serveur. Vérifiez votre connexion.');
+
+    // Gérer les autres erreurs HTTP
+    if (error.response) {
+      console.error(`❌ Erreur HTTP ${error.response.status}:`, error.response.data);
+      
+      // Messages spécifiques pour mobile
+      if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+        if (error.response.status >= 500) {
+          alert('🔴 Erreur serveur\n\nLe backend rencontre un problème technique.\nRéessayez plus tard.');
+        } else if (error.response.status === 404) {
+          alert('🔍 Page non trouvée\n\nLa ressource demandée n\'existe pas.');
+        } else if (error.response.status === 403) {
+          alert('🚫 Accès refusé\n\nVous n\'avez pas les permissions nécessaires.');
+        }
+      }
     }
-    
-    // Logger les erreurs avec workspace
-    const workspace = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
-    if (workspace && workspace._id) {
-      console.error(`❌ Erreur pour ${error.config?.method?.toUpperCase()} ${error.config?.url} avec workspace ${workspace.name} (${workspace._id}):`, error.response?.data);
-    }
-    
-    // Propager l'erreur avec le message du serveur
-    throw error;
+
+    return Promise.reject(error);
   }
 );
 

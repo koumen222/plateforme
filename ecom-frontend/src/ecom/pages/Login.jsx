@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEcomAuth } from '../hooks/useEcomAuth';
+import ConnectionDiagnostic from '../components/ConnectionDiagnostic';
 
 const Login = () => {
   const navigate = useNavigate();
@@ -11,6 +12,7 @@ const Login = () => {
   const [error, setError] = useState('');
   const [showDevicePopup, setShowDevicePopup] = useState(false);
   const [registeringDevice, setRegisteringDevice] = useState(false);
+  const [showDiagnostic, setShowDiagnostic] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -70,7 +72,7 @@ const Login = () => {
           <div className="absolute bottom-20 left-10 w-72 h-72 bg-purple-600/15 rounded-full blur-[100px]"></div>
         </div>
         <div className="relative">
-          <button onClick={() => navigate('/')} className="group">
+          <button onClick={() => navigate('/ecom')} className="group">
             <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-16 object-contain group-hover:opacity-80 transition" />
           </button>
         </div>
@@ -103,7 +105,7 @@ const Login = () => {
           <span className="text-gray-700">•</span>
           <span className="text-xs text-gray-500">Chiffrement AES-256</span>
           <span className="text-gray-700">•</span>
-          <button onClick={() => navigate('/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition underline underline-offset-2">
+          <button onClick={() => navigate('/ecom/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition underline underline-offset-2">
             Confidentialité
           </button>
         </div>
@@ -114,7 +116,7 @@ const Login = () => {
         <div className="w-full max-w-md mx-auto">
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-8">
-            <button onClick={() => navigate('/')} className="inline-block mb-4">
+            <button onClick={() => navigate('/ecom')} className="inline-block mb-4">
               <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-12 object-contain" />
             </button>
           </div>
@@ -161,7 +163,7 @@ const Login = () => {
                   </button>
                 </div>
                 <div className="flex justify-end mt-1.5">
-                  <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition">
+                  <button type="button" onClick={() => navigate('/ecom/forgot-password')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition">
                     Mot de passe oublié ?
                   </button>
                 </div>
@@ -186,6 +188,16 @@ const Login = () => {
               </button>
             </form>
 
+            {/* Diagnostic button */}
+            <div className="mt-4">
+              <button
+                onClick={() => setShowDiagnostic(!showDiagnostic)}
+                className="w-full px-4 py-2 bg-gray-800 hover:bg-gray-700 border border-gray-700 rounded-xl text-xs font-medium text-gray-400 transition flex items-center justify-center gap-2"
+              >
+                🔍 Problèmes de connexion ?
+              </button>
+            </div>
+
             {/* Security badge */}
             <div className="mt-4 flex items-center justify-center gap-2 text-[10px] text-gray-600">
               <svg className="w-3 h-3 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
@@ -202,12 +214,12 @@ const Login = () => {
 
           {/* Register links */}
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => navigate('/register')}
+            <button onClick={() => navigate('/ecom/register')}
               className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-medium text-gray-300 transition text-center flex flex-col items-center gap-1">
               <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
               <span>Créer un espace</span>
             </button>
-            <button onClick={() => navigate('/register')}
+            <button onClick={() => navigate('/ecom/register')}
               className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-medium text-gray-300 transition text-center flex flex-col items-center gap-1">
               <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               <span>Rejoindre une équipe</span>
@@ -294,6 +306,26 @@ const Login = () => {
               <p className="text-xs text-gray-500">
                 Vous pourrez révoquer l'accès à tout moment depuis vos paramètres
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Diagnostic Panel */}
+      {showDiagnostic && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b p-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold">🔍 Diagnostic de Connexion</h3>
+              <button
+                onClick={() => setShowDiagnostic(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4">
+              <ConnectionDiagnostic onDiagnosticComplete={() => {}} />
             </div>
           </div>
         </div>
