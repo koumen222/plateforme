@@ -1,4 +1,4 @@
-const mongoose = 'mongoose';
+import mongoose from 'mongoose';
 
 const subscriptionSchema = new mongoose.Schema({
   workspaceId: {
@@ -69,4 +69,4 @@ subscriptionSchema.statics.cleanupInactive = async function(daysOld = 30) {
 
 const Subscription = mongoose.model('Subscription', subscriptionSchema);
 
-module.exports = Subscription;
+export default Subscription;

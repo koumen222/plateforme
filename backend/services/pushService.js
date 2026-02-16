@@ -1,5 +1,5 @@
-const webpush = require('web-push');
-const Subscription = require('../models/Subscription');
+import webpush from 'web-push';
+import Subscription from '../models/Subscription.js';
 
 // Configuration VAPID (à mettre dans .env)
 const vapidKeys = {
@@ -195,7 +195,7 @@ const notifyRealtimeEvent = async (workspaceId, eventType, eventData) => {
   }
 };
 
-module.exports = {
+export {
   sendPushNotification,
   sendPushNotificationToUser,
   notifyRealtimeEvent

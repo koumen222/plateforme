@@ -1563,7 +1563,7 @@ router.post('/sync-sheets', requireEcomAuth, validateEcomAccess('products', 'wri
     // 📱 Envoyer notification push de synchronisation terminée
     try {
       // Importer le service push
-      const { sendPushNotification } = require('../../services/pushService');
+      const { sendPushNotification } = await import('../../services/pushService.js');
       
       await sendPushNotification(req.workspaceId, {
         title: '📊 Synchronisation terminée',
