@@ -169,7 +169,7 @@ const ImportOrders = () => {
       const baseUrl = window.location.origin;
       const ws = JSON.parse(localStorage.getItem('ecomWorkspace') || 'null');
       const wsId = ws?._id || user?.workspaceId?._id || user?.workspaceId;
-      const sseUrl = `${baseUrl}/api/ecom/import/progress?workspaceId=${wsId}&sourceId=${resolvedSourceId}`;
+      const sseUrl = `${baseUrl}/api/import/progress?workspaceId=${wsId}&sourceId=${resolvedSourceId}`;
       const es = new EventSource(sseUrl);
       eventSourceRef.current = es;
 
@@ -677,7 +677,7 @@ const ImportOrders = () => {
                 Relancer l'import
               </button>
               <button
-                onClick={() => navigate('/ecom/orders')}
+                onClick={() => navigate('/orders')}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition w-full sm:w-auto justify-center"
               >
                 Voir les commandes

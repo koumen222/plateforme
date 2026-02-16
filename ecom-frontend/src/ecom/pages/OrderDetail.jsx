@@ -256,7 +256,7 @@ const OrderDetail = () => {
     <div className="p-6 max-w-3xl mx-auto">
       <div className="bg-red-50 text-red-800 rounded-xl p-6 text-center border border-red-200">
         <p className="font-medium">{error}</p>
-        <Link to="/ecom/orders" className="text-sm text-red-600 underline mt-2 inline-block">Retour aux commandes</Link>
+        <Link to="/orders" className="text-sm text-red-600 underline mt-2 inline-block">Retour aux commandes</Link>
       </div>
     </div>
   );
@@ -272,7 +272,7 @@ const OrderDetail = () => {
       {/* Top bar */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/ecom/orders')} className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500">
+          <button onClick={() => navigate('/orders')} className="p-2 hover:bg-gray-100 rounded-lg transition text-gray-500">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
           </button>
           <div>

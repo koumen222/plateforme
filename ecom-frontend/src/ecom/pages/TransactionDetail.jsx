@@ -82,7 +82,7 @@ const TransactionDetail = () => {
             </span>
           </div>
         </div>
-        <Link to={`/ecom/transactions/${id}/edit`}
+        <Link to={`/transactions/${id}/edit`}
           className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm font-medium">
           Modifier
         </Link>
@@ -125,7 +125,7 @@ const TransactionDetail = () => {
           {tx.productId && (
             <div className="flex justify-between items-center py-2 border-b border-gray-100">
               <span className="text-sm text-gray-600">Produit lié</span>
-              <Link to={`/ecom/products/${tx.productId._id || tx.productId}`}
+              <Link to={`/products/${tx.productId._id || tx.productId}`}
                 className="text-sm font-medium text-blue-600 hover:text-blue-800">
                 {tx.productId.name || 'Voir le produit'}
               </Link>

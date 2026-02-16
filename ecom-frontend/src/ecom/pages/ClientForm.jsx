@@ -74,7 +74,7 @@ const ClientForm = () => {
         await ecomApi.post('/clients', payload);
       }
 
-      navigate('/ecom/clients');
+      navigate('/clients');
     } catch (err) {
       setError(err.response?.data?.message || 'Erreur lors de l\'enregistrement');
     } finally {
@@ -111,7 +111,7 @@ const ClientForm = () => {
           </p>
         </div>
         <button
-          onClick={() => navigate('/ecom/clients')}
+          onClick={() => navigate('/clients')}
           className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition"
         >
           Annuler
@@ -209,7 +209,7 @@ const ClientForm = () => {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/ecom/clients')}
+            onClick={() => navigate('/clients')}
             className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium"
           >
             Annuler

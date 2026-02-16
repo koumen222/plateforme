@@ -150,7 +150,7 @@ console.log(`
 📖 UTILISATION:
 
 1. Dans le navigateur, vérifiez que l'erreur "fmt is not defined" a disparu
-2. Allez sur la page /ecom/reports pour tester le formatage des montants
+2. Allez sur la page /reports pour tester le formatage des montants
 3. Les montants devraient s'afficher correctement (ex: "1 000 FCFA")
 4. Si l'erreur persiste, rafraîchissez la page (F5)
 

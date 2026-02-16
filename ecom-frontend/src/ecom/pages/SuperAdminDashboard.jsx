@@ -69,52 +69,52 @@ const SuperAdminDashboard = () => {
   const getInterfacesForRole = (role) => {
     const interfaces = {
       super_admin: [
-        { name: 'Dashboard', path: '/ecom/super-admin', desc: 'Vue principale' },
-        { name: 'Utilisateurs', path: '/ecom/super-admin/users', desc: 'Gestion users' },
-        { name: 'Espaces', path: '/ecom/super-admin/workspaces', desc: 'Gestion espaces' },
-        { name: 'Paramètres', path: '/ecom/super-admin/settings', desc: 'Configuration' },
-        { name: 'Activité', path: '/ecom/super-admin/activity', desc: 'Logs activité' },
-        { name: 'Setup Initial', path: '/ecom/setup-admin', desc: 'Configuration initiale' }
+        { name: 'Dashboard', path: '/super-admin', desc: 'Vue principale' },
+        { name: 'Utilisateurs', path: '/super-admin/users', desc: 'Gestion users' },
+        { name: 'Espaces', path: '/super-admin/workspaces', desc: 'Gestion espaces' },
+        { name: 'Paramètres', path: '/super-admin/settings', desc: 'Configuration' },
+        { name: 'Activité', path: '/super-admin/activity', desc: 'Logs activité' },
+        { name: 'Setup Initial', path: '/setup-admin', desc: 'Configuration initiale' }
       ],
       ecom_admin: [
-        { name: 'Dashboard', path: '/ecom/dashboard/admin', desc: 'Vue principale' },
-        { name: 'Produits', path: '/ecom/products', desc: 'Gestion produits' },
-        { name: 'Commandes', path: '/ecom/orders', desc: 'Gestion commandes' },
-        { name: 'Clients', path: '/ecom/clients', desc: 'Gestion clients' },
-        { name: 'Stock', path: '/ecom/stock', desc: 'Gestion stock' },
-        { name: 'Campagnes', path: '/ecom/campaigns', desc: 'Marketing' },
-        { name: 'Utilisateurs', path: '/ecom/user-management', desc: 'Gestion users' },
-        { name: 'Données', path: '/ecom/data', desc: 'Analytics' },
-        { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs' },
-        { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports' },
-        { name: 'Décisions', path: '/ecom/decisions', desc: 'Prises décision' },
-        { name: 'Prospects', path: '/ecom/prospects', desc: 'Leads' }
+        { name: 'Dashboard', path: '/dashboard/admin', desc: 'Vue principale' },
+        { name: 'Produits', path: '/products', desc: 'Gestion produits' },
+        { name: 'Commandes', path: '/orders', desc: 'Gestion commandes' },
+        { name: 'Clients', path: '/clients', desc: 'Gestion clients' },
+        { name: 'Stock', path: '/stock', desc: 'Gestion stock' },
+        { name: 'Campagnes', path: '/campaigns', desc: 'Marketing' },
+        { name: 'Utilisateurs', path: '/user-management', desc: 'Gestion users' },
+        { name: 'Données', path: '/data', desc: 'Analytics' },
+        { name: 'Objectifs', path: '/goals', desc: 'KPIs' },
+        { name: 'Rapports', path: '/reports', desc: 'Rapports' },
+        { name: 'Décisions', path: '/decisions', desc: 'Prises décision' },
+        { name: 'Prospects', path: '/prospects', desc: 'Leads' }
       ],
       ecom_closeuse: [
-        { name: 'Dashboard', path: '/ecom/dashboard/admin', desc: 'Vue principale' },
-        { name: 'Produits', path: '/ecom/products', desc: 'Gestion produits' },
-        { name: 'Commandes', path: '/ecom/orders', desc: 'Gestion commandes' },
-        { name: 'Clients', path: '/ecom/clients', desc: 'Gestion clients' },
-        { name: 'Stock', path: '/ecom/stock', desc: 'Gestion stock' },
-        { name: 'Campagnes', path: '/ecom/campaigns', desc: 'Marketing' },
-        { name: 'Utilisateurs', path: '/ecom/user-management', desc: 'Gestion users' },
-        { name: 'Données', path: '/ecom/data', desc: 'Analytics' },
-        { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs' },
-        { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports' },
-        { name: 'Décisions', path: '/ecom/decisions', desc: 'Prises décision' },
-        { name: 'Prospects', path: '/ecom/prospects', desc: 'Leads' }
+        { name: 'Dashboard', path: '/dashboard/admin', desc: 'Vue principale' },
+        { name: 'Produits', path: '/products', desc: 'Gestion produits' },
+        { name: 'Commandes', path: '/orders', desc: 'Gestion commandes' },
+        { name: 'Clients', path: '/clients', desc: 'Gestion clients' },
+        { name: 'Stock', path: '/stock', desc: 'Gestion stock' },
+        { name: 'Campagnes', path: '/campaigns', desc: 'Marketing' },
+        { name: 'Utilisateurs', path: '/user-management', desc: 'Gestion users' },
+        { name: 'Données', path: '/data', desc: 'Analytics' },
+        { name: 'Objectifs', path: '/goals', desc: 'KPIs' },
+        { name: 'Rapports', path: '/reports', desc: 'Rapports' },
+        { name: 'Décisions', path: '/decisions', desc: 'Prises décision' },
+        { name: 'Prospects', path: '/prospects', desc: 'Leads' }
       ],
       ecom_compta: [
-        { name: 'Dashboard', path: '/ecom/dashboard/compta', desc: 'Vue financière' },
-        { name: 'Transactions', path: '/ecom/transactions', desc: 'Gestion transactions' },
-        { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports financiers' },
-        { name: 'Données', path: '/ecom/data', desc: 'Analytics finance' },
-        { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs financiers' }
+        { name: 'Dashboard', path: '/dashboard/compta', desc: 'Vue financière' },
+        { name: 'Transactions', path: '/transactions', desc: 'Gestion transactions' },
+        { name: 'Rapports', path: '/reports', desc: 'Rapports financiers' },
+        { name: 'Données', path: '/data', desc: 'Analytics finance' },
+        { name: 'Objectifs', path: '/goals', desc: 'KPIs financiers' }
       ],
       ecom_livreur: [
-        { name: 'Dashboard', path: '/ecom/livreur', desc: 'Livraisons jour' },
-        { name: 'Commandes', path: '/ecom/orders', desc: 'Détail livraisons' },
-        { name: 'Clients', path: '/ecom/clients', desc: 'Info contact' }
+        { name: 'Dashboard', path: '/livreur', desc: 'Livraisons jour' },
+        { name: 'Commandes', path: '/orders', desc: 'Détail livraisons' },
+        { name: 'Clients', path: '/clients', desc: 'Info contact' }
       ]
     };
     return interfaces[role] || [];
@@ -611,12 +611,12 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Dashboard', path: '/ecom/super-admin', desc: 'Vue principale' },
-                    { name: 'Utilisateurs', path: '/ecom/super-admin/users', desc: 'Gestion users' },
-                    { name: 'Espaces', path: '/ecom/super-admin/workspaces', desc: 'Gestion espaces' },
-                    { name: 'Paramètres', path: '/ecom/super-admin/settings', desc: 'Configuration' },
-                    { name: 'Activité', path: '/ecom/super-admin/activity', desc: 'Logs activité' },
-                    { name: 'Setup Initial', path: '/ecom/setup-admin', desc: 'Configuration initiale' }
+                    { name: 'Dashboard', path: '/super-admin', desc: 'Vue principale' },
+                    { name: 'Utilisateurs', path: '/super-admin/users', desc: 'Gestion users' },
+                    { name: 'Espaces', path: '/super-admin/workspaces', desc: 'Gestion espaces' },
+                    { name: 'Paramètres', path: '/super-admin/settings', desc: 'Configuration' },
+                    { name: 'Activité', path: '/super-admin/activity', desc: 'Logs activité' },
+                    { name: 'Setup Initial', path: '/setup-admin', desc: 'Configuration initiale' }
                   ], 'super_admin').map((iface, idx) => (
                     <button
                       key={idx}
@@ -644,18 +644,18 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Dashboard', path: '/ecom/dashboard/admin', desc: 'Vue principale' },
-                    { name: 'Produits', path: '/ecom/products', desc: 'Gestion produits' },
-                    { name: 'Commandes', path: '/ecom/orders', desc: 'Gestion commandes' },
-                    { name: 'Clients', path: '/ecom/clients', desc: 'Gestion clients' },
-                    { name: 'Stock', path: '/ecom/stock', desc: 'Gestion stock' },
-                    { name: 'Campagnes', path: '/ecom/campaigns', desc: 'Marketing' },
-                    { name: 'Utilisateurs', path: '/ecom/user-management', desc: 'Gestion users' },
-                    { name: 'Données', path: '/ecom/data', desc: 'Analytics' },
-                    { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs' },
-                    { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports' },
-                    { name: 'Décisions', path: '/ecom/decisions', desc: 'Prises décision' },
-                    { name: 'Prospects', path: '/ecom/prospects', desc: 'Leads' }
+                    { name: 'Dashboard', path: '/dashboard/admin', desc: 'Vue principale' },
+                    { name: 'Produits', path: '/products', desc: 'Gestion produits' },
+                    { name: 'Commandes', path: '/orders', desc: 'Gestion commandes' },
+                    { name: 'Clients', path: '/clients', desc: 'Gestion clients' },
+                    { name: 'Stock', path: '/stock', desc: 'Gestion stock' },
+                    { name: 'Campagnes', path: '/campaigns', desc: 'Marketing' },
+                    { name: 'Utilisateurs', path: '/user-management', desc: 'Gestion users' },
+                    { name: 'Données', path: '/data', desc: 'Analytics' },
+                    { name: 'Objectifs', path: '/goals', desc: 'KPIs' },
+                    { name: 'Rapports', path: '/reports', desc: 'Rapports' },
+                    { name: 'Décisions', path: '/decisions', desc: 'Prises décision' },
+                    { name: 'Prospects', path: '/prospects', desc: 'Leads' }
                   ], 'admin').map((iface, idx) => (
                     <button
                       key={idx}
@@ -683,18 +683,18 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Dashboard', path: '/ecom/dashboard/admin', desc: 'Vue principale' },
-                    { name: 'Produits', path: '/ecom/products', desc: 'Gestion produits' },
-                    { name: 'Commandes', path: '/ecom/orders', desc: 'Gestion commandes' },
-                    { name: 'Clients', path: '/ecom/clients', desc: 'Gestion clients' },
-                    { name: 'Stock', path: '/ecom/stock', desc: 'Gestion stock' },
-                    { name: 'Campagnes', path: '/ecom/campaigns', desc: 'Marketing' },
-                    { name: 'Utilisateurs', path: '/ecom/user-management', desc: 'Gestion users' },
-                    { name: 'Données', path: '/ecom/data', desc: 'Analytics' },
-                    { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs' },
-                    { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports' },
-                    { name: 'Décisions', path: '/ecom/decisions', desc: 'Prises décision' },
-                    { name: 'Prospects', path: '/ecom/prospects', desc: 'Leads' }
+                    { name: 'Dashboard', path: '/dashboard/admin', desc: 'Vue principale' },
+                    { name: 'Produits', path: '/products', desc: 'Gestion produits' },
+                    { name: 'Commandes', path: '/orders', desc: 'Gestion commandes' },
+                    { name: 'Clients', path: '/clients', desc: 'Gestion clients' },
+                    { name: 'Stock', path: '/stock', desc: 'Gestion stock' },
+                    { name: 'Campagnes', path: '/campaigns', desc: 'Marketing' },
+                    { name: 'Utilisateurs', path: '/user-management', desc: 'Gestion users' },
+                    { name: 'Données', path: '/data', desc: 'Analytics' },
+                    { name: 'Objectifs', path: '/goals', desc: 'KPIs' },
+                    { name: 'Rapports', path: '/reports', desc: 'Rapports' },
+                    { name: 'Décisions', path: '/decisions', desc: 'Prises décision' },
+                    { name: 'Prospects', path: '/prospects', desc: 'Leads' }
                   ], 'closeuse').map((iface, idx) => (
                     <button
                       key={idx}
@@ -722,11 +722,11 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Dashboard', path: '/ecom/dashboard/compta', desc: 'Vue financière' },
-                    { name: 'Transactions', path: '/ecom/transactions', desc: 'Gestion transactions' },
-                    { name: 'Rapports', path: '/ecom/reports', desc: 'Rapports financiers' },
-                    { name: 'Données', path: '/ecom/data', desc: 'Analytics finance' },
-                    { name: 'Objectifs', path: '/ecom/goals', desc: 'KPIs financiers' }
+                    { name: 'Dashboard', path: '/dashboard/compta', desc: 'Vue financière' },
+                    { name: 'Transactions', path: '/transactions', desc: 'Gestion transactions' },
+                    { name: 'Rapports', path: '/reports', desc: 'Rapports financiers' },
+                    { name: 'Données', path: '/data', desc: 'Analytics finance' },
+                    { name: 'Objectifs', path: '/goals', desc: 'KPIs financiers' }
                   ], 'compta').map((iface, idx) => (
                     <button
                       key={idx}
@@ -754,9 +754,9 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Dashboard', path: '/ecom/livreur', desc: 'Livraisons jour' },
-                    { name: 'Commandes', path: '/ecom/orders', desc: 'Détail livraisons' },
-                    { name: 'Clients', path: '/ecom/clients', desc: 'Info contact' }
+                    { name: 'Dashboard', path: '/livreur', desc: 'Livraisons jour' },
+                    { name: 'Commandes', path: '/orders', desc: 'Détail livraisons' },
+                    { name: 'Clients', path: '/clients', desc: 'Info contact' }
                   ], 'livreur').map((iface, idx) => (
                     <button
                       key={idx}
@@ -784,13 +784,13 @@ const SuperAdminDashboard = () => {
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
                   {filterInterfaces([
-                    { name: 'Accueil', path: '/ecom/', desc: 'Page principale' },
-                    { name: 'Connexion', path: '/ecom/login', desc: 'Identification' },
-                    { name: 'Inscription', path: '/ecom/register', desc: 'Création compte' },
-                    { name: 'Produits', path: '/ecom/products', desc: 'Catalogue' },
-                    { name: 'Recherche', path: '/ecom/product-finder', desc: 'Recherche produits' },
-                    { name: 'Profil', path: '/ecom/profile', desc: 'Mon compte' },
-                    { name: 'Paramètres', path: '/ecom/settings', desc: 'Préférences' }
+                    { name: 'Accueil', path: '/', desc: 'Page principale' },
+                    { name: 'Connexion', path: '/login', desc: 'Identification' },
+                    { name: 'Inscription', path: '/register', desc: 'Création compte' },
+                    { name: 'Produits', path: '/products', desc: 'Catalogue' },
+                    { name: 'Recherche', path: '/product-finder', desc: 'Recherche produits' },
+                    { name: 'Profil', path: '/profile', desc: 'Mon compte' },
+                    { name: 'Paramètres', path: '/settings', desc: 'Préférences' }
                   ], 'client').map((iface, idx) => (
                     <button
                       key={idx}

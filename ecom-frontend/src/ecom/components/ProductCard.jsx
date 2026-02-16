@@ -110,7 +110,7 @@ const ProductCard = ({ product, showActions = true, onEdit, onDelete }) => {
           <div className="flex items-center justify-between pt-4 border-t border-gray-100">
             <div className="flex space-x-2">
               <Link
-                to={`/ecom/products/${product._id}`}
+                to={`/products/${product._id}`}
                 className="px-3 py-1 bg-blue-100 text-blue-700 rounded text-sm font-medium hover:bg-blue-200 transition"
               >
                 Voir

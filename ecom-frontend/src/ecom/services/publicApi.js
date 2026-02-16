@@ -21,7 +21,7 @@ publicApi.interceptors.response.use(
     console.error('API Error:', error);
     if (error.response?.status === 401) {
       // Rediriger vers login si nécessaire (pour les routes protégées)
-      window.location.href = '/ecom/login';
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

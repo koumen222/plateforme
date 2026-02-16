@@ -99,14 +99,14 @@ Pour exercer ces droits, contactez-nous à l'adresse indiquée dans la section c
       {/* Header */}
       <nav className="w-full bg-[#0a0a0f]/80 backdrop-blur-xl border-b border-white/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
-          <button onClick={() => navigate('/ecom/landing')} className="flex items-center gap-3 hover:opacity-80 transition">
+          <button onClick={() => navigate('/landing')} className="flex items-center gap-3 hover:opacity-80 transition">
             <img src="/ecom-logo (1).png" alt="Ecom Cockpit" className="h-12 object-contain" />
           </button>
           <div className="flex items-center gap-2">
             <button onClick={() => navigate(-1)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition">
               Retour
             </button>
-            <button onClick={() => navigate('/ecom/login')} className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition">
+            <button onClick={() => navigate('/login')} className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition">
               Connexion
             </button>
           </div>
@@ -183,13 +183,13 @@ Pour exercer ces droits, contactez-nous à l'adresse indiquée dans la section c
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <button 
-              onClick={() => navigate('/ecom/register')}
+              onClick={() => navigate('/register')}
               className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl font-semibold text-sm transition shadow-lg shadow-blue-600/20"
             >
               Créer un compte en toute sécurité
             </button>
             <button 
-              onClick={() => navigate('/ecom/login')}
+              onClick={() => navigate('/login')}
               className="px-6 py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl font-semibold text-sm transition"
             >
               Se connecter
@@ -203,7 +203,7 @@ Pour exercer ces droits, contactez-nous à l'adresse indiquée dans la section c
         <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Ecom Cockpit. Tous droits réservés.</p>
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate('/ecom/landing')} className="text-xs text-gray-500 hover:text-gray-300 transition">Accueil</button>
+            <button onClick={() => navigate('/landing')} className="text-xs text-gray-500 hover:text-gray-300 transition">Accueil</button>
             <span className="text-gray-700">•</span>
             <span className="text-xs text-blue-400">Politique de confidentialité</span>
           </div>

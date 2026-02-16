@@ -104,7 +104,7 @@ if (typeof window !== 'undefined' && window.location) {
 // Instructions pour l'utilisateur
 console.log('\n📖 INSTRUCTIONS:');
 console.log('1. Rafraîchissez la page (F5)');
-console.log('2. Allez sur /ecom/reports');
+console.log('2. Allez sur /reports');
 console.log('3. Ouvrez la console du navigateur (F12)');
 console.log('4. Si erreur persiste, copiez les messages ci-dessus');
 console.log('5. Les erreurs devraient maintenant être gérées par l\'ErrorBoundary');

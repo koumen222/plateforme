@@ -65,10 +65,10 @@ const ResetPassword = () => {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Lien invalide</h1>
             <p className="text-gray-500 text-sm mb-6">Ce lien de réinitialisation est invalide ou a expiré.</p>
             <div className="space-y-3">
-              <Link to="/ecom/forgot-password" className="block w-full py-2.5 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition text-sm">
+              <Link to="/forgot-password" className="block w-full py-2.5 px-4 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 transition text-sm">
                 Demander un nouveau lien
               </Link>
-              <Link to="/ecom/login" className="block w-full py-2.5 px-4 text-blue-600 font-medium hover:text-blue-700 transition text-sm">
+              <Link to="/login" className="block w-full py-2.5 px-4 text-blue-600 font-medium hover:text-blue-700 transition text-sm">
                 Retour à la connexion
               </Link>
             </div>
@@ -90,7 +90,7 @@ const ResetPassword = () => {
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">Mot de passe réinitialisé</h1>
             <p className="text-gray-500 text-sm mb-6">Votre mot de passe a été modifié avec succès. Vous pouvez maintenant vous connecter.</p>
-            <Link to="/ecom/login" className="block w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition text-sm">
+            <Link to="/login" className="block w-full py-3 px-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 transition text-sm">
               Se connecter
             </Link>
           </div>
@@ -191,7 +191,7 @@ const ResetPassword = () => {
           </form>
 
           <div className="mt-6 text-center">
-            <Link to="/ecom/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium transition">
+            <Link to="/login" className="text-sm text-blue-600 hover:text-blue-700 font-medium transition">
               Retour à la connexion
             </Link>
           </div>

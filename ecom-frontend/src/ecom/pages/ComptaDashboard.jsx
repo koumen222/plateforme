@@ -91,15 +91,15 @@ const ComptaDashboard = () => {
           </div>
           <div className="p-3 sm:p-6">
             <div className="grid grid-cols-3 gap-2 sm:gap-4">
-              <Link to="/ecom/transactions/new"
+              <Link to="/transactions/new"
                 className="px-3 py-2.5 sm:px-4 sm:py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-center font-medium text-xs sm:text-sm block">
                 + Transaction
               </Link>
-              <Link to="/ecom/transactions"
+              <Link to="/transactions"
                 className="px-3 py-2.5 sm:px-4 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-center font-medium text-xs sm:text-sm block">
                 Transactions
               </Link>
-              <Link to="/ecom/reports"
+              <Link to="/reports"
                 className="px-3 py-2.5 sm:px-4 sm:py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-center font-medium text-xs sm:text-sm block">
                 Rapports
               </Link>
@@ -337,7 +337,7 @@ const ComptaDashboard = () => {
         <div className="mt-8 bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
             <h3 className="text-lg font-semibold text-gray-900">Flux de Trésorerie</h3>
-            <Link to="/ecom/transactions" className="text-sm text-purple-600 hover:text-purple-800 font-medium">
+            <Link to="/transactions" className="text-sm text-purple-600 hover:text-purple-800 font-medium">
               Voir tout &rarr;
             </Link>
           </div>
@@ -370,7 +370,7 @@ const ComptaDashboard = () => {
                 <h4 className="text-sm font-semibold text-gray-700 mb-3">Dernières transactions</h4>
                 <div className="space-y-2">
                   {recentTransactions.map(tx => (
-                    <Link key={tx._id} to={`/ecom/transactions/${tx._id}`} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded -mx-2 px-2 transition">
+                    <Link key={tx._id} to={`/transactions/${tx._id}`} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded -mx-2 px-2 transition">
                       <div className="flex items-center gap-3">
                         <span className={`w-2 h-2 rounded-full ${tx.type === 'income' ? 'bg-green-500' : 'bg-red-500'}`}></span>
                         <div>

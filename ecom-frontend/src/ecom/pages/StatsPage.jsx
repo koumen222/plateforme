@@ -113,7 +113,7 @@ const StatsPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/ecom/orders')} className="p-2.5 hover:bg-gray-100 rounded-xl transition border border-gray-200 shadow-sm">
+          <button onClick={() => navigate('/orders')} className="p-2.5 hover:bg-gray-100 rounded-xl transition border border-gray-200 shadow-sm">
           <ArrowLeft size={20} className="text-gray-600" />
         </button>
           <div>

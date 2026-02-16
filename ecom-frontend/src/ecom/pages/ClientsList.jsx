@@ -186,7 +186,7 @@ const ClientsList = () => {
             </button>
           )}
           <Link
-            to="/ecom/clients/new"
+            to="/clients/new"
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium"
           >
             + Client
@@ -292,7 +292,7 @@ const ClientsList = () => {
             </svg>
           </div>
           <p className="text-gray-500 text-sm">Aucun client trouvé</p>
-          <Link to="/ecom/clients/new" className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
+          <Link to="/clients/new" className="inline-block mt-3 text-sm text-blue-600 hover:text-blue-700 font-medium">
             Ajouter votre premier client
           </Link>
         </div>
@@ -308,7 +308,7 @@ const ClientsList = () => {
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Link to={`/ecom/clients/${c._id}/edit`} className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate">
+                  <Link to={`/clients/${c._id}/edit`} className="text-sm font-medium text-gray-900 hover:text-blue-600 truncate">
                     {c.firstName} {c.lastName}
                   </Link>
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusColors[c.status]}`}>
@@ -356,7 +356,7 @@ const ClientsList = () => {
                   <option value="blocked">Bloqué</option>
                 </select>
                 <Link
-                  to={`/ecom/clients/${c._id}/edit`}
+                  to={`/clients/${c._id}/edit`}
                   className="px-2.5 py-1.5 text-xs rounded-lg font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
                 >
                   Modifier

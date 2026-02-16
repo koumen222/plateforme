@@ -33,10 +33,10 @@ const LandingPage = () => {
             </a>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/ecom/login')} className="hidden sm:block px-4 py-2 text-sm text-gray-300 hover:text-white transition">
+            <button onClick={() => navigate('/login')} className="hidden sm:block px-4 py-2 text-sm text-gray-300 hover:text-white transition">
               Connexion
             </button>
-            <button onClick={() => navigate('/ecom/register')} className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition shadow-lg shadow-blue-600/20">
+            <button onClick={() => navigate('/register')} className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl transition shadow-lg shadow-blue-600/20">
               Commencer gratuitement
             </button>
             <button onClick={() => setMobileMenu(!mobileMenu)} className="sm:hidden p-2 text-gray-400">
@@ -51,7 +51,7 @@ const LandingPage = () => {
             <a href="#roles" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg">Rôles</a>
             <a href="#pricing" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-gray-300 hover:text-white rounded-lg">Tarifs</a>
             <a href="#security" onClick={() => setMobileMenu(false)} className="block px-3 py-2 text-sm text-emerald-400 hover:text-emerald-300 rounded-lg">Sécurité</a>
-            <button onClick={() => navigate('/ecom/login')} className="block w-full text-left px-3 py-2 text-sm text-gray-300">Connexion</button>
+            <button onClick={() => navigate('/login')} className="block w-full text-left px-3 py-2 text-sm text-gray-300">Connexion</button>
           </div>
         )}
       </nav>
@@ -87,12 +87,12 @@ const LandingPage = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <button onClick={() => navigate('/ecom/register')}
+            <button onClick={() => navigate('/register')}
               className="w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-2xl font-bold text-lg transition shadow-2xl shadow-blue-600/25 flex items-center justify-center gap-2">
               Créer mon espace gratuitement
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
             </button>
-            <button onClick={() => navigate('/ecom/login')}
+            <button onClick={() => navigate('/login')}
               className="w-full sm:w-auto px-10 py-4 bg-white/5 hover:bg-white/10 border border-white/10 rounded-2xl font-semibold text-lg transition backdrop-blur-sm">
               J'ai déjà un compte
             </button>
@@ -423,7 +423,7 @@ const LandingPage = () => {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigate('/ecom/register')}
+              <button onClick={() => navigate('/register')}
                 className="w-full py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl font-semibold text-sm transition">
                 Commencer gratuitement
               </button>
@@ -448,7 +448,7 @@ const LandingPage = () => {
                   </li>
                 ))}
               </ul>
-              <button onClick={() => navigate('/ecom/register')}
+              <button onClick={() => navigate('/register')}
                 className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 rounded-xl font-semibold text-sm transition shadow-lg shadow-blue-600/20">
                 Essayer Pro gratuitement
               </button>
@@ -514,7 +514,7 @@ const LandingPage = () => {
             ))}
           </div>
           <div className="text-center mt-8">
-            <button onClick={() => navigate('/ecom/privacy')} className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-semibold transition">
+            <button onClick={() => navigate('/privacy')} className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-semibold transition">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
               Lire notre politique de confidentialité complète
             </button>
@@ -533,12 +533,12 @@ const LandingPage = () => {
                 Rejoignez les e-commerçants qui utilisent Ecom Cockpit pour gérer leur activité. Créez votre espace en 30 secondes.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <button onClick={() => navigate('/ecom/register')}
+                <button onClick={() => navigate('/register')}
                   className="w-full sm:w-auto px-10 py-4 bg-white text-indigo-700 rounded-2xl font-bold text-lg hover:bg-blue-50 transition shadow-2xl flex items-center justify-center gap-2">
                   Commencer maintenant
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
                 </button>
-                <button onClick={() => navigate('/ecom/login')}
+                <button onClick={() => navigate('/login')}
                   className="w-full sm:w-auto px-10 py-4 bg-white/10 hover:bg-white/20 border border-white/20 rounded-2xl font-semibold text-lg transition backdrop-blur-sm">
                   Se connecter
                 </button>
@@ -570,14 +570,14 @@ const LandingPage = () => {
             <div>
               <h4 className="text-sm font-semibold mb-4 text-gray-300">Compte</h4>
               <ul className="space-y-2.5">
-                <li><button onClick={() => navigate('/ecom/register')} className="text-sm text-gray-500 hover:text-gray-300 transition">Créer un compte</button></li>
-                <li><button onClick={() => navigate('/ecom/login')} className="text-sm text-gray-500 hover:text-gray-300 transition">Se connecter</button></li>
+                <li><button onClick={() => navigate('/register')} className="text-sm text-gray-500 hover:text-gray-300 transition">Créer un compte</button></li>
+                <li><button onClick={() => navigate('/login')} className="text-sm text-gray-500 hover:text-gray-300 transition">Se connecter</button></li>
               </ul>
             </div>
             <div>
               <h4 className="text-sm font-semibold mb-4 text-gray-300">Légal & Sécurité</h4>
               <ul className="space-y-2.5">
-                <li><button onClick={() => navigate('/ecom/privacy')} className="text-sm text-gray-500 hover:text-gray-300 transition">Politique de confidentialité</button></li>
+                <li><button onClick={() => navigate('/privacy')} className="text-sm text-gray-500 hover:text-gray-300 transition">Politique de confidentialité</button></li>
                 <li><a href="#security" className="text-sm text-gray-500 hover:text-gray-300 transition">Sécurité des données</a></li>
               </ul>
             </div>
@@ -585,7 +585,7 @@ const LandingPage = () => {
           <div className="border-t border-white/5 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
             <p className="text-xs text-gray-600">&copy; {new Date().getFullYear()} Ecom Cockpit. Tous droits réservés.</p>
             <div className="flex items-center gap-3">
-              <button onClick={() => navigate('/ecom/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
+              <button onClick={() => navigate('/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
               <span className="text-gray-700">•</span>
               <p className="text-xs text-gray-600">Fait avec ❤️ pour les e-commerçants africains</p>
             </div>

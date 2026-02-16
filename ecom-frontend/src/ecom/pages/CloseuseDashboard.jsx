@@ -203,7 +203,7 @@ const CloseuseDashboard = () => {
           </div>
 
           {/* Widget Marketing */}
-          <Link to="/ecom/campaigns" className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg shadow p-4 hover:from-pink-600 hover:to-purple-700 transition-all transform hover:scale-105">
+          <Link to="/campaigns" className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-lg shadow p-4 hover:from-pink-600 hover:to-purple-700 transition-all transform hover:scale-105">
             <div className="flex items-center text-white">
               <div className="p-3 bg-white/20 rounded-full">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,7 +249,7 @@ const CloseuseDashboard = () => {
                           </div>
                         </div>
                         <Link 
-                          to={`/ecom/orders/${order._id}`}
+                          to={`/orders/${order._id}`}
                           className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                         >
                           Voir
@@ -268,7 +268,7 @@ const CloseuseDashboard = () => {
                 {recentOrders.length > 5 && (
                   <div className="mt-4 text-center">
                     <Link 
-                      to="/ecom/orders"
+                      to="/orders"
                       className="text-blue-600 hover:text-blue-800 text-sm font-medium"
                     >
                       Voir toutes les commandes →
@@ -293,7 +293,7 @@ const CloseuseDashboard = () => {
                     return (
                       <div key={product._id} className="border border-gray-200 rounded-lg p-3 sm:p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <Link to={`/ecom/products/${product._id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
+                          <Link to={`/products/${product._id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline">{product.name}</Link>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(product.status)}`}>
                             {product.status}
                           </span>

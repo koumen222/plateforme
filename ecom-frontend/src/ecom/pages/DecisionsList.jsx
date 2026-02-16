@@ -52,7 +52,7 @@ const DecisionsList = () => {
       <div className="flex justify-between items-center mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Décisions</h1>
         <Link
-          to="/ecom/decisions/new"
+          to="/decisions/new"
           className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-blue-700 text-sm"
         >
           + Décision
@@ -109,7 +109,7 @@ const DecisionsList = () => {
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                     {decision.productId?._id ? (
-                      <Link to={`/ecom/products/${decision.productId._id}`} className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 hover:underline">{decision.productId.name}</Link>
+                      <Link to={`/products/${decision.productId._id}`} className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 hover:underline">{decision.productId.name}</Link>
                     ) : (
                       <span className="text-xs sm:text-sm text-gray-900">N/A</span>
                     )}
@@ -157,7 +157,7 @@ const DecisionsList = () => {
                   </td>
                   <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm font-medium">
                     <Link
-                      to={`/ecom/decisions/${decision._id}`}
+                      to={`/decisions/${decision._id}`}
                       className="text-indigo-600 hover:text-indigo-900 mr-4"
                     >
                       Voir

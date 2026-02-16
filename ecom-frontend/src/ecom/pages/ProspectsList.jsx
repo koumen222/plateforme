@@ -113,11 +113,11 @@ const ProspectsList = () => {
             <svg className={`w-4 h-4 ${syncing ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
             {syncing ? 'Sync...' : 'Sync Prospects'}
           </button>
-          <Link to="/ecom/campaigns/new" className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium flex items-center gap-1.5">
+          <Link to="/campaigns/new" className="px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium flex items-center gap-1.5">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
             Relancer
           </Link>
-          <Link to="/ecom/clients/new" className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-xs font-medium">
+          <Link to="/clients/new" className="px-3 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition text-xs font-medium">
             + Prospect
           </Link>
         </div>
@@ -213,7 +213,7 @@ const ProspectsList = () => {
           </div>
           <p className="text-gray-500 text-sm mb-1">Aucun prospect</p>
           <p className="text-gray-400 text-xs mb-3">Les commandes en attente apparaîtront ici automatiquement</p>
-          <Link to="/ecom/orders" className="inline-block text-sm text-yellow-600 hover:text-yellow-700 font-medium">
+          <Link to="/orders" className="inline-block text-sm text-yellow-600 hover:text-yellow-700 font-medium">
             Voir les commandes
           </Link>
         </div>
@@ -229,7 +229,7 @@ const ProspectsList = () => {
               {/* Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <Link to={`/ecom/clients/${c._id}/edit`} className="text-sm font-medium text-gray-900 hover:text-yellow-600 truncate">
+                  <Link to={`/clients/${c._id}/edit`} className="text-sm font-medium text-gray-900 hover:text-yellow-600 truncate">
                     {c.firstName} {c.lastName}
                   </Link>
                   <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${statusColors[c.status]}`}>
@@ -292,7 +292,7 @@ const ProspectsList = () => {
                   </a>
                 )}
                 <Link
-                  to={`/ecom/clients/${c._id}/edit`}
+                  to={`/clients/${c._id}/edit`}
                   className="px-2.5 py-1.5 text-xs rounded-lg font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 transition"
                 >
                   Modifier

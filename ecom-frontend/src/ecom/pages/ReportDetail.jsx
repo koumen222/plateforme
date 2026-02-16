@@ -47,7 +47,7 @@ const ReportDetail = () => {
     
     try {
       await ecomApi.delete(`/reports/${id}`);
-      navigate('/ecom/reports');
+      navigate('/reports');
     } catch (error) {
       setError('Erreur lors de la suppression du rapport');
       console.error(error);
@@ -84,7 +84,7 @@ const ReportDetail = () => {
           </div>
           <div className="flex space-x-4">
             <button
-              onClick={() => navigate(`/ecom/reports/${id}/edit`)}
+              onClick={() => navigate(`/reports/${id}/edit`)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               Modifier
@@ -98,7 +98,7 @@ const ReportDetail = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/ecom/reports')}
+              onClick={() => navigate('/reports')}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
             >
               Retour
@@ -126,7 +126,7 @@ const ReportDetail = () => {
               <div>
                 <label className="block text-sm font-medium text-gray-500">Produit</label>
                 {report.productId?._id ? (
-                  <Link to={`/ecom/products/${report.productId._id}`} className="text-lg text-blue-600 hover:text-blue-800 hover:underline">{report.productId.name}</Link>
+                  <Link to={`/products/${report.productId._id}`} className="text-lg text-blue-600 hover:text-blue-800 hover:underline">{report.productId.name}</Link>
                 ) : (
                   <p className="text-lg text-gray-900">N/A</p>
                 )}

@@ -365,7 +365,7 @@ export const EcomAuthProvider = ({ children }) => {
     }
 
     // Naviguer vers le dashboard Super Admin
-    window.location.href = '/ecom/super-admin';
+    window.location.href = '/super-admin';
   };
 
   // Restaurer l'incarnation au chargement
@@ -488,7 +488,7 @@ export const useRequireAuth = () => {
     // Fonction pour rediriger si non authentifié
     requireAuth: () => {
       if (!loading && !isAuthenticated) {
-        window.location.href = '/ecom/login';
+        window.location.href = '/login';
         return false;
       }
       return true;
@@ -508,12 +508,12 @@ export const useRequirePermission = (permission) => {
       if (!hasPermission(permission)) {
         // Rediriger vers le dashboard approprié ou page d'erreur
         const dashboardMap = {
-          'ecom_admin': '/ecom/dashboard',
-          'ecom_closeuse': '/ecom/dashboard',
-          'ecom_compta': '/ecom/dashboard'
+          'ecom_admin': '/dashboard',
+          'ecom_closeuse': '/dashboard',
+          'ecom_compta': '/dashboard'
         };
         
-        window.location.href = dashboardMap[user?.role] || '/ecom/login';
+        window.location.href = dashboardMap[user?.role] || '/login';
         return false;
       }
       return true;
@@ -526,15 +526,15 @@ export const useRoleBasedDashboard = () => {
   const { user, isAuthenticated } = useEcomAuth();
   
   const getDashboardPath = () => {
-    if (!isAuthenticated || !user) return '/ecom/login';
+    if (!isAuthenticated || !user) return '/login';
     
     const dashboardMap = {
-      'ecom_admin': '/ecom/dashboard/admin',
-      'ecom_closeuse': '/ecom/dashboard/closeuse',
-      'ecom_compta': '/ecom/dashboard/compta'
+      'ecom_admin': '/dashboard/admin',
+      'ecom_closeuse': '/dashboard/closeuse',
+      'ecom_compta': '/dashboard/compta'
     };
     
-    return dashboardMap[user.role] || '/ecom/login';
+    return dashboardMap[user.role] || '/login';
   };
   
   const getDashboardComponent = () => {

@@ -921,7 +921,7 @@ const OrdersList = () => {
     </div>
   );
 
-  /* Source selector removed — import is now handled at /ecom/import */
+  /* Source selector removed — import is now handled at /import */
 
   return (
     <div className="p-3 sm:p-4 lg:p-6 max-w-[1400px] mx-auto">
@@ -971,7 +971,7 @@ const OrdersList = () => {
                 Ajouter
               </button>
               <button
-                onClick={() => navigate('/ecom/import')}
+                onClick={() => navigate('/import')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -987,7 +987,7 @@ const OrdersList = () => {
                 Sync
               </button>
               <button
-                onClick={() => navigate('/ecom/stats')}
+                onClick={() => navigate('/stats')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium"
                 title="Voir les statistiques globales"
               >
@@ -1174,7 +1174,7 @@ const OrdersList = () => {
                   <span className="text-xs text-blue-700 font-medium">Cliquez sur le bouton bleu "Importer" en haut a droite</span>
                 </div>
                 <p className="text-[11px] text-gray-500 leading-relaxed">Collez le lien de votre Google Sheet ou selectionnez une source configuree, puis lancez l'import.</p>
-                <button onClick={() => navigate('/ecom/import')} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium">
+                <button onClick={() => navigate('/import')} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   Aller a la page d'import
                 </button>
@@ -1390,7 +1390,7 @@ const OrdersList = () => {
           <p className="text-xs text-gray-400 mt-1">
             {search || filterStatus || filterCity || filterProduct || filterTag || filterStartDate || filterEndDate
               ? 'Essayez de modifier vos filtres ou votre recherche.'
-              : isAdmin ? <>Importez vos commandes depuis la page <a href="/ecom/import" className="text-blue-600 hover:underline">Import</a></> : 'Aucune commande disponible.'
+              : isAdmin ? <>Importez vos commandes depuis la page <a href="/import" className="text-blue-600 hover:underline">Import</a></> : 'Aucune commande disponible.'
             }
           </p>
         </div>
@@ -1423,7 +1423,7 @@ const OrdersList = () => {
                     const totalPrice = (o.price || 0) * (o.quantity || 1);
 
                     return (
-                      <tr key={o._id} className="hover:bg-blue-50/40 transition-colors cursor-pointer group" onClick={() => navigate(`/ecom/orders/${o._id}`)}>
+                      <tr key={o._id} className="hover:bg-blue-50/40 transition-colors cursor-pointer group" onClick={() => navigate(`/orders/${o._id}`)}>
                         {/* Colonne nom fixe */}
                         <td className="px-3 py-2.5 whitespace-nowrap max-w-[160px]">
                           <span className="text-xs font-medium text-gray-900 truncate block" title={clientName}>{clientName || <span className="text-gray-300">—</span>}</span>
@@ -1485,7 +1485,7 @@ const OrdersList = () => {
 
               return (
                 <div key={o._id} className={`bg-white rounded-xl shadow-sm border-l-4 ${getStatusDot(o.status)} overflow-hidden hover:shadow-md transition-all duration-200`}>
-                  <div className="p-4 cursor-pointer" onClick={() => navigate(`/ecom/orders/${o._id}`)}>
+                  <div className="p-4 cursor-pointer" onClick={() => navigate(`/orders/${o._id}`)}>
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">

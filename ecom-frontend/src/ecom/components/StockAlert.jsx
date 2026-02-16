@@ -115,7 +115,7 @@ const StockAlert = ({ alerts, onDismiss }) => {
                   {/* Actions rapides */}
                   <div className="flex space-x-2">
                     <Link
-                      to={`/ecom/stock/orders/new?productId=${alert.product?._id || alert.productId}`}
+                      to={`/stock/orders/new?productId=${alert.product?._id || alert.productId}`}
                       className="inline-flex items-center px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition"
                     >
                       <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -124,7 +124,7 @@ const StockAlert = ({ alerts, onDismiss }) => {
                       Commander
                     </Link>
                     <Link
-                      to={`/ecom/products/${alert.product?._id || alert.productId}`}
+                      to={`/products/${alert.product?._id || alert.productId}`}
                       className="inline-flex items-center px-3 py-1 bg-gray-600 text-white text-xs font-medium rounded hover:bg-gray-700 transition"
                     >
                       <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">

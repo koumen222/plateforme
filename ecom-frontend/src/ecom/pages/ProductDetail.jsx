@@ -88,7 +88,7 @@ const ProductDetail = () => {
           </div>
         </div>
         {user?.role === 'ecom_admin' && (
-          <Link to={`/ecom/products/${id}/edit`}
+          <Link to={`/products/${id}/edit`}
             className="ecom-mobile-button px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors">
             Modifier
           </Link>

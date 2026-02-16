@@ -53,7 +53,7 @@ const PrivacyBanner = () => {
                   Aucun cookie publicitaire ni outil de tracking tiers n'est utilisé. 
                   Vos données sont chiffrées et isolées par espace de travail.{' '}
                   <button 
-                    onClick={() => navigate('/ecom/privacy')} 
+                    onClick={() => navigate('/privacy')} 
                     className="text-blue-400 hover:text-blue-300 underline underline-offset-2 transition"
                   >
                     Politique de confidentialité complète

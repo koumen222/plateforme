@@ -127,7 +127,7 @@ const ProductSearch = () => {
             {products.length > 0 && (
               <div className="p-3 bg-gray-50 border-t border-gray-200">
                 <button 
-                  onClick={() => window.location.href = '/ecom/login'}
+                  onClick={() => window.location.href = '/login'}
                   className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition"
                 >
                   Voir tous les produits →

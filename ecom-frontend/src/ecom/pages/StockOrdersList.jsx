@@ -57,7 +57,7 @@ const StockOrdersList = () => {
       <div className="flex justify-between items-center mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Gestion des fournisseurs</h1>
         <Link
-          to="/ecom/stock/orders/new"
+          to="/stock/orders/new"
           className="bg-blue-600 text-white px-3 py-2 sm:px-4 rounded-lg hover:bg-blue-700 text-sm"
         >
           + Commande fournisseur
@@ -118,7 +118,7 @@ const StockOrdersList = () => {
                 return (
                   <tr key={order._id}>
                     <td className="px-3 sm:px-4 py-3 sm:py-4 whitespace-nowrap">
-                      <Link to={`/ecom/stock/orders/${order._id}/edit`} className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{order.productName || 'N/A'}</Link>
+                      <Link to={`/stock/orders/${order._id}/edit`} className="text-xs sm:text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">{order.productName || 'N/A'}</Link>
                       {order.supplierName && (
                         <div className="text-[10px] sm:text-xs text-gray-500">{order.supplierName}</div>
                       )}
@@ -164,7 +164,7 @@ const StockOrdersList = () => {
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium">
                       <Link
-                        to={`/ecom/stock/orders/${order._id}/edit`}
+                        to={`/stock/orders/${order._id}/edit`}
                         className="text-blue-600 hover:text-blue-900 mr-3"
                       >
                         Modifier

@@ -87,7 +87,7 @@ class ErrorBoundary extends React.Component {
                 Rafraîchir
               </button>
               <a
-                href="/ecom/dashboard"
+                href="/dashboard"
                 className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Dashboard
@@ -118,7 +118,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/ecom/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   if (requiredRole) {
@@ -130,13 +130,13 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     if (!roles.includes(user?.role)) {
       // Rediriger vers le dashboard approprié selon le rôle
       const roleDashboardMap = {
-        'super_admin': '/ecom/super-admin',
-        'ecom_admin': '/ecom/dashboard/admin',
-        'ecom_closeuse': '/ecom/dashboard/closeuse',
-        'ecom_compta': '/ecom/dashboard/compta'
+        'super_admin': '/super-admin',
+        'ecom_admin': '/dashboard/admin',
+        'ecom_closeuse': '/dashboard/closeuse',
+        'ecom_compta': '/dashboard/compta'
       };
       
-      return <Navigate to={roleDashboardMap[user.role] || '/ecom/login'} replace />;
+      return <Navigate to={roleDashboardMap[user.role] || '/login'} replace />;
     }
   }
 
@@ -159,19 +159,19 @@ const DashboardRedirect = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/ecom/login" replace />;
+    return <Navigate to="/login" replace />;
   }
 
   // Rediriger vers le dashboard selon le rôle
   const roleDashboardMap = {
-    'super_admin': '/ecom/super-admin',
-    'ecom_admin': '/ecom/dashboard/admin',
-    'ecom_closeuse': '/ecom/dashboard/closeuse',
-    'ecom_compta': '/ecom/dashboard/compta',
-    'livreur': '/ecom/livreur'
+    'super_admin': '/super-admin',
+    'ecom_admin': '/dashboard/admin',
+    'ecom_closeuse': '/dashboard/closeuse',
+    'ecom_compta': '/dashboard/compta',
+    'livreur': '/livreur'
   };
   
-  const dashboardPath = roleDashboardMap[user?.role] || '/ecom/login';
+  const dashboardPath = roleDashboardMap[user?.role] || '/login';
   return <Navigate to={dashboardPath} replace />;
 };
 
@@ -298,7 +298,7 @@ const EcomApp = () => {
               <Route path="dashboard/compta" element={<LayoutRoute requiredRole="ecom_compta"><ComptaDashboard /></LayoutRoute>} />
               
               {/* Route catch-all */}
-              <Route path="*" element={<Navigate to="/ecom/login" replace />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
             </Routes>
           </ErrorBoundary>
           <PrivacyBanner />

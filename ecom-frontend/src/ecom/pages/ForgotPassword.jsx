@@ -67,7 +67,7 @@ const ForgotPassword = () => {
                 Renvoyer un email
               </button>
               <Link
-                to="/ecom/login"
+                to="/login"
                 className="block w-full py-2.5 px-4 text-center text-blue-600 font-medium hover:text-blue-700 transition text-sm"
               >
                 &larr; Retour &agrave; la connexion
@@ -145,7 +145,7 @@ const ForgotPassword = () => {
 
           <div className="mt-6 text-center">
             <Link
-              to="/ecom/login"
+              to="/login"
               className="text-sm text-blue-600 hover:text-blue-700 font-medium transition flex items-center justify-center gap-1"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
