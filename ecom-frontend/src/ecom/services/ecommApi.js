@@ -25,7 +25,7 @@ const getApiBaseUrl = () => {
     return 'http://192.168.1.100:3000'; // À adapter selon votre IP locale
   } else {
     // Production ou mobile externe
-    return 'https://plateforme-backend.onrender.com';
+    return 'https://plateforme-backend-production-2ec6.up.railway.app';
   }
 };
 
