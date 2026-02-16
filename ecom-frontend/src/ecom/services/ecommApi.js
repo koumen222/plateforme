@@ -5,6 +5,7 @@ const getApiBaseUrl = () => {
   // En priorité: variable d'environnement
   const envUrl = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL;
   if (envUrl) {
+    console.log('🔗 Using environment URL:', envUrl);
     return envUrl;
   }
 
@@ -17,15 +18,24 @@ const getApiBaseUrl = () => {
   
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
   
+  // Forcer Railway en production pour éviter les problèmes de cache
+  const isProduction = !isLocalhost && !window.location.hostname.includes('localhost');
+  
   if (isLocalhost && !isMobile) {
     // Développement local sur desktop
-    return 'http://localhost:3000';
+    const url = 'http://localhost:3000';
+    console.log('🏠 Local development URL:', url);
+    return url;
   } else if (isLocalhost && isMobile) {
     // Développement local sur mobile (connecté au même réseau)
-    return 'http://192.168.1.100:3000'; // À adapter selon votre IP locale
+    const url = 'http://192.168.1.100:3000'; // À adapter selon votre IP locale
+    console.log('📱 Mobile local development URL:', url);
+    return url;
   } else {
-    // Production ou mobile externe
-    return 'https://plateforme-backend-production-2ec6.up.railway.app';
+    // Production ou mobile externe - FORCER Railway
+    const url = 'https://plateforme-backend-production-2ec6.up.railway.app';
+    console.log('🌐 Production URL (Railway):', url);
+    return url;
   }
 };
 
@@ -35,9 +45,17 @@ const ECOM_API_PREFIX = '/api/ecom';
 
 console.log('🔗 API Base URL:', API_BASE_URL);
 
+// Déterminer l'URL finale avec fallback vers Railway si nécessaire
+let finalApiUrl = API_BASE_URL;
+if (API_BASE_URL.includes('render.com')) {
+  console.warn('⚠️ Ancienne URL Render détectée, basculement vers Railway...');
+  finalApiUrl = 'https://plateforme-backend-production-2ec6.up.railway.app';
+  console.log('🔗 Corrected API URL:', finalApiUrl);
+}
+
 // Créer une instance axios avec configuration par défaut
 const ecomApi = axios.create({
-  baseURL: `${API_BASE_URL}${ECOM_API_PREFIX}`,
+  baseURL: `${finalApiUrl}${ECOM_API_PREFIX}`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
