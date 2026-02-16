@@ -54,10 +54,6 @@ import ImportOrders from './pages/ImportOrders.jsx';
 import StatsPage from './pages/StatsPage.jsx';
 import ForgotPassword from './pages/ForgotPassword.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
-import EcomLayout from './components/EcomLayout.jsx';
-import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
-import PrivacyBanner from './components/PrivacyBanner.jsx';
-import SecurityDashboard from './pages/SecurityDashboard.jsx';
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
