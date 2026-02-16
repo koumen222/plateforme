@@ -6,7 +6,7 @@ import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
-import { logAudit, rateLimit } from '../middleware/security.js';
+import { logAudit } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -15,8 +15,8 @@ const forgotPasswordAttempts = new Map();
 const FORGOT_PASSWORD_LIMIT = 3; // max 3 demandes
 const FORGOT_PASSWORD_WINDOW = 15 * 60 * 1000; // par 15 minutes
 
-// POST /api/ecom/auth/login - Connexion (rate limited: 10 tentatives/min)
-router.post('/login', rateLimit(10, 60000), validateEmail, async (req, res) => {
+// POST /api/ecom/auth/login - Connexion
+router.post('/login', validateEmail, async (req, res) => {
   try {
     const { email, password, rememberDevice, deviceInfo } = req.body;
 
