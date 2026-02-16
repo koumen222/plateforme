@@ -184,6 +184,25 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
     // Notification d'équipe (exclure l'acteur)
     notifyTeamOrderCreated(req.workspaceId, req.ecomUser._id, order, req.ecomUser.email).catch(() => {});
     
+    // 📱 Push notification
+    try {
+      const { sendPushNotification } = await import('../../services/pushService.js');
+      await sendPushNotification(req.workspaceId, {
+        title: '🛒 Nouvelle commande',
+        body: `${order.clientName || order.clientPhone} - ${order.product || 'Produit'} (${order.quantity}x)`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: 'new-order',
+        data: {
+          type: 'new_order',
+          orderId: order._id.toString(),
+          url: `/orders/${order._id}`
+        }
+      });
+    } catch (e) {
+      console.warn('⚠️ Push notification failed:', e.message);
+    }
+    
     res.status(201).json({ success: true, message: 'Commande créée', data: order });
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -1997,6 +2016,25 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
     // Notifier les autres livreurs que cette commande n'est plus disponible
     await notifyOrderTaken(order, req.workspaceId, req.user._id);
     
+    // 📱 Push notification pour assignation livreur
+    try {
+      const { sendPushNotification } = await import('../../services/pushService.js');
+      await sendPushNotification(req.workspaceId, {
+        title: '🚚 Commande assignée',
+        body: `${order.orderId} assignée à un livreur - ${order.clientName || order.clientPhone}`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: 'order-assigned',
+        data: {
+          type: 'order_assigned',
+          orderId: order._id.toString(),
+          url: `/orders/${order._id}`
+        }
+      });
+    } catch (e) {
+      console.warn('⚠️ Push notification failed:', e.message);
+    }
+    
     res.json({ 
       success: true, 
       message: 'Commande assignée avec succès',
@@ -2048,6 +2086,36 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       
       // Notification d'équipe (exclure l'acteur)
       notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, order, req.body.status, req.ecomUser.email).catch(() => {});
+      
+      // 📱 Push notification pour changement de statut
+      try {
+        const { sendPushNotification } = await import('../../services/pushService.js');
+        const statusEmojis = {
+          pending: '⏳', confirmed: '✅', shipped: '📦', 
+          delivered: '🎉', returned: '↩️', cancelled: '❌',
+          unreachable: '📵', called: '📞', postponed: '⏰'
+        };
+        const statusLabels = {
+          pending: 'En attente', confirmed: 'Confirmée', shipped: 'Expédiée',
+          delivered: 'Livrée', returned: 'Retournée', cancelled: 'Annulée',
+          unreachable: 'Injoignable', called: 'Appelée', postponed: 'Reportée'
+        };
+        await sendPushNotification(req.workspaceId, {
+          title: `${statusEmojis[req.body.status] || '📋'} Commande ${statusLabels[req.body.status] || req.body.status}`,
+          body: `${order.orderId} - ${order.clientName || order.clientPhone}`,
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png',
+          tag: 'order-status',
+          data: {
+            type: 'order_status_change',
+            orderId: order._id.toString(),
+            status: req.body.status,
+            url: `/orders/${order._id}`
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️ Push notification failed:', e.message);
+      }
     }
 
     res.json({ success: true, message: 'Commande mise à jour', data: order });
