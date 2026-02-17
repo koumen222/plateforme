@@ -87,22 +87,40 @@ const app = express();
 
 // ⚠️ Configuration CORS - DOIT être AVANT toutes les routes
 // ✅ Solution propre et sécurisée
-app.use(cors({
-  origin: [
-    "https://www.safitech.shop",
-    "https://ecomcookpit.site",
-    "http://ecomcookpit.site",
-    "https://www.ecomcookpit.site",
-    "http://www.ecomcookpit.site",
-    "https://plateformecp.pages.dev",
-    "http://localhost:5173",
-    "http://localhost:8081"
-  ],
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      "https://www.safitech.shop",
+      "https://ecomcookpit.site",
+      "http://ecomcookpit.site",
+      "https://www.ecomcookpit.site",
+      "http://www.ecomcookpit.site",
+      "https://plateformecp.pages.dev",
+      "http://localhost:5173",
+      "http://localhost:8081"
+    ];
+    
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   credentials: true,
-  optionsSuccessStatus: 204 // Répondre avec 204 No Content pour les requêtes OPTIONS
-}));
+  optionsSuccessStatus: 204, // Répondre avec 204 No Content pour les requêtes OPTIONS
+  preflightContinue: false
+};
+
+app.use(cors(corsOptions));
+
+// Handle preflight requests explicitly
+app.options('*', cors(corsOptions));
 
 
 app.use(express.json());

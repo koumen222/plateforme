@@ -168,14 +168,21 @@ export async function logAudit(req, action, details = '', resourceType = '', res
 // ═══════════════════════════════════════════════════════════════
 
 export function securityHeaders(req, res, next) {
+  // Don't set security headers for CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   // Empêcher le sniffing MIME
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // Protection XSS
   res.setHeader('X-XSS-Protection', '1; mode=block');
   // Empêcher le clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-  // Strict Transport Security
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Strict Transport Security (only for HTTPS)
+  if (req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Permissions Policy
