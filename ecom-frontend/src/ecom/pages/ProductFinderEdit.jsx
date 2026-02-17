@@ -274,7 +274,7 @@ const ProductFinderEdit = () => {
         
         // Rediriger vers la liste après 2 secondes
         setTimeout(() => {
-          navigate('/product-research');
+          navigate('/ecom/product-research');
         }, 2000);
       }
     } catch (error) {
@@ -313,7 +313,7 @@ const ProductFinderEdit = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center">
               <button
-                onClick={() => navigate('/product-research')}
+                onClick={() => navigate('/ecom/product-research')}
                 className="mr-4 p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
               >
                 <ArrowLeft className="w-5 h-5" />
@@ -606,7 +606,7 @@ const ProductFinderEdit = () => {
           <div className="flex justify-between space-x-4">
             <button
               type="button"
-              onClick={() => navigate('/product-research')}
+              onClick={() => navigate('/ecom/product-research')}
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
             >
               Annuler

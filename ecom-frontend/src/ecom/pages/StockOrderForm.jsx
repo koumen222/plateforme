@@ -124,7 +124,7 @@ const StockOrderForm = () => {
       } else {
         await ecomApi.post('/stock/orders', orderData);
       }
-      navigate('/stock/orders');
+      navigate('/ecom/stock/orders');
     } catch (error) {
       setError(error.response?.data?.message || `Erreur lors de ${isEditing ? 'la modification' : 'la création'} de la commande`);
     } finally {
@@ -410,7 +410,7 @@ const StockOrderForm = () => {
         <div className="flex justify-end space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/stock/orders')}
+            onClick={() => navigate('/ecom/stock/orders')}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
           >
             Annuler

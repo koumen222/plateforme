@@ -154,7 +154,7 @@ const CampaignForm = () => {
       } else {
         await ecomApi.post('/campaigns', payload);
       }
-      navigate('/campaigns');
+      navigate('/ecom/campaigns');
     } catch (err) {
       const errorMsg = err.response?.data?.message || 'Erreur enregistrement';
       
@@ -381,7 +381,7 @@ const CampaignForm = () => {
           <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{isEdit ? 'Modifier la campagne' : 'Nouvelle campagne'}</h1>
           <p className="text-sm text-gray-500 mt-0.5">Créez une campagne de relance WhatsApp personnalisée</p>
         </div>
-        <button onClick={() => navigate('/campaigns')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Annuler</button>
+        <button onClick={() => navigate('/ecom/campaigns')} className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition">Annuler</button>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -832,7 +832,7 @@ const CampaignForm = () => {
             className="flex-1 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50">
             {loading ? 'Enregistrement...' : (isEdit ? 'Enregistrer les modifications' : 'Créer la campagne')}
           </button>
-          <button type="button" onClick={() => navigate('/campaigns')}
+          <button type="button" onClick={() => navigate('/ecom/campaigns')}
             className="px-6 py-2.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-sm font-medium">
             Annuler
           </button>

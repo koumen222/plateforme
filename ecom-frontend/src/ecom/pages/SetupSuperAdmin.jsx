@@ -87,7 +87,7 @@ const SetupSuperAdmin = () => {
           <h1 className="text-2xl font-bold text-white mb-2">Accès verrouillé</h1>
           <p className="text-gray-400 mb-8">Le compte Super Administrateur a déjà été créé. Cette page n'est plus accessible.</p>
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/ecom/login')}
             className="px-6 py-2.5 bg-gray-800 text-gray-300 rounded-lg hover:bg-gray-700 transition text-sm font-medium"
           >
             Retour à la connexion
@@ -223,7 +223,7 @@ const SetupSuperAdmin = () => {
 
         <div className="mt-6 text-center">
           <button
-            onClick={() => navigate('/login')}
+            onClick={() => navigate('/ecom/login')}
             className="text-sm text-gray-500 hover:text-gray-300 transition"
           >
             Retour à la connexion

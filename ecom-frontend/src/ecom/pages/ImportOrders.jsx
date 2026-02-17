@@ -677,7 +677,7 @@ const ImportOrders = () => {
                 Relancer l'import
               </button>
               <button
-                onClick={() => navigate('/orders')}
+                onClick={() => navigate('/ecom/orders')}
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-gray-700 text-sm font-medium rounded-lg border border-gray-300 hover:bg-gray-50 transition w-full sm:w-auto justify-center"
               >
                 Voir les commandes

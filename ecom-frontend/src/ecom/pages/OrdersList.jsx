@@ -971,7 +971,7 @@ const OrdersList = () => {
                 Ajouter
               </button>
               <button
-                onClick={() => navigate('/import')}
+                onClick={() => navigate('/ecom/import')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
@@ -987,7 +987,7 @@ const OrdersList = () => {
                 Sync
               </button>
               <button
-                onClick={() => navigate('/stats')}
+                onClick={() => navigate('/ecom/stats')}
                 className="inline-flex items-center gap-1.5 px-3 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition text-xs font-medium"
                 title="Voir les statistiques globales"
               >
@@ -1174,7 +1174,7 @@ const OrdersList = () => {
                   <span className="text-xs text-blue-700 font-medium">Cliquez sur le bouton bleu "Importer" en haut a droite</span>
                 </div>
                 <p className="text-[11px] text-gray-500 leading-relaxed">Collez le lien de votre Google Sheet ou selectionnez une source configuree, puis lancez l'import.</p>
-                <button onClick={() => navigate('/import')} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium">
+                <button onClick={() => navigate('/ecom/import')} className="mt-3 w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-xs font-medium">
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
                   Aller a la page d'import
                 </button>

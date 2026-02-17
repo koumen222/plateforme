@@ -216,7 +216,7 @@ const ProductResearchList = () => {
             Exporter CSV
           </button>
           <button
-            onClick={() => navigate('/product-finder')}
+            onClick={() => navigate('/ecom/product-finder')}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <Plus className="w-4 h-4" />
@@ -347,7 +347,7 @@ const ProductResearchList = () => {
                       <p className="text-lg font-medium mb-2">Aucun produit trouvé</p>
                       <p className="text-sm mb-4">Commencez par ajouter un produit de veille</p>
                       <button
-                        onClick={() => navigate('/product-finder')}
+                        onClick={() => navigate('/ecom/product-finder')}
                         className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                       >
                         Ajouter un produit

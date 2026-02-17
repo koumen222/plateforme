@@ -249,7 +249,7 @@ const ProductFinder = () => {
         
         // Rediriger vers la liste des produits de recherche après 2 secondes
         setTimeout(() => {
-          navigate('/product-research-list');
+          navigate('/ecom/product-research-list');
         }, 2000);
       }
     } catch (error) {
@@ -757,7 +757,7 @@ const ProductFinder = () => {
           <div className="flex justify-end space-x-4">
             <button
               type="button"
-              onClick={() => navigate('/product-research-list')}
+              onClick={() => navigate('/ecom/product-research-list')}
               className="px-6 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 flex items-center"
             >
               Annuler

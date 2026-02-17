@@ -389,7 +389,7 @@ const Register = () => {
             <div className="flex-1 h-px bg-gray-800"></div>
           </div>
 
-          <button onClick={() => navigate('/login')}
+          <button onClick={() => navigate('/ecom/login')}
             className="w-full px-4 py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-medium text-gray-300 transition text-center">
             Se connecter
           </button>
@@ -398,7 +398,7 @@ const Register = () => {
           <div className="mt-6 flex items-center justify-center gap-3 text-xs text-gray-600">
             <span>&copy; {new Date().getFullYear()} Ecom Cockpit</span>
             <span>•</span>
-            <button onClick={() => navigate('/privacy')} className="text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
+            <button onClick={() => navigate('/ecom/privacy')} className="text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
           </div>
         </div>
       </div>

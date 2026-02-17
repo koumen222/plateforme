@@ -132,7 +132,7 @@ const ReportForm = () => {
         console.log('✅ Rapport créé avec succès');
       }
       
-      navigate('/reports');
+      navigate('/ecom/reports');
     } catch (error) {
       console.error('❌ Erreur:', error);
       setError(error.response?.data?.message || `Erreur lors de ${isEditing ? 'la modification' : 'la création'} du rapport`);
@@ -363,7 +363,7 @@ const ReportForm = () => {
         <div className="flex justify-end space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/reports')}
+            onClick={() => navigate('/ecom/reports')}
             className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
           >
             Annuler

@@ -112,7 +112,7 @@ const Profile = () => {
         <div className="text-center">
           <p className="text-gray-600 mb-4">Utilisateur non trouvé</p>
           <button 
-            onClick={() => window.location.href = '/login'}
+            onClick={() => window.location.href = '/ecom/login'}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Se connecter

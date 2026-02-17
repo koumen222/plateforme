@@ -96,7 +96,7 @@ const Login = () => {
           <span className="text-gray-700">•</span>
           <span className="text-xs text-gray-500">Chiffrement AES-256</span>
           <span className="text-gray-700">•</span>
-          <button onClick={() => navigate('/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition underline underline-offset-2">
+          <button onClick={() => navigate('/ecom/privacy')} className="text-xs text-gray-500 hover:text-gray-300 transition underline underline-offset-2">
             Confidentialité
           </button>
         </div>
@@ -154,7 +154,7 @@ const Login = () => {
                   </button>
                 </div>
                 <div className="flex justify-end mt-1.5">
-                  <button type="button" onClick={() => navigate('/forgot-password')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition">
+                  <button type="button" onClick={() => navigate('/ecom/forgot-password')} className="text-xs text-blue-400 hover:text-blue-300 font-medium transition">
                     Mot de passe oublié ?
                   </button>
                 </div>
@@ -195,12 +195,12 @@ const Login = () => {
 
           {/* Register links */}
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => navigate('/register')}
+            <button onClick={() => navigate('/ecom/register')}
               className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-medium text-gray-300 transition text-center flex flex-col items-center gap-1">
               <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
               <span>Créer un espace</span>
             </button>
-            <button onClick={() => navigate('/register')}
+            <button onClick={() => navigate('/ecom/register')}
               className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 rounded-xl text-sm font-medium text-gray-300 transition text-center flex flex-col items-center gap-1">
               <svg className="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
               <span>Rejoindre une équipe</span>
@@ -211,7 +211,7 @@ const Login = () => {
           <div className="mt-6 flex items-center justify-center gap-3 text-xs text-gray-600">
             <span>&copy; {new Date().getFullYear()} Ecom Cockpit</span>
             <span>•</span>
-            <button onClick={() => navigate('/privacy')} className="text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
+            <button onClick={() => navigate('/ecom/privacy')} className="text-gray-500 hover:text-gray-300 transition">Confidentialité</button>
           </div>
         </div>
       </div>

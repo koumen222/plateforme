@@ -47,7 +47,7 @@ const ReportDetail = () => {
     
     try {
       await ecomApi.delete(`/reports/${id}`);
-      navigate('/reports');
+      navigate('/ecom/reports');
     } catch (error) {
       setError('Erreur lors de la suppression du rapport');
       console.error(error);
@@ -98,7 +98,7 @@ const ReportDetail = () => {
               </button>
             )}
             <button
-              onClick={() => navigate('/reports')}
+              onClick={() => navigate('/ecom/reports')}
               className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
             >
               Retour
