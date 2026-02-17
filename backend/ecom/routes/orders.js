@@ -253,6 +253,75 @@ router.get('/new-since', requireEcomAuth, async (req, res) => {
       filter.sheetRowId = { $regex: `^source_${sourceId}_` };
     }
 
+    // Filtre closeuse: ne montrer que les commandes des produits assignés
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [new-since] Closeuse filter - userId:', req.ecomUser._id, 'workspaceId:', req.workspaceId);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      }).populate('productAssignments.productIds', 'name');
+
+      console.log('🔒 [new-since] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        console.log('🔒 [new-since] sheetProductNames:', sheetProductNames, 'dbProductNames:', dbProductNames, 'assignedCityNames:', assignedCityNames);
+
+        if (sheetProductNames.length > 0 || dbProductNames.length > 0 || assignedCityNames.length > 0) {
+          // Combiner tous les noms de produits (sheets + DB)
+          const allProductNames = [...sheetProductNames, ...dbProductNames];
+          
+          // Correspondance exacte sur les noms de produits assignés (case-insensitive, trim)
+          const productConditions = allProductNames.map(name => ({
+            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          // Correspondance exacte sur les noms de villes assignées (case-insensitive, trim)
+          const cityConditions = assignedCityNames.map(name => ({
+            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          console.log('🔒 [new-since] Product names to match:', allProductNames);
+          console.log('🔒 [new-since] City names to match:', assignedCityNames);
+
+          // Combiner toutes les conditions (produits OU villes)
+          const allConditions = [...productConditions, ...cityConditions];
+
+          if (allConditions.length > 0) {
+            if (filter.$or) {
+              // search + product/city filter: wrap both in $and
+              const searchOr = filter.$or;
+              delete filter.$or;
+              filter.$and = [{ $or: searchOr }, { $or: allConditions }];
+            } else {
+              filter.$or = allConditions;
+            }
+            console.log('🔒 [new-since] Final filter: exact match on', allProductNames.length, 'products and', assignedCityNames.length, 'cities');
+          } else {
+            // Si aucune condition de produit/ville mais qu'il y a une assignment, ne retourner aucune commande
+            filter._id = null; // Force un résultat vide
+            console.log('🔒 [new-since] Assignment found but no products/cities assigned - returning empty result');
+          }
+        } else {
+          // Si la closeuse a une assignment mais aucun produit/ville assigné, ne retourner aucune commande
+          filter._id = null; // Force un résultat vide
+          console.log('🔒 [new-since] Assignment found but no products/cities assigned - returning empty result');
+        }
+      } else {
+        // Si la closeuse n'a aucune assignment, ne retourner aucune commande
+        filter._id = null; // Force un résultat vide
+        console.log('🔒 [new-since] No assignment found for closeuse - returning empty result');
+      }
+    }
+
     const orders = await Order.find(filter)
       .sort({ updatedAt: -1 })
       .limit(200)
@@ -358,27 +427,36 @@ router.get('/', requireEcomAuth, async (req, res) => {
         closeuseId: req.ecomUser._id,
         workspaceId: req.workspaceId,
         isActive: true
-      });
+      }).populate('productAssignments.productIds', 'name');
 
       console.log('🔒 [orders] Assignment found:', !!assignment);
       if (assignment) {
         const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
         const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
         const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
-        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'assignedProductIds:', assignedProductIds.length, 'assignedCityNames:', assignedCityNames);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'dbProductNames:', dbProductNames, 'assignedCityNames:', assignedCityNames);
 
-        if (sheetProductNames.length > 0 || assignedProductIds.length > 0 || assignedCityNames.length > 0) {
-          // Correspondance exacte sur les noms de produits assignés (case-insensitive)
-          const productConditions = sheetProductNames.map(name => ({
-            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+        if (sheetProductNames.length > 0 || dbProductNames.length > 0 || assignedCityNames.length > 0) {
+          // Combiner tous les noms de produits (sheets + DB)
+          const allProductNames = [...sheetProductNames, ...dbProductNames];
+          
+          // Correspondance exacte sur les noms de produits assignés (case-insensitive, trim)
+          const productConditions = allProductNames.map(name => ({
+            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
           }));
 
-          // Correspondance exacte sur les noms de villes assignées (case-insensitive)
+          // Correspondance exacte sur les noms de villes assignées (case-insensitive, trim)
           const cityConditions = assignedCityNames.map(name => ({
-            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
           }));
 
-          console.log('🔒 [orders] Product names to match:', sheetProductNames);
+          console.log('🔒 [orders] Product names to match:', allProductNames);
           console.log('🔒 [orders] City names to match:', assignedCityNames);
 
           // Combiner toutes les conditions (produits OU villes)
@@ -393,9 +471,22 @@ router.get('/', requireEcomAuth, async (req, res) => {
             } else {
               filter.$or = allConditions;
             }
-            console.log('🔒 [orders] Final filter: exact match on', sheetProductNames.length, 'products and', assignedCityNames.length, 'cities');
+            console.log('🔒 [orders] Final filter: exact match on', allProductNames.length, 'products and', assignedCityNames.length, 'cities');
+          } else {
+            // Si aucune condition de produit/ville mais qu'il y a une assignment, ne retourner aucune commande
+            // Cela évite de montrer toutes les commandes si la closeuse a une assignment vide
+            filter._id = null; // Force un résultat vide
+            console.log('🔒 [orders] Assignment found but no products/cities assigned - returning empty result');
           }
+        } else {
+          // Si la closeuse a une assignment mais aucun produit/ville assigné, ne retourner aucune commande
+          filter._id = null; // Force un résultat vide
+          console.log('🔒 [orders] Assignment found but no products/cities assigned - returning empty result');
         }
+      } else {
+        // Si la closeuse n'a aucune assignment, ne retourner aucune commande
+        filter._id = null; // Force un résultat vide
+        console.log('🔒 [orders] No assignment found for closeuse - returning empty result');
       }
     }
 
@@ -2328,6 +2419,55 @@ router.get('/:id', requireEcomAuth, async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+    }
+
+    // Vérifier les permissions pour les closeuses
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [order detail] Closeuse access check - userId:', req.ecomUser._id, 'orderId:', req.params.id);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      }).populate('productAssignments.productIds', 'name');
+
+      console.log('🔒 [order detail] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        // Combiner tous les noms de produits (sheets + DB)
+        const allProductNames = [...sheetProductNames, ...dbProductNames];
+        
+        console.log('🔒 [order detail] Checking access - order product:', order.product, 'assigned products:', allProductNames, 'assigned cities:', assignedCityNames);
+
+        // Vérifier si le produit de la commande est dans les produits assignés
+        const productMatch = allProductNames.some(assignedProduct => 
+          assignedProduct && order.product && 
+          order.product.trim().toLowerCase() === assignedProduct.trim().toLowerCase()
+        );
+
+        // Vérifier si la ville de la commande est dans les villes assignées
+        const cityMatch = assignedCityNames.some(assignedCity => 
+          assignedCity && order.city && 
+          order.city.trim().toLowerCase() === assignedCity.trim().toLowerCase()
+        );
+
+        if (!productMatch && !cityMatch) {
+          console.log('🔒 [order detail] Access denied - product or city not assigned');
+          return res.status(403).json({ success: false, message: 'Accès refusé: cette commande ne vous est pas assignée.' });
+        }
+
+        console.log('🔒 [order detail] Access granted - product or city match found');
+      } else {
+        console.log('🔒 [order detail] Access denied - no assignment found');
+        return res.status(403).json({ success: false, message: 'Accès refusé: aucune affectation trouvée.' });
+      }
     }
 
     res.json({
