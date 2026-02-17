@@ -41,20 +41,49 @@ const CloseuseDashboard = () => {
       setMyAssignments(assignmentsRes.data.data);
 
       // Filtrer les produits selon les affectations
+      const assignments = assignmentsRes.data.data;
       let filteredProducts = productsRes.data.data;
-      if (assignmentsRes.data.data.productAssignments && assignmentsRes.data.data.productAssignments.length > 0) {
-        const assignedProductIds = assignmentsRes.data.data.productAssignments.flatMap(pa => pa.productIds.map(p => p._id));
-        filteredProducts = filteredProducts.filter(product => assignedProductIds.includes(product._id));
+      
+      // Collecter les noms de produits Google Sheets assignés
+      const sheetProductNames = (assignments.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+      
+      if (assignments.productAssignments && assignments.productAssignments.length > 0) {
+        const assignedProductIds = assignments.productAssignments.flatMap(pa => (pa.productIds || []).map(p => p._id));
+        if (assignedProductIds.length > 0) {
+          filteredProducts = filteredProducts.filter(product => assignedProductIds.includes(product._id));
+        }
       }
-      setProducts(filteredProducts);
+      
+      // Ajouter les produits Google Sheets comme des objets virtuels
+      const sheetProductObjects = sheetProductNames.map((name, idx) => ({
+        _id: `sheet_${idx}`,
+        name,
+        isSheetProduct: true,
+        status: 'active',
+        sellingPrice: '-',
+        stock: '-'
+      }));
+      
+      setProducts([...filteredProducts, ...sheetProductObjects]);
 
-      // Filtrer les commandes selon les sources assignées
+      // Filtrer les commandes selon les sources et produits assignés
       let filteredOrders = ordersRes.data.data.orders || [];
-      if (assignmentsRes.data.data.orderSources && assignmentsRes.data.data.orderSources.length > 0) {
-        const assignedSourceIds = assignmentsRes.data.data.orderSources.map(os => os.sourceId._id);
+      
+      const hasSourceAssignments = assignments.orderSources?.length > 0;
+      const hasProductAssignments = sheetProductNames.length > 0;
+      
+      if (hasSourceAssignments || hasProductAssignments) {
+        const assignedSourceIds = (assignments.orderSources || []).map(os => os.sourceId?._id);
+        
         filteredOrders = filteredOrders.filter(order => {
-          // Si la commande a un champ sourceId, le vérifier
-          return !order.sourceId || assignedSourceIds.includes(order.sourceId);
+          // Filtre par source
+          const sourceMatch = !hasSourceAssignments || !order.sourceId || assignedSourceIds.includes(order.sourceId);
+          // Filtre par produit (si des produits sheets sont assignés, ne montrer que ceux-là)
+          const productMatch = !hasProductAssignments || sheetProductNames.some(name => 
+            order.product?.toLowerCase().includes(name.toLowerCase()) || 
+            name.toLowerCase().includes(order.product?.toLowerCase() || '')
+          );
+          return sourceMatch && productMatch;
         });
       }
       setRecentOrders(filteredOrders);

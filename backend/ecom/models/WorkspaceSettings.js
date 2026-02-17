@@ -89,6 +89,15 @@ const workspaceSettingsSchema = new mongoose.Schema({
     lastRunAt: { type: Date },
     updatedAt: { type: Date, default: Date.now },
     notifyOnChanges: { type: Boolean, default: true }
+  },
+  // Préférences de notifications push
+  pushNotifications: {
+    push_new_orders: { type: Boolean, default: true },
+    push_status_changes: { type: Boolean, default: true },
+    push_deliveries: { type: Boolean, default: true },
+    push_stock_updates: { type: Boolean, default: true },
+    push_low_stock: { type: Boolean, default: true },
+    push_sync_completed: { type: Boolean, default: true }
   }
 }, {
   timestamps: true,

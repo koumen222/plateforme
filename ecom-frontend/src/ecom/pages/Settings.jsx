@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import CurrencySelector from '../components/CurrencySelector.jsx';
 import { useMoney } from '../hooks/useMoney.js';
 import { useEcomAuth } from '../hooks/useEcomAuth.jsx';
-import ecomApi from '../services/ecommApi.js';
+import ecomApi, { settingsApi } from '../services/ecommApi.js';
 
 const Settings = () => {
   const { fmt, currency, symbol } = useMoney();
@@ -17,8 +17,12 @@ const Settings = () => {
     email_orders: true,
     email_stock: true,
     email_reports: false,
-    push_orders: true,
-    push_stock: false
+    push_new_orders: true,
+    push_status_changes: true,
+    push_deliveries: true,
+    push_stock_updates: true,
+    push_low_stock: true,
+    push_sync_completed: true
   });
 
   const fetchSources = async () => {
@@ -34,6 +38,43 @@ const Settings = () => {
       setSourcesLoading(false);
     }
   };
+
+  const fetchPushPreferences = async () => {
+    try {
+      const res = await settingsApi.getPushNotificationPreferences();
+      if (res.data.success) {
+        setNotifications(prev => ({ ...prev, ...res.data.data }));
+      }
+    } catch (err) {
+      console.error('Error fetching push preferences:', err);
+    }
+  };
+
+  const savePushPreferences = async (key, value) => {
+    try {
+      const updatedPrefs = { ...notifications, [key]: value };
+      setNotifications(updatedPrefs);
+      
+      const pushPrefs = {
+        push_new_orders: updatedPrefs.push_new_orders,
+        push_status_changes: updatedPrefs.push_status_changes,
+        push_deliveries: updatedPrefs.push_deliveries,
+        push_stock_updates: updatedPrefs.push_stock_updates,
+        push_low_stock: updatedPrefs.push_low_stock,
+        push_sync_completed: updatedPrefs.push_sync_completed
+      };
+      
+      await settingsApi.updatePushNotificationPreferences(pushPrefs);
+    } catch (err) {
+      console.error('Error saving push preferences:', err);
+      // Revert on error
+      setNotifications(prev => ({ ...prev, [key]: !value }));
+    }
+  };
+
+  useEffect(() => {
+    fetchPushPreferences();
+  }, []);
 
   const handleAddSource = async () => {
     try {
@@ -308,21 +349,25 @@ const Settings = () => {
                       <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                       </svg>
-                      Notifications push
+                      Notifications push (mobile)
                     </h3>
                     <div className="space-y-4">
                       {[
-                        { key: 'push_orders', label: 'Commandes en temps réel', desc: 'Notification instantanée pour chaque commande.' },
-                        { key: 'push_stock', label: 'Rupture de stock', desc: 'Alerte immédiate en cas de rupture de stock.' },
+                        { key: 'push_new_orders', label: '🛒 Nouvelles commandes', desc: 'Notification instantanée pour chaque nouvelle commande créée.' },
+                        { key: 'push_status_changes', label: '📋 Changements de statut', desc: 'Alertes quand le statut d\'une commande change (confirmée, expédiée, livrée, etc.).' },
+                        { key: 'push_deliveries', label: '🚚 Assignations livreur', desc: 'Notification quand une commande est assignée à un livreur.' },
+                        { key: 'push_stock_updates', label: '📦 Modifications de stock', desc: 'Alertes lors des changements de stock des produits.' },
+                        { key: 'push_low_stock', label: '⚠️ Stock faible', desc: 'Alerte immédiate quand un produit atteint le seuil de stock minimum.' },
+                        { key: 'push_sync_completed', label: '📊 Synchronisations terminées', desc: 'Notification quand une synchro Google Sheets ou un import se termine.' },
                       ].map(item => (
                         <div key={item.key} className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-gray-900">{item.label}</p>
+                          <div className="flex-1 pr-4">
+                            <p className="text-sm font-medium text-gray-700">{item.label}</p>
                             <p className="text-xs text-gray-500">{item.desc}</p>
                           </div>
                           <button
-                            onClick={() => setNotifications(prev => ({ ...prev, [item.key]: !prev[item.key] }))}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                            onClick={() => savePushPreferences(item.key, !notifications[item.key])}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${
                               notifications[item.key] ? 'bg-blue-600' : 'bg-gray-300'
                             }`}
                           >

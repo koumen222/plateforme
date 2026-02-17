@@ -168,14 +168,21 @@ export async function logAudit(req, action, details = '', resourceType = '', res
 // ═══════════════════════════════════════════════════════════════
 
 export function securityHeaders(req, res, next) {
+  // Don't set security headers for CORS preflight requests
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   // Empêcher le sniffing MIME
   res.setHeader('X-Content-Type-Options', 'nosniff');
   // Protection XSS
   res.setHeader('X-XSS-Protection', '1; mode=block');
   // Empêcher le clickjacking
   res.setHeader('X-Frame-Options', 'DENY');
-  // Strict Transport Security
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Strict Transport Security (only for HTTPS)
+  if (req.secure) {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  }
   // Referrer Policy
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
   // Permissions Policy
@@ -203,45 +210,6 @@ export function auditSensitiveAccess(action, resourceType = '') {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// 5. RATE LIMITER SIMPLE POUR PROTECTION BRUTE FORCE
+// 5. RATE LIMITER - DÉSACTIVÉ
 // ═══════════════════════════════════════════════════════════════
-
-const rateLimitStore = new Map();
-
-export function rateLimit(maxRequests = 100, windowMs = 60000) {
-  return (req, res, next) => {
-    const ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
-    const key = `${ip}:${req.route?.path || req.originalUrl}`;
-    const now = Date.now();
-    
-    if (!rateLimitStore.has(key)) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-    
-    const entry = rateLimitStore.get(key);
-    if (now > entry.resetAt) {
-      rateLimitStore.set(key, { count: 1, resetAt: now + windowMs });
-      return next();
-    }
-    
-    entry.count++;
-    if (entry.count > maxRequests) {
-      console.warn(`⚠️ Rate limit dépassé: ${key} (${entry.count} requêtes)`);
-      return res.status(429).json({ 
-        success: false, 
-        message: 'Trop de requêtes. Réessayez dans quelques instants.' 
-      });
-    }
-    
-    next();
-  };
-}
-
-// Nettoyer le store périodiquement
-setInterval(() => {
-  const now = Date.now();
-  for (const [key, entry] of rateLimitStore) {
-    if (now > entry.resetAt) rateLimitStore.delete(key);
-  }
-}, 60000);
+// Rate limiting désactivé pour permettre des connexions illimitées

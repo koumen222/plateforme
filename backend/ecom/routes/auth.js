@@ -6,17 +6,26 @@ import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
-import { logAudit, rateLimit } from '../middleware/security.js';
+import { logAudit } from '../middleware/security.js';
 
 const router = express.Router();
+const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+
+const normalizeToken = (token = '') => token.replace(/^ecom:/, '').replace(/^perm:/, '');
+const isRawJwt = (token = '') => token.split('.').length === 3;
+const isSupportedAuthToken = (token = '') => (
+  token.startsWith('ecom:') ||
+  token.startsWith('perm:') ||
+  isRawJwt(token)
+);
 
 // Rate limiting simple pour forgot-password (anti-abus)
 const forgotPasswordAttempts = new Map();
 const FORGOT_PASSWORD_LIMIT = 3; // max 3 demandes
 const FORGOT_PASSWORD_WINDOW = 15 * 60 * 1000; // par 15 minutes
 
-// POST /api/ecom/auth/login - Connexion (rate limited: 10 tentatives/min)
-router.post('/login', rateLimit(10, 60000), validateEmail, async (req, res) => {
+// POST /api/ecom/auth/login - Connexion
+router.post('/login', validateEmail, async (req, res) => {
   try {
     const { email, password, rememberDevice, deviceInfo } = req.body;
 
@@ -107,15 +116,14 @@ router.post('/register-device', async (req, res) => {
     const { deviceInfo } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Authentification requise'
       });
     }
 
-    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
@@ -432,16 +440,14 @@ router.get('/me', async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
-
-        const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
     
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     console.log('🔍 Recherche utilisateur avec ID:', decoded.id);
     const user = await EcomUser.findById(decoded.id).select('-password');
@@ -502,13 +508,12 @@ router.put('/profile', async (req, res) => {
     
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       console.log('❌ [Profile Update] Token invalide:', token?.substring(0, 20));
       return res.status(401).json({ success: false, message: 'Token invalide' });
     }
 
-    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     console.log('👤 [Profile Update] Token décodé, userId:', decoded.id);
     
     const user = await EcomUser.findById(decoded.id);
@@ -707,16 +712,14 @@ router.put('/change-password', async (req, res) => {
     const { currentPassword, newPassword } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
-
-        const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
     
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
@@ -766,16 +769,14 @@ router.put('/currency', async (req, res) => {
     const { currency } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
-
-    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
     
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
@@ -831,15 +832,14 @@ router.put('/avatar', async (req, res) => {
     const { avatar } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
 
-    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
@@ -874,15 +874,14 @@ router.get('/me', async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     
-    if (!token || !token.startsWith('ecom:')) {
+    if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
 
-    const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
-    const decoded = jwt.verify(token.replace('ecom:', ''), ECOM_JWT_SECRET);
+    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     
     const user = await EcomUser.findById(decoded.id).select('-password');
     if (!user || !user.isActive) {

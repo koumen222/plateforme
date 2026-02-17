@@ -32,6 +32,10 @@ const orderSourceSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'EcomUser',
     required: true
+  },
+  metadata: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
   }
 }, {
   collection: 'order_sources',

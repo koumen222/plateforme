@@ -4,6 +4,7 @@ import Order from '../models/Order.js';
 import Client from '../models/Client.js';
 import WorkspaceSettings from '../models/WorkspaceSettings.js';
 import EcomUser from '../models/EcomUser.js';
+import CloseuseAssignment from '../models/CloseuseAssignment.js';
 import Notification from '../../models/Notification.js';
 import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
@@ -184,6 +185,25 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
     // Notification d'équipe (exclure l'acteur)
     notifyTeamOrderCreated(req.workspaceId, req.ecomUser._id, order, req.ecomUser.email).catch(() => {});
     
+    // 📱 Push notification
+    try {
+      const { sendPushNotification } = await import('../../services/pushService.js');
+      await sendPushNotification(req.workspaceId, {
+        title: '🛒 Nouvelle commande',
+        body: `${order.clientName || order.clientPhone} - ${order.product || 'Produit'} (${order.quantity}x)`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: 'new-order',
+        data: {
+          type: 'new_order',
+          orderId: order._id.toString(),
+          url: `/orders/${order._id}`
+        }
+      }, 'push_new_orders');
+    } catch (e) {
+      console.warn('⚠️ Push notification failed:', e.message);
+    }
+    
     res.status(201).json({ success: true, message: 'Commande créée', data: order });
   } catch (error) {
     console.error('Erreur création commande:', error);
@@ -231,6 +251,75 @@ router.get('/new-since', requireEcomAuth, async (req, res) => {
     };
     if (sourceId) {
       filter.sheetRowId = { $regex: `^source_${sourceId}_` };
+    }
+
+    // Filtre closeuse: ne montrer que les commandes des produits assignés
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [new-since] Closeuse filter - userId:', req.ecomUser._id, 'workspaceId:', req.workspaceId);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      }).populate('productAssignments.productIds', 'name');
+
+      console.log('🔒 [new-since] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        console.log('🔒 [new-since] sheetProductNames:', sheetProductNames, 'dbProductNames:', dbProductNames, 'assignedCityNames:', assignedCityNames);
+
+        if (sheetProductNames.length > 0 || dbProductNames.length > 0 || assignedCityNames.length > 0) {
+          // Combiner tous les noms de produits (sheets + DB)
+          const allProductNames = [...sheetProductNames, ...dbProductNames];
+          
+          // Correspondance exacte sur les noms de produits assignés (case-insensitive, trim)
+          const productConditions = allProductNames.map(name => ({
+            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          // Correspondance exacte sur les noms de villes assignées (case-insensitive, trim)
+          const cityConditions = assignedCityNames.map(name => ({
+            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          console.log('🔒 [new-since] Product names to match:', allProductNames);
+          console.log('🔒 [new-since] City names to match:', assignedCityNames);
+
+          // Combiner toutes les conditions (produits OU villes)
+          const allConditions = [...productConditions, ...cityConditions];
+
+          if (allConditions.length > 0) {
+            if (filter.$or) {
+              // search + product/city filter: wrap both in $and
+              const searchOr = filter.$or;
+              delete filter.$or;
+              filter.$and = [{ $or: searchOr }, { $or: allConditions }];
+            } else {
+              filter.$or = allConditions;
+            }
+            console.log('🔒 [new-since] Final filter: exact match on', allProductNames.length, 'products and', assignedCityNames.length, 'cities');
+          } else {
+            // Si aucune condition de produit/ville mais qu'il y a une assignment, ne retourner aucune commande
+            filter._id = null; // Force un résultat vide
+            console.log('🔒 [new-since] Assignment found but no products/cities assigned - returning empty result');
+          }
+        } else {
+          // Si la closeuse a une assignment mais aucun produit/ville assigné, ne retourner aucune commande
+          filter._id = null; // Force un résultat vide
+          console.log('🔒 [new-since] Assignment found but no products/cities assigned - returning empty result');
+        }
+      } else {
+        // Si la closeuse n'a aucune assignment, ne retourner aucune commande
+        filter._id = null; // Force un résultat vide
+        console.log('🔒 [new-since] No assignment found for closeuse - returning empty result');
+      }
     }
 
     const orders = await Order.find(filter)
@@ -331,20 +420,119 @@ router.get('/', requireEcomAuth, async (req, res) => {
       ];
     }
 
+    // Filtre closeuse: ne montrer que les commandes des produits assignés
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] Closeuse filter - userId:', req.ecomUser._id, 'workspaceId:', req.workspaceId);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      }).populate('productAssignments.productIds', 'name');
+
+      console.log('🔒 [orders] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'dbProductNames:', dbProductNames, 'assignedCityNames:', assignedCityNames);
+
+        if (sheetProductNames.length > 0 || dbProductNames.length > 0 || assignedCityNames.length > 0) {
+          // Combiner tous les noms de produits (sheets + DB)
+          const allProductNames = [...sheetProductNames, ...dbProductNames];
+          
+          // Correspondance exacte sur les noms de produits assignés (case-insensitive, trim)
+          const productConditions = allProductNames.map(name => ({
+            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          // Correspondance exacte sur les noms de villes assignées (case-insensitive, trim)
+          const cityConditions = assignedCityNames.map(name => ({
+            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').trim()}$`, $options: 'i' }
+          }));
+
+          console.log('🔒 [orders] Product names to match:', allProductNames);
+          console.log('🔒 [orders] City names to match:', assignedCityNames);
+
+          // Combiner toutes les conditions (produits OU villes)
+          const allConditions = [...productConditions, ...cityConditions];
+
+          if (allConditions.length > 0) {
+            if (filter.$or) {
+              // search + product/city filter: wrap both in $and
+              const searchOr = filter.$or;
+              delete filter.$or;
+              filter.$and = [{ $or: searchOr }, { $or: allConditions }];
+            } else {
+              filter.$or = allConditions;
+            }
+            console.log('🔒 [orders] Final filter: exact match on', allProductNames.length, 'products and', assignedCityNames.length, 'cities');
+          } else {
+            // Si aucune condition de produit/ville mais qu'il y a une assignment, ne retourner aucune commande
+            // Cela évite de montrer toutes les commandes si la closeuse a une assignment vide
+            filter._id = null; // Force un résultat vide
+            console.log('🔒 [orders] Assignment found but no products/cities assigned - returning empty result');
+          }
+        } else {
+          // Si la closeuse a une assignment mais aucun produit/ville assigné, ne retourner aucune commande
+          filter._id = null; // Force un résultat vide
+          console.log('🔒 [orders] Assignment found but no products/cities assigned - returning empty result');
+        }
+      } else {
+        // Si la closeuse n'a aucune assignment, ne retourner aucune commande
+        filter._id = null; // Force un résultat vide
+        console.log('🔒 [orders] No assignment found for closeuse - returning empty result');
+      }
+    }
+
+    // Debug: log complete filter for closeuse
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] COMPLETE FILTER:', JSON.stringify(filter, null, 2));
+    }
+
     const orders = await Order.find(filter)
       .populate('assignedLivreur', 'name email phone')
       .sort({ date: -1, _id: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Debug: log sample product values from returned orders
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] Orders returned:', orders.length);
+      if (orders.length > 0) {
+        console.log('🔒 [orders] Sample product values:', orders.slice(0, 5).map(o => o.product));
+      }
+    }
+
     const total = await Order.countDocuments(filter);
 
-    // Stats — use countDocuments per status (auto-casts workspaceId, always works)
+    // Stats — use countDocuments per status (filtered by closeuse products if applicable)
     const wsFilter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
+    
+    // For closeuse, also apply product and city filter to stats
+    let statsFilter = { ...wsFilter };
+    if (req.ecomUser.role === 'ecom_closeuse' && (filter.$or || filter.$and)) {
+      // Extract product and city conditions from the main filter
+      if (filter.$or) {
+        statsFilter.$or = filter.$or;
+      } else if (filter.$and) {
+        // Find the product/city conditions in $and
+        const productCityCondition = filter.$and.find(c => c.$or && (c.$or[0]?.product || c.$or[0]?.city));
+        if (productCityCondition) {
+          statsFilter.$or = productCityCondition.$or;
+        }
+      }
+    }
+    
     const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
     
     const countPromises = statuses.map(s => 
-      Order.countDocuments({ ...wsFilter, status: s })
+      Order.countDocuments({ ...statsFilter, status: s })
     );
     const counts = await Promise.all(countPromises);
     
@@ -356,7 +544,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     
     // Calculate delivered revenue
     const deliveredOrders = await Order.find(
-      { ...wsFilter, status: 'delivered' },
+      { ...statsFilter, status: 'delivered' },
       { price: 1, quantity: 1 }
     ).lean();
     stats.totalRevenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
@@ -365,7 +553,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     if (period) {
       stats.periodRevenue = 0;
       const periodDeliveredOrders = await Order.find(
-        { ...wsFilter, status: 'delivered', date: filter.date },
+        { ...statsFilter, status: 'delivered', date: filter.date },
         { price: 1, quantity: 1 }
       ).lean();
       stats.periodRevenue = periodDeliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
@@ -1848,6 +2036,61 @@ router.put('/settings', requireEcomAuth, validateEcomAccess('products', 'write')
   }
 });
 
+// GET /api/ecom/orders/settings/push-notifications - Récupérer les préférences de notifications push
+router.get('/settings/push-notifications', requireEcomAuth, async (req, res) => {
+  try {
+    let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings) {
+      settings = new WorkspaceSettings({ workspaceId: req.workspaceId });
+      await settings.save();
+    }
+
+    res.json({ 
+      success: true, 
+      data: settings.pushNotifications || {
+        push_new_orders: true,
+        push_status_changes: true,
+        push_deliveries: true,
+        push_stock_updates: true,
+        push_low_stock: true,
+        push_sync_completed: true
+      }
+    });
+  } catch (error) {
+    console.error('Erreur get push notifications settings:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/ecom/orders/settings/push-notifications - Mettre à jour les préférences de notifications push
+router.put('/settings/push-notifications', requireEcomAuth, async (req, res) => {
+  try {
+    const { push_new_orders, push_status_changes, push_deliveries, push_stock_updates, push_low_stock, push_sync_completed } = req.body;
+
+    let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings) {
+      settings = new WorkspaceSettings({ workspaceId: req.workspaceId });
+    }
+
+    if (!settings.pushNotifications) {
+      settings.pushNotifications = {};
+    }
+
+    if (push_new_orders !== undefined) settings.pushNotifications.push_new_orders = push_new_orders;
+    if (push_status_changes !== undefined) settings.pushNotifications.push_status_changes = push_status_changes;
+    if (push_deliveries !== undefined) settings.pushNotifications.push_deliveries = push_deliveries;
+    if (push_stock_updates !== undefined) settings.pushNotifications.push_stock_updates = push_stock_updates;
+    if (push_low_stock !== undefined) settings.pushNotifications.push_low_stock = push_low_stock;
+    if (push_sync_completed !== undefined) settings.pushNotifications.push_sync_completed = push_sync_completed;
+
+    await settings.save();
+    res.json({ success: true, message: 'Préférences de notifications push sauvegardées', data: settings.pushNotifications });
+  } catch (error) {
+    console.error('Erreur save push notifications settings:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // POST /api/ecom/orders/backfill-clients - Créer les clients/prospects depuis toutes les commandes existantes
 router.post('/backfill-clients', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -1997,6 +2240,25 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
     // Notifier les autres livreurs que cette commande n'est plus disponible
     await notifyOrderTaken(order, req.workspaceId, req.user._id);
     
+    // 📱 Push notification pour assignation livreur
+    try {
+      const { sendPushNotification } = await import('../../services/pushService.js');
+      await sendPushNotification(req.workspaceId, {
+        title: '🚚 Commande assignée',
+        body: `${order.orderId} assignée à un livreur - ${order.clientName || order.clientPhone}`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: 'order-assigned',
+        data: {
+          type: 'order_assigned',
+          orderId: order._id.toString(),
+          url: `/orders/${order._id}`
+        }
+      }, 'push_deliveries');
+    } catch (e) {
+      console.warn('⚠️ Push notification failed:', e.message);
+    }
+    
     res.json({ 
       success: true, 
       message: 'Commande assignée avec succès',
@@ -2048,6 +2310,36 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       
       // Notification d'équipe (exclure l'acteur)
       notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, order, req.body.status, req.ecomUser.email).catch(() => {});
+      
+      // 📱 Push notification pour changement de statut
+      try {
+        const { sendPushNotification } = await import('../../services/pushService.js');
+        const statusEmojis = {
+          pending: '⏳', confirmed: '✅', shipped: '📦', 
+          delivered: '🎉', returned: '↩️', cancelled: '❌',
+          unreachable: '📵', called: '📞', postponed: '⏰'
+        };
+        const statusLabels = {
+          pending: 'En attente', confirmed: 'Confirmée', shipped: 'Expédiée',
+          delivered: 'Livrée', returned: 'Retournée', cancelled: 'Annulée',
+          unreachable: 'Injoignable', called: 'Appelée', postponed: 'Reportée'
+        };
+        await sendPushNotification(req.workspaceId, {
+          title: `${statusEmojis[req.body.status] || '📋'} Commande ${statusLabels[req.body.status] || req.body.status}`,
+          body: `${order.orderId} - ${order.clientName || order.clientPhone}`,
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-72x72.png',
+          tag: 'order-status',
+          data: {
+            type: 'order_status_change',
+            orderId: order._id.toString(),
+            status: req.body.status,
+            url: `/orders/${order._id}`
+          }
+        }, 'push_status_changes');
+      } catch (e) {
+        console.warn('⚠️ Push notification failed:', e.message);
+      }
     }
 
     res.json({ success: true, message: 'Commande mise à jour', data: order });
@@ -2127,6 +2419,55 @@ router.get('/:id', requireEcomAuth, async (req, res) => {
 
     if (!order) {
       return res.status(404).json({ success: false, message: 'Commande non trouvée.' });
+    }
+
+    // Vérifier les permissions pour les closeuses
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [order detail] Closeuse access check - userId:', req.ecomUser._id, 'orderId:', req.params.id);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      }).populate('productAssignments.productIds', 'name');
+
+      console.log('🔒 [order detail] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        
+        // Extraire les noms des produits de la base de données
+        const dbProductNames = assignedProductIds
+          .filter(pid => pid && typeof pid === 'object' && pid.name) // Filtrer les produits peuplés
+          .map(pid => pid.name);
+        
+        // Combiner tous les noms de produits (sheets + DB)
+        const allProductNames = [...sheetProductNames, ...dbProductNames];
+        
+        console.log('🔒 [order detail] Checking access - order product:', order.product, 'assigned products:', allProductNames, 'assigned cities:', assignedCityNames);
+
+        // Vérifier si le produit de la commande est dans les produits assignés
+        const productMatch = allProductNames.some(assignedProduct => 
+          assignedProduct && order.product && 
+          order.product.trim().toLowerCase() === assignedProduct.trim().toLowerCase()
+        );
+
+        // Vérifier si la ville de la commande est dans les villes assignées
+        const cityMatch = assignedCityNames.some(assignedCity => 
+          assignedCity && order.city && 
+          order.city.trim().toLowerCase() === assignedCity.trim().toLowerCase()
+        );
+
+        if (!productMatch && !cityMatch) {
+          console.log('🔒 [order detail] Access denied - product or city not assigned');
+          return res.status(403).json({ success: false, message: 'Accès refusé: cette commande ne vous est pas assignée.' });
+        }
+
+        console.log('🔒 [order detail] Access granted - product or city match found');
+      } else {
+        console.log('🔒 [order detail] Access denied - no assignment found');
+        return res.status(403).json({ success: false, message: 'Accès refusé: aucune affectation trouvée.' });
+      }
     }
 
     res.json({

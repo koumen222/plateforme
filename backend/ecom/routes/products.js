@@ -332,11 +332,38 @@ router.put('/:id',
         });
       }
 
+      const oldStock = product.stock;
       Object.assign(product, req.body);
       await product.save();
 
       const updatedProduct = await Product.findById(product._id)
         .populate('createdBy', 'email');
+
+      // 📱 Push notification pour changement de stock
+      if (req.body.stock !== undefined && req.body.stock !== oldStock) {
+        try {
+          const { sendPushNotification } = await import('../../services/pushService.js');
+          const stockDiff = req.body.stock - oldStock;
+          const isLowStock = req.body.stock <= (product.reorderThreshold || 5);
+          
+          await sendPushNotification(req.workspaceId, {
+            title: isLowStock ? '⚠️ Stock faible' : '📦 Stock mis à jour',
+            body: `${product.name}: ${oldStock} → ${req.body.stock} (${stockDiff > 0 ? '+' : ''}${stockDiff})`,
+            icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-72x72.png',
+            tag: isLowStock ? 'low-stock' : 'stock-update',
+            data: {
+              type: isLowStock ? 'low_stock' : 'stock_update',
+              productId: product._id.toString(),
+              oldStock,
+              newStock: req.body.stock,
+              url: `/products/${product._id}`
+            }
+          }, isLowStock ? 'push_low_stock' : 'push_stock_updates');
+        } catch (e) {
+          console.warn('⚠️ Push notification failed:', e.message);
+        }
+      }
 
       res.json({
         success: true,

@@ -32,6 +32,7 @@ import OrderDetail from './pages/OrderDetail.jsx';
 import CampaignsList from './pages/CampaignsList.jsx';
 import CampaignForm from './pages/CampaignForm.jsx';
 import AssignmentsManager from './pages/AssignmentsManager.jsx';
+import CloseuseProduits from './pages/CloseuseProduits.jsx';
 import SuperAdminDashboard from './pages/SuperAdminDashboard.jsx';
 import SuperAdminUsers from './pages/SuperAdminUsers.jsx';
 import SuperAdminWorkspaces from './pages/SuperAdminWorkspaces.jsx';
@@ -54,6 +55,7 @@ import EcomLayout from './components/EcomLayout.jsx';
 import PrivacyPolicy from './pages/PrivacyPolicy.jsx';
 import PrivacyBanner from './components/PrivacyBanner.jsx';
 import SecurityDashboard from './pages/SecurityDashboard.jsx';
+
 
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -87,7 +89,7 @@ class ErrorBoundary extends React.Component {
                 Rafraîchir
               </button>
               <a
-                href="/dashboard"
+                href="/ecom/dashboard"
                 className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
               >
                 Dashboard
@@ -118,7 +120,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/ecom/login" replace />;
   }
 
   if (requiredRole) {
@@ -130,13 +132,13 @@ const ProtectedRoute = ({ children, requiredRole }) => {
     if (!roles.includes(user?.role)) {
       // Rediriger vers le dashboard approprié selon le rôle
       const roleDashboardMap = {
-        'super_admin': '/super-admin',
-        'ecom_admin': '/dashboard/admin',
-        'ecom_closeuse': '/dashboard/closeuse',
-        'ecom_compta': '/dashboard/compta'
+        'super_admin': '/ecom/super-admin',
+        'ecom_admin': '/ecom/dashboard/admin',
+        'ecom_closeuse': '/ecom/dashboard/closeuse',
+        'ecom_compta': '/ecom/dashboard/compta'
       };
       
-      return <Navigate to={roleDashboardMap[user.role] || '/login'} replace />;
+      return <Navigate to={roleDashboardMap[user.role] || '/ecom/login'} replace />;
     }
   }
 
@@ -159,19 +161,19 @@ const DashboardRedirect = () => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/ecom/login" replace />;
   }
 
   // Rediriger vers le dashboard selon le rôle
   const roleDashboardMap = {
-    'super_admin': '/super-admin',
-    'ecom_admin': '/dashboard/admin',
-    'ecom_closeuse': '/dashboard/closeuse',
-    'ecom_compta': '/dashboard/compta',
-    'livreur': '/livreur'
+    'super_admin': '/ecom/super-admin',
+    'ecom_admin': '/ecom/dashboard/admin',
+    'ecom_closeuse': '/ecom/dashboard/closeuse',
+    'ecom_compta': '/ecom/dashboard/compta',
+    'livreur': '/ecom/livreur'
   };
   
-  const dashboardPath = roleDashboardMap[user?.role] || '/login';
+  const dashboardPath = roleDashboardMap[user?.role] || '/ecom/login';
   return <Navigate to={dashboardPath} replace />;
 };
 
@@ -186,52 +188,6 @@ const LayoutRoute = ({ children, requiredRole }) => {
   );
 };
 
-// Composant pour rediriger les utilisateurs déjà connectés depuis / vers leur dashboard
-const HomeRedirect = () => {
-  const { isAuthenticated, loading } = useEcomAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Si connecté → dashboard, sinon → landing page
-  if (isAuthenticated) {
-    return <DashboardRedirect />;
-  }
-
-  return <EcomLandingPage />;
-};
-
-// Composant pour les routes publiques (login, register) — redirige si déjà connecté
-const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useEcomAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Si déjà connecté, rediriger vers le dashboard
-  if (isAuthenticated) {
-    return <DashboardRedirect />;
-  }
-
-  return children;
-};
-
 const EcomApp = () => {
   return (
     <EcomAuthProvider>
@@ -239,112 +195,116 @@ const EcomApp = () => {
         <div className="min-h-screen bg-gray-50">
           <ErrorBoundary>
             <Routes>
-              {/* Route racine - redirige vers dashboard si connecté */}
-              <Route path="/" element={<HomeRedirect />} />
+              {/* Route racine - landing page */}
+              <Route path="/" element={<EcomLandingPage />} />
+              <Route path="/ecom" element={<EcomLandingPage />} />
               
-              {/* Routes publiques (redirige vers dashboard si déjà connecté) */}
-              <Route path="landing" element={<EcomLandingPage />} />
-              <Route path="privacy" element={<PrivacyPolicy />} />
-              <Route path="security" element={<LayoutRoute><SecurityDashboard /></LayoutRoute>} />
-              <Route path="login" element={<PublicRoute><Login /></PublicRoute>} />
-              <Route path="register" element={<PublicRoute><Register /></PublicRoute>} />
-              <Route path="forgot-password" element={<ForgotPassword />} />
-              <Route path="reset-password" element={<ResetPassword />} />
-              <Route path="setup-admin" element={<SetupSuperAdmin />} />
+              {/* Routes publiques (sans layout) */}
+              <Route path="/ecom/landing" element={<EcomLandingPage />} />
+              <Route path="/ecom/privacy" element={<PrivacyPolicy />} />
+              <Route path="/ecom/security" element={<LayoutRoute><SecurityDashboard /></LayoutRoute>} />
+              <Route path="/ecom/login" element={<Login />} />
+              <Route path="/ecom/register" element={<Register />} />
+              <Route path="/ecom/forgot-password" element={<ForgotPassword />} />
+              <Route path="/ecom/reset-password" element={<ResetPassword />} />
+              <Route path="/ecom/setup-admin" element={<SetupSuperAdmin />} />
               
               {/* Routes produits */}
-              <Route path="products" element={<LayoutRoute requiredRole="ecom_admin"><ProductsList /></LayoutRoute>} />
-              <Route path="products/new" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
-              <Route path="products/:id" element={<LayoutRoute><ProductDetail /></LayoutRoute>} />
-              <Route path="products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
+              <Route path="/ecom/products" element={<LayoutRoute requiredRole="ecom_admin"><ProductsList /></LayoutRoute>} />
+              <Route path="/ecom/products/new" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
+              <Route path="/ecom/products/:id" element={<LayoutRoute><ProductDetail /></LayoutRoute>} />
+              <Route path="/ecom/products/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><ProductForm /></LayoutRoute>} />
               
               {/* Routes rapports */}
-              <Route path="reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
-              <Route path="reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
-              <Route path="reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
-              <Route path="reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
+              <Route path="/ecom/reports" element={<LayoutRoute><ReportsList /></LayoutRoute>} />
+              <Route path="/ecom/reports/new" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
+              <Route path="/ecom/reports/:id/edit" element={<LayoutRoute><ReportForm /></LayoutRoute>} />
+              <Route path="/ecom/reports/:id" element={<LayoutRoute><ReportDetail /></LayoutRoute>} />
 
               {/* Route profil */}
-              <Route path="profile" element={<LayoutRoute><Profile /></LayoutRoute>} />
+              <Route path="/ecom/profile" element={<LayoutRoute><Profile /></LayoutRoute>} />
 
               {/* Route Data */}
-              <Route path="data" element={<LayoutRoute><Data /></LayoutRoute>} />
+              <Route path="/ecom/data" element={<LayoutRoute><Data /></LayoutRoute>} />
               
               {/* Route Objectifs */}
-              <Route path="goals" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><Goals /></LayoutRoute>} />
+              <Route path="/ecom/goals" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><Goals /></LayoutRoute>} />
               
               {/* Route Recherche Produits */}
-              <Route path="product-research" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductResearchList /></LayoutRoute>} />
-              <Route path="product-finder" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinder /></LayoutRoute>} />
-              <Route path="product-finder/:id" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinderEdit /></LayoutRoute>} />
+              <Route path="/ecom/product-research" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductResearchList /></LayoutRoute>} />
+              <Route path="/ecom/product-finder" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinder /></LayoutRoute>} />
+              <Route path="/ecom/product-finder/:id" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse', 'ecom_compta']}><ProductFinderEdit /></LayoutRoute>} />
               
               {/* Routes stock */}
-              <Route path="stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
-              <Route path="stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
-              <Route path="stock/orders/new" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
-              <Route path="stock/orders/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
-              <Route path="stock-locations" element={<LayoutRoute requiredRole="ecom_admin"><StockManagement /></LayoutRoute>} />
+              <Route path="/ecom/stock" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
+              <Route path="/ecom/stock/orders" element={<LayoutRoute requiredRole="ecom_admin"><StockOrdersList /></LayoutRoute>} />
+              <Route path="/ecom/stock/orders/new" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
+              <Route path="/ecom/stock/orders/:id/edit" element={<LayoutRoute requiredRole="ecom_admin"><StockOrderForm /></LayoutRoute>} />
+              <Route path="/ecom/stock-locations" element={<LayoutRoute requiredRole="ecom_admin"><StockManagement /></LayoutRoute>} />
               
               {/* Routes transactions (compta + admin) */}
-              <Route path="transactions" element={<LayoutRoute><TransactionsList /></LayoutRoute>} />
-              <Route path="transactions/new" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
-              <Route path="transactions/:id" element={<LayoutRoute><TransactionDetail /></LayoutRoute>} />
-              <Route path="transactions/:id/edit" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
+              <Route path="/ecom/transactions" element={<LayoutRoute><TransactionsList /></LayoutRoute>} />
+              <Route path="/ecom/transactions/new" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
+              <Route path="/ecom/transactions/:id" element={<LayoutRoute><TransactionDetail /></LayoutRoute>} />
+              <Route path="/ecom/transactions/:id/edit" element={<LayoutRoute><TransactionForm /></LayoutRoute>} />
               
               {/* Routes décisions */}
-              <Route path="decisions" element={<LayoutRoute requiredRole="ecom_admin"><DecisionsList /></LayoutRoute>} />
-              <Route path="decisions/new" element={<LayoutRoute requiredRole="ecom_admin"><DecisionForm /></LayoutRoute>} />
+              <Route path="/ecom/decisions" element={<LayoutRoute requiredRole="ecom_admin"><DecisionsList /></LayoutRoute>} />
+              <Route path="/ecom/decisions/new" element={<LayoutRoute requiredRole="ecom_admin"><DecisionForm /></LayoutRoute>} />
               
               {/* Routes clients (admin + closeuse) */}
-              <Route path="clients" element={<LayoutRoute><ClientsList /></LayoutRoute>} />
-              <Route path="clients/new" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
-              <Route path="clients/:id/edit" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+              <Route path="/ecom/clients" element={<LayoutRoute><ClientsList /></LayoutRoute>} />
+              <Route path="/ecom/clients/new" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
+              <Route path="/ecom/clients/:id/edit" element={<LayoutRoute><ClientForm /></LayoutRoute>} />
               
               {/* Routes prospects */}
-              <Route path="prospects" element={<LayoutRoute><ProspectsList /></LayoutRoute>} />
+              <Route path="/ecom/prospects" element={<LayoutRoute><ProspectsList /></LayoutRoute>} />
               
               {/* Routes commandes (admin + closeuse) */}
-              <Route path="orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
-              <Route path="orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
-              <Route path="stats" element={<LayoutRoute requiredRole="ecom_admin"><StatsPage /></LayoutRoute>} />
+              <Route path="/ecom/orders" element={<LayoutRoute><OrdersList /></LayoutRoute>} />
+              <Route path="/ecom/orders/:id" element={<LayoutRoute><OrderDetail /></LayoutRoute>} />
+              <Route path="/ecom/stats" element={<LayoutRoute requiredRole="ecom_admin"><StatsPage /></LayoutRoute>} />
               
               {/* Route import commandes (admin) */}
-              <Route path="import" element={<LayoutRoute requiredRole="ecom_admin"><ImportOrders /></LayoutRoute>} />
+              <Route path="/ecom/import" element={<LayoutRoute requiredRole="ecom_admin"><ImportOrders /></LayoutRoute>} />
               
               {/* Routes campagnes marketing (admin + closeuse) */}
-              <Route path="campaigns" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignsList /></LayoutRoute>} />
-              <Route path="campaigns/new" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
-              <Route path="campaigns/:id/edit" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
+              <Route path="/ecom/campaigns" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignsList /></LayoutRoute>} />
+              <Route path="/ecom/campaigns/new" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
+              <Route path="/ecom/campaigns/:id/edit" element={<LayoutRoute requiredRole={['ecom_admin', 'ecom_closeuse']}><CampaignForm /></LayoutRoute>} />
               
               {/* Routes gestion utilisateurs (admin) */}
-              <Route path="users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
+              <Route path="/ecom/users" element={<LayoutRoute requiredRole="ecom_admin"><UserManagement /></LayoutRoute>} />
               
               {/* Routes gestion affectations (admin) */}
-              <Route path="assignments" element={<LayoutRoute requiredRole="ecom_admin"><AssignmentsManager /></LayoutRoute>} />
+              <Route path="/ecom/assignments" element={<LayoutRoute requiredRole="ecom_admin"><AssignmentsManager /></LayoutRoute>} />
+              
+              {/* Route produits affectés (closeuse) */}
+              <Route path="/ecom/assignments/produits" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseProduits /></LayoutRoute>} />
               
               {/* Route Paramètres */}
-              <Route path="settings" element={<LayoutRoute><Settings /></LayoutRoute>} />
+              <Route path="/ecom/settings" element={<LayoutRoute><Settings /></LayoutRoute>} />
               
               {/* Route Livreur */}
-              <Route path="livreur" element={<LayoutRoute requiredRole="livreur"><LivreurDashboard /></LayoutRoute>} />
+              <Route path="/ecom/livreur" element={<LayoutRoute requiredRole="livreur"><LivreurDashboard /></LayoutRoute>} />
               
               {/* Routes Super Admin */}
-              <Route path="super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />
-              <Route path="super-admin/users" element={<LayoutRoute requiredRole="super_admin"><SuperAdminUsers /></LayoutRoute>} />
-              <Route path="super-admin/workspaces" element={<LayoutRoute requiredRole="super_admin"><SuperAdminWorkspaces /></LayoutRoute>} />
-              <Route path="super-admin/activity" element={<LayoutRoute requiredRole="super_admin"><SuperAdminActivity /></LayoutRoute>} />
-              <Route path="super-admin/settings" element={<LayoutRoute requiredRole="super_admin"><SuperAdminSettings /></LayoutRoute>} />
+              <Route path="/ecom/super-admin" element={<LayoutRoute requiredRole="super_admin"><SuperAdminDashboard /></LayoutRoute>} />
+              <Route path="/ecom/super-admin/users" element={<LayoutRoute requiredRole="super_admin"><SuperAdminUsers /></LayoutRoute>} />
+              <Route path="/ecom/super-admin/workspaces" element={<LayoutRoute requiredRole="super_admin"><SuperAdminWorkspaces /></LayoutRoute>} />
+              <Route path="/ecom/super-admin/activity" element={<LayoutRoute requiredRole="super_admin"><SuperAdminActivity /></LayoutRoute>} />
+              <Route path="/ecom/super-admin/settings" element={<LayoutRoute requiredRole="super_admin"><SuperAdminSettings /></LayoutRoute>} />
               
               {/* Route de redirection automatique */}
-              <Route path="dashboard" element={<DashboardRedirect />} />
+              <Route path="/ecom/dashboard" element={<DashboardRedirect />} />
               
               {/* Dashboards protégés par rôle */}
-              <Route path="dashboard/admin" element={<LayoutRoute requiredRole="ecom_admin"><AdminDashboard /></LayoutRoute>} />
-              <Route path="dashboard/closeuse" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseDashboard /></LayoutRoute>} />
-              <Route path="dashboard/compta" element={<LayoutRoute requiredRole="ecom_compta"><ComptaDashboard /></LayoutRoute>} />
+              <Route path="/ecom/dashboard/admin" element={<LayoutRoute requiredRole="ecom_admin"><AdminDashboard /></LayoutRoute>} />
+              <Route path="/ecom/dashboard/closeuse" element={<LayoutRoute requiredRole="ecom_closeuse"><CloseuseDashboard /></LayoutRoute>} />
+              <Route path="/ecom/dashboard/compta" element={<LayoutRoute requiredRole="ecom_compta"><ComptaDashboard /></LayoutRoute>} />
               
               {/* Route catch-all */}
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              <Route path="*" element={<Navigate to="/ecom/login" replace />} />
             </Routes>
           </ErrorBoundary>
           <PrivacyBanner />

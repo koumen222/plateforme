@@ -37,8 +37,32 @@ const assignmentSchema = new mongoose.Schema({
     },
     productIds: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
+      ref: 'Product'
+    }],
+    sheetProductNames: [{
+      type: String,
+      trim: true
+    }],
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomUser',
       required: true
+    }
+  }],
+  // Affectation des villes
+  cityAssignments: [{
+    sourceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OrderSource',
+      required: true
+    },
+    cityNames: [{
+      type: String,
+      trim: true
     }],
     assignedAt: {
       type: Date,

@@ -86,6 +86,13 @@ const authReducer = (state, action) => {
         ...state,
         user: { ...state.user, ...action.payload },
       };
+
+    case 'UPDATE_TOKEN':
+      return {
+        ...state,
+        token: action.payload?.token || state.token,
+        isAuthenticated: true
+      };
     
     case 'START_IMPERSONATION':
       return {
@@ -145,74 +152,12 @@ export const EcomAuthProvider = ({ children }) => {
     localStorage.removeItem('ecomImpersonatedUser');
   };
 
-  // Générer un identifiant unique pour l'appareil
-  const generateDeviceId = () => {
-    const nav = window.navigator;
-    const screen = window.screen;
-    const fingerprint = [
-      nav.userAgent,
-      nav.language,
-      screen.width + 'x' + screen.height,
-      screen.colorDepth,
-      new Date().getTimezoneOffset()
-    ].join('|');
-    // Simple hash
-    let hash = 0;
-    for (let i = 0; i < fingerprint.length; i++) {
-      const char = fingerprint.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash |= 0;
-    }
-    return 'device_' + Math.abs(hash).toString(36) + '_' + Date.now().toString(36);
-  };
-
-  // Enregistrer l'appareil pour une session persistante
-  const registerDevice = async () => {
-    try {
-      let deviceId = localStorage.getItem('ecomDeviceId');
-      if (!deviceId) {
-        deviceId = generateDeviceId();
-      }
-      const deviceName = navigator.userAgent.includes('Mobile') ? 'Mobile' : 'Desktop';
-      
-      // Sauvegarder localement
-      localStorage.setItem('ecomDeviceId', deviceId);
-      localStorage.setItem('ecomDeviceRegistered', 'true');
-      localStorage.setItem('ecomDeviceRegisteredAt', new Date().toISOString());
-      
-      // Essayer d'enregistrer côté serveur (non bloquant)
-      try {
-        await authApi.registerDevice({ deviceId, deviceName });
-      } catch (e) {
-        console.warn('⚠️ Enregistrement serveur échoué, session locale persistante activée');
-      }
-      
-      console.log('📱 Appareil enregistré:', deviceId);
-      return { success: true, deviceId };
-    } catch (error) {
-      console.error('❌ Erreur enregistrement appareil:', error);
-      throw error;
-    }
-  };
-
-  // Vérifier si l'appareil est enregistré
-  const isDeviceRegistered = () => {
-    return localStorage.getItem('ecomDeviceRegistered') === 'true';
-  };
-
   // Charger l'utilisateur depuis le token
   const loadUser = async () => {
     const token = localStorage.getItem('ecomToken');
     console.log('🔍 Vérification du token:', token ? 'Token trouvé' : 'Pas de token');
     
     if (!token) {
-      // Si appareil enregistré mais pas de token, essayer de récupérer depuis le user stocké
-      const deviceRegistered = localStorage.getItem('ecomDeviceRegistered') === 'true';
-      const storedUser = JSON.parse(localStorage.getItem('ecomUser') || 'null');
-      if (deviceRegistered && storedUser) {
-        console.log('📱 Appareil enregistré, tentative de restauration de session...');
-        // La session a expiré côté serveur, on nettoie
-      }
       dispatch({ type: 'LOAD_USER_FAILURE' });
       return;
     }
@@ -427,7 +372,7 @@ export const EcomAuthProvider = ({ children }) => {
     }
 
     // Naviguer vers le dashboard Super Admin
-    window.location.href = '/super-admin';
+    window.location.href = '/ecom/super-admin';
   };
 
   // Restaurer l'incarnation au chargement
@@ -480,13 +425,36 @@ export const EcomAuthProvider = ({ children }) => {
     restoreImpersonation();
   }, []);
 
+  // Enregistrer un appareil pour la connexion permanente
+  const registerDevice = async (deviceInfo) => {
+    try {
+      const normalizedDeviceInfo = deviceInfo || {
+        userAgent: navigator?.userAgent || 'unknown',
+        platform: navigator?.platform || 'unknown'
+      };
+
+      const response = await authApi.registerDevice({ deviceInfo: normalizedDeviceInfo });
+      if (response.data.success) {
+        const { permanentToken } = response.data.data;
+        localStorage.setItem('ecomToken', permanentToken);
+        dispatch({ 
+          type: 'UPDATE_TOKEN', 
+          payload: { token: permanentToken } 
+        });
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement appareil:', error);
+      throw error;
+    }
+  };
+
   const value = {
     ...state,
     login,
     logout,
     register,
     registerDevice,
-    isDeviceRegistered,
     changePassword,
     changeCurrency,
     hasPermission,
@@ -552,7 +520,7 @@ export const useRequireAuth = () => {
     // Fonction pour rediriger si non authentifié
     requireAuth: () => {
       if (!loading && !isAuthenticated) {
-        window.location.href = '/login';
+        window.location.href = '/ecom/login';
         return false;
       }
       return true;
@@ -572,12 +540,12 @@ export const useRequirePermission = (permission) => {
       if (!hasPermission(permission)) {
         // Rediriger vers le dashboard approprié ou page d'erreur
         const dashboardMap = {
-          'ecom_admin': '/dashboard',
-          'ecom_closeuse': '/dashboard',
-          'ecom_compta': '/dashboard'
+          'ecom_admin': '/ecom/dashboard',
+          'ecom_closeuse': '/ecom/dashboard',
+          'ecom_compta': '/ecom/dashboard'
         };
         
-        window.location.href = dashboardMap[user?.role] || '/login';
+        window.location.href = dashboardMap[user?.role] || '/ecom/login';
         return false;
       }
       return true;
@@ -590,15 +558,15 @@ export const useRoleBasedDashboard = () => {
   const { user, isAuthenticated } = useEcomAuth();
   
   const getDashboardPath = () => {
-    if (!isAuthenticated || !user) return '/login';
+    if (!isAuthenticated || !user) return '/ecom/login';
     
     const dashboardMap = {
-      'ecom_admin': '/dashboard/admin',
-      'ecom_closeuse': '/dashboard/closeuse',
-      'ecom_compta': '/dashboard/compta'
+      'ecom_admin': '/ecom/dashboard/admin',
+      'ecom_closeuse': '/ecom/dashboard/closeuse',
+      'ecom_compta': '/ecom/dashboard/compta'
     };
     
-    return dashboardMap[user.role] || '/login';
+    return dashboardMap[user.role] || '/ecom/login';
   };
   
   const getDashboardComponent = () => {
