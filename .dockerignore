@@ -1,6 +1,12 @@
-# Fichiers à ignorer lors de la construction de l'image Docker
+# Fichiers à ignorer lors de la construction de l'image Docker depuis la racine
+# Ce fichier est utilisé quand le build context est la racine du projet
 
-# Dépendances
+# Frontend (non nécessaire pour le backend)
+frontend/
+frontend/**
+!frontend/
+
+# Dépendances à la racine
 node_modules/
 npm-debug.log*
 yarn-debug.log*
@@ -28,7 +34,7 @@ Thumbs.db
 .gitignore
 .gitattributes
 
-# Documentation
+# Documentation (sauf README)
 *.md
 !README.md
 
@@ -52,6 +58,24 @@ temp/
 .idea/
 *.sublime-*
 
-# Uploads (seront créés à l'exécution)
-uploads/
+# Assets et autres fichiers non nécessaires
+assets/
+css/
+js/
+*.png
+*.jpg
+*.svg
+*.json
+!package.json
+!package-lock.json
+!backend/package.json
+!backend/package-lock.json
+
+# Fichiers de configuration de déploiement
+netlify.toml
+vercel.json
+render.yaml
+
+# IMPORTANT: Ne PAS exclure backend/ car nous en avons besoin
+# backend/ est copié dans le Dockerfile
 
