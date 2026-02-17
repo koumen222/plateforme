@@ -438,16 +438,36 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
 // GET /api/ecom/auth/me - Obtenir le profil utilisateur
 router.get('/me', async (req, res) => {
   try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
+    const authHeader = req.header('Authorization');
+    const token = authHeader?.replace('Bearer ', '');
     
-    if (!token || !isSupportedAuthToken(token)) {
+    console.log('🔐 /auth/me appelé');
+    console.log('   Authorization header:', authHeader ? 'Présent' : 'Manquant');
+    console.log('   Token length:', token?.length || 0);
+    console.log('   Token starts with:', token?.substring(0, 20) + '...');
+    console.log('   Origin:', req.headers.origin);
+    
+    if (!token) {
+      console.log('❌ Token manquant');
+      return res.status(401).json({
+        success: false,
+        message: 'Token manquant'
+      });
+    }
+    
+    if (!isSupportedAuthToken(token)) {
+      console.log('❌ Token format non supporté. Raw check:', token.split('.').length === 3 ? 'JWT brut' : 'Format inconnu');
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
     
-    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
+    const normalizedToken = normalizeToken(token);
+    console.log('✅ Token normalisé, longueur:', normalizedToken.length);
+    
+    const decoded = jwt.verify(normalizedToken, ECOM_JWT_SECRET);
+    console.log('✅ Token vérifié, userId:', decoded.id);
     
     console.log('🔍 Recherche utilisateur avec ID:', decoded.id);
     const user = await EcomUser.findById(decoded.id).select('-password');
