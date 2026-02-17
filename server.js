@@ -95,7 +95,9 @@ const corsOptions = {
     const allowedOrigins = [
       "https://www.safitech.shop",
       "https://ecomcookpit.site",
+      "https://www.ecomcookpit.site",
       "http://ecomcookpit.site",
+      "http://www.ecomcookpit.site",
       "https://plateforme-backend-production-2ec6.up.railway.app",
       "http://localhost:5173",
       "http://localhost:3000",
