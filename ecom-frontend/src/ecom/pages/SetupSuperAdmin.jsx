@@ -53,7 +53,7 @@ const SetupSuperAdmin = () => {
         password: formData.password,
         superAdmin: true
       });
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } catch (err) {
       setError(err.message || 'Erreur lors de la création');
     } finally {

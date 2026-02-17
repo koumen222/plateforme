@@ -19,11 +19,11 @@ const LivreurDashboard = () => {
 
   useEffect(() => {
     if (user?.role !== 'livreur') {
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
       return;
     }
     loadData();
-  }, [user, filterCity]);
+  }, [user, navigate]);
 
   const loadData = async () => {
     setLoading(true);

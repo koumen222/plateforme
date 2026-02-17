@@ -58,7 +58,7 @@ const Register = () => {
       }
 
       await register(payload);
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } catch (error) {
       setError(error.message || 'Erreur lors de l\'inscription');
     } finally {

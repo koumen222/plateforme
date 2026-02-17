@@ -33,12 +33,12 @@ const Login = () => {
     try {
       await registerDevice();
       setShowDevicePopup(false);
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } catch (error) {
       console.error('Erreur enregistrement appareil:', error);
       // Continuer vers le dashboard même si l'enregistrement échoue
       setShowDevicePopup(false);
-      navigate('/dashboard');
+      navigate('/ecom/dashboard');
     } finally {
       setRegisteringDevice(false);
     }
@@ -46,7 +46,7 @@ const Login = () => {
 
   const handleSkipDevice = () => {
     setShowDevicePopup(false);
-    navigate('/dashboard');
+    navigate('/ecom/dashboard');
   };
 
   const handleInputChange = (e) => {
