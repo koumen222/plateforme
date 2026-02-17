@@ -2212,10 +2212,10 @@ router.get('/available', requireEcomAuth, async (req, res) => {
 router.post('/:id/assign', requireEcomAuth, async (req, res) => {
   try {
     const orderId = req.params.id;
-    const livreurId = req.user._id; // L'utilisateur connecté devient le livreur
+    const livreurId = req.ecomUser._id; // L'utilisateur connecté devient le livreur
     
     // Vérifier que l'utilisateur est un livreur
-    if (req.user.role !== 'livreur') {
+    if (req.ecomUser.role !== 'livreur') {
       return res.status(403).json({ success: false, message: 'Accès réservé aux livreurs.' });
     }
     
@@ -2238,7 +2238,7 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
     }
     
     // Notifier les autres livreurs que cette commande n'est plus disponible
-    await notifyOrderTaken(order, req.workspaceId, req.user._id);
+    await notifyOrderTaken(order, req.workspaceId, req.ecomUser._id);
     
     // 📱 Push notification pour assignation livreur
     try {
@@ -2528,8 +2528,8 @@ router.post('/:id/send-whatsapp', requireEcomAuth, validateEcomAccess('products'
       await sendWhatsAppMessage({ 
         to: phoneNumber, 
         message: whatsappMessage,
-        userId: req.user._id,
-        firstName: req.user.name 
+        userId: req.ecomUser._id,
+        firstName: req.ecomUser.name 
       });
       
       console.log(`✅ WhatsApp envoyé à ${phoneNumber} pour la commande #${order.orderId}`);
@@ -2751,8 +2751,8 @@ router.post('/test-whatsapp', requireEcomAuth, validateEcomAccess('products', 'w
     await sendWhatsAppMessage({
       to: targetNumber,
       message: testMessage,
-      userId: req.user._id,
-      firstName: req.user.name || 'Admin'
+      userId: req.ecomUser._id,
+      firstName: req.ecomUser.name || 'Admin'
     });
     
     res.json({ success: true, message: 'Message de test envoyé avec succès' });
