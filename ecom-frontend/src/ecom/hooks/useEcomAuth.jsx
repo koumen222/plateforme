@@ -86,6 +86,13 @@ const authReducer = (state, action) => {
         ...state,
         user: { ...state.user, ...action.payload },
       };
+
+    case 'UPDATE_TOKEN':
+      return {
+        ...state,
+        token: action.payload?.token || state.token,
+        isAuthenticated: true
+      };
     
     case 'START_IMPERSONATION':
       return {
@@ -418,11 +425,36 @@ export const EcomAuthProvider = ({ children }) => {
     restoreImpersonation();
   }, []);
 
+  // Enregistrer un appareil pour la connexion permanente
+  const registerDevice = async (deviceInfo) => {
+    try {
+      const normalizedDeviceInfo = deviceInfo || {
+        userAgent: navigator?.userAgent || 'unknown',
+        platform: navigator?.platform || 'unknown'
+      };
+
+      const response = await authApi.registerDevice({ deviceInfo: normalizedDeviceInfo });
+      if (response.data.success) {
+        const { permanentToken } = response.data.data;
+        localStorage.setItem('ecomToken', permanentToken);
+        dispatch({ 
+          type: 'UPDATE_TOKEN', 
+          payload: { token: permanentToken } 
+        });
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Erreur enregistrement appareil:', error);
+      throw error;
+    }
+  };
+
   const value = {
     ...state,
     login,
     logout,
     register,
+    registerDevice,
     changePassword,
     changeCurrency,
     hasPermission,

@@ -1,12 +1,14 @@
 import axios from 'axios';
 
 // Configuration de base pour l'API e-commerce
-const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-const ECOM_API_PREFIX = '/api/ecom';
+// Utiliser le proxy Vite en développement, URL directe en production
+const isDev = import.meta.env.DEV;
+const API_BASE_URL = isDev ? '' : (import.meta.env.VITE_BACKEND_URL || import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000');
+const ECOM_API_PREFIX = isDev ? '/api/ecom' : '/api/ecom';
 
 // Créer une instance axios avec configuration par défaut
 const ecomApi = axios.create({
-  baseURL: `${API_BASE_URL}${ECOM_API_PREFIX}`,
+  baseURL: isDev ? '/api/ecom' : `${API_BASE_URL}${ECOM_API_PREFIX}`,
   timeout: 30000,
   headers: {
     'Content-Type': 'application/json'
@@ -261,6 +263,35 @@ export const notificationsApi = {
   markAsRead: (id) => ecomApi.put(`/notifications/${id}/read`),
   markAllAsRead: () => ecomApi.put('/notifications/read-all'),
   deleteNotification: (id) => ecomApi.delete(`/notifications/${id}`)
+};
+
+export const settingsApi = {
+  // Préférences de notifications push
+  getPushNotificationPreferences: () => ecomApi.get('/orders/settings/push-notifications'),
+  updatePushNotificationPreferences: (preferences) => ecomApi.put('/orders/settings/push-notifications', preferences)
+};
+
+export const assignmentsApi = {
+  // Liste des affectations
+  getAssignments: (params = {}) => ecomApi.get('/assignments', { params }),
+  
+  // Affectation d'une closeuse spécifique
+  getAssignment: (closeuseId) => ecomApi.get(`/assignments/closeuse/${closeuseId}`),
+  
+  // Mes affectations (closeuse connectée)
+  getMyAssignments: () => ecomApi.get('/assignments/my-assignments'),
+  
+  // Créer ou mettre à jour une affectation
+  createAssignment: (data) => ecomApi.post('/assignments', data),
+  
+  // Mettre à jour une affectation
+  updateAssignment: (id, data) => ecomApi.put(`/assignments/${id}`, data),
+  
+  // Supprimer une affectation
+  deleteAssignment: (id) => ecomApi.delete(`/assignments/${id}`),
+  
+  // Obtenir les sources disponibles
+  getSources: () => ecomApi.get('/assignments/sources')
 };
 
 // Export par défaut l'instance axios pour usage direct

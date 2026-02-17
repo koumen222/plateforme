@@ -14,10 +14,41 @@ webpush.setVapidDetails(
 );
 
 /**
- * Envoyer une notification push à tous les abonnés d'un workspace
+ * Vérifier si un type de notification push est activé pour un workspace
  */
-const sendPushNotification = async (workspaceId, notificationData) => {
+const isPushNotificationEnabled = async (workspaceId, notificationType) => {
   try {
+    const { default: WorkspaceSettings } = await import('../ecom/models/WorkspaceSettings.js');
+    const settings = await WorkspaceSettings.findOne({ workspaceId });
+    
+    if (!settings || !settings.pushNotifications) {
+      return true; // Par défaut, toutes les notifications sont activées
+    }
+    
+    return settings.pushNotifications[notificationType] !== false;
+  } catch (error) {
+    console.warn('⚠️ Erreur vérification préférences push:', error.message);
+    return true; // En cas d'erreur, on envoie quand même
+  }
+};
+
+/**
+ * Envoyer une notification push à tous les abonnés d'un workspace
+ * @param {string} workspaceId - ID du workspace
+ * @param {object} notificationData - Données de la notification
+ * @param {string} notificationType - Type de notification (push_new_orders, push_status_changes, etc.)
+ */
+const sendPushNotification = async (workspaceId, notificationData, notificationType = null) => {
+  try {
+    // Vérifier si ce type de notification est activé
+    if (notificationType) {
+      const isEnabled = await isPushNotificationEnabled(workspaceId, notificationType);
+      if (!isEnabled) {
+        console.log(`🔕 Notification push ${notificationType} désactivée pour workspace: ${workspaceId}`);
+        return { success: false, total: 0, successful: 0, failed: 0, disabled: true };
+      }
+    }
+    
     console.log(`📱 Envoi notification push pour workspace: ${workspaceId}`);
     
     // Récupérer tous les abonnés du workspace
@@ -25,7 +56,7 @@ const sendPushNotification = async (workspaceId, notificationData) => {
     
     if (subscriptions.length === 0) {
       console.log(`ℹ️ Aucun abonné push trouvé pour workspace: ${workspaceId}`);
-      return;
+      return { success: false, total: 0, successful: 0, failed: 0 };
     }
     
     console.log(`📡 ${subscriptions.length} abonnés trouvés`);

@@ -24,15 +24,32 @@ const CloseuseProduits = () => {
       setMyAssignments(assignmentsRes.data.data);
 
       // Filtrer uniquement les produits affectés à cette closeuse
+      const assignments = assignmentsRes.data.data;
       let filteredProducts = productsRes.data.data;
-      if (assignmentsRes.data.data.productAssignments && assignmentsRes.data.data.productAssignments.length > 0) {
-        const assignedProductIds = assignmentsRes.data.data.productAssignments.flatMap(pa => 
-          pa.productIds.map(p => p._id)
+      
+      // Collecter les noms de produits Google Sheets assignés
+      const sheetProductNames = (assignments.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+      
+      if (assignments.productAssignments && assignments.productAssignments.length > 0) {
+        const assignedProductIds = assignments.productAssignments.flatMap(pa => 
+          (pa.productIds || []).map(p => p._id)
         );
-        filteredProducts = filteredProducts.filter(product => assignedProductIds.includes(product._id));
+        if (assignedProductIds.length > 0) {
+          filteredProducts = filteredProducts.filter(product => assignedProductIds.includes(product._id));
+        }
       }
       
-      setProducts(filteredProducts);
+      // Ajouter les produits Google Sheets comme des objets virtuels
+      const sheetProductObjects = sheetProductNames.map((name, idx) => ({
+        _id: `sheet_${idx}`,
+        name,
+        isSheetProduct: true,
+        status: 'active',
+        sellingPrice: '-',
+        stock: '-'
+      }));
+      
+      setProducts([...filteredProducts, ...sheetProductObjects]);
     } catch (error) {
       console.error('Erreur chargement produits:', error);
       setMessage('Erreur lors du chargement des produits');
@@ -78,19 +95,31 @@ const CloseuseProduits = () => {
         <div className="mb-6 bg-blue-50 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-blue-900 mb-2">📦 Vos affectations par source</h3>
           <div className="space-y-2">
-            {myAssignments.productAssignments.map((pa) => (
-              <div key={pa.sourceId._id} className="flex items-center gap-2">
-                <span
-                  className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                  style={{ backgroundColor: pa.sourceId.color + '20', color: pa.sourceId.color }}
-                >
-                  {pa.sourceId.icon} {pa.sourceId.name}
-                </span>
-                <span className="text-sm text-gray-600">
-                  → {pa.productIds.length} produit{pa.productIds.length > 1 ? 's' : ''}
-                </span>
-              </div>
-            ))}
+            {myAssignments.productAssignments.map((pa, paIdx) => {
+              const totalProducts = (pa.productIds?.length || 0) + (pa.sheetProductNames?.length || 0);
+              return (
+                <div key={paIdx} className="flex flex-wrap items-center gap-2">
+                  <span
+                    className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                    style={{ backgroundColor: (pa.sourceId?.color || '#3B82F6') + '20', color: pa.sourceId?.color || '#3B82F6' }}
+                  >
+                    {pa.sourceId?.icon} {pa.sourceId?.name}
+                  </span>
+                  <span className="text-sm text-gray-600">
+                    → {totalProducts} produit{totalProducts > 1 ? 's' : ''}
+                  </span>
+                  {pa.sheetProductNames?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 ml-2">
+                      {pa.sheetProductNames.map((name, nIdx) => (
+                        <span key={nIdx} className="inline-flex px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-xs">
+                          {name}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

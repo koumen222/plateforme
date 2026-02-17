@@ -359,7 +359,7 @@ router.put('/:id',
               newStock: req.body.stock,
               url: `/products/${product._id}`
             }
-          });
+          }, isLowStock ? 'push_low_stock' : 'push_stock_updates');
         } catch (e) {
           console.warn('⚠️ Push notification failed:', e.message);
         }

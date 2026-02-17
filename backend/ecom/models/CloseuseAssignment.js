@@ -37,8 +37,11 @@ const assignmentSchema = new mongoose.Schema({
     },
     productIds: [{
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Product',
-      required: true
+      ref: 'Product'
+    }],
+    sheetProductNames: [{
+      type: String,
+      trim: true
     }],
     assignedAt: {
       type: Date,

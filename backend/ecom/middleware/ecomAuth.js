@@ -53,10 +53,13 @@ export const requireEcomAuth = async (req, res, next) => {
       });
     }
 
-    // Extraire le token proprement (Bearer ecom:xxx ou ecom:xxx)
-    const token = authHeader.startsWith('Bearer ') 
-      ? authHeader.replace('Bearer ', '').replace('ecom:', '')
-      : authHeader.replace('ecom:', '');
+    // Extraire le token proprement (Bearer ecom:xxx, ecom:xxx, perm:xxx)
+    let token = authHeader.startsWith('Bearer ') 
+      ? authHeader.replace('Bearer ', '')
+      : authHeader;
+    
+    // Supprimer les préfixes ecom: et perm: si présents
+    token = token.replace(/^ecom:/, '').replace(/^perm:/, '');
     
     console.log(' Token reçu:', token ? 'Token présent' : 'Token manquant');
     

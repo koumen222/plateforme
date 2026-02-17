@@ -4,6 +4,7 @@ import Order from '../models/Order.js';
 import Client from '../models/Client.js';
 import WorkspaceSettings from '../models/WorkspaceSettings.js';
 import EcomUser from '../models/EcomUser.js';
+import CloseuseAssignment from '../models/CloseuseAssignment.js';
 import Notification from '../../models/Notification.js';
 import { sendWhatsAppMessage } from '../../services/whatsappService.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
@@ -198,7 +199,7 @@ router.post('/', requireEcomAuth, validateEcomAccess('products', 'write'), async
           orderId: order._id.toString(),
           url: `/orders/${order._id}`
         }
-      });
+      }, 'push_new_orders');
     } catch (e) {
       console.warn('⚠️ Push notification failed:', e.message);
     }
@@ -350,20 +351,87 @@ router.get('/', requireEcomAuth, async (req, res) => {
       ];
     }
 
+    // Filtre closeuse: ne montrer que les commandes des produits assignés
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] Closeuse filter - userId:', req.ecomUser._id, 'workspaceId:', req.workspaceId);
+      const assignment = await CloseuseAssignment.findOne({
+        closeuseId: req.ecomUser._id,
+        workspaceId: req.workspaceId,
+        isActive: true
+      });
+
+      console.log('🔒 [orders] Assignment found:', !!assignment);
+      if (assignment) {
+        const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
+        const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
+        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'assignedProductIds:', assignedProductIds.length);
+
+        if (sheetProductNames.length > 0 || assignedProductIds.length > 0) {
+          // Correspondance exacte sur les noms de produits assignés (case-insensitive)
+          const productConditions = sheetProductNames.map(name => ({
+            product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+          }));
+
+          console.log('🔒 [orders] Product names to match:', sheetProductNames);
+
+          if (productConditions.length > 0) {
+            if (filter.$or) {
+              // search + product filter: wrap both in $and
+              const searchOr = filter.$or;
+              delete filter.$or;
+              filter.$and = [{ $or: searchOr }, { $or: productConditions }];
+            } else {
+              filter.$or = productConditions;
+            }
+            console.log('🔒 [orders] Final filter: exact match on', sheetProductNames.length, 'products');
+          }
+        }
+      }
+    }
+
+    // Debug: log complete filter for closeuse
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] COMPLETE FILTER:', JSON.stringify(filter, null, 2));
+    }
+
     const orders = await Order.find(filter)
       .populate('assignedLivreur', 'name email phone')
       .sort({ date: -1, _id: -1 })
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
+    // Debug: log sample product values from returned orders
+    if (req.ecomUser.role === 'ecom_closeuse') {
+      console.log('🔒 [orders] Orders returned:', orders.length);
+      if (orders.length > 0) {
+        console.log('🔒 [orders] Sample product values:', orders.slice(0, 5).map(o => o.product));
+      }
+    }
+
     const total = await Order.countDocuments(filter);
 
-    // Stats — use countDocuments per status (auto-casts workspaceId, always works)
+    // Stats — use countDocuments per status (filtered by closeuse products if applicable)
     const wsFilter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
+    
+    // For closeuse, also apply product filter to stats
+    let statsFilter = { ...wsFilter };
+    if (req.ecomUser.role === 'ecom_closeuse' && (filter.$or || filter.$and)) {
+      // Extract product conditions from the main filter
+      if (filter.$or) {
+        statsFilter.$or = filter.$or;
+      } else if (filter.$and) {
+        // Find the product conditions in $and
+        const productCondition = filter.$and.find(c => c.$or && c.$or[0]?.product);
+        if (productCondition) {
+          statsFilter.$or = productCondition.$or;
+        }
+      }
+    }
+    
     const statuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
     
     const countPromises = statuses.map(s => 
-      Order.countDocuments({ ...wsFilter, status: s })
+      Order.countDocuments({ ...statsFilter, status: s })
     );
     const counts = await Promise.all(countPromises);
     
@@ -375,7 +443,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     
     // Calculate delivered revenue
     const deliveredOrders = await Order.find(
-      { ...wsFilter, status: 'delivered' },
+      { ...statsFilter, status: 'delivered' },
       { price: 1, quantity: 1 }
     ).lean();
     stats.totalRevenue = deliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
@@ -384,7 +452,7 @@ router.get('/', requireEcomAuth, async (req, res) => {
     if (period) {
       stats.periodRevenue = 0;
       const periodDeliveredOrders = await Order.find(
-        { ...wsFilter, status: 'delivered', date: filter.date },
+        { ...statsFilter, status: 'delivered', date: filter.date },
         { price: 1, quantity: 1 }
       ).lean();
       stats.periodRevenue = periodDeliveredOrders.reduce((sum, o) => sum + ((o.price || 0) * (o.quantity || 1)), 0);
@@ -1867,6 +1935,61 @@ router.put('/settings', requireEcomAuth, validateEcomAccess('products', 'write')
   }
 });
 
+// GET /api/ecom/orders/settings/push-notifications - Récupérer les préférences de notifications push
+router.get('/settings/push-notifications', requireEcomAuth, async (req, res) => {
+  try {
+    let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings) {
+      settings = new WorkspaceSettings({ workspaceId: req.workspaceId });
+      await settings.save();
+    }
+
+    res.json({ 
+      success: true, 
+      data: settings.pushNotifications || {
+        push_new_orders: true,
+        push_status_changes: true,
+        push_deliveries: true,
+        push_stock_updates: true,
+        push_low_stock: true,
+        push_sync_completed: true
+      }
+    });
+  } catch (error) {
+    console.error('Erreur get push notifications settings:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// PUT /api/ecom/orders/settings/push-notifications - Mettre à jour les préférences de notifications push
+router.put('/settings/push-notifications', requireEcomAuth, async (req, res) => {
+  try {
+    const { push_new_orders, push_status_changes, push_deliveries, push_stock_updates, push_low_stock, push_sync_completed } = req.body;
+
+    let settings = await WorkspaceSettings.findOne({ workspaceId: req.workspaceId });
+    if (!settings) {
+      settings = new WorkspaceSettings({ workspaceId: req.workspaceId });
+    }
+
+    if (!settings.pushNotifications) {
+      settings.pushNotifications = {};
+    }
+
+    if (push_new_orders !== undefined) settings.pushNotifications.push_new_orders = push_new_orders;
+    if (push_status_changes !== undefined) settings.pushNotifications.push_status_changes = push_status_changes;
+    if (push_deliveries !== undefined) settings.pushNotifications.push_deliveries = push_deliveries;
+    if (push_stock_updates !== undefined) settings.pushNotifications.push_stock_updates = push_stock_updates;
+    if (push_low_stock !== undefined) settings.pushNotifications.push_low_stock = push_low_stock;
+    if (push_sync_completed !== undefined) settings.pushNotifications.push_sync_completed = push_sync_completed;
+
+    await settings.save();
+    res.json({ success: true, message: 'Préférences de notifications push sauvegardées', data: settings.pushNotifications });
+  } catch (error) {
+    console.error('Erreur save push notifications settings:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // POST /api/ecom/orders/backfill-clients - Créer les clients/prospects depuis toutes les commandes existantes
 router.post('/backfill-clients', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
   try {
@@ -2030,7 +2153,7 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
           orderId: order._id.toString(),
           url: `/orders/${order._id}`
         }
-      });
+      }, 'push_deliveries');
     } catch (e) {
       console.warn('⚠️ Push notification failed:', e.message);
     }
@@ -2112,7 +2235,7 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
             status: req.body.status,
             url: `/orders/${order._id}`
           }
-        });
+        }, 'push_status_changes');
       } catch (e) {
         console.warn('⚠️ Push notification failed:', e.message);
       }
