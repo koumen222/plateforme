@@ -63,7 +63,7 @@ export async function getRedisClient() {
     });
 
     redisClient.on('error', (err) => {
-      console.error('❌ Redis Client Error:', err);
+      console.error('Redis Client Error:', err);
     });
 
     redisClient.on('connect', () => {
@@ -73,7 +73,7 @@ export async function getRedisClient() {
     await redisClient.connect();
     return redisClient;
   } catch (error) {
-    console.error('❌ Erreur connexion Redis:', error);
+    console.error(' Erreur connexion Redis:', error);
     // Retourner null si Redis n'est pas disponible (fallback en mémoire)
     return null;
   }
