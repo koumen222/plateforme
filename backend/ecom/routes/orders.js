@@ -364,26 +364,36 @@ router.get('/', requireEcomAuth, async (req, res) => {
       if (assignment) {
         const sheetProductNames = (assignment.productAssignments || []).flatMap(pa => pa.sheetProductNames || []);
         const assignedProductIds = (assignment.productAssignments || []).flatMap(pa => pa.productIds || []);
-        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'assignedProductIds:', assignedProductIds.length);
+        const assignedCityNames = (assignment.cityAssignments || []).flatMap(ca => ca.cityNames || []);
+        console.log('🔒 [orders] sheetProductNames:', sheetProductNames, 'assignedProductIds:', assignedProductIds.length, 'assignedCityNames:', assignedCityNames);
 
-        if (sheetProductNames.length > 0 || assignedProductIds.length > 0) {
+        if (sheetProductNames.length > 0 || assignedProductIds.length > 0 || assignedCityNames.length > 0) {
           // Correspondance exacte sur les noms de produits assignés (case-insensitive)
           const productConditions = sheetProductNames.map(name => ({
             product: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
           }));
 
-          console.log('🔒 [orders] Product names to match:', sheetProductNames);
+          // Correspondance exacte sur les noms de villes assignées (case-insensitive)
+          const cityConditions = assignedCityNames.map(name => ({
+            city: { $regex: `^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, $options: 'i' }
+          }));
 
-          if (productConditions.length > 0) {
+          console.log('🔒 [orders] Product names to match:', sheetProductNames);
+          console.log('🔒 [orders] City names to match:', assignedCityNames);
+
+          // Combiner toutes les conditions (produits OU villes)
+          const allConditions = [...productConditions, ...cityConditions];
+
+          if (allConditions.length > 0) {
             if (filter.$or) {
-              // search + product filter: wrap both in $and
+              // search + product/city filter: wrap both in $and
               const searchOr = filter.$or;
               delete filter.$or;
-              filter.$and = [{ $or: searchOr }, { $or: productConditions }];
+              filter.$and = [{ $or: searchOr }, { $or: allConditions }];
             } else {
-              filter.$or = productConditions;
+              filter.$or = allConditions;
             }
-            console.log('🔒 [orders] Final filter: exact match on', sheetProductNames.length, 'products');
+            console.log('🔒 [orders] Final filter: exact match on', sheetProductNames.length, 'products and', assignedCityNames.length, 'cities');
           }
         }
       }
@@ -413,17 +423,17 @@ router.get('/', requireEcomAuth, async (req, res) => {
     // Stats — use countDocuments per status (filtered by closeuse products if applicable)
     const wsFilter = viewAllWorkspaces ? {} : { workspaceId: req.workspaceId };
     
-    // For closeuse, also apply product filter to stats
+    // For closeuse, also apply product and city filter to stats
     let statsFilter = { ...wsFilter };
     if (req.ecomUser.role === 'ecom_closeuse' && (filter.$or || filter.$and)) {
-      // Extract product conditions from the main filter
+      // Extract product and city conditions from the main filter
       if (filter.$or) {
         statsFilter.$or = filter.$or;
       } else if (filter.$and) {
-        // Find the product conditions in $and
-        const productCondition = filter.$and.find(c => c.$or && c.$or[0]?.product);
-        if (productCondition) {
-          statsFilter.$or = productCondition.$or;
+        // Find the product/city conditions in $and
+        const productCityCondition = filter.$and.find(c => c.$or && (c.$or[0]?.product || c.$or[0]?.city));
+        if (productCityCondition) {
+          statsFilter.$or = productCityCondition.$or;
         }
       }
     }

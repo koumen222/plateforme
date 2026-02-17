@@ -43,6 +43,13 @@ const AssignmentsManager = () => {
       const productsData = productsRes?.data?.data;
       const assignmentsData = assignmentsRes?.data?.data;
 
+      console.log('📊 Données brutes:', {
+        sources: sourcesData,
+        closeuses: closeusesData,
+        products: productsData,
+        assignments: assignmentsData
+      });
+
       setSources(Array.isArray(sourcesData) ? sourcesData : []);
       setCloseuses(Array.isArray(closeusesData) ? closeusesData : []);
       setProducts(Array.isArray(productsData) ? productsData : []);
@@ -115,7 +122,7 @@ const AssignmentsManager = () => {
   const handleEdit = (assignment) => {
     setEditingAssignment(assignment);
     const productAssignments = Array.isArray(assignment.productAssignments) ? assignment.productAssignments.map(pa => {
-      const dbIds = Array.isArray(pa.productIds) ? pa.productIds.map(p => p._id || p) : [];
+      const dbIds = Array.isArray(pa.productIds) ? pa.productIds.filter(p => p && (typeof p === 'object' ? p._id : typeof p === 'string')).map(p => p._id || p) : [];
       const sheetNames = Array.isArray(pa.sheetProductNames) ? pa.sheetProductNames : [];
       return {
         sourceId: pa.sourceId?._id || pa.sourceId,
@@ -459,7 +466,7 @@ const AssignmentsManager = () => {
                     <table className="min-w-full divide-y divide-gray-200">
                       <thead className="bg-gray-50">
                         <tr>
-                          {googleSheetsData[selectedSource._id].preview.headers?.map((header, index) => (
+                          {Array.isArray(googleSheetsData[selectedSource._id]?.preview?.headers) && googleSheetsData[selectedSource._id].preview.headers.map((header, index) => (
                             <th key={index} className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase whitespace-nowrap">
                               {header}
                             </th>
@@ -467,9 +474,9 @@ const AssignmentsManager = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {googleSheetsData[selectedSource._id].preview.preview?.map((row, rowIndex) => (
+                        {Array.isArray(googleSheetsData[selectedSource._id]?.preview?.preview) && googleSheetsData[selectedSource._id].preview.preview.map((row, rowIndex) => (
                           <tr key={rowIndex} className="hover:bg-gray-50">
-                            {googleSheetsData[selectedSource._id].preview.headers?.map((header, colIndex) => (
+                            {Array.isArray(googleSheetsData[selectedSource._id]?.preview?.headers) && googleSheetsData[selectedSource._id].preview.headers.map((header, colIndex) => (
                               <td key={colIndex} className="px-4 py-2 text-sm text-gray-900 whitespace-nowrap">
                                 {row[header] || '-'}
                               </td>
@@ -480,7 +487,7 @@ const AssignmentsManager = () => {
                     </table>
                   </div>
                   
-                  {googleSheetsData[selectedSource._id].preview.recommendations?.length > 0 && (
+                  {Array.isArray(googleSheetsData[selectedSource._id]?.preview?.recommendations) && googleSheetsData[selectedSource._id].preview.recommendations.length > 0 && (
                     <div className="mt-4">
                       <h4 className="text-sm font-semibold text-gray-900 mb-2">Recommandations</h4>
                       <div className="space-y-2">
@@ -539,23 +546,23 @@ const AssignmentsManager = () => {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
-                      {assignment.orderSources.map((os) => (
+                      {Array.isArray(assignment.orderSources) && assignment.orderSources.map((os) => (
                         <span
-                          key={os.sourceId._id}
+                          key={os.sourceId?._id || os.sourceId}
                           className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                          style={{ backgroundColor: os.sourceId.color + '20', color: os.sourceId.color }}
+                          style={{ backgroundColor: os.sourceId?.color + '20' || '#00000020', color: os.sourceId?.color || '#000000' }}
                         >
-                          {os.sourceId.icon} {os.sourceId.name}
+                          {os.sourceId?.icon || ''} {os.sourceId?.name || 'Source inconnue'}
                         </span>
                       ))}
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="space-y-1">
-                      {assignment.productAssignments.map((pa, paIdx) => (
+                      {Array.isArray(assignment.productAssignments) && assignment.productAssignments.map((pa, paIdx) => (
                         <div key={paIdx} className="text-xs">
                           <span className="font-medium">{pa.sourceId?.name || 'Source'}:</span>
-                          {pa.sheetProductNames?.length > 0 && (
+                          {Array.isArray(pa.sheetProductNames) && pa.sheetProductNames.length > 0 && (
                             <div className="flex flex-wrap gap-1 mt-1">
                               {pa.sheetProductNames.map((name, nIdx) => (
                                 <span key={nIdx} className="inline-flex px-1.5 py-0.5 bg-green-50 text-green-700 rounded text-xs">
@@ -564,10 +571,10 @@ const AssignmentsManager = () => {
                               ))}
                             </div>
                           )}
-                          {pa.productIds?.length > 0 && (
+                          {Array.isArray(pa.productIds) && pa.productIds.length > 0 && (
                             <span className="ml-1">{pa.productIds.length} produit(s) DB</span>
                           )}
-                          {!pa.sheetProductNames?.length && !pa.productIds?.length && (
+                          {(!Array.isArray(pa.sheetProductNames) || pa.sheetProductNames.length === 0) && (!Array.isArray(pa.productIds) || pa.productIds.length === 0) && (
                             <span className="ml-1 text-gray-400">Aucun produit</span>
                           )}
                         </div>
@@ -721,7 +728,7 @@ const AssignmentsManager = () => {
                               <label className="block text-sm font-medium text-gray-700">
                                 Produits {isSheetSource ? 'du Google Sheet' : 'disponibles'}
                               </label>
-                              {isSheetSource && sourceProducts.products?.length > 0 && (
+                              {isSheetSource && Array.isArray(sourceProducts.products) && sourceProducts.products.length > 0 && (
                                 <span className="text-xs text-green-600 font-medium">
                                   {sourceProducts.products.length} produits trouvés
                                 </span>
@@ -738,15 +745,15 @@ const AssignmentsManager = () => {
                                 <div className="font-medium">Erreur d'accès</div>
                                 <div>{sourceProducts.error}</div>
                               </div>
-                            ) : isSheetSource && sourceProducts.products?.length > 0 ? (
+                            ) : isSheetSource && Array.isArray(sourceProducts.products) && sourceProducts.products.length > 0 ? (
                               <div>
                                 <div className="flex gap-2 mb-2">
                                   <button
                                     type="button"
-                                    onClick={() => updateProductAssignment(index, 'productIds', [...sourceProducts.products])}
+                                    onClick={() => updateProductAssignment(index, 'productIds', Array.isArray(sourceProducts.products) ? [...sourceProducts.products] : [])}
                                     className="px-2 py-1 text-xs bg-blue-50 text-blue-700 rounded hover:bg-blue-100"
                                   >
-                                    Tout sélectionner ({sourceProducts.products.length})
+                                    Tout sélectionner ({Array.isArray(sourceProducts.products) ? sourceProducts.products.length : 0})
                                   </button>
                                   <button
                                     type="button"
@@ -757,15 +764,16 @@ const AssignmentsManager = () => {
                                   </button>
                                 </div>
                                 <div className="max-h-48 overflow-y-auto border border-gray-200 rounded-lg p-2 space-y-1">
-                                  {sourceProducts.products.map((productName, pIdx) => (
+                                  {Array.isArray(sourceProducts.products) && sourceProducts.products.map((productName, pIdx) => (
                                     <label key={pIdx} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-gray-50 cursor-pointer">
                                       <input
                                         type="checkbox"
-                                        checked={(pa.productIds || []).includes(productName)}
+                                        checked={Array.isArray(pa.productIds) && (pa.productIds || []).includes(productName)}
                                         onChange={(e) => {
+                                          const currentProductIds = Array.isArray(pa.productIds) ? pa.productIds : [];
                                           const newProductIds = e.target.checked
-                                            ? [...(pa.productIds || []), productName]
-                                            : (pa.productIds || []).filter(id => id !== productName);
+                                            ? [...currentProductIds, productName]
+                                            : currentProductIds.filter(id => id !== productName);
                                           updateProductAssignment(index, 'productIds', newProductIds);
                                         }}
                                         className="w-4 h-4 rounded border-gray-300 text-blue-600"
@@ -774,9 +782,9 @@ const AssignmentsManager = () => {
                                     </label>
                                   ))}
                                 </div>
-                                {(pa.productIds || []).length > 0 && !sourceProducts.error && (
+                                {Array.isArray(pa.productIds) && pa.productIds.length > 0 && !sourceProducts.error && (
                                   <div className="mt-2 text-xs text-indigo-600 font-medium">
-                                    {(pa.productIds || []).length} produit(s) sélectionné(s)
+                                    {pa.productIds.length} produit(s) sélectionné(s)
                                   </div>
                                 )}
                               </div>

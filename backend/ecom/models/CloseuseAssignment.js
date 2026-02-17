@@ -53,6 +53,27 @@ const assignmentSchema = new mongoose.Schema({
       required: true
     }
   }],
+  // Affectation des villes
+  cityAssignments: [{
+    sourceId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'OrderSource',
+      required: true
+    },
+    cityNames: [{
+      type: String,
+      trim: true
+    }],
+    assignedAt: {
+      type: Date,
+      default: Date.now
+    },
+    assignedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomUser',
+      required: true
+    }
+  }],
   isActive: {
     type: Boolean,
     default: true

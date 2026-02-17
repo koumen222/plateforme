@@ -281,6 +281,93 @@ router.post('/sheet-products', requireEcomAuth, async (req, res) => {
   }
 });
 
+// Extraire les villes uniques d'une source Google Sheets
+router.post('/sheet-cities', requireEcomAuth, async (req, res) => {
+  try {
+    const { spreadsheetId, sheetName } = req.body;
+    if (!spreadsheetId) return res.status(400).json({ success: false, message: 'ID spreadsheet requis' });
+
+    const json = await fetchSheetsJson(spreadsheetId, sheetName);
+    const table = json.table;
+
+    // Essayer cols.label d'abord
+    const colHeaders = (table?.cols || []).map(c => c.label || '');
+    const hasColLabels = colHeaders.some(h => h && h.trim());
+
+    // Essayer première ligne comme headers
+    let firstRowHeaders = [];
+    if (table?.rows?.[0]?.c) {
+      firstRowHeaders = table.rows[0].c.map(cell => cell?.f || (cell?.v != null ? String(cell.v) : ''));
+    }
+
+    const normalize = (s) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const cityKeywords = ['ville', 'city', 'commune', 'localite', 'zone', 'region', 'wilaya', 'gouvernorat', 'lieu', 'destination', 'livraison'];
+
+    const findCityCol = (headers) => {
+      const normalized = headers.map(h => normalize(h));
+      for (const keyword of cityKeywords) {
+        const idx = normalized.findIndex(h => h.includes(keyword));
+        if (idx !== -1) return idx;
+      }
+      return -1;
+    };
+
+    // Stratégie 1: cols.label
+    let effectiveHeaders = colHeaders;
+    let dataStartIndex = 0;
+    let cityColIndex = hasColLabels ? findCityCol(colHeaders) : -1;
+
+    // Stratégie 2: première ligne
+    if (cityColIndex === -1 && firstRowHeaders.length > 0) {
+      cityColIndex = findCityCol(firstRowHeaders);
+      if (cityColIndex !== -1) {
+        effectiveHeaders = firstRowHeaders;
+        dataStartIndex = 1;
+      }
+    }
+
+    if (cityColIndex === -1) {
+      return res.json({
+        success: true,
+        data: { cities: [], message: 'Colonne ville non détectée' }
+      });
+    }
+
+    // Extraire les villes uniques
+    const citySet = new Set();
+    const rows = table?.rows || [];
+    for (let i = dataStartIndex; i < rows.length; i++) {
+      const row = rows[i];
+      if (!row?.c || !row.c[cityColIndex]) continue;
+      const cell = row.c[cityColIndex];
+      const value = (cell.f || (cell.v != null ? String(cell.v) : '')).trim();
+      if (value) citySet.add(value);
+    }
+
+    const cities = Array.from(citySet).sort();
+    console.log('📊 [sheet-cities] Found', cities.length, 'unique cities');
+
+    res.json({
+      success: true,
+      data: {
+        cities,
+        cityColumn: effectiveHeaders[cityColIndex],
+        totalCities: cities.length,
+        totalRows: rows.length - dataStartIndex
+      }
+    });
+  } catch (error) {
+    console.error('Erreur extraction villes sheets:', error.message);
+    if (error.message.includes('404')) {
+      return res.status(404).json({
+        success: false,
+        message: 'Google Sheet non accessible. Vérifiez que le sheet est partagé en "Anyone with the link can view".'
+      });
+    }
+    res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
+  }
+});
+
 // ===== GESTION DES SOURCES DE COMMANDES =====
 
 // Lister toutes les sources du workspace (OrderSource + WorkspaceSettings Google Sheets)
@@ -437,6 +524,8 @@ router.get('/', requireEcomAuth, async (req, res) => {
     .populate('productAssignments.sourceId', 'name color icon')
     .populate('productAssignments.productIds', 'name sellingPrice stock')
     .populate('productAssignments.assignedBy', 'name email')
+    .populate('cityAssignments.sourceId', 'name color icon')
+    .populate('cityAssignments.assignedBy', 'name email')
     .sort({ 'closeuseId.name': 1 });
 
     res.json({
@@ -464,7 +553,9 @@ router.get('/closeuse/:closeuseId', requireEcomAuth, async (req, res) => {
     .populate('orderSources.assignedBy', 'name email')
     .populate('productAssignments.sourceId', 'name color icon')
     .populate('productAssignments.productIds', 'name sellingPrice stock')
-    .populate('productAssignments.assignedBy', 'name email');
+    .populate('productAssignments.assignedBy', 'name email')
+    .populate('cityAssignments.sourceId', 'name color icon')
+    .populate('cityAssignments.assignedBy', 'name email');
 
     if (!assignment) {
       return res.status(404).json({ success: false, message: 'Affectation non trouvée' });
@@ -483,7 +574,7 @@ router.get('/closeuse/:closeuseId', requireEcomAuth, async (req, res) => {
 // Créer ou mettre à jour une affectation
 router.post('/', requireEcomAuth, async (req, res) => {
   try {
-    const { closeuseId, orderSources, productAssignments, notes } = req.body;
+    const { closeuseId, orderSources, productAssignments, cityAssignments, notes } = req.body;
 
     if (!closeuseId) {
       return res.status(400).json({ success: false, message: 'ID closeuse requis' });
@@ -534,10 +625,20 @@ router.post('/', requireEcomAuth, async (req, res) => {
         };
       });
 
+    const validCityAssignments = (cityAssignments || [])
+      .filter(ca => ca.sourceId && ca.sourceId.length >= 24)
+      .map(ca => ({
+        sourceId: ca.sourceId,
+        cityNames: ca.cityNames || [],
+        assignedBy: req.ecomUser._id,
+        assignedAt: new Date()
+      }));
+
     if (assignment) {
       // Mettre à jour l'affectation existante
       assignment.orderSources = validOrderSources;
       assignment.productAssignments = validProductAssignments;
+      assignment.cityAssignments = validCityAssignments;
       if (notes !== undefined) assignment.notes = notes.trim();
       assignment.isActive = true;
     } else {
@@ -547,6 +648,7 @@ router.post('/', requireEcomAuth, async (req, res) => {
         closeuseId,
         orderSources: validOrderSources,
         productAssignments: validProductAssignments,
+        cityAssignments: validCityAssignments,
         notes: notes?.trim() || '',
         isActive: true
       });
