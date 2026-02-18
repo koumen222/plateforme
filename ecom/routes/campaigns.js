@@ -706,7 +706,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     });
 
     // Récupérer les clients ciblés
-    let clients;
+    let clients = [];
 
     // 🆕 UTILISER LE SNAPSHOT SI DISPONIBLE (priorité absolue)
     if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
@@ -718,18 +718,48 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       
       console.log("SNAPSHOT DEBUG first3:", snapshotIdsRaw.slice(0,3), "casted:", snapshotIds.slice(0,3));
       
-      // 🆕 Conversion sécurisée du workspaceId
-      const workspaceObjectId = toObjectId(req.workspaceId) || toObjectId(campaign.workspaceId);
-      
+      // Chercher sans filtre workspaceId (les IDs sont déjà scopés au workspace lors de la création)
       clients = await Client.find({ 
         _id: { $in: snapshotIds },
-        workspaceId: workspaceObjectId
+        phone: { $exists: true, $ne: '' }
       }).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').lean();
       
       console.log("Snapshot loaded:", clients.length, "expected:", snapshotIds.length);
       
       if (clients.length !== snapshotIds.length) {
         console.warn(`⚠️ Attention: ${snapshotIds.length - clients.length} clients du snapshot non trouvés`);
+      }
+      
+      // Fallback si snapshot vide: recalculer depuis les filtres
+      if (clients.length === 0) {
+        console.warn('⚠️ Snapshot vide, fallback sur les filtres de la campagne...');
+        const hasOrderFilters = campaign.targetFilters && (
+          campaign.targetFilters.orderStatus || campaign.targetFilters.orderCity ||
+          campaign.targetFilters.orderAddress || campaign.targetFilters.orderProduct ||
+          campaign.targetFilters.orderDateFrom || campaign.targetFilters.orderDateTo ||
+          campaign.targetFilters.orderSourceId || campaign.targetFilters.orderMinPrice ||
+          campaign.targetFilters.orderMaxPrice
+        );
+        if (hasOrderFilters) {
+          const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
+          clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
+            firstName: orderData.clientName?.split(' ')[0] || '',
+            lastName: orderData.clientName?.split(' ').slice(1).join(' ') || '',
+            phone, city: orderData.city || '', address: orderData.address || '',
+            products: orderData.product ? [orderData.product] : [],
+            totalOrders: 1, totalSpent: (orderData.price || 0) * (orderData.quantity || 1),
+            status: orderData.status || '', tags: [], lastContactAt: orderData.date || new Date(),
+            _id: orderData._id, _orderStatus: orderData.status || '',
+            _orderPrice: orderData.price || 0, _orderDate: orderData.date || null,
+            _orderProduct: orderData.product || '', _orderQuantity: orderData.quantity || 1
+          }));
+          console.log(`📦 Fallback: ${clients.length} clients depuis filtres commandes`);
+        } else {
+          const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+          filter.phone = { $exists: true, $ne: '' };
+          clients = await Client.find(filter).lean();
+          console.log(`👥 Fallback: ${clients.length} clients depuis filtres clients`);
+        }
       }
       
     // ✅ Gestion des campagnes WhatsApp
@@ -798,34 +828,16 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         );
 
         if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
-          // 🆕 Utiliser le snapshot des IDs de clients
           const snapshotIdsRaw = campaign.recipientSnapshotIds;
           const snapshotIds = snapshotIdsRaw.map(toObjectId).filter(Boolean);
-          const workspaceObjectId = toObjectId(req.workspaceId) || toObjectId(campaign.workspaceId);
           
-          console.log("SNAPSHOT DEBUG first3:", snapshotIdsRaw.slice(0,3), "casted:", snapshotIds.slice(0,3));
-          console.log("Workspace ID:", workspaceObjectId, "Campaign workspaceId:", campaign.workspaceId);
-          
-          // Vérifier si ces clients existent vraiment
-          const sampleCheck = await Client.find({ _id: { $in: snapshotIds.slice(0, 3) } }).select('_id phone workspaceId').lean();
-          console.log("Sample check (first 3):", sampleCheck.length, "clients found");
-          sampleCheck.forEach(c => console.log("  - Client:", c._id, "Workspace:", c.workspaceId, "Phone:", c.phone));
-          
+          // Chercher sans filtre workspaceId (IDs déjà scopés au workspace)
           clients = await Client.find({
             _id: { $in: snapshotIds },
-            workspaceId: workspaceObjectId,
             phone: { $exists: true, $ne: '' }
           }).lean();
           
-          console.log("Snapshot loaded:", clients.length, "expected:", snapshotIds.length);
-          
-          if (clients.length === 0) {
-            console.log("⚠️ Attention: " + snapshotIds.length + " clients du snapshot non trouvés");
-            console.log("🔍 Vérification sans filtre workspaceId:");
-            const allWorkspaceClients = await Client.find({ _id: { $in: snapshotIds } }).lean();
-            console.log("  - Sans workspaceId:", allWorkspaceClients.length, "trouvés");
-            allWorkspaceClients.forEach(c => console.log("    Client:", c._id, "Workspace:", c.workspaceId));
-          }
+          console.log("Snapshot whatsapp loaded:", clients.length, "expected:", snapshotIds.length);
         } else if (hasOrderFilters) {
           const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
           clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
@@ -1046,14 +1058,8 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       campaign.targetFilters.orderMaxPrice
     );
 
-    // 🆕 BOUCLE D'ENVOI SUR LES CONTACTS PRÉPARÉS (pas sur tous les clients)
-    for (const contact of contacts) {
-      const client = clients.find(c => c._id.toString() === contact.clientId.toString());
-      if (!client) {
-        console.warn(`⚠️ Client non trouvé pour contact ${contact.clientId}`);
-        continue;
-      }
-
+    // 🆕 BOUCLE D'ENVOI DIRECTE SUR LES CLIENTS
+    for (const client of clients) {
       // Utiliser les données de commande si disponibles
       const orderData = hasOrderFilters ? {
         clientName: `${client.firstName} ${client.lastName}`.trim(),
@@ -1068,20 +1074,30 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       } : null;
       
       const message = renderMessage(campaign.messageTemplate, client, orderData);
+      const cleanedPhone = (client.phone || client.phoneNumber || '').replace(/\D/g, '');
       
-      // 🆕 Plus besoin de valider le téléphone ici (déjà fait dans la préparation)
-      // On utilise directement contact.to qui est le numéro normalisé
+      if (!cleanedPhone || cleanedPhone.length < 8) {
+        campaign.results.push({ 
+          clientId: client._id, 
+          clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Inconnu', 
+          phone: client.phone || client.phoneNumber, 
+          status: 'failed', 
+          error: 'Numéro invalide' 
+        });
+        failed++;
+        continue;
+      }
 
       try {
         // 🆕 Validation anti-spam pour chaque message personnalisé
         const personalizedAnalysis = analyzeSpamRisk(message);
-        const isPersonalizedValid = validateMessageBeforeSend(message, `client-${client._id}`);
+        const isPersonalizedValid = validateMessageBeforeSend(message, `client-${client._id || 'unknown'}`);
         
         if (!isPersonalizedValid) {
           campaign.results.push({ 
             clientId: client._id, 
-            clientName: `${client.firstName} ${client.lastName}`, 
-            phone: client.phone, 
+            clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Inconnu', 
+            phone: cleanedPhone, 
             status: 'failed', 
             error: 'Message personnalisé rejeté (spam)',
             spamRisk: personalizedAnalysis.risk,
@@ -1093,7 +1109,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
 
         // 🆕 Envoi avec système anti-spam
         const messageData = {
-          to: contact.to, // 🆕 Utiliser contact.to au lieu de cleanedPhone
+          to: cleanedPhone,
           message: message,
           campaignId: campaign._id,
           userId: client._id,
@@ -1105,8 +1121,8 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         if (result.success) {
           campaign.results.push({ 
             clientId: client._id, 
-            clientName: `${client.firstName} ${client.lastName}`, 
-            phone: contact.to, // 🆕 Utiliser contact.to
+            clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Inconnu', 
+            phone: cleanedPhone,
             status: 'sent', 
             sentAt: new Date(),
             messageId: result.messageId,
@@ -1115,8 +1131,8 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
           sent++;
           messageCount++;
           
-          // Mettre à jour le dernier contact si c'est un vrai client
-          if (!hasOrderFilters) {
+          // Mettre à jour le dernier contact si c'est un vrai client avec _id
+          if (!hasOrderFilters && client._id) {
             const realClient = await Client.findById(client._id);
             if (realClient) {
               realClient.lastContactAt = new Date();
@@ -1125,12 +1141,12 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
             }
           }
           
-          console.log(`✅ Message envoyé à ${client.firstName} ${client.lastName} (${contact.to})`);
+          console.log(`✅ Message envoyé à ${client.firstName || 'Inconnu'} ${client.lastName || ''} (${cleanedPhone})`);
         } else {
           campaign.results.push({ 
             clientId: client._id, 
-            clientName: `${client.firstName} ${client.lastName}`, 
-            phone: contact.to, // 🆕 Utiliser contact.to
+            clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Inconnu', 
+            phone: cleanedPhone,
             status: 'failed', 
             error: result.error 
           });
@@ -1140,8 +1156,8 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       } catch (err) {
         campaign.results.push({ 
           clientId: client._id, 
-          clientName: `${client.firstName} ${client.lastName}`, 
-          phone: contact.to, // 🆕 Utiliser contact.to
+          clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || 'Inconnu', 
+          phone: cleanedPhone,
           status: 'failed', 
           error: err.message 
         });
