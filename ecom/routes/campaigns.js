@@ -1041,10 +1041,10 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     let failed = 0;
     let messageCount = 0;
     
-    // 🆕 Configuration anti-spam pour marketing
-    const BATCH_SIZE = 3; // Réduit de 5 à 3 pour plus de sécurité
-    const BATCH_PAUSE_MS = 15000; // Augmenté de 10s à 15s
-    const MSG_PAUSE_MS = 5000; // Augmenté de 2s à 5s
+    // Configuration timing envoi WhatsApp
+    const BATCH_SIZE = 10;           // Pause toutes les 10 messages
+    const BATCH_PAUSE_MS = 5 * 60 * 1000; // 5 minutes entre chaque batch
+    const MSG_PAUSE_MS = 30000;      // 30 secondes entre chaque message
 
     const hasOrderFilters = campaign.targetFilters && (
       campaign.targetFilters.orderStatus ||
@@ -1164,16 +1164,12 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         failed++;
       }
 
-      // 🆕 Délais anti-spam améliorés
+      // Timing: 30s entre chaque message, pause 5min après 10 envois
       if (messageCount > 0 && messageCount % BATCH_SIZE === 0) {
-        const pauseTime = getHumanDelayWithVariation();
-        const pauseSeconds = Math.round(pauseTime / 1000);
-        console.log(`⏸️ Campagne ${campaign.name}: pause anti-spam de ${pauseSeconds}s après ${messageCount} messages...`);
-        await new Promise(resolve => setTimeout(resolve, pauseTime));
+        console.log(`⏸️ Pause 5 minutes après ${messageCount} messages envoyés...`);
+        await new Promise(resolve => setTimeout(resolve, BATCH_PAUSE_MS));
       } else {
-        // Délai variable entre chaque message
-        const variableDelay = MSG_PAUSE_MS + Math.random() * 2000; // 5-7 secondes
-        await new Promise(resolve => setTimeout(resolve, variableDelay));
+        await new Promise(resolve => setTimeout(resolve, MSG_PAUSE_MS));
       }
     }
 
