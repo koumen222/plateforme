@@ -8,14 +8,15 @@ const initWhatsAppService = async () => {
   // Configuration Green API uniquement
   const greenApiId = process.env.GREEN_API_ID_INSTANCE;
   const greenApiToken = process.env.GREEN_API_TOKEN_INSTANCE;
-  const greenApiUrl = process.env.GREEN_API_URL;
   
   if (greenApiId && greenApiToken) {
     providerType = 'green_api';
+    // ✅ 1️⃣ Utiliser l'URL correcte de Green API
+    const apiUrl = process.env.GREEN_API_URL || 'https://api.green-api.com';
     whatsappProvider = {
       idInstance: greenApiId,
       apiTokenInstance: greenApiToken,
-      apiUrl: greenApiUrl || `https://${greenApiId}.api.greenapi.com`
+      apiUrl: apiUrl
     };
     
     console.log('✅ Service WhatsApp Green API configuré');
@@ -128,7 +129,19 @@ const checkWhatsappNumber = async (phone) => {
       })
     });
     
-    const data = await response.json();
+    // ✅ 6️⃣ Sécuriser le JSON.parse
+    const responseText = await response.text();
+    
+    if (!responseText || responseText.trim() === '') {
+      return { exists: false, error: `Réponse vide Green API (HTTP ${response.status})` };
+    }
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (err) {
+      return { exists: false, error: `Réponse non JSON valide (HTTP ${response.status})` };
+    }
     
     if (!response.ok) {
       if (response.status === 466) {
@@ -207,7 +220,16 @@ const performWarmup = async () => {
         })
       });
       
-      const data = await response.json();
+      // ✅ 6️⃣ Sécuriser le JSON.parse
+      const responseText = await response.text();
+      
+      let data;
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (err) {
+        // Erreur silencieuse pour le warm-up
+        continue;
+      }
       
       // Utiliser les VRAIES réponses de l'API Green API
       if (response.ok && data.idMessage) {
@@ -232,7 +254,7 @@ const performWarmup = async () => {
  * ⚠️ IMPORTANT: Cette fonction REJETTE immédiatement les numéros mal formatés
  * 🆕 ANTI-SPAM: Validation du contenu avant envoi
  */
-const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName, attemptNumber = 1 }) => {
+const sendWhatsAppMessage = async ({ to, message, campaignId, previewId, userId, firstName, attemptNumber = 1 }) => {
   if (!whatsappProvider || providerType !== 'green_api') {
     throw new Error('Service WhatsApp Green API non configuré');
   }
@@ -260,6 +282,7 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
   
   const whatsappLog = new WhatsAppLog({
     campaignId,
+    previewId,  // ✅ Ajouter previewId pour les previews
     userId,
     phone: cleanedPhone,
     firstName: firstName || null,
@@ -275,8 +298,11 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
     const fetch = fetchModule.default;
     
     // Envoi via Green API uniquement
-    const apiUrl = whatsappProvider.apiUrl || `https://${whatsappProvider.idInstance}.api.greenapi.com`;
+    const apiUrl = whatsappProvider.apiUrl;
     const endpoint = `${apiUrl}/waInstance${whatsappProvider.idInstance}/sendMessage/${whatsappProvider.apiTokenInstance}`;
+    
+    // 🆕 Log "1 fois" pour vérifier l'URL appelée
+    console.log('[GreenAPI] POST', endpoint);
     
     const response = await fetch(endpoint, {
       method: 'POST',
@@ -289,7 +315,24 @@ const sendWhatsAppMessage = async ({ to, message, campaignId, userId, firstName,
       })
     });
     
-    const data = await response.json();
+    // ✅ 2️⃣ Sécuriser le JSON.parse
+    const responseText = await response.text();
+    
+    // ✅ 4️⃣ Logs de debug temporaires
+    console.log('� ENDPOINT:', endpoint);
+    console.log('🔎 STATUS:', response.status);
+    console.log('🔎 RAW:', responseText);
+    
+    if (!responseText || responseText.trim() === '') {
+      throw new Error(`Réponse vide Green API (HTTP ${response.status})`);
+    }
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (err) {
+      throw new Error(`Réponse non JSON valide (HTTP ${response.status}): ${err.message}`);
+    }
     
     // Utiliser les VRAIS logs de l'API Green API
     // Gestion de l'erreur HTTP 466 (vraie réponse de l'API)

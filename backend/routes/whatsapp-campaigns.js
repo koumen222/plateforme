@@ -111,15 +111,64 @@ router.post('/', async (req, res) => {
     }
     
     // Valider la structure des recipients selon le type
-    if (recipients.type === 'list' && (!recipients.customPhones || !Array.isArray(recipients.customPhones))) {
-      return res.status(400).json({ error: 'customPhones doit être un tableau pour le type "list"' });
+    if (recipients.type === 'list') {
+      if (!recipients.customPhones || !Array.isArray(recipients.customPhones)) {
+        return res.status(400).json({ error: 'customPhones doit être un tableau pour le type "list"' });
+      }
+      
+      // ✅ 5️⃣ Validations "list" plus strictes
+      if (recipients.customPhones.length === 0) {
+        return res.status(400).json({ error: 'customPhones ne peut pas être vide pour le type "list"' });
+      }
+      
+      // Fonction de normalisation pour validation
+      const normalizePhone = (phone) => {
+        if (!phone) return '';
+        let cleaned = phone.toString().replace(/\D/g, '').trim();
+        
+        // ✅ 2️⃣ Corriger le cas 00237699887766
+        if (cleaned.startsWith('00')) {
+          cleaned = cleaned.substring(2); // Enlever les "00"
+        }
+        
+        // Gérer le préfixe pays (Cameroun 237)
+        if (cleaned.length === 9 && cleaned.startsWith('6')) {
+          return '237' + cleaned;
+        }
+        
+        return cleaned;
+      };
+      
+      // Valider et normaliser les numéros
+      const validPhones = recipients.customPhones
+        .map(phone => normalizePhone(phone))
+        .filter(phone => phone.length >= 8); // Minimum 8 digits
+      
+      if (validPhones.length === 0) {
+        return res.status(400).json({ 
+          error: 'Aucun numéro valide trouvé dans customPhones',
+          details: 'Les numéros doivent contenir au moins 8 chiffres'
+        });
+      }
+      
+      if (validPhones.length < recipients.customPhones.length) {
+        console.warn(`⚠️ ${recipients.customPhones.length - validPhones.length} numéros invalides filtrés`);
+      }
+      
+      // Mettre à jour recipients.count avec le nombre de numéros valides
+      recipients.count = validPhones.length;
+      console.log(`✅ Validation LIST: ${validPhones.length} numéros valides sur ${recipients.customPhones.length}`);
+      
+      // ✅ Stocker pour utilisation dans recipientCount
+      validPhonesCount = validPhones.length;
     }
+    
+    let recipientCount = 0;
+    let validPhonesCount = 0; // ✅ Déclarer avant pour utilisation partout
     
     if (recipients.type === 'segment' && !recipients.segment) {
       return res.status(400).json({ error: 'segment est requis pour le type "segment"' });
     }
-    
-    let recipientCount = 0;
     
     if (recipients?.type === 'all') {
       recipientCount = await User.countDocuments({ 
@@ -155,7 +204,9 @@ router.post('/', async (req, res) => {
         });
       }
     } else if (recipients?.type === 'list' && recipients.customPhones?.length) {
-      recipientCount = recipients.customPhones.length;
+      // ✅ Utiliser le nombre de numéros valides calculé dans la validation
+      recipientCount = validPhonesCount || recipients.customPhones.length;
+      console.log(`🔍 Debug LIST: validPhonesCount=${validPhonesCount}, recipients.customPhones.length=${recipients.customPhones.length}, recipientCount=${recipientCount}`);
     }
     
     // Vérifier que req.user existe
@@ -244,6 +295,16 @@ router.post('/:id/send', async (req, res) => {
       return res.status(404).json({ error: 'Campagne non trouvée' });
     }
     
+    // ✅ 2️⃣ Logging de diagnostic côté envoi
+    console.log('🔍 DIAGNOSTIC ENVOI CAMPAGNE:');
+    console.log('   Type de recipients:', campaign.recipients?.type);
+    console.log('   Segment:', campaign.recipients?.segment);
+    console.log('   Longueur customPhones:', campaign.recipients?.customPhones?.length || 0);
+    if (campaign.recipients?.customPhones?.length > 0) {
+      console.log('   3-5 numéros exemples:', campaign.recipients.customPhones.slice(0, 5));
+    }
+    console.log('   Count:', campaign.recipients?.count);
+    
     if (campaign.status === 'sent') {
       return res.status(400).json({ error: 'Campagne déjà envoyée' });
     }
@@ -280,42 +341,43 @@ router.post('/:id/send', async (req, res) => {
         }).select('phone phoneNumber name _id').lean();
       }
     } else if (campaign.recipients.type === 'list' && campaign.recipients.customPhones?.length) {
-      // Pour les listes personnalisées, chercher les utilisateurs correspondants dans la base
-      const sanitizePhone = (phone) => {
+      // ✅ 3️⃣ Logique "list" améliorée - ne pas dépendre de la DB Users
+      console.log('📋 Traitement campagne type LIST');
+      
+      // ✅ 4️⃣ Fonction de normalisation uniforme
+      const normalizePhone = (phone) => {
         if (!phone) return '';
-        return phone.toString().replace(/\D/g, '').trim();
+        let cleaned = phone.toString().replace(/\D/g, '').trim();
+        
+        // ✅ 2️⃣ Corriger le cas 00237699887766
+        if (cleaned.startsWith('00')) {
+          cleaned = cleaned.substring(2); // Enlever les "00"
+        }
+        
+        // Gérer le préfixe pays (Cameroun 237)
+        if (cleaned.length === 9 && cleaned.startsWith('6')) {
+          return '237' + cleaned;
+        }
+        
+        return cleaned;
       };
       
-      const cleanedPhones = campaign.recipients.customPhones.map(p => sanitizePhone(p));
+      // Normaliser et filtrer les numéros valides
+      const validPhones = campaign.recipients.customPhones
+        .map(phone => normalizePhone(phone))
+        .filter(phone => phone.length >= 8); // Minimum 8 digits
       
-      // Chercher les utilisateurs avec ces numéros
-      const foundUsers = await User.find({
-        $or: [
-          { phone: { $in: cleanedPhones } },
-          { phoneNumber: { $in: cleanedPhones } }
-        ],
-        role: { $ne: 'admin' }
-      }).select('phone phoneNumber name _id').lean();
+      console.log(`   ${validPhones.length} numéros valides sur ${campaign.recipients.customPhones.length}`);
       
-      // Créer un map pour retrouver rapidement les utilisateurs par numéro
-      const userMap = new Map();
-      foundUsers.forEach(user => {
-        const userPhone = sanitizePhone(user.phoneNumber || user.phone);
-        if (userPhone) {
-          userMap.set(userPhone, user);
-        }
-      });
+      // ✅ 3️⃣ Construire les destinataires directement depuis customPhones
+      users = validPhones.map(phone => ({
+        phone: phone,
+        phoneNumber: phone,
+        name: null,
+        _id: null
+      }));
       
-      // Créer la liste des utilisateurs avec les numéros fournis
-      users = campaign.recipients.customPhones.map(phone => {
-        const cleaned = sanitizePhone(phone);
-        const foundUser = userMap.get(cleaned);
-        if (foundUser) {
-          return foundUser;
-        }
-        // Si pas trouvé, créer un objet minimal avec le numéro
-        return { phone: cleaned, phoneNumber: cleaned, name: null, _id: null };
-      });
+      console.log(`   ✅ Créé ${users.length} destinataires depuis customPhones`);
     }
     
     // Normaliser les numéros : utiliser phoneNumber en priorité, sinon phone
@@ -738,9 +800,11 @@ router.post('/preview-send', async (req, res) => {
       message, 
       phoneNumber, 
       userId, 
-      firstName,
-      campaignId = 'preview-' + Date.now()
+      firstName
     } = req.body;
+    
+    // ✅ Générer previewId unique
+    const previewId = 'preview-' + Date.now();
     
     // Validation des champs requis
     if (!message || !message.trim()) {
@@ -791,7 +855,8 @@ router.post('/preview-send', async (req, res) => {
     const messageData = {
       to: cleanedPhone,
       message: message.trim(),
-      campaignId: campaignId,
+      campaignId: null,  // ✅ Pas de vraie campagne
+      previewId,         // ✅ ID de preview unique
       userId: userId || null,
       firstName: firstName || null
     };

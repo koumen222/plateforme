@@ -1,16 +1,42 @@
 import express from 'express';
+import mongoose from 'mongoose';
 import Campaign from '../models/Campaign.js';
 import Client from '../models/Client.js';
 import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
-// 🆕 Import des fonctions anti-spam WhatsApp
-import { 
-  analyzeSpamRisk, 
-  validateMessageBeforeSend, 
-  sendWhatsAppMessage,
-  getHumanDelayWithVariation,
-  simulateHumanBehavior
-} from '../../services/whatsappService.js';
+
+// Helper pour convertir en ObjectId
+const toObjectId = (v) => {
+  if (!v) return null;
+  if (v instanceof mongoose.Types.ObjectId) return v;
+  if (mongoose.Types.ObjectId.isValid(v)) return new mongoose.Types.ObjectId(v);
+  return null;
+};
+
+// Import conditionnel du service WhatsApp
+let analyzeSpamRisk, validateMessageBeforeSend, sendWhatsAppMessage, getHumanDelayWithVariation, simulateHumanBehavior;
+
+async function loadWhatsAppService() {
+  try {
+    const whatsappService = await import('../../services/whatsappService.js');
+    analyzeSpamRisk = whatsappService.analyzeSpamRisk;
+    validateMessageBeforeSend = whatsappService.validateMessageBeforeSend;
+    sendWhatsAppMessage = whatsappService.sendWhatsAppMessage;
+    getHumanDelayWithVariation = whatsappService.getHumanDelayWithVariation;
+    simulateHumanBehavior = whatsappService.simulateHumanBehavior;
+  } catch (error) {
+    console.warn('⚠️ Service WhatsApp non disponible:', error.message);
+    // Fonctions fallback
+    analyzeSpamRisk = () => ({ risk: 'LOW', score: 0, warnings: [], recommendations: [] });
+    validateMessageBeforeSend = () => true;
+    sendWhatsAppMessage = async () => ({ messageId: 'mock-id', logId: 'mock-log-id' });
+    getHumanDelayWithVariation = () => 5000;
+    simulateHumanBehavior = async () => {};
+  }
+}
+
+// Load the service immediately
+loadWhatsAppService();
 
 const router = express.Router();
 
@@ -151,9 +177,24 @@ router.get('/filter-options', requireEcomAuth, async (req, res) => {
     const cities = [...new Set([...orderCities, ...clientCities])].filter(Boolean).sort();
     const products = [...new Set([...orderProducts, ...clientProducts])].filter(Boolean).sort();
     const addresses = [...new Set([...orderAddresses, ...clientAddresses])].filter(Boolean).sort();
+
+    // Statuts de commande possibles
+    const orderStatuses = ['pending', 'confirmed', 'shipping', 'delivered', 'cancelled', 'returned', 'unreachable', 'called', 'postponed'];
+
+    // Statuts de client possibles
+    const clientStatuses = ['active', 'inactive', 'pending', 'blocked'];
     
     console.log(`📊 Filter options: ${cities.length} villes, ${products.length} produits, ${addresses.length} adresses`);
-    res.json({ success: true, data: { cities, products, addresses } });
+    res.json({
+      success: true,
+      data: {
+        cities,
+        products,
+        addresses,
+        orderStatuses,
+        clientStatuses
+      }
+    });
   } catch (error) {
     console.error('Erreur filter-options:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -162,93 +203,99 @@ router.get('/filter-options', requireEcomAuth, async (req, res) => {
 
 // GET /api/ecom/campaigns/templates - Templates prédéfinis
 router.get('/templates', requireEcomAuth, async (req, res) => {
-  const templates = [
-    {
-      id: 'relance_pending',
-      name: 'Relance en attente',
-      type: 'relance_pending',
-      message: 'Bonjour {firstName} 👋\n\nVotre commande est toujours en attente. Souhaitez-vous confirmer ?\n\nN\'hésitez pas à nous contacter pour toute question.',
-      targetFilters: { orderStatus: 'pending' }
-    },
-    {
-      id: 'relance_unreachable',
-      name: 'Relance injoignables',
-      type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nNous avons essayé de vous joindre concernant votre commande mais sans succès.\n\nMerci de nous recontacter au plus vite pour finaliser votre commande.',
-      targetFilters: { orderStatus: 'unreachable' }
-    },
-    {
-      id: 'relance_called',
-      name: 'Relance appelés',
-      type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nSuite à notre appel, nous attendons votre confirmation pour votre commande ({product}).\n\nMerci de nous confirmer dès que possible.',
-      targetFilters: { orderStatus: 'called' }
-    },
-    {
-      id: 'relance_postponed',
-      name: 'Relance reportés',
-      type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nVous aviez souhaité reporter votre commande ({product}). Nous revenons vers vous pour savoir si le moment est plus opportun.\n\nÊtes-vous prêt(e) à recevoir votre commande ?',
-      targetFilters: { orderStatus: 'postponed' }
-    },
-    {
-      id: 'relance_cancelled',
-      name: 'Relance annulés',
-      type: 'relance_cancelled',
-      message: 'Bonjour {firstName} 👋\n\nVotre commande a été annulée. Nous aimerions comprendre ce qui s\'est passé.\n\nPouvons-nous vous aider ou vous proposer une alternative ?',
-      targetFilters: { orderStatus: 'cancelled' }
-    },
-    {
-      id: 'relance_returned',
-      name: 'Relance retours',
-      type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nNous avons noté le retour de votre commande ({product}). Nous aimerions comprendre la raison.\n\nY a-t-il un problème que nous pouvons résoudre ?',
-      targetFilters: { orderStatus: 'returned' }
-    },
-    {
-      id: 'relance_confirmed',
-      name: 'Relance confirmés non expédiés',
-      type: 'custom',
-      message: 'Bonjour {firstName} 😊\n\nVotre commande ({product}) est confirmée et sera bientôt expédiée.\n\nNous vous tiendrons informé(e) de l\'avancement.',
-      targetFilters: { orderStatus: 'confirmed' }
-    },
-    {
-      id: 'promo_city',
-      name: 'Promo par ville',
-      type: 'promo',
-      message: 'Bonjour {firstName} 🎉\n\nOffre exclusive pour {city} ! Profitez de nos prix exceptionnels sur {product}.\n\nContactez-nous vite, stock limité !',
-      targetFilters: {}
-    },
-    {
-      id: 'promo_product',
-      name: 'Promo par produit',
-      type: 'promo',
-      message: 'Bonjour {firstName} 🎁\n\nVous avez aimé {product} ? Nous avons des nouveautés et offres spéciales sur cette gamme !\n\nContactez-nous pour en profiter.',
-      targetFilters: { orderStatus: 'delivered' }
-    },
-    {
-      id: 'followup',
-      name: 'Suivi après livraison',
-      type: 'followup',
-      message: 'Bonjour {firstName} 😊\n\nNous espérons que vous êtes satisfait(e) de votre commande ({product}).\n\nVotre avis compte beaucoup pour nous. N\'hésitez pas à nous faire un retour !',
-      targetFilters: { orderStatus: 'delivered' }
-    },
-    {
-      id: 'reorder',
-      name: 'Relance réachat',
-      type: 'custom',
-      message: 'Bonjour {firstName} 👋\n\nCela fait un moment ! Nos produits vous manquent ?\n\nNous avons de nouvelles offres qui pourraient vous intéresser. Contactez-nous !',
-      targetFilters: { orderStatus: 'delivered' }
-    },
-    {
-      id: 'relance_shipped',
-      name: 'Suivi expédition',
-      type: 'followup',
-      message: 'Bonjour {firstName} 📦\n\nVotre commande ({product}) a été expédiée ! Elle arrivera bientôt à {city}.\n\nMerci de vous assurer d\'être disponible pour la réception.',
-      targetFilters: { orderStatus: 'shipped' }
-    }
-  ];
-  res.json({ success: true, data: templates });
+  try {
+    const templates = [
+      {
+        id: 'relance_pending',
+        name: 'Relance en attente',
+        type: 'relance_pending',
+        message: 'Bonjour {firstName} 👋\n\nNous avons bien reçu votre commande ({product}) et l\'attendons votre confirmation.\n\nMerci de nous contacter rapidement pour finaliser.',
+        targetFilters: { orderStatus: 'pending' }
+      },
+      {
+        id: 'relance_unreachable',
+        name: 'Relance injoignables',
+        type: 'relance_unreachable',
+        message: 'Bonjour {firstName} 👋\n\nNous avons essayé de vous joindre plusieurs fois concernant votre commande ({product}).\n\nQuand seriez-vous disponible ?',
+        targetFilters: { orderStatus: 'unreachable' }
+      },
+      {
+        id: 'relance_called',
+        name: 'Relance appelés',
+        type: 'relance_called',
+        message: 'Bonjour {firstName} 👋\n\nSuite à notre appel, nous attendons votre confirmation pour votre commande ({product}).\n\nMerci de nous contacter si vous avez des questions.',
+        targetFilters: { orderStatus: 'called' }
+      },
+      {
+        id: 'relance_postponed',
+        name: 'Relance reportés',
+        type: 'relance_postponed',
+        message: 'Bonjour {firstName} 👋\n\nVous aviez souhaité reporter votre commande ({product}). Nous revenons vers vous pour savoir si vous êtes toujours intéressé(e).',
+        targetFilters: { orderStatus: 'postponed' }
+      },
+      {
+        id: 'relance_cancelled',
+        name: 'Relance annulés',
+        type: 'relance_cancelled',
+        message: 'Bonjour {firstName} 👋\n\nNous avons remarqué l\'annulation de votre commande ({product}). Y a-t-il un problème que nous pouvons résoudre ?',
+        targetFilters: { orderStatus: 'cancelled' }
+      },
+      {
+        id: 'relance_returns',
+        name: 'Relance retours',
+        type: 'relance_returns',
+        message: 'Bonjour {firstName} 👋\n\nNous avons noté le retour de votre commande ({product}). Nous aimerions comprendre la raison.\n\nY a-t-il un problème que nous pouvons résoudre ?',
+        targetFilters: { orderStatus: 'returned' }
+      },
+      {
+        id: 'relance_confirmed_not_shipped',
+        name: 'Relance confirmés non expédiés',
+        type: 'relance_confirmed_not_shipped',
+        message: 'Bonjour {firstName} 😊\n\nVotre commande ({product}) est confirmée et sera bientôt expédiée.\n\nNous vous tiendrons informé(e) de l\'avancement.',
+        targetFilters: { orderStatus: 'confirmed' }
+      },
+      {
+        id: 'promo_city',
+        name: 'Promo par ville',
+        type: 'promo_city',
+        message: 'Bonjour {firstName} 🎉\n\nOffre exclusive pour {city} ! Profitez de nos prix exceptionnels sur {product}.\n\nContactez-nous vite, stock limité !',
+        targetFilters: { orderCity: '{city}' }
+      },
+      {
+        id: 'promo_product',
+        name: 'Promo par produit',
+        type: 'promo_product',
+        message: 'Bonjour {firstName} 🎉\n\nPromo spéciale sur {product} ! Prix imbattable garanti.\n\nN\'attendez plus, contactez-nous !',
+        targetFilters: { orderProduct: '{product}' }
+      },
+      {
+        id: 'followup_delivery',
+        name: 'Suivi après livraison',
+        type: 'followup_delivery',
+        message: 'Bonjour {firstName} 👋\n\nVotre commande ({product}) a été livrée. Tout se passe bien ?\n\nN\'hésitez pas à nous faire votre retour !',
+        targetFilters: { orderStatus: 'delivered' }
+      },
+      {
+        id: 'relance_reorder',
+        name: 'Relance réachat',
+        type: 'relance_reorder',
+        message: 'Bonjour {firstName} 👋\n\nMerci pour votre confiance ! Profitez de -10% sur votre prochaine commande avec le code REORDER10.\n\nÀ bientôt !',
+        targetFilters: { minOrders: 1 }
+      },
+      {
+        id: 'followup_shipping',
+        name: 'Suivi expédition',
+        type: 'followup_shipping',
+        message: 'Bonjour {firstName} 📦\n\nVotre commande ({product}) est en cours d\'expédition.\n\nVous la recevrez sous peu. Suivez votre colis en ligne !',
+        targetFilters: { orderStatus: 'shipping' }
+      }
+    ];
+    
+    res.json({ success: true, data: templates });
+  } catch (error) {
+    console.error('Erreur get templates:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
 });
 
 // POST /api/ecom/campaigns/preview - Prévisualiser les clients ciblés
@@ -383,9 +430,61 @@ router.get('/:id', requireEcomAuth, async (req, res) => {
 // POST /api/ecom/campaigns - Créer une campagne
 router.post('/', requireEcomAuth, async (req, res) => {
   try {
-    const { name, type, messageTemplate, targetFilters, scheduledAt, tags, selectedClientIds } = req.body;
+    const { name, type, messageTemplate, targetFilters, scheduledAt, tags, selectedClientIds, recipients } = req.body;
     if (!name || !messageTemplate) {
       return res.status(400).json({ success: false, message: 'Nom et message requis' });
+    }
+
+    // ✅ Validation des recipients pour les campagnes WhatsApp
+    if (type === 'whatsapp' && recipients) {
+      if (!recipients.type) {
+        return res.status(400).json({ success: false, message: 'Type de destinataires requis (all, segment, list)' });
+      }
+      
+      if (recipients.type === 'list') {
+        if (!recipients.customPhones || !Array.isArray(recipients.customPhones)) {
+          return res.status(400).json({ success: false, message: 'customPhones doit être un tableau pour le type "list"' });
+        }
+        
+        if (recipients.customPhones.length === 0) {
+          return res.status(400).json({ success: false, message: 'customPhones ne peut pas être vide pour le type "list"' });
+        }
+        
+        // Fonction de normalisation pour validation
+        const normalizePhone = (phone) => {
+          if (!phone) return '';
+          let cleaned = phone.toString().replace(/\D/g, '').trim();
+          
+          // ✅ Corriger le cas 00237699887766
+          if (cleaned.startsWith('00')) {
+            cleaned = cleaned.substring(2);
+          }
+          
+          // Gérer le préfixe pays (Cameroun 237)
+          if (cleaned.length === 9 && cleaned.startsWith('6')) {
+            return '237' + cleaned;
+          }
+          
+          return cleaned;
+        };
+        
+        // Valider et normaliser les numéros
+        const validPhones = recipients.customPhones
+          .map(phone => normalizePhone(phone))
+          .filter(phone => phone.length >= 8); // Minimum 8 digits
+        
+        if (validPhones.length === 0) {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Aucun numéro valide trouvé dans customPhones',
+            details: 'Les numéros doivent contenir au moins 8 chiffres'
+          });
+        }
+        
+        // Mettre à jour recipients.count
+        recipients.count = validPhones.length;
+        console.log(`✅ Validation LIST: ${validPhones.length} numéros valides sur ${recipients.customPhones.length}`);
+      }
     }
 
     // 🆕 VALIDATION ANTI-SPAM du message template
@@ -412,13 +511,46 @@ router.post('/', requireEcomAuth, async (req, res) => {
 
     // Compter les clients ciblés - utiliser selectedClientIds si présent
     let targetedCount;
+    let recipientSnapshotIds = [];
+    
     if (selectedClientIds && selectedClientIds.length > 0) {
       targetedCount = selectedClientIds.length;
+      recipientSnapshotIds = selectedClientIds.map(id => toObjectId(id)).filter(Boolean); // 🆕 Conversion et filtre
       console.log(`📋 Campagne avec ${targetedCount} clients sélectionnés manuellement`);
+    } else if (targetFilters && Object.keys(targetFilters).length > 0) {
+      // 🆕 Récupérer les vrais IDs des clients (pas les IDs de commande)
+      const hasOrderFilters = targetFilters.orderStatus || targetFilters.orderCity || 
+                             targetFilters.orderProduct || targetFilters.orderDateFrom;
+      
+      if (hasOrderFilters) {
+        // Utiliser les commandes pour trouver les clients puis récupérer leurs IDs
+        const orderMap = await getClientsFromOrderFilters(req.workspaceId, targetFilters);
+        const phones = Array.from(orderMap.keys());
+        
+        // Trouver les clients correspondants par téléphone
+        const clients = await Client.find({
+          phone: { $in: phones },
+          workspaceId: req.workspaceId
+        }).select('_id').limit(1000);
+        
+        recipientSnapshotIds = clients.map(c => c._id);
+        targetedCount = recipientSnapshotIds.length;
+        
+        console.log(`🎯 Campagne avec ${targetedCount} clients calculés depuis filtres commande (snapshot client IDs)`);
+      } else {
+        // Filtres clients directs
+        const filter = buildClientFilter(req.workspaceId, targetFilters || {});
+        filter.phone = { $exists: true, $ne: '' };
+        
+        const clients = await Client.find(filter).select('_id').limit(1000);
+        recipientSnapshotIds = clients.map(c => c._id);
+        targetedCount = recipientSnapshotIds.length;
+        
+        console.log(`👥 Campagne avec ${targetedCount} clients calculés depuis filtres clients (snapshot client IDs)`);
+      }
     } else {
-      const filter = buildClientFilter(req.workspaceId, targetFilters || {});
-      filter.phone = { $exists: true, $ne: '' };
-      targetedCount = await Client.countDocuments(filter);
+      targetedCount = 0;
+      console.log(`⚠️ Campagne sans cible définie`);
     }
 
     const campaign = new Campaign({
@@ -428,11 +560,14 @@ router.post('/', requireEcomAuth, async (req, res) => {
       messageTemplate,
       targetFilters: targetFilters || {},
       selectedClientIds: selectedClientIds || [],
+      recipientSnapshotIds: recipientSnapshotIds, // 🆕 Snapshot des IDs client uniquement
       scheduledAt: scheduledAt || null,
       status: scheduledAt ? 'scheduled' : 'draft',
       stats: { targeted: targetedCount },
       tags: tags || [],
       createdBy: req.ecomUser._id,
+      // ✅ Ajouter recipients pour les campagnes WhatsApp
+      recipients: recipients || null,
       // 🆕 Métadonnées anti-spam
       spamValidation: {
         validated: true,
@@ -477,9 +612,32 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       if (req.body[field] !== undefined) campaign[field] = req.body[field];
     });
 
+    // 🆕 Recalculer et sauvegarder le snapshot si les filtres changent
+    if (req.body.targetFilters || req.body.selectedClientIds) {
+      let recipientSnapshotIds = [];
+      
+      if (req.body.selectedClientIds && req.body.selectedClientIds.length > 0) {
+        recipientSnapshotIds = req.body.selectedClientIds;
+        console.log(`📋 Modification: ${recipientSnapshotIds.length} clients sélectionnés manuellement`);
+      } else if (req.body.targetFilters && Object.keys(req.body.targetFilters).length > 0) {
+        // Récupérer les IDs des clients pour le nouveau snapshot
+        const filter = buildClientFilter(req.workspaceId, req.body.targetFilters || {});
+        filter.phone = { $exists: true, $ne: '' };
+        
+        const clients = await Client.find(filter).select('_id').limit(1000);
+        recipientSnapshotIds = clients.map(c => c._id);
+        
+        console.log(`🎯 Modification: ${recipientSnapshotIds.length} clients calculés depuis nouveaux filtres`);
+      }
+      
+      campaign.recipientSnapshotIds = recipientSnapshotIds;
+    }
+
     // Recompter les clients ciblés - priorité aux selectedClientIds
     if (campaign.selectedClientIds && campaign.selectedClientIds.length > 0) {
       campaign.stats.targeted = campaign.selectedClientIds.length;
+    } else if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
+      campaign.stats.targeted = campaign.recipientSnapshotIds.length;
     } else {
       const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
       filter.phone = { $exists: true, $ne: '' };
@@ -535,58 +693,324 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       });
     }
 
-    // Récupérer les clients ciblés - utiliser directement les commandes si des filtres de commande sont présents
+    // 🆕 LOGS DE VÉRIFICATION - DIAGNOSTIC
+    console.log('SEND DEBUG campaign:', {
+      id: campaign._id,
+      name: campaign.name,
+      type: campaign.type,
+      targetFilters: campaign.targetFilters,
+      snapshotCount: campaign.recipientSnapshotIds?.length,
+      selectedClientIdsCount: campaign.selectedClientIds?.length,
+      recipientsCount: campaign.recipients?.count,
+      statsTargeted: campaign.stats?.targeted
+    });
+
+    // Récupérer les clients ciblés
     let clients;
-    const hasOrderFilters = campaign.targetFilters && (
-      campaign.targetFilters.orderStatus || 
-      campaign.targetFilters.orderCity || 
-      campaign.targetFilters.orderAddress || 
-      campaign.targetFilters.orderProduct || 
-      campaign.targetFilters.orderDateFrom || 
-      campaign.targetFilters.orderDateTo || 
-      campaign.targetFilters.orderSourceId || 
-      campaign.targetFilters.orderMinPrice || 
-      campaign.targetFilters.orderMaxPrice
-    );
 
-    if (campaign.selectedClientIds && campaign.selectedClientIds.length > 0) {
-      // Utiliser les clients sélectionnés manuellement
-      clients = await Client.find({
-        _id: { $in: campaign.selectedClientIds },
-        workspaceId: req.workspaceId,
-        phone: { $exists: true, $ne: '' }
-      });
-      console.log(`📋 Campagne avec ${clients.length} clients sélectionnés manuellement`);
-    } else if (hasOrderFilters) {
-      // Utiliser directement les commandes
-      const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
-      console.log(`📦 Campagne basée sur ${orderMap.size} commandes`);
+    // 🆕 UTILISER LE SNAPSHOT SI DISPONIBLE (priorité absolue)
+    if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
+      console.log(`📸 Utilisation du snapshot de ${campaign.recipientSnapshotIds.length} destinataires`);
+      
+      // 🆕 Conversion sécurisée des IDs
+      const snapshotIdsRaw = campaign.recipientSnapshotIds;
+      const snapshotIds = snapshotIdsRaw.map(toObjectId).filter(Boolean);
+      
+      console.log("SNAPSHOT DEBUG first3:", snapshotIdsRaw.slice(0,3), "casted:", snapshotIds.slice(0,3));
+      
+      // 🆕 Conversion sécurisée du workspaceId
+      const workspaceObjectId = toObjectId(req.workspaceId) || toObjectId(campaign.workspaceId);
+      
+      clients = await Client.find({ 
+        _id: { $in: snapshotIds },
+        workspaceId: workspaceObjectId
+      }).select('firstName lastName phone city products totalOrders totalSpent status tags address lastContactAt').lean();
+      
+      console.log("Snapshot loaded:", clients.length, "expected:", snapshotIds.length);
+      
+      if (clients.length !== snapshotIds.length) {
+        console.warn(`⚠️ Attention: ${snapshotIds.length - clients.length} clients du snapshot non trouvés`);
+      }
+      
+    // ✅ Gestion des campagnes WhatsApp
+    } else if (campaign.type === 'whatsapp' && campaign.recipients) {
+      console.log('🔍 DIAGNOSTIC ENVOI CAMPAGNE WHATSAPP:');
+      console.log('   Type de recipients:', campaign.recipients?.type);
+      console.log('   Segment:', campaign.recipients?.segment);
+      console.log('   Longueur customPhones:', campaign.recipients?.customPhones?.length || 0);
+      if (campaign.recipients?.customPhones?.length > 0) {
+        console.log('   3-5 numéros exemples:', campaign.recipients.customPhones.slice(0, 5));
+      }
+      console.log('   Count:', campaign.recipients?.count);
+      
+      if (campaign.recipients.type === 'list' && campaign.recipients.customPhones?.length) {
+        // ✅ Logique "list" améliorée - ne pas dépendre de la DB Users
+        console.log('📋 Traitement campagne WhatsApp type LIST');
+        
+        // ✅ Fonction de normalisation uniforme
+        const normalizePhone = (phone) => {
+          if (!phone) return '';
+          let cleaned = phone.toString().replace(/\D/g, '').trim();
+          
+          // ✅ Corriger le cas 00237699887766
+          if (cleaned.startsWith('00')) {
+            cleaned = cleaned.substring(2);
+          }
+          
+          // Gérer le préfixe pays (Cameroun 237)
+          if (cleaned.length === 9 && cleaned.startsWith('6')) {
+            return '237' + cleaned;
+          }
+          
+          return cleaned;
+        };
+        
+        // Normaliser et filtrer les numéros valides
+        const validPhones = campaign.recipients.customPhones
+          .map(phone => normalizePhone(phone))
+          .filter(phone => phone.length >= 8); // Minimum 8 digits
+        
+        console.log(`   ${validPhones.length} numéros valides sur ${campaign.recipients.customPhones.length}`);
+        
+        // ✅ Construire les destinataires directement depuis customPhones
+        clients = validPhones.map(phone => ({
+          phone: phone,
+          phoneNumber: phone,
+          name: null,
+          firstName: null,
+          lastName: null,
+          _id: null
+        }));
+        
+        console.log(`   ✅ Créé ${clients.length} destinataires depuis customPhones`);
+      } else {
+        // Pour les autres types (all, segment), utiliser les filtres commandes/clients
+        const hasOrderFilters = campaign.targetFilters && (
+          campaign.targetFilters.orderStatus ||
+          campaign.targetFilters.orderCity ||
+          campaign.targetFilters.orderAddress ||
+          campaign.targetFilters.orderProduct ||
+          campaign.targetFilters.orderDateFrom ||
+          campaign.targetFilters.orderDateTo ||
+          campaign.targetFilters.orderSourceId ||
+          campaign.targetFilters.orderMinPrice ||
+          campaign.targetFilters.orderMaxPrice
+        );
 
-      // Convertir les commandes en structure compatible
-      clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
-        firstName: orderData.clientName?.split(' ')[0] || '',
-        lastName: orderData.clientName?.split(' ').slice(1).join(' ') || '',
-        phone: phone,
-        city: orderData.city || '',
-        address: orderData.address || '',
-        products: orderData.product ? [orderData.product] : [],
-        totalOrders: 1,
-        totalSpent: (orderData.price || 0) * (orderData.quantity || 1),
-        status: orderData.status || '',
-        tags: [],
-        lastContactAt: orderData.date || new Date(),
-        _id: orderData._id, // ID de la commande pour le suivi
-        _orderStatus: orderData.status || '',
-        _orderPrice: orderData.price || 0,
-        _orderDate: orderData.date || null,
-        _orderProduct: orderData.product || '',
-        _orderQuantity: orderData.quantity || 1
-      }));
+        if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
+          // 🆕 Utiliser le snapshot des IDs de clients
+          const snapshotIdsRaw = campaign.recipientSnapshotIds;
+          const snapshotIds = snapshotIdsRaw.map(toObjectId).filter(Boolean);
+          const workspaceObjectId = toObjectId(req.workspaceId) || toObjectId(campaign.workspaceId);
+          
+          console.log("SNAPSHOT DEBUG first3:", snapshotIdsRaw.slice(0,3), "casted:", snapshotIds.slice(0,3));
+          console.log("Workspace ID:", workspaceObjectId, "Campaign workspaceId:", campaign.workspaceId);
+          
+          // Vérifier si ces clients existent vraiment
+          const sampleCheck = await Client.find({ _id: { $in: snapshotIds.slice(0, 3) } }).select('_id phone workspaceId').lean();
+          console.log("Sample check (first 3):", sampleCheck.length, "clients found");
+          sampleCheck.forEach(c => console.log("  - Client:", c._id, "Workspace:", c.workspaceId, "Phone:", c.phone));
+          
+          clients = await Client.find({
+            _id: { $in: snapshotIds },
+            workspaceId: workspaceObjectId,
+            phone: { $exists: true, $ne: '' }
+          }).lean();
+          
+          console.log("Snapshot loaded:", clients.length, "expected:", snapshotIds.length);
+          
+          if (clients.length === 0) {
+            console.log("⚠️ Attention: " + snapshotIds.length + " clients du snapshot non trouvés");
+            console.log("🔍 Vérification sans filtre workspaceId:");
+            const allWorkspaceClients = await Client.find({ _id: { $in: snapshotIds } }).lean();
+            console.log("  - Sans workspaceId:", allWorkspaceClients.length, "trouvés");
+            allWorkspaceClients.forEach(c => console.log("    Client:", c._id, "Workspace:", c.workspaceId));
+          }
+        } else if (hasOrderFilters) {
+          const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
+          clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
+            firstName: orderData.clientName?.split(' ')[0] || '',
+            lastName: orderData.clientName?.split(' ').slice(1).join(' ') || '',
+            phone: phone,
+            city: orderData.city || '',
+            address: orderData.address || '',
+            products: orderData.product ? [orderData.product] : [],
+            totalOrders: 1,
+            totalSpent: (orderData.price || 0) * (orderData.quantity || 1),
+            status: orderData.status || '',
+            tags: [],
+            lastContactAt: orderData.date || new Date(),
+            _id: orderData._id,
+            _orderStatus: orderData.status || '',
+            _orderPrice: orderData.price || 0,
+            _orderDate: orderData.date || null,
+            _orderProduct: orderData.product || '',
+            _orderQuantity: orderData.quantity || 1
+          }));
+        } else {
+          const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+          filter.phone = { $exists: true, $ne: '' };
+          clients = await Client.find(filter);
+        }
+      }
     } else {
-      // Utiliser les filtres clients (ancienne méthode)
-      const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
-      filter.phone = { $exists: true, $ne: '' };
-      clients = await Client.find(filter);
+      // 🆕 LOGIQUE FALLBACK - RECALCULER DEPUIS LES FILTRES
+      console.log('🔄 Aucun snapshot trouvé, recalculer depuis les filtres...');
+      
+      // Logique existante pour les campagnes non-WhatsApp
+      const hasOrderFilters = campaign.targetFilters && (
+        campaign.targetFilters.orderStatus ||
+        campaign.targetFilters.orderCity ||
+        campaign.targetFilters.orderAddress ||
+        campaign.targetFilters.orderProduct ||
+        campaign.targetFilters.orderDateFrom ||
+        campaign.targetFilters.orderDateTo ||
+        campaign.targetFilters.orderSourceId ||
+        campaign.targetFilters.orderMinPrice ||
+        campaign.targetFilters.orderMaxPrice
+      );
+
+      if (campaign.recipientSnapshotIds && campaign.recipientSnapshotIds.length > 0) {
+        // 🆕 Utiliser le snapshot des IDs de clients
+        const snapshotIdsRaw = campaign.recipientSnapshotIds;
+        const snapshotIds = snapshotIdsRaw.map(toObjectId).filter(Boolean);
+        const workspaceObjectId = toObjectId(req.workspaceId) || toObjectId(campaign.workspaceId);
+        
+        clients = await Client.find({
+          _id: { $in: snapshotIds },
+          workspaceId: workspaceObjectId,
+          phone: { $exists: true, $ne: '' }
+        }).lean();
+        console.log(`📋 Fallback: ${clients.length} clients depuis snapshot`);
+      } else if (hasOrderFilters) {
+        // Utiliser directement les commandes
+        const orderMap = await getClientsFromOrderFilters(req.workspaceId, campaign.targetFilters);
+        console.log(`📦 Campagne basée sur ${orderMap.size} commandes`);
+
+        // Convertir les commandes en structure compatible
+        clients = Array.from(orderMap.entries()).map(([phone, orderData]) => ({
+          firstName: orderData.clientName?.split(' ')[0] || '',
+          lastName: orderData.clientName?.split(' ').slice(1).join(' ') || '',
+          phone: phone,
+          city: orderData.city || '',
+          address: orderData.address || '',
+          products: orderData.product ? [orderData.product] : [],
+          totalOrders: 1,
+          totalSpent: (orderData.price || 0) * (orderData.quantity || 1),
+          status: orderData.status || '',
+          tags: [],
+          lastContactAt: orderData.date || new Date(),
+          _id: orderData._id,
+          _orderStatus: orderData.status || '',
+          _orderPrice: orderData.price || 0,
+          _orderDate: orderData.date || null,
+          _orderProduct: orderData.product || '',
+          _orderQuantity: orderData.quantity || 1
+        }));
+      } else {
+        // Utiliser les filtres clients (ancienne méthode)
+        const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
+        filter.phone = { $exists: true, $ne: '' };
+        clients = await Client.find(filter);
+      }
+    }
+
+    // 🆕 LOG FINAL DE VÉRIFICATION
+    console.log(`🎯 RÉCAPITULATIF ENVOI - Clients récupérés: ${clients.length} | Attendus: ${campaign.stats?.targeted || 'N/A'}`);
+    
+    if (clients.length === 0) {
+      console.error('❌ ERREUR: Aucun client récupéré pour l\'envoi !');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Aucun destinataire trouvé pour cette campagne. Vérifiez les filtres ou la sélection.',
+        debug: {
+          snapshotCount: campaign.recipientSnapshotIds?.length,
+          selectedCount: campaign.selectedClientIds?.length,
+          targetFilters: campaign.targetFilters,
+          statsTargeted: campaign.stats?.targeted
+        }
+      });
+    }
+
+    // 🆕 LOGS SKIPPED/FAILED REasons - Analyse des destinataires
+    const counters = {
+      totalTargets: clients.length,
+      missingPhone: 0,
+      invalidPhone: 0,
+      preparedContacts: 0
+    };
+
+    const normalize = (p) => (p ? p.toString().replace(/\D/g, '') : '');
+
+    const contacts = clients
+      .map(c => {
+        const phoneRaw = c.phoneNumber || c.phone || c.whatsapp || '';
+        if (!phoneRaw) { 
+          counters.missingPhone++; 
+          return null; 
+        }
+        const phone = normalize(phoneRaw);
+        if (phone.length < 8) { 
+          counters.invalidPhone++; 
+          return null; 
+        }
+        counters.preparedContacts++;
+        return { 
+          to: phone, 
+          clientId: c._id, 
+          firstName: c.firstName || '',
+          lastName: c.lastName || '',
+          phoneRaw: phoneRaw
+        };
+      })
+      .filter(Boolean);
+
+    console.log('📊 SEND COUNTERS:', counters);
+    console.log('📞 Sample phones (first 5):', contacts.slice(0,5).map(c => ({ 
+      phoneRaw: c.phoneRaw, 
+      normalized: c.to, 
+      name: c.firstName + ' ' + c.lastName 
+    })));
+
+    // 🆕 HEALTHCHECK Green API avant envoi en masse
+    if (counters.preparedContacts > 0) {
+      console.log('🔍 Healthcheck Green API avant envoi en masse...');
+      try {
+        const fetchModule = await import('node-fetch');
+        const fetch = fetchModule.default;
+        
+        const apiUrl = process.env.GREEN_API_URL || 'https://api.green-api.com';
+        const idInstance = process.env.GREEN_API_ID_INSTANCE;
+        const apiTokenInstance = process.env.GREEN_API_TOKEN_INSTANCE;
+        
+        const healthUrl = `${apiUrl}/waInstance${idInstance}/getStateInstance/${apiTokenInstance}`;
+        
+        console.log('[GreenAPI Healthcheck] GET', healthUrl);
+        
+        const healthResponse = await fetch(healthUrl, { 
+          method: 'GET'
+        });
+        
+        if (!healthResponse.ok) {
+          throw new Error(`HTTP ${healthResponse.status}`);
+        }
+        
+        const healthData = await healthResponse.json();
+        console.log('✅ Green API Healthcheck OK:', healthData.stateInstance);
+        
+        if (healthData.stateInstance !== 'authorized') {
+          throw new Error(`Instance non autorisée: ${healthData.stateInstance}`);
+        }
+        
+      } catch (healthError) {
+        console.error('❌ Green API Healthcheck FAILED:', healthError.message);
+        return res.status(503).json({ 
+          success: false, 
+          message: 'Service WhatsApp indisponible. Vérifiez la configuration Green API.',
+          error: healthError.message,
+          details: 'Healthcheck a échoué - arrêt de la campagne pour éviter 28 échecs'
+        });
+      }
     }
 
     campaign.status = 'sending';
@@ -596,6 +1020,9 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
 
     console.log(`🚀 Envoi campagne marketing "${campaign.name}" avec système anti-spam`);
     console.log(`   Clients ciblés: ${clients.length}`);
+    console.log(`   Contacts préparés: ${counters.preparedContacts}`);
+    console.log(`   Téléphones manquants: ${counters.missingPhone}`);
+    console.log(`   Téléphones invalides: ${counters.invalidPhone}`);
     console.log(`   Risque spam: ${analysis.risk} (score: ${analysis.score})`);
 
     let sent = 0;
@@ -607,7 +1034,26 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
     const BATCH_PAUSE_MS = 15000; // Augmenté de 10s à 15s
     const MSG_PAUSE_MS = 5000; // Augmenté de 2s à 5s
 
-    for (const client of clients) {
+    const hasOrderFilters = campaign.targetFilters && (
+      campaign.targetFilters.orderStatus ||
+      campaign.targetFilters.orderCity ||
+      campaign.targetFilters.orderAddress ||
+      campaign.targetFilters.orderProduct ||
+      campaign.targetFilters.orderDateFrom ||
+      campaign.targetFilters.orderDateTo ||
+      campaign.targetFilters.orderSourceId ||
+      campaign.targetFilters.orderMinPrice ||
+      campaign.targetFilters.orderMaxPrice
+    );
+
+    // 🆕 BOUCLE D'ENVOI SUR LES CONTACTS PRÉPARÉS (pas sur tous les clients)
+    for (const contact of contacts) {
+      const client = clients.find(c => c._id.toString() === contact.clientId.toString());
+      if (!client) {
+        console.warn(`⚠️ Client non trouvé pour contact ${contact.clientId}`);
+        continue;
+      }
+
       // Utiliser les données de commande si disponibles
       const orderData = hasOrderFilters ? {
         clientName: `${client.firstName} ${client.lastName}`.trim(),
@@ -622,19 +1068,9 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       } : null;
       
       const message = renderMessage(campaign.messageTemplate, client, orderData);
-      const cleanedPhone = (client.phone || '').replace(/\D/g, '');
       
-      if (!cleanedPhone || cleanedPhone.length < 8) {
-        campaign.results.push({ 
-          clientId: client._id, 
-          clientName: `${client.firstName} ${client.lastName}`, 
-          phone: client.phone, 
-          status: 'failed', 
-          error: 'Numéro invalide' 
-        });
-        failed++;
-        continue;
-      }
+      // 🆕 Plus besoin de valider le téléphone ici (déjà fait dans la préparation)
+      // On utilise directement contact.to qui est le numéro normalisé
 
       try {
         // 🆕 Validation anti-spam pour chaque message personnalisé
@@ -657,7 +1093,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
 
         // 🆕 Envoi avec système anti-spam
         const messageData = {
-          to: cleanedPhone,
+          to: contact.to, // 🆕 Utiliser contact.to au lieu de cleanedPhone
           message: message,
           campaignId: campaign._id,
           userId: client._id,
@@ -670,7 +1106,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
           campaign.results.push({ 
             clientId: client._id, 
             clientName: `${client.firstName} ${client.lastName}`, 
-            phone: client.phone, 
+            phone: contact.to, // 🆕 Utiliser contact.to
             status: 'sent', 
             sentAt: new Date(),
             messageId: result.messageId,
@@ -689,12 +1125,12 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
             }
           }
           
-          console.log(`✅ Message envoyé à ${client.firstName} ${client.lastName} (${cleanedPhone})`);
+          console.log(`✅ Message envoyé à ${client.firstName} ${client.lastName} (${contact.to})`);
         } else {
           campaign.results.push({ 
             clientId: client._id, 
             clientName: `${client.firstName} ${client.lastName}`, 
-            phone: client.phone, 
+            phone: contact.to, // 🆕 Utiliser contact.to
             status: 'failed', 
             error: result.error 
           });
@@ -705,7 +1141,7 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         campaign.results.push({ 
           clientId: client._id, 
           clientName: `${client.firstName} ${client.lastName}`, 
-          phone: client.phone, 
+          phone: contact.to, // 🆕 Utiliser contact.to
           status: 'failed', 
           error: err.message 
         });
@@ -723,6 +1159,35 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
         const variableDelay = MSG_PAUSE_MS + Math.random() * 2000; // 5-7 secondes
         await new Promise(resolve => setTimeout(resolve, variableDelay));
       }
+    }
+
+    // 🆕 LOGS RÉSULTATS DÉTAILLÉS
+    const results = campaign.results || [];
+    const sentResults = results.filter(r => r.status === 'sent');
+    const failedResults = results.filter(r => r.status === 'failed');
+    const pendingResults = results.filter(r => r.status === 'pending');
+
+    console.log('📈 RESULTS SUMMARY:', {
+      total: results.length,
+      sent: sentResults.length,
+      failed: failedResults.length,
+      pending: pendingResults.length,
+      successRate: Math.round((sentResults.length / results.length) * 100) || 0
+    });
+
+    if (failedResults.length > 0) {
+      console.log('❌ SAMPLE FAILED (first 5):', failedResults.slice(0,5).map(x => ({ 
+        phone: x.phone, 
+        error: x.error,
+        clientName: x.clientName
+      })));
+    }
+
+    if (pendingResults.length > 0) {
+      console.log('⏸️ SAMPLE PENDING (first 5):', pendingResults.slice(0,5).map(x => ({ 
+        phone: x.phone, 
+        clientName: x.clientName
+      })));
     }
 
     campaign.status = failed === clients.length ? 'failed' : 'sent';
@@ -778,8 +1243,12 @@ router.post('/preview-send', requireEcomAuth, validateEcomAccess('products', 'wr
       messageTemplate, 
       clientId, 
       clientData,
-      campaignId = 'preview-' + Date.now()
+      phoneNumber,
+      firstName
     } = req.body;
+    
+    // ✅ Générer previewId unique
+    const previewId = 'preview-' + Date.now();
     
     // Validation des champs requis
     if (!messageTemplate || !messageTemplate.trim()) {
@@ -788,8 +1257,19 @@ router.post('/preview-send', requireEcomAuth, validateEcomAccess('products', 'wr
     
     let client = null;
     
+    // Si phoneNumber fourni (preview WhatsApp), créer un client minimal
+    if (phoneNumber) {
+      client = {
+        phone: phoneNumber,
+        phoneNumber: phoneNumber,
+        firstName: firstName || null,
+        lastName: null,
+        name: firstName || null,
+        _id: null
+      };
+    }
     // Si clientId fourni, récupérer le client depuis la base
-    if (clientId) {
+    else if (clientId) {
       client = await Client.findOne({ _id: clientId, workspaceId: req.workspaceId });
       if (!client) {
         return res.status(404).json({ success: false, message: 'Client non trouvé' });
@@ -799,7 +1279,7 @@ router.post('/preview-send', requireEcomAuth, validateEcomAccess('products', 'wr
     else if (clientData) {
       client = clientData;
     } else {
-      return res.status(400).json({ success: false, message: 'clientId ou clientData requis' });
+      return res.status(400).json({ success: false, message: 'clientId, clientData ou phoneNumber requis' });
     }
     
     // Personnaliser le message
@@ -836,9 +1316,11 @@ router.post('/preview-send', requireEcomAuth, validateEcomAccess('products', 'wr
     const messageData = {
       to: cleanedPhone,
       message: personalizedMessage,
-      campaignId: campaignId,
-      userId: client._id || null,
-      firstName: client.firstName || null
+      campaignId: null,
+      previewId,
+      userId: req.ecomUser._id || null,
+      firstName: client.firstName || null,
+      workspaceId: req.workspaceId
     };
     
     // Envoyer le message en utilisant le système anti-spam

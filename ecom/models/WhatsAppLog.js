@@ -3,16 +3,22 @@ import mongoose from 'mongoose';
 const whatsappLogSchema = new mongoose.Schema({
   campaignId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'WhatsAppCampaign',
+    ref: 'Campaign',
     default: null
   },
   previewId: {
     type: String,
     default: null
   },
+  workspaceId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Workspace',
+    required: true,
+    index: true
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'EcomUser'
   },
   phone: {
     type: String,
@@ -54,11 +60,13 @@ const whatsappLogSchema = new mongoose.Schema({
     type: String
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  collection: 'ecom_whatsapp_logs'
 });
 
 whatsappLogSchema.index({ campaignId: 1 });
 whatsappLogSchema.index({ previewId: 1 });
+whatsappLogSchema.index({ workspaceId: 1 });
 whatsappLogSchema.index({ userId: 1 });
 whatsappLogSchema.index({ phone: 1 });
 whatsappLogSchema.index({ status: 1 });
