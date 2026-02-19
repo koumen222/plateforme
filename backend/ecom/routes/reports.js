@@ -6,7 +6,7 @@ import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateDailyReport } from '../middleware/validation.js';
-import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
+import { adjustProductStock, distributeStockDelta, StockAdjustmentError } from '../services/stockService.js';
 import { notifyReportCreated } from '../services/notificationHelper.js';
 
 const router = express.Router();
@@ -638,12 +638,13 @@ router.post('/',
       // Notification interne
       notifyReportCreated(req.workspaceId, report, req.ecomUser?.name || req.ecomUser?.email).catch(() => {});
 
-      // Décrémenter le stock du produit selon les commandes livrées
+      // Décrémenter le stock du produit et des emplacements selon les commandes livrées
       if (ordersDelivered > 0) {
-        await adjustProductStock({
+        await distributeStockDelta({
           workspaceId: req.workspaceId,
           productId,
-          delta: -ordersDelivered
+          delta: -ordersDelivered,
+          reason: `Rapport du ${date}`
         });
         console.log(`📦 Stock décrémenté de ${ordersDelivered} pour ${product.name}`);
       }
@@ -727,10 +728,11 @@ router.put('/:id',
       const newDelivered = report.ordersDelivered || 0;
       const diff = newDelivered - oldDelivered;
       if (diff !== 0) {
-        await adjustProductStock({
+        await distributeStockDelta({
           workspaceId: req.workspaceId,
           productId: report.productId,
-          delta: -diff
+          delta: -diff,
+          reason: `Correction rapport`
         });
         console.log(`📦 Stock ajusté de ${-diff} pour le rapport mis à jour`);
       }
@@ -772,12 +774,13 @@ router.delete('/:id',
         });
       }
 
-      // Restaurer le stock du produit
+      // Restaurer le stock du produit et des emplacements
       if (report.ordersDelivered > 0) {
-        await adjustProductStock({
+        await distributeStockDelta({
           workspaceId: req.workspaceId,
           productId: report.productId,
-          delta: report.ordersDelivered
+          delta: report.ordersDelivered,
+          reason: `Suppression rapport`
         });
         console.log(`📦 Stock restauré de +${report.ordersDelivered} après suppression du rapport`);
       }

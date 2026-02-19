@@ -1998,6 +1998,16 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/ecore.js:', error.message);
     }
+
+    // Routes E-commerce Messages (Chat équipe)
+    try {
+      const ecomMessagesModule = await import("./ecom/routes/messages.js");
+      const ecomMessagesRoutes = ecomMessagesModule.default;
+      app.use("/api/ecom/messages", ecomMessagesRoutes);
+      console.log('✅ Routes E-commerce Messages (Chat) chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/messages.js:', error.message);
+    }
     
     // Routes E-commerce Push Notifications
     try {

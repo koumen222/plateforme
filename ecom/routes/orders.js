@@ -2273,20 +2273,40 @@ router.post('/:id/assign', requireEcomAuth, async (req, res) => {
 // PUT /api/ecom/orders/:id - Modifier une commande (statut, champs, auto-tagging, client sync)
 router.put('/:id', requireEcomAuth, async (req, res) => {
   try {
+    console.log(`🔧 PUT /orders/${req.params.id} - User: ${req.ecomUser?.email}, Role: ${req.ecomUser?.role}, Workspace: ${req.workspaceId}`);
+    
     const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
+    console.log(`📋 Order lookup result:`, order ? `Found - ${order.orderId}` : 'Not found');
+    
     if (!order) {
+      console.log(`❌ Order not found: ${req.params.id} in workspace ${req.workspaceId}`);
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
 
+    // Vérifier les permissions : admin/super-admin/closeuse peuvent modifier, autres uniquement leurs commandes assignées
+    const canModify = ['ecom_admin', 'super_admin', 'ecom_closeuse'].includes(req.ecomUser.role) || 
+                     order.assignedCloseuse?.toString() === req.ecomUser._id.toString();
+    
+    console.log(`🔐 Permission check - User role: ${req.ecomUser.role}, Can modify: ${canModify}, Assigned closeuse: ${order.assignedCloseuse}`);
+    
+    if (!canModify) {
+      console.log(`❌ Permission denied for user ${req.ecomUser.email} on order ${order.orderId}`);
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès refusé : vous n\'avez pas les permissions pour modifier cette commande' 
+      });
+    }
+
     const allowedFields = ['status', 'notes', 'clientName', 'clientPhone', 'city', 'address', 'product', 'quantity', 'price', 'deliveryLocation', 'deliveryTime', 'tags', 'assignedLivreur'];
+    const updateData = {};
     allowedFields.forEach(field => {
-      if (req.body[field] !== undefined) order[field] = req.body[field];
+      if (req.body[field] !== undefined) updateData[field] = req.body[field];
     });
 
     // Marquer le statut comme modifié manuellement
     if (req.body.status !== undefined) {
-      order.statusModifiedManually = true;
-      order.lastManualStatusUpdate = new Date();
+      updateData.statusModifiedManually = true;
+      updateData.lastManualStatusUpdate = new Date();
     }
 
     // Auto-tagging basé sur le statut
@@ -2294,22 +2314,27 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       const statusTags = { pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', delivered: 'Client', returned: 'Retour', cancelled: 'Annulé', unreachable: 'Injoignable', called: 'Appelé', postponed: 'Reporté' };
       const allStatusTags = Object.values(statusTags);
       // Retirer les anciens tags de statut, garder les tags manuels
-      order.tags = (order.tags || []).filter(t => !allStatusTags.includes(t));
+      let currentTags = (order.tags || []).filter(t => !allStatusTags.includes(t));
       // Ajouter le nouveau tag
       const newTag = statusTags[req.body.status] || req.body.status;
-      if (newTag && !order.tags.includes(newTag)) {
-        order.tags.push(newTag);
+      if (newTag && !currentTags.includes(newTag)) {
+        currentTags.push(newTag);
       }
+      updateData.tags = currentTags;
     }
 
-    await order.save();
+    const updatedOrder = await Order.findOneAndUpdate(
+      { _id: req.params.id, workspaceId: req.workspaceId },
+      { $set: updateData },
+      { new: true }
+    );
 
     // Notification interne sur changement de statut
     if (req.body.status) {
-      notifyOrderStatus(req.workspaceId, order, req.body.status).catch(() => {});
+      notifyOrderStatus(req.workspaceId, updatedOrder, req.body.status).catch(() => {});
       
       // Notification d'équipe (exclure l'acteur)
-      notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, order, req.body.status, req.ecomUser.email).catch(() => {});
+      notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, updatedOrder, req.body.status, req.ecomUser.email).catch(() => {});
       
       // 📱 Push notification pour changement de statut
       try {
@@ -2326,15 +2351,15 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
         };
         await sendPushNotification(req.workspaceId, {
           title: `${statusEmojis[req.body.status] || '📋'} Commande ${statusLabels[req.body.status] || req.body.status}`,
-          body: `${order.orderId} - ${order.clientName || order.clientPhone}`,
+          body: `${updatedOrder.orderId} - ${updatedOrder.clientName || updatedOrder.clientPhone}`,
           icon: '/icons/icon-192x192.png',
           badge: '/icons/icon-72x72.png',
           tag: 'order-status',
           data: {
             type: 'order_status_change',
-            orderId: order._id.toString(),
+            orderId: updatedOrder._id.toString(),
             status: req.body.status,
-            url: `/orders/${order._id}`
+            url: `/orders/${updatedOrder._id}`
           }
         }, 'push_status_changes');
       } catch (e) {
@@ -2342,20 +2367,144 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       }
     }
 
-    res.json({ success: true, message: 'Commande mise à jour', data: order });
+    res.json({ success: true, message: 'Commande mise à jour', data: updatedOrder });
   } catch (error) {
     console.error('Erreur update order:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
-// DELETE /api/ecom/orders/:id - Supprimer une commande
-router.delete('/:id', requireEcomAuth, validateEcomAccess('products', 'write'), async (req, res) => {
+// PATCH /api/ecom/orders/:id/status - Modifier uniquement le statut (route optimisée pour closeuses)
+router.patch('/:id/status', requireEcomAuth, async (req, res) => {
   try {
-    const order = await Order.findOneAndDelete({ _id: req.params.id, workspaceId: req.workspaceId });
+    const { status } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Le statut est requis' 
+      });
+    }
+
+    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
     if (!order) {
       return res.status(404).json({ success: false, message: 'Commande non trouvée' });
     }
+
+    // Vérifier les permissions : admin/super-admin/closeuse peuvent modifier, autres uniquement leurs commandes assignées
+    const canModify = ['ecom_admin', 'super_admin', 'ecom_closeuse'].includes(req.ecomUser.role) || 
+                     order.assignedCloseuse?.toString() === req.ecomUser._id.toString();
+    
+    if (!canModify) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès refusé : vous n\'avez pas les permissions pour modifier cette commande' 
+      });
+    }
+
+    // Valider le statut
+    const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'returned', 'cancelled', 'unreachable', 'called', 'postponed'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Statut invalide. Valeurs autorisées: ' + validStatuses.join(', ') 
+      });
+    }
+
+    const oldStatus = order.status;
+    order.status = status;
+    order.statusModifiedManually = true;
+    order.lastManualStatusUpdate = new Date();
+    order.updatedAt = new Date();
+
+    // Auto-tagging basé sur le statut
+    const statusTags = { 
+      pending: 'En attente', confirmed: 'Confirmé', shipped: 'Expédié', 
+      delivered: 'Client', returned: 'Retour', cancelled: 'Annulé', 
+      unreachable: 'Injoignable', called: 'Appelé', postponed: 'Reporté' 
+    };
+    const allStatusTags = Object.values(statusTags);
+    
+    // Retirer les anciens tags de statut, garder les tags manuels
+    order.tags = (order.tags || []).filter(t => !allStatusTags.includes(t));
+    // Ajouter le nouveau tag
+    const newTag = statusTags[status] || status;
+    if (newTag && !order.tags.includes(newTag)) {
+      order.tags.push(newTag);
+    }
+
+    await order.save();
+
+    // Notifications internes
+    notifyOrderStatus(req.workspaceId, order, status).catch(() => {});
+    notifyTeamOrderStatusChanged(req.workspaceId, req.ecomUser._id, order, status, req.ecomUser.email).catch(() => {});
+    
+    // 📱 Push notification pour changement de statut
+    try {
+      const { sendPushNotification } = await import('../../services/pushService.js');
+      const statusEmojis = {
+        pending: '⏳', confirmed: '✅', shipped: '📦', 
+        delivered: '🎉', returned: '↩️', cancelled: '❌',
+        unreachable: '📵', called: '📞', postponed: '⏰'
+      };
+      const statusLabels = {
+        pending: 'En attente', confirmed: 'Confirmée', shipped: 'Expédiée',
+        delivered: 'Livrée', returned: 'Retournée', cancelled: 'Annulée',
+        unreachable: 'Injoignable', called: 'Appelée', postponed: 'Reportée'
+      };
+      await sendPushNotification(req.workspaceId, {
+        title: `${statusEmojis[status] || '📋'} Commande ${statusLabels[status] || status}`,
+        body: `${order.orderId} - ${order.clientName || order.clientPhone}`,
+        icon: '/icons/icon-192x192.png',
+        badge: '/icons/icon-72x72.png',
+        tag: 'order-status',
+        data: {
+          type: 'order_status_change',
+          orderId: order._id.toString(),
+          status: status,
+          url: `/orders/${order._id}`
+        }
+      }, 'push_status_changes');
+    } catch (e) {
+      console.warn('⚠️ Push notification failed:', e.message);
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Statut mis à jour : ${oldStatus} → ${status}`,
+      data: {
+        orderId: order._id,
+        oldStatus,
+        newStatus: status,
+        updatedAt: order.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error('Erreur update order status:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /api/ecom/orders/:id - Supprimer une commande
+router.delete('/:id', requireEcomAuth, async (req, res) => {
+  try {
+    const order = await Order.findOne({ _id: req.params.id, workspaceId: req.workspaceId });
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Commande non trouvée' });
+    }
+
+    // Vérifier les permissions : admin/super-admin/closeuse peuvent supprimer, autres uniquement leurs commandes assignées
+    const canDelete = ['ecom_admin', 'super_admin', 'ecom_closeuse'].includes(req.ecomUser.role) || 
+                     order.assignedCloseuse?.toString() === req.ecomUser._id.toString();
+    
+    if (!canDelete) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Accès refusé : vous n\'avez pas les permissions pour supprimer cette commande' 
+      });
+    }
+
+    await Order.deleteOne({ _id: req.params.id });
     res.json({ success: true, message: 'Commande supprimée' });
   } catch (error) {
     console.error('Erreur delete order:', error);

@@ -5,6 +5,9 @@ import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateStockOrder } from '../middleware/validation.js';
 import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
 import { notifyStockReceived } from '../services/notificationHelper.js';
+import { notifyStockLow, notifyStockOut } from '../core/notifications/notification.service.js';
+import EcomUser from '../models/EcomUser.js';
+import Workspace from '../models/Workspace.js';
 
 const router = express.Router();
 
@@ -251,6 +254,14 @@ router.put('/orders/:id/receive',
       // Notification interne
       notifyStockReceived(req.workspaceId, { _id: order._id, quantity: order.quantity, productName: order.productName || product?.name }).catch(() => {});
 
+      // Alertes stock email (non bloquantes)
+      if (product) {
+        const freshProduct = await Product.findById(product._id).lean();
+        if (freshProduct) {
+          _checkStockAlerts(freshProduct, req.workspaceId).catch(() => {});
+        }
+      }
+
       const updatedOrder = await StockOrder.findById(order._id)
         .populate('productId', 'name')
         .populate('createdBy', 'email');
@@ -435,5 +446,23 @@ router.get('/overview',
     }
   }
 );
+
+// ─── Helper notifications stock ───────────────────────────────────────────────
+
+async function _checkStockAlerts(product, workspaceId) {
+  try {
+    const workspace = await Workspace.findById(workspaceId).lean();
+    const admin = await EcomUser.findOne({ workspaceId, role: 'ecom_admin', isActive: true }).lean();
+    if (!admin) return;
+
+    if (product.stock === 0) {
+      notifyStockOut(admin.email, { product, workspace, userId: admin._id }).catch(() => {});
+    } else if (product.stock <= (product.reorderThreshold || 5)) {
+      notifyStockLow(admin.email, { product, workspace, userId: admin._id }).catch(() => {});
+    }
+  } catch (err) {
+    console.warn('[stock] _checkStockAlerts:', err.message);
+  }
+}
 
 export default router;

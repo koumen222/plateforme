@@ -7,6 +7,20 @@ import { adjustStockLocationQuantity, StockAdjustmentError } from '../services/s
 
 const router = express.Router();
 
+// Helper: resync Product.stock = sum of all StockLocation quantities for that product
+const syncProductStock = async (workspaceId, productId) => {
+  const agg = await StockLocation.aggregate([
+    { $match: { workspaceId: new mongoose.Types.ObjectId(workspaceId), productId: new mongoose.Types.ObjectId(productId) } },
+    { $group: { _id: null, total: { $sum: '$quantity' } } }
+  ]);
+  const total = agg[0]?.total ?? 0;
+  await Product.findOneAndUpdate(
+    { _id: productId, workspaceId },
+    { $set: { stock: total } }
+  );
+  return total;
+};
+
 // GET /api/ecom/stock-locations - Liste du stock par emplacement
 router.get('/',
   requireEcomAuth,
@@ -20,7 +34,7 @@ router.get('/',
       if (productId) filter.productId = productId;
 
       const entries = await StockLocation.find(filter)
-        .populate('productId', 'name sellingPrice productCost')
+        .populate('productId', 'name sellingPrice productCost stock reorderThreshold')
         .populate('updatedBy', 'email')
         .sort({ city: 1, agency: 1 });
 
@@ -179,8 +193,10 @@ router.post('/',
         { upsert: true, new: true }
       );
 
+      await syncProductStock(req.workspaceId, productId);
+
       const populated = await StockLocation.findById(entry._id)
-        .populate('productId', 'name sellingPrice productCost')
+        .populate('productId', 'name sellingPrice productCost stock')
         .populate('updatedBy', 'email');
 
       res.status(201).json({
@@ -219,8 +235,10 @@ router.put('/:id',
 
       await entry.save();
 
+      await syncProductStock(req.workspaceId, entry.productId);
+
       const populated = await StockLocation.findById(entry._id)
-        .populate('productId', 'name sellingPrice productCost')
+        .populate('productId', 'name sellingPrice productCost stock')
         .populate('updatedBy', 'email');
 
       res.json({ success: true, message: 'Emplacement mis à jour', data: populated });
@@ -241,6 +259,7 @@ router.delete('/:id',
       if (!entry) {
         return res.status(404).json({ success: false, message: 'Emplacement non trouvé' });
       }
+      await syncProductStock(req.workspaceId, entry.productId);
       res.json({ success: true, message: 'Emplacement supprimé' });
     } catch (error) {
       console.error('Erreur delete stock location:', error);
@@ -268,8 +287,10 @@ router.post('/:id/adjust',
         reason
       });
 
+      await syncProductStock(req.workspaceId, updated.productId);
+
       const populated = await StockLocation.findById(updated._id)
-        .populate('productId', 'name sellingPrice productCost')
+        .populate('productId', 'name sellingPrice productCost stock')
         .populate('updatedBy', 'email');
 
       res.json({ success: true, message: `Stock ajusté de ${adjustment > 0 ? '+' : ''}${adjustment}`, data: populated });
@@ -279,6 +300,126 @@ router.post('/:id/adjust',
         return res.status(error.status || 400).json({ success: false, message: error.message, code: error.code });
       }
       res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// POST /api/ecom/stock-locations/resync - Resync locations quantities to match Product.stock
+router.post('/resync',
+  requireEcomAuth,
+  validateEcomAccess('products', 'write'),
+  async (req, res) => {
+    try {
+      const wsId = new mongoose.Types.ObjectId(req.workspaceId);
+
+      // Get all products with stock locations in this workspace
+      const locationGroups = await StockLocation.aggregate([
+        { $match: { workspaceId: wsId } },
+        { $group: { _id: '$productId', locationsTotal: { $sum: '$quantity' } } }
+      ]);
+
+      const results = [];
+
+      for (const group of locationGroups) {
+        const product = await Product.findOne({ _id: group._id, workspaceId: req.workspaceId }).select('name stock');
+        if (!product) continue;
+
+        const locTotal = group.locationsTotal;
+        const productStock = product.stock ?? 0;
+        const diff = locTotal - productStock; // positive = locations have MORE than product (need to reduce)
+
+        if (diff === 0) {
+          results.push({ product: product.name, status: 'ok', stock: productStock });
+          continue;
+        }
+
+        if (diff > 0) {
+          // Locations sum > Product.stock: reduce locations (largest first)
+          const locations = await StockLocation.find({ workspaceId: wsId, productId: group._id }).sort({ quantity: -1 });
+          let remaining = diff;
+          for (const loc of locations) {
+            if (remaining <= 0) break;
+            const reduce = Math.min(loc.quantity, remaining);
+            loc.quantity -= reduce;
+            await loc.save();
+            remaining -= reduce;
+          }
+        } else {
+          // Locations sum < Product.stock: add to first location
+          const loc = await StockLocation.findOne({ workspaceId: wsId, productId: group._id }).sort({ quantity: -1 });
+          if (loc) {
+            loc.quantity += Math.abs(diff);
+            await loc.save();
+          }
+        }
+
+        results.push({ product: product.name, status: 'resynced', before: locTotal, after: productStock });
+      }
+
+      res.json({ success: true, message: `Resync terminé: ${results.filter(r => r.status === 'resynced').length} produit(s) corrigé(s)`, data: results });
+    } catch (error) {
+      console.error('Erreur resync stock locations:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// POST /api/ecom/stock-locations/distribute-from-product - Distribuer depuis le stock général du produit
+router.post('/distribute-from-product',
+  requireEcomAuth,
+  validateEcomAccess('products', 'write'),
+  async (req, res) => {
+    try {
+      const { productId, quantity, reason } = req.body;
+      
+      if (!productId || !quantity) {
+        return res.status(400).json({
+          success: false,
+          message: 'Produit et quantité sont requis'
+        });
+      }
+
+      // Vérifier que le produit existe
+      const product = await Product.findOne({ _id: productId, workspaceId: req.workspaceId });
+      if (!product) {
+        return res.status(404).json({
+          success: false,
+          message: 'Produit non trouvé'
+        });
+      }
+
+      // Vérifier le stock disponible
+      if ((product.stock || 0) < Math.abs(quantity)) {
+        return res.status(400).json({
+          success: false,
+          message: `Stock insuffisant. Disponible: ${product.stock || 0} unités`
+        });
+      }
+
+      // Décrémenter directement le stock du produit
+      await adjustProductStock({
+        workspaceId: req.workspaceId,
+        productId,
+        delta: quantity // sera négatif (-quantity)
+      });
+
+      res.json({
+        success: true,
+        message: `Stock distribué: ${quantity > 0 ? '+' : ''}${quantity} unités`
+      });
+    } catch (error) {
+      console.error('Erreur distribute from product:', error);
+      if (error instanceof StockAdjustmentError) {
+        return res.status(error.status || 400).json({ 
+          success: false, 
+          message: error.message, 
+          code: error.code 
+        });
+      }
+      res.status(500).json({
+        success: false,
+        message: 'Erreur serveur'
+      });
     }
   }
 );

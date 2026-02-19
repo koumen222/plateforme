@@ -4,7 +4,7 @@ import EcomUser from '../models/EcomUser.js';
 import EcomWorkspace from '../models/EcomWorkspace.js';
 import { requireEcomAuth } from '../middleware/ecomAuth.js';
 import { generateEcomToken } from '../middleware/ecomAuth.js';
-import { sendEmail } from '../../services/emailService.js';
+import { notifyTeamInvitation, notifyRoleChanged, notifyMemberRemoved } from '../core/notifications/notification.service.js';
 
 const router = express.Router();
 
@@ -83,27 +83,14 @@ router.post('/invite', requireEcomAuth, async (req, res) => {
       await targetUser.save();
     }
 
-    // Envoyer l'email d'invitation
+    // Envoyer l'email d'invitation via le système centralisé
     const invitationLink = `${process.env.FRONTEND_URL}/ecom/invite/${invitationToken}`;
-    
-    try {
-      await sendEmail({
-        to: email,
-        subject: `Invitation à rejoindre ${workspace.name}`,
-        template: 'workspace-invitation',
-        data: {
-          workspaceName: workspace.name,
-          inviterName: req.ecomUser.name || req.ecomUser.email,
-          inviterRole: userRole,
-          role: role,
-          invitationLink,
-          invitationExpires: invitationExpires.toLocaleDateString('fr-FR')
-        }
-      });
-    } catch (emailError) {
-      console.error('Erreur envoi email invitation:', emailError);
-      // Ne pas bloquer la réponse si l'email échoue
-    }
+    notifyTeamInvitation(email, {
+      inviterName: req.ecomUser.name || req.ecomUser.email,
+      workspace,
+      role,
+      inviteUrl: invitationLink
+    }).catch(err => console.warn('[notif] team_invitation:', err.message));
 
     res.json({
       success: true,
@@ -318,6 +305,96 @@ router.delete('/leave-workspace/:workspaceId', requireEcomAuth, async (req, res)
     res.status(500).json({ 
       success: false, 
       message: 'Erreur serveur' 
+    });
+  }
+});
+
+// GET /workspaces/whatsapp-config - Récupérer la config WhatsApp du workspace
+router.get('/whatsapp-config', requireEcomAuth, async (req, res) => {
+  try {
+    const workspace = await EcomWorkspace.findById(req.ecomUser.workspaceId).select('whatsappConfig name').lean();
+    if (!workspace) return res.status(404).json({ success: false, message: 'Workspace non trouvé' });
+    res.json({ success: true, data: { whatsappConfig: workspace.whatsappConfig || { status: 'none', phoneNumber: '' } } });
+  } catch (error) {
+    console.error('Erreur récupération config WhatsApp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /workspaces/whatsapp-request - Demande d'activation de numéro WhatsApp
+router.post('/whatsapp-request', requireEcomAuth, async (req, res) => {
+  try {
+    const { 
+      phoneNumber, 
+      businessName, 
+      contactName, 
+      email, 
+      currentWhatsappNumber,
+      businessType,
+      monthlyMessages,
+      reason 
+    } = req.body;
+
+    if (!phoneNumber) {
+      return res.status(400).json({
+        success: false,
+        message: 'Numéro de téléphone requis'
+      });
+    }
+
+    // Nettoyer le numéro (garder seulement les chiffres)
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+
+    // Mettre à jour la configuration WhatsApp du workspace
+    const workspace = await EcomWorkspace.findById(req.ecomUser.workspaceId);
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace non trouvé'
+      });
+    }
+
+    // Initialiser settings si inexistant
+    if (!workspace.settings) {
+      workspace.settings = {};
+    }
+
+    // Mettre à jour la configuration WhatsApp avec toutes les informations de postulation
+    workspace.settings.whatsappConfig = {
+      phoneNumber: cleanPhone,
+      status: 'pending',
+      requestedAt: new Date(),
+      requestedBy: req.ecomUser._id,
+      note: 'Demande d\'activation en cours',
+      // Informations de postulation détaillées
+      businessName: businessName || '',
+      contactName: contactName || '',
+      email: email || '',
+      currentWhatsappNumber: currentWhatsappNumber || '',
+      businessType: businessType || '',
+      monthlyMessages: monthlyMessages || '',
+      reason: reason || ''
+    };
+
+    await workspace.save();
+
+    console.log(`📱 Postulation WhatsApp: ${cleanPhone} (${businessName}) par ${contactName}`);
+
+    res.json({
+      success: true,
+      message: '🎉 Votre postulation a été envoyée avec succès ! Notre équipe vous contactera dans les plus brefs délais.',
+      data: {
+        phoneNumber: cleanPhone,
+        status: 'pending',
+        businessName
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur postulation WhatsApp:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'envoi de la postulation'
     });
   }
 });

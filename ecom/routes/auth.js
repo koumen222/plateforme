@@ -7,6 +7,12 @@ import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
 import { logAudit } from '../middleware/security.js';
+import {
+  notifyUserRegistered,
+  notifyForgotPassword,
+  notifyPasswordChanged,
+  notifySuspiciousLogin
+} from '../core/notifications/notification.service.js';
 
 const router = express.Router();
 const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
@@ -405,6 +411,9 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
 
     const token = generateEcomToken(user);
 
+    // Notification de bienvenue (non bloquante)
+    notifyUserRegistered(user, workspace).catch(err => console.warn('[notif] register:', err.message));
+
     res.status(201).json({
       success: true,
       message: inviteCode ? 'Vous avez rejoint l\'espace avec succès' : 'Espace créé avec succès',
@@ -614,42 +623,14 @@ router.post('/forgot-password', async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
     const resetLink = `${frontendUrl}/ecom/reset-password?token=${resetToken.token}`;
 
-    // Envoyer l'email via Resend
-    const resendApiKey = process.env.RESEND_API_KEY;
-    if (!resendApiKey) {
-      console.error('\u274c RESEND_API_KEY non configur\u00e9 - impossible d\'envoyer l\'email de r\u00e9initialisation');
-      return res.status(500).json({ success: false, message: 'Service email non configur\u00e9' });
+    // Envoyer via le système centralisé
+    const notifResult = await notifyForgotPassword(user, resetLink);
+    if (!notifResult.success) {
+      console.error('❌ Erreur envoi email reset:', notifResult.error);
+      return res.status(500).json({ success: false, message: 'Erreur envoi email de réinitialisation' });
     }
 
-    const resend = new Resend(resendApiKey);
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
-
-    await resend.emails.send({
-      from: `Ecomstarter <${fromEmail}>`,
-      to: normalizedEmail,
-      subject: 'R\u00e9initialisation de votre mot de passe',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #1e40af; font-size: 24px; margin: 0;">R\u00e9initialisation du mot de passe</h1>
-          </div>
-          <div style="background: #f8fafc; border-radius: 12px; padding: 30px; border: 1px solid #e2e8f0;">
-            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Bonjour,</p>
-            <p style="color: #334155; font-size: 16px; line-height: 1.6; margin: 0 0 20px;">Vous avez demand\u00e9 la r\u00e9initialisation de votre mot de passe. Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${resetLink}" style="display: inline-block; background: #2563eb; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">R\u00e9initialiser mon mot de passe</a>
-            </div>
-            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0 0 10px;">Ce lien expire dans <strong>1 heure</strong>.</p>
-            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin: 0;">Si vous n'avez pas demand\u00e9 cette r\u00e9initialisation, ignorez simplement cet email.</p>
-          </div>
-          <div style="text-align: center; margin-top: 30px;">
-            <p style="color: #94a3b8; font-size: 12px;">Ecomstarter - Plateforme E-commerce</p>
-          </div>
-        </div>
-      `
-    });
-
-    console.log(`\u2705 Email de r\u00e9initialisation envoy\u00e9 \u00e0 ${normalizedEmail}`);
+    console.log(`✅ Email de réinitialisation envoyé à ${normalizedEmail}`);
     res.json({ success: true, message: successMessage });
   } catch (error) {
     console.error('Erreur forgot-password:', error);
@@ -693,33 +674,11 @@ router.post('/reset-password', async (req, res) => {
     resetToken.used = true;
     await resetToken.save();
 
-    // Envoyer un email de confirmation
-    try {
-      const resendApiKey = process.env.RESEND_API_KEY;
-      if (resendApiKey) {
-        const resend = new Resend(resendApiKey);
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
-        await resend.emails.send({
-          from: `Ecomstarter <${fromEmail}>`,
-          to: user.email,
-          subject: 'Votre mot de passe a \u00e9t\u00e9 modifi\u00e9',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: #f0fdf4; border-radius: 12px; padding: 30px; border: 1px solid #bbf7d0;">
-                <h2 style="color: #166534; font-size: 20px; margin: 0 0 15px;">\u2705 Mot de passe modifi\u00e9</h2>
-                <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0 0 15px;">Votre mot de passe a \u00e9t\u00e9 r\u00e9initialis\u00e9 avec succ\u00e8s.</p>
-                <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin: 0;">Si vous n'\u00eates pas \u00e0 l'origine de cette modification, contactez imm\u00e9diatement le support.</p>
-              </div>
-            </div>
-          `
-        });
-      }
-    } catch (emailErr) {
-      console.error('Erreur envoi email confirmation:', emailErr);
-    }
+    // Notification de confirmation (non bloquante)
+    notifyPasswordChanged(user).catch(err => console.warn('[notif] password_changed:', err.message));
 
-    console.log(`\u2705 Mot de passe r\u00e9initialis\u00e9 pour ${user.email}`);
-    res.json({ success: true, message: 'Mot de passe r\u00e9initialis\u00e9 avec succ\u00e8s' });
+    console.log(`✅ Mot de passe réinitialisé pour ${user.email}`);
+    res.json({ success: true, message: 'Mot de passe réinitialisé avec succès' });
   } catch (error) {
     console.error('Erreur reset-password:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
@@ -769,6 +728,9 @@ router.put('/change-password', async (req, res) => {
     // Mettre à jour le mot de passe
     user.password = newPassword;
     await user.save();
+
+    // Notification sécurité (non bloquante)
+    notifyPasswordChanged(user).catch(err => console.warn('[notif] change_password:', err.message));
 
     res.json({
       success: true,

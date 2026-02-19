@@ -1942,6 +1942,15 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/transactions.js:', error.message);
     }
 
+    // Routes E-commerce Préférences de notifications
+    try {
+      const ecomNotifPrefsModule = await import("./ecom/routes/notificationPreferences.js");
+      app.use("/api/ecom/notification-preferences", ecomNotifPrefsModule.default);
+      console.log('✅ Routes ecom/notificationPreferences.js chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/notificationPreferences.js:', error.message);
+    }
+
     // Routes E-commerce Utilisateurs (Admin)
     try {
       const ecomUsersModule = await import("./ecom/routes/users.js");
@@ -2034,6 +2043,34 @@ const startServer = async () => {
       console.log('✅ Routes E-commerce Workspaces chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/workspaces.js:', error.message);
+    }
+
+    // Routes E-commerce Messages (Chat équipe)
+    try {
+      const ecomMessagesModule = await import("./ecom/routes/messages.js");
+      app.use("/api/ecom/messages", ecomMessagesModule.default);
+      console.log('✅ Routes E-commerce Messages (Chat) chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/messages.js:', error.message);
+    }
+
+    // Routes E-commerce Messages Directs (DM)
+    try {
+      const ecomDmModule = await import("./ecom/routes/dm.js");
+      app.use("/api/ecom/dm", ecomDmModule.default);
+      console.log('✅ Routes E-commerce DM chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
+    }
+
+    // Routes E-commerce Contact (Formulaire de contact)
+    try {
+      const ecomContactModule = await import("./ecom/routes/contact.js");
+      const ecomContactRoutes = ecomContactModule.default;
+      app.use("/api/ecom/contact", ecomContactRoutes);
+      console.log('✅ Routes E-commerce Contact chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/contact.js:', error.message);
     }
 
     // Routes E-commerce Affectations (Sources et Produits par closeuse)

@@ -26,6 +26,13 @@ const workspaceSchema = new mongoose.Schema({
     currency: { type: String, default: 'XOF' },
     businessType: { type: String, default: 'ecommerce' }
   },
+  whatsappConfig: {
+    phoneNumber: { type: String, default: '' },
+    status: { type: String, enum: ['none', 'pending', 'active'], default: 'none' },
+    requestedAt: { type: Date },
+    activatedAt: { type: Date },
+    note: { type: String, default: '' }
+  },
   isActive: {
     type: Boolean,
     default: true
