@@ -207,7 +207,7 @@ export const validateEcomAccess = (resource, action) => {
 
 // Fonction pour générer un token e-commerce
 export const generateEcomToken = (user) => {
-  return 'ecom:' + jwt.sign(
+  return jwt.sign(
     { 
       id: user._id,
       email: user.email,
@@ -215,7 +215,7 @@ export const generateEcomToken = (user) => {
       workspaceId: user.workspaceId
     },
     ECOM_JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: '30d' }
   );
 };
 

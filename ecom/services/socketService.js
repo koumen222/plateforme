@@ -205,9 +205,9 @@ export function isUserOnline(userId) {
  */
 export function getOnlineUsersInWorkspace(workspaceId) {
   const onlineUsers = [];
-  userSockets.forEach((sockets, odId) => {
+  userSockets.forEach((sockets, uid) => {
     if (sockets.size > 0) {
-      onlineUsers.push(userId);
+      onlineUsers.push(uid);
     }
   });
   return onlineUsers;

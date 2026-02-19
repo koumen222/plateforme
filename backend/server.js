@@ -4,6 +4,9 @@ process.on("uncaughtException", err => {
   console.error("Stack:", err.stack);
 });
 
+// Timestamp de build pour forcer le déploiement
+console.log("🚀 Build timestamp:", new Date().toISOString());
+
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ UNHANDLED PROMISE REJECTION:", reason);
   console.error("Promise:", promise);
@@ -2058,11 +2061,14 @@ const startServer = async () => {
 
     // Routes E-commerce Messages Directs (DM)
     try {
+      console.log('🔍 Tentative chargement module DM...');
       const ecomDmModule = await import("./ecom/routes/dm.js");
+      console.log('✅ Module DM chargé avec succès');
       app.use("/api/ecom/dm", ecomDmModule.default);
       console.log('✅ Routes E-commerce DM chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
+      console.error('Stack:', error.stack);
     }
 
     // Routes E-commerce Media (Upload pour messagerie)
