@@ -96,6 +96,7 @@ const allowedOrigins = [
   "https://plateforme-backend-production-2ec6.up.railway.app",
   "https://ecomcookpit.pages.dev",
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
   "http://localhost:8081"
 ];
@@ -2065,6 +2066,15 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
     }
 
+    // Routes E-commerce Media (Upload pour messagerie)
+    try {
+      const ecomMediaModule = await import("./ecom/routes/media.js");
+      app.use("/api/ecom/media", ecomMediaModule.default);
+      console.log('✅ Routes E-commerce Media chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/media.js:', error.message);
+    }
+
     // Routes E-commerce Contact (Formulaire de contact)
     try {
       const ecomContactModule = await import("./ecom/routes/contact.js");
@@ -3114,8 +3124,21 @@ const startServer = async () => {
       });
     });
     
-    // Démarrer le serveur Express
-    app.listen(PORT, '0.0.0.0', () => {
+    // Démarrer le serveur Express avec WebSocket support
+    const http = await import('http');
+    const server = http.createServer(app);
+    
+    // Initialiser WebSocket pour messagerie temps réel
+    try {
+      const { initSocketServer } = await import('./ecom/services/socketService.js');
+      initSocketServer(server);
+      console.log('✅ WebSocket server initialisé');
+    } catch (error) {
+      console.error('⚠️ Erreur initialisation WebSocket:', error.message);
+    }
+    
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Impossible de démarrer le serveur:', error);
