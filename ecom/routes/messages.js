@@ -8,6 +8,18 @@ const router = express.Router();
 
 const ADMIN_ROLES = ['ecom_admin', 'super_admin'];
 
+const CHANNEL_ACCESS = {
+  admin: ['ecom_admin', 'super_admin'],
+  compta: ['ecom_admin', 'super_admin', 'ecom_compta'],
+};
+
+function canAccessChannel(userRole, channel) {
+  if (CHANNEL_ACCESS[channel]) {
+    return CHANNEL_ACCESS[channel].includes(userRole);
+  }
+  return true;
+}
+
 // GET /api/ecom/messages/channels - Liste des canaux du workspace
 router.get('/channels', requireEcomAuth, async (req, res) => {
   try {

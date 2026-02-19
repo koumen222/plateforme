@@ -94,6 +94,7 @@ const allowedOrigins = [
   "http://www.ecomcookpit.site",
   "https://www.safitech.shop",
   "https://plateformecp.pages.dev",
+  "https://ecomcookpit.pages.dev",
   "http://localhost:5173",
   "http://localhost:8081"
 ];
