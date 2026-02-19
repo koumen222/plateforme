@@ -12,10 +12,10 @@ const getResend = () => {
   return resend;
 };
 
-const FROM = `Safitech <${process.env.EMAIL_FROM || 'contact@infomania.store'}>`;
+const FROM = `Ecomcookpit <${process.env.EMAIL_FROM || 'contact@infomania.store'}>`;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'https://app.safitech.shop';
 const BRAND_COLOR = '#4f46e5';
-const BRAND_NAME = 'Safitech';
+const BRAND_NAME = 'Ecomcookpit';
 
 // ─── Templates HTML ───────────────────────────────────────────────────────────
 
