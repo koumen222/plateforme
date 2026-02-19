@@ -87,34 +87,35 @@ const app = express();
 
 // ⚠️ Configuration CORS - DOIT être AVANT toutes les routes
 // ✅ Solution propre et sécurisée
+const allowedOrigins = [
+  "https://ecomcookpit.site",
+  "https://www.ecomcookpit.site",
+  "http://ecomcookpit.site",
+  "http://www.ecomcookpit.site",
+  "https://www.safitech.shop",
+  "https://plateforme-backend-production-2ec6.up.railway.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:8081"
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // autorise requêtes sans origin (mobile apps, postman)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      "https://www.safitech.shop",
-      "https://ecomcookpit.site",
-      "https://www.ecomcookpit.site",
-      "http://ecomcookpit.site",
-      "http://www.ecomcookpit.site",
-      "https://plateforme-backend-production-2ec6.up.railway.app",
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "http://localhost:8081"
-    ];
-    
-    // Log pour debug en production
-    if (process.env.NODE_ENV === 'production') {
-      console.log('🌐 Requête CORS depuis:', origin);
+
+    // domaine principal
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+
+    // autorise tous les previews Cloudflare du projet
+    if (origin.endsWith(".ecomcookpit.pages.dev")) {
+      return callback(null, true);
     }
+
+    console.log('🚫 CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
