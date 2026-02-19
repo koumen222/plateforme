@@ -2015,6 +2015,15 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/messages.js:', error.message);
     }
+
+    // Routes E-commerce Messages Directs (DM)
+    try {
+      const ecomDmModule = await import("./ecom/routes/dm.js");
+      app.use("/api/ecom/dm", ecomDmModule.default);
+      console.log('✅ Routes E-commerce DM chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
+    }
     
     // Routes E-commerce Push Notifications
     try {

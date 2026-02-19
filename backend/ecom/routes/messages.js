@@ -8,7 +8,19 @@ const router = express.Router();
 
 const ADMIN_ROLES = ['ecom_admin', 'super_admin'];
 
-// GET /api/ecom/messages/channels
+const CHANNEL_ACCESS = {
+  admin: ['ecom_admin', 'super_admin'],
+  compta: ['ecom_admin', 'super_admin', 'ecom_compta'],
+};
+
+function canAccessChannel(userRole, channel) {
+  if (CHANNEL_ACCESS[channel]) {
+    return CHANNEL_ACCESS[channel].includes(userRole);
+  }
+  return true;
+}
+
+// GET /api/ecom/messages/channels - Liste des canaux du workspace
 router.get('/channels', requireEcomAuth, async (req, res) => {
   try {
     const workspaceId = req.workspaceId;
@@ -43,7 +55,9 @@ router.post('/channels', requireEcomAuth, async (req, res) => {
     if (existing) return res.status(400).json({ success: false, message: 'Un canal avec ce nom existe déjà' });
 
     const channel = await Channel.create({
-      workspaceId, name: name.trim(), slug,
+      workspaceId,
+      name: name.trim(),
+      slug,
       emoji: emoji || '💬',
       description: description || '',
       createdBy: req.ecomUser._id
@@ -56,7 +70,7 @@ router.post('/channels', requireEcomAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/ecom/messages/channels/:slug
+// DELETE /api/ecom/messages/channels/:slug - Supprimer un canal (admin)
 router.delete('/channels/:slug', requireEcomAuth, async (req, res) => {
   try {
     if (!ADMIN_ROLES.includes(req.ecomUser.role)) {
@@ -73,11 +87,14 @@ router.delete('/channels/:slug', requireEcomAuth, async (req, res) => {
   }
 });
 
-// GET /api/ecom/messages/team/members - AVANT /:channel
+// GET /api/ecom/messages/team/members - Membres de l'équipe dans le workspace
+// IMPORTANT: doit être AVANT /:channel pour éviter que 'team' soit capturé comme canal
 router.get('/team/members', requireEcomAuth, async (req, res) => {
   try {
+    const workspaceId = req.workspaceId;
+
     const members = await EcomUser.find({
-      workspaceId: req.workspaceId,
+      workspaceId,
       isActive: true
     }).select('name email role lastLogin').lean();
 
@@ -88,23 +105,29 @@ router.get('/team/members', requireEcomAuth, async (req, res) => {
   }
 });
 
-// GET /api/ecom/messages/:channel
+// GET /api/ecom/messages/:channel - Messages d'un canal
 router.get('/:channel', requireEcomAuth, async (req, res) => {
   try {
     const { channel } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+    const pageNum = Math.max(1, parseInt(req.query.page) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
     const workspaceId = req.workspaceId;
+    const userRole = req.ecomUser.role;
 
-    if (!canAccessChannel(req.ecomUser.role, channel)) {
+    if (!canAccessChannel(userRole, channel)) {
       return res.status(403).json({ success: false, message: 'Accès refusé à ce canal' });
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
-    const messages = await Message.find({ workspaceId, channel, deleted: false })
+    const messages = await Message.find({
+      workspaceId,
+      channel,
+      deleted: false
+    })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(limitNum)
       .lean();
 
     const total = await Message.countDocuments({ workspaceId, channel, deleted: false });
@@ -112,17 +135,28 @@ router.get('/:channel', requireEcomAuth, async (req, res) => {
     // Marquer comme lus
     await Message.updateMany(
       {
-        workspaceId, channel, deleted: false,
+        workspaceId,
+        channel,
+        deleted: false,
         senderId: { $ne: req.ecomUser._id },
         'readBy.userId': { $ne: req.ecomUser._id }
       },
-      { $addToSet: { readBy: { userId: req.ecomUser._id, readAt: new Date() } } }
+      {
+        $addToSet: {
+          readBy: { userId: req.ecomUser._id, readAt: new Date() }
+        }
+      }
     );
 
     res.json({
       success: true,
       messages: messages.reverse(),
-      pagination: { page: parseInt(page), limit: parseInt(limit), total, pages: Math.ceil(total / parseInt(limit)) }
+      pagination: {
+        page: pageNum,
+        limit: limitNum,
+        total,
+        pages: Math.ceil(total / limitNum)
+      }
     });
   } catch (error) {
     console.error('Erreur GET /messages/:channel:', error);
@@ -130,18 +164,19 @@ router.get('/:channel', requireEcomAuth, async (req, res) => {
   }
 });
 
-// POST /api/ecom/messages/:channel
+// POST /api/ecom/messages/:channel - Envoyer un message
 router.post('/:channel', requireEcomAuth, async (req, res) => {
   try {
     const { channel } = req.params;
     const { content, replyTo } = req.body;
     const workspaceId = req.workspaceId;
+    const userRole = req.ecomUser.role;
 
-    if (!canAccessChannel(req.ecomUser.role, channel)) {
+    if (!canAccessChannel(userRole, channel)) {
       return res.status(403).json({ success: false, message: 'Accès refusé à ce canal' });
     }
 
-    if (!content?.trim()) {
+    if (!content || !content.trim()) {
       return res.status(400).json({ success: false, message: 'Le message ne peut pas être vide' });
     }
 
@@ -151,6 +186,7 @@ router.post('/:channel', requireEcomAuth, async (req, res) => {
 
     let replyToContent = null;
     let replyToSenderName = null;
+
     if (replyTo) {
       const originalMsg = await Message.findOne({ _id: replyTo, workspaceId, deleted: false });
       if (originalMsg) {
@@ -163,7 +199,7 @@ router.post('/:channel', requireEcomAuth, async (req, res) => {
       workspaceId,
       senderId: req.ecomUser._id,
       senderName: req.ecomUser.name || req.ecomUser.email.split('@')[0],
-      senderRole: req.ecomUser.role,
+      senderRole: userRole,
       content: content.trim(),
       channel,
       replyTo: replyTo || null,
@@ -173,6 +209,7 @@ router.post('/:channel', requireEcomAuth, async (req, res) => {
     });
 
     await message.save();
+
     res.status(201).json({ success: true, message });
   } catch (error) {
     console.error('Erreur POST /messages/:channel:', error);
@@ -180,21 +217,26 @@ router.post('/:channel', requireEcomAuth, async (req, res) => {
   }
 });
 
-// PUT /api/ecom/messages/:channel/:messageId
+// PUT /api/ecom/messages/:channel/:messageId - Modifier un message
 router.put('/:channel/:messageId', requireEcomAuth, async (req, res) => {
   try {
     const { channel, messageId } = req.params;
     const { content } = req.body;
+    const workspaceId = req.workspaceId;
 
-    if (!content?.trim()) {
+    if (!content || !content.trim()) {
       return res.status(400).json({ success: false, message: 'Le message ne peut pas être vide' });
     }
 
-    const message = await Message.findOne({ _id: messageId, workspaceId: req.workspaceId, channel, deleted: false });
-    if (!message) return res.status(404).json({ success: false, message: 'Message non trouvé' });
+    const message = await Message.findOne({ _id: messageId, workspaceId, channel, deleted: false });
+
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message non trouvé' });
+    }
 
     const isOwner = message.senderId.toString() === req.ecomUser._id.toString();
     const isAdmin = ['ecom_admin', 'super_admin'].includes(req.ecomUser.role);
+
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Vous ne pouvez modifier que vos propres messages' });
     }
@@ -211,16 +253,21 @@ router.put('/:channel/:messageId', requireEcomAuth, async (req, res) => {
   }
 });
 
-// DELETE /api/ecom/messages/:channel/:messageId
+// DELETE /api/ecom/messages/:channel/:messageId - Supprimer un message
 router.delete('/:channel/:messageId', requireEcomAuth, async (req, res) => {
   try {
     const { channel, messageId } = req.params;
+    const workspaceId = req.workspaceId;
 
-    const message = await Message.findOne({ _id: messageId, workspaceId: req.workspaceId, channel, deleted: false });
-    if (!message) return res.status(404).json({ success: false, message: 'Message non trouvé' });
+    const message = await Message.findOne({ _id: messageId, workspaceId, channel, deleted: false });
+
+    if (!message) {
+      return res.status(404).json({ success: false, message: 'Message non trouvé' });
+    }
 
     const isOwner = message.senderId.toString() === req.ecomUser._id.toString();
     const isAdmin = ['ecom_admin', 'super_admin'].includes(req.ecomUser.role);
+
     if (!isOwner && !isAdmin) {
       return res.status(403).json({ success: false, message: 'Vous ne pouvez supprimer que vos propres messages' });
     }
@@ -231,6 +278,32 @@ router.delete('/:channel/:messageId', requireEcomAuth, async (req, res) => {
     res.json({ success: true, message: 'Message supprimé' });
   } catch (error) {
     console.error('Erreur DELETE /messages/:channel/:messageId:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// GET /api/ecom/messages/:channel/unread/count - Compter les non lus
+router.get('/:channel/unread/count', requireEcomAuth, async (req, res) => {
+  try {
+    const { channel } = req.params;
+    const workspaceId = req.workspaceId;
+    const userRole = req.ecomUser.role;
+
+    if (!canAccessChannel(userRole, channel)) {
+      return res.status(403).json({ success: false, message: 'Accès refusé à ce canal' });
+    }
+
+    const count = await Message.countDocuments({
+      workspaceId,
+      channel,
+      deleted: false,
+      'readBy.userId': { $ne: req.ecomUser._id },
+      senderId: { $ne: req.ecomUser._id }
+    });
+
+    res.json({ success: true, count });
+  } catch (error) {
+    console.error('Erreur GET /messages/:channel/unread/count:', error);
     res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
