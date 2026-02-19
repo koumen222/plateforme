@@ -24,6 +24,8 @@ const CRITICAL_TX_THRESHOLD = parseInt(process.env.CRITICAL_TX_THRESHOLD || '100
 
 const router = express.Router();
 
+// IMPORTANT: Routes spécifiques (/accounting-summary, /forecast, etc.) AVANT /:id pour éviter capture
+
 // GET /api/ecom/transactions - Liste des transactions
 router.get('/', 
   requireEcomAuth, 

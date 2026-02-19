@@ -116,6 +116,77 @@ router.post('/login', validateEmail, async (req, res) => {
   }
 });
 
+// POST /api/ecom/auth/refresh - Rafraîchir un token expiré
+router.post('/refresh', async (req, res) => {
+  try {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token manquant'
+      });
+    }
+
+    // Décoder le token même s'il est expiré pour récupérer l'ID utilisateur
+    let decoded;
+    try {
+      decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET, { ignoreExpiration: true });
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Token invalide'
+      });
+    }
+
+    // Vérifier que l'utilisateur existe toujours et est actif
+    const user = await EcomUser.findById(decoded.id);
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'Utilisateur non trouvé ou inactif'
+      });
+    }
+
+    // Générer un nouveau token
+    const newToken = generateEcomToken(user);
+    
+    // Charger le workspace
+    let workspace = null;
+    if (user.workspaceId) {
+      workspace = await Workspace.findById(user.workspaceId);
+    }
+
+    console.log(`🔄 Token rafraîchi pour ${user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Token rafraîchi',
+      data: {
+        token: newToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+          currency: user.currency,
+          workspaceId: user.workspaceId
+        },
+        workspace: workspace ? {
+          id: workspace._id,
+          name: workspace.name,
+          slug: workspace.slug
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error('Erreur refresh token:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur'
+    });
+  }
+});
+
 // POST /api/ecom/auth/register-device - Enregistrer un appareil pour un utilisateur déjà connecté
 router.post('/register-device', async (req, res) => {
   try {
