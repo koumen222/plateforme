@@ -298,6 +298,9 @@ router.get('/accounting-summary',
   validateEcomAccess('finance', 'read'),
   async (req, res) => {
     try {
+      if (!req.workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId manquant' });
+      }
       const wid = new mongoose.Types.ObjectId(req.workspaceId);
       const now = new Date();
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
