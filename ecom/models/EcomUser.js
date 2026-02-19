@@ -150,16 +150,18 @@ ecomUserSchema.methods.addWorkspace = function(workspaceId, role, invitedBy = nu
 
 // Méthode pour vérifier si l'utilisateur a accès à un workspace
 ecomUserSchema.methods.hasWorkspaceAccess = function(workspaceId) {
+  if (!workspaceId) return false;
   return this.workspaces.some(w => 
-    w.workspaceId.toString() === workspaceId.toString() && 
+    w.workspaceId && w.workspaceId.toString() === workspaceId.toString() && 
     w.status === 'active'
   );
 };
 
 // Méthode pour obtenir le rôle dans un workspace spécifique
 ecomUserSchema.methods.getRoleInWorkspace = function(workspaceId) {
+  if (!workspaceId) return null;
   const workspace = this.workspaces.find(w => 
-    w.workspaceId.toString() === workspaceId.toString() && 
+    w.workspaceId && w.workspaceId.toString() === workspaceId.toString() && 
     w.status === 'active'
   );
   

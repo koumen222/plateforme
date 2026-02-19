@@ -301,7 +301,13 @@ router.get('/accounting-summary',
       if (!req.workspaceId) {
         return res.status(400).json({ success: false, message: 'workspaceId manquant' });
       }
-      const wid = new mongoose.Types.ObjectId(req.workspaceId);
+      let wid;
+      try {
+        wid = new mongoose.Types.ObjectId(req.workspaceId);
+      } catch (e) {
+        console.error('accounting-summary: workspaceId invalide:', req.workspaceId, e.message);
+        return res.status(400).json({ success: false, message: 'workspaceId invalide' });
+      }
       const now = new Date();
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
       const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
@@ -344,8 +350,8 @@ router.get('/accounting-summary',
         }
       });
     } catch (error) {
-      console.error('Erreur accounting summary:', error);
-      res.status(500).json({ success: false, message: 'Erreur serveur' });
+      console.error('Erreur accounting summary — détail:', error.name, error.message, 'workspaceId:', req.workspaceId);
+      res.status(500).json({ success: false, message: error.message || 'Erreur serveur' });
     }
   }
 );
