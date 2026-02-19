@@ -325,22 +325,22 @@ router.get('/accounting-summary',
         ])
       ]);
 
-      const expenses = categoryTotals.filter(c => c._id.type === 'expense');
-      const income = categoryTotals.filter(c => c._id.type === 'income');
-      const totalExpenses = expenses.reduce((s, e) => s + e.total, 0);
-      const totalIncome = income.reduce((s, i) => s + i.total, 0);
-      const lastMonthExp = lastMonthTotals.find(t => t._id === 'expense')?.total || 0;
-      const lastMonthInc = lastMonthTotals.find(t => t._id === 'income')?.total || 0;
+      const expenses = (categoryTotals || []).filter(c => c._id?.type === 'expense');
+      const income = (categoryTotals || []).filter(c => c._id?.type === 'income');
+      const totalExpenses = expenses.reduce((s, e) => s + (e.total || 0), 0);
+      const totalIncome = income.reduce((s, i) => s + (i.total || 0), 0);
+      const lastMonthExp = (lastMonthTotals || []).find(t => t._id === 'expense')?.total || 0;
+      const lastMonthInc = (lastMonthTotals || []).find(t => t._id === 'income')?.total || 0;
 
       res.json({
         success: true,
         data: {
           totalExpenses, totalIncome, balance: totalIncome - totalExpenses,
           lastMonth: { expenses: lastMonthExp, income: lastMonthInc },
-          categoryBreakdown: categoryTotals,
-          monthlyTrend,
-          expenseCount: expenses.reduce((s, e) => s + e.count, 0),
-          incomeCount: income.reduce((s, i) => s + i.count, 0)
+          categoryBreakdown: categoryTotals || [],
+          monthlyTrend: monthlyTrend || [],
+          expenseCount: expenses.reduce((s, e) => s + (e.count || 0), 0),
+          incomeCount: income.reduce((s, i) => s + (i.count || 0), 0)
         }
       });
     } catch (error) {

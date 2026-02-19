@@ -109,7 +109,8 @@ router.get('/team/members', requireEcomAuth, async (req, res) => {
 router.get('/:channel', requireEcomAuth, async (req, res) => {
   try {
     const { channel } = req.params;
-    const { page = 1, limit = 50 } = req.query;
+    const pageNum = Math.max(1, parseInt(req.query.page) || 1);
+    const limitNum = Math.max(1, Math.min(100, parseInt(req.query.limit) || 50));
     const workspaceId = req.workspaceId;
     const userRole = req.ecomUser.role;
 
@@ -117,7 +118,7 @@ router.get('/:channel', requireEcomAuth, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Accès refusé à ce canal' });
     }
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     const messages = await Message.find({
       workspaceId,
@@ -126,7 +127,7 @@ router.get('/:channel', requireEcomAuth, async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit))
+      .limit(limitNum)
       .lean();
 
     const total = await Message.countDocuments({ workspaceId, channel, deleted: false });
@@ -151,10 +152,10 @@ router.get('/:channel', requireEcomAuth, async (req, res) => {
       success: true,
       messages: messages.reverse(),
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: pageNum,
+        limit: limitNum,
         total,
-        pages: Math.ceil(total / parseInt(limit))
+        pages: Math.ceil(total / limitNum)
       }
     });
   } catch (error) {
