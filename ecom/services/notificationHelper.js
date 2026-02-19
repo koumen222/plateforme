@@ -183,7 +183,7 @@ export const notifySystem = async (workspaceId, title, message, link = null) => 
 export const notifyTeamMemberAction = async (workspaceId, actorId, action, details = {}) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId }, // Notifier tous sauf l'acteur
+    userId: null,
     type: 'team_member_action',
     title: 'Action d\'équipe',
     message: `${details.actorName || 'Un membre'} a ${action}`,
@@ -199,7 +199,7 @@ export const notifyTeamMemberAction = async (workspaceId, actorId, action, detai
 export const notifyTeamOrderCreated = async (workspaceId, actorId, order, actorName) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_order_created',
     title: 'Nouvelle commande créée',
     message: `${actorName} a créé une commande: ${order.clientName || 'Client'} — ${order.product || 'Produit'}`,
@@ -224,7 +224,7 @@ export const notifyTeamOrderStatusChanged = async (workspaceId, actorId, order, 
 
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_order_status_changed',
     title: 'Statut de commande modifié',
     message: `${actorName} a marqué la commande comme ${statusLabels[newStatus] || newStatus}`,
@@ -240,7 +240,7 @@ export const notifyTeamOrderStatusChanged = async (workspaceId, actorId, order, 
 export const notifyTeamCampaignCreated = async (workspaceId, actorId, campaign, actorName) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_campaign_created',
     title: 'Nouvelle campagne créée',
     message: `${actorName} a créé une nouvelle campagne marketing`,
@@ -256,7 +256,7 @@ export const notifyTeamCampaignCreated = async (workspaceId, actorId, campaign, 
 export const notifyTeamCampaignSent = async (workspaceId, actorId, campaign, stats, actorName) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_campaign_sent',
     title: 'Campagne envoyée',
     message: `${actorName} a envoyé une campagne à ${stats.sent || 0} clients`,
@@ -278,7 +278,7 @@ export const notifyTeamProductAction = async (workspaceId, actorId, product, act
 
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: `team_product_${action}`,
     title: `Produit ${actionLabels[action]}`,
     message: `${actorName} a ${actionLabels[action]} le produit: ${product.name}`,
@@ -294,7 +294,7 @@ export const notifyTeamProductAction = async (workspaceId, actorId, product, act
 export const notifyTeamReportGenerated = async (workspaceId, actorId, report, actorName) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_report_generated',
     title: 'Rapport généré',
     message: `${actorName} a généré un rapport ${report.type || ''}`,
@@ -310,7 +310,7 @@ export const notifyTeamReportGenerated = async (workspaceId, actorId, report, ac
 export const notifyTeamInventoryUpdate = async (workspaceId, actorId, product, change, actorName) => {
   return createNotification({
     workspaceId,
-    userId: { $ne: actorId },
+    userId: null,
     type: 'team_inventory_update',
     title: 'Inventaire mis à jour',
     message: `${actorName} a modifié le stock de ${product.name}: ${change.previous} → ${change.new}`,

@@ -411,12 +411,13 @@ router.get('/', requireEcomAuth, async (req, res) => {
       }
     }
     if (search) {
+      const safeSearch = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       filter.$or = [
-        { clientName: { $regex: search, $options: 'i' } },
-        { clientPhone: { $regex: search, $options: 'i' } },
-        { product: { $regex: search, $options: 'i' } },
-        { city: { $regex: search, $options: 'i' } },
-        { orderId: { $regex: search, $options: 'i' } }
+        { clientName: { $regex: safeSearch, $options: 'i' } },
+        { clientPhone: { $regex: safeSearch, $options: 'i' } },
+        { product: { $regex: safeSearch, $options: 'i' } },
+        { city: { $regex: safeSearch, $options: 'i' } },
+        { orderId: { $regex: safeSearch, $options: 'i' } }
       ];
     }
 
