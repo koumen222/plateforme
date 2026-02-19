@@ -6,7 +6,7 @@ import Product from '../models/Product.js';
 import Order from '../models/Order.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
 import { validateDailyReport } from '../middleware/validation.js';
-import { adjustProductStock, distributeStockDelta, StockAdjustmentError } from '../services/stockService.js';
+import { adjustProductStock, StockAdjustmentError } from '../services/stockService.js';
 import { notifyReportCreated } from '../services/notificationHelper.js';
 
 const router = express.Router();
@@ -592,16 +592,21 @@ router.post('/',
       console.log('💰 Prix vente:', product.sellingPrice, 'Coûts:', product.productCost, '+', product.deliveryCost);
 
       // Vérifier si un rapport existe déjà pour cette date et ce produit
+      const dayStart = new Date(date);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+
       const existingReport = await DailyReport.findOne({
         workspaceId: req.workspaceId,
-        date: new Date(date),
+        date: { $gte: dayStart, $lte: dayEnd },
         productId
       });
 
       if (existingReport) {
         return res.status(400).json({
           success: false,
-          message: 'Un rapport existe déjà pour cette date et ce produit'
+          message: 'Un rapport existe déjà pour ce produit à cette date'
         });
       }
 
@@ -638,13 +643,12 @@ router.post('/',
       // Notification interne
       notifyReportCreated(req.workspaceId, report, req.ecomUser?.name || req.ecomUser?.email).catch(() => {});
 
-      // Décrémenter le stock du produit et des emplacements selon les commandes livrées
+      // Décrémenter le stock du produit selon les commandes livrées
       if (ordersDelivered > 0) {
-        await distributeStockDelta({
+        await adjustProductStock({
           workspaceId: req.workspaceId,
           productId,
-          delta: -ordersDelivered,
-          reason: `Rapport du ${date}`
+          delta: -ordersDelivered
         });
         console.log(`📦 Stock décrémenté de ${ordersDelivered} pour ${product.name}`);
       }
@@ -728,11 +732,10 @@ router.put('/:id',
       const newDelivered = report.ordersDelivered || 0;
       const diff = newDelivered - oldDelivered;
       if (diff !== 0) {
-        await distributeStockDelta({
+        await adjustProductStock({
           workspaceId: req.workspaceId,
           productId: report.productId,
-          delta: -diff,
-          reason: `Correction rapport`
+          delta: -diff
         });
         console.log(`📦 Stock ajusté de ${-diff} pour le rapport mis à jour`);
       }
@@ -774,13 +777,12 @@ router.delete('/:id',
         });
       }
 
-      // Restaurer le stock du produit et des emplacements
+      // Restaurer le stock du produit
       if (report.ordersDelivered > 0) {
-        await distributeStockDelta({
+        await adjustProductStock({
           workspaceId: req.workspaceId,
           productId: report.productId,
-          delta: report.ordersDelivered,
-          reason: `Suppression rapport`
+          delta: report.ordersDelivered
         });
         console.log(`📦 Stock restauré de +${report.ordersDelivered} après suppression du rapport`);
       }
