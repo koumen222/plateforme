@@ -705,12 +705,20 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
     }
 
     if (Array.isArray(productAssignments)) {
-      assignment.productAssignments = productAssignments.map(item => ({
-        sourceId: item.sourceId,
-        productIds: item.productIds,
-        assignedBy: req.ecomUser._id,
-        assignedAt: new Date()
-      }));
+      assignment.productAssignments = productAssignments
+        .filter(item => item.sourceId && item.sourceId.length >= 24)
+        .map(item => {
+          const allIds = item.productIds || [];
+          const objectIds = allIds.filter(id => /^[a-f0-9]{24}$/i.test(id));
+          const sheetNames = allIds.filter(id => !/^[a-f0-9]{24}$/i.test(id) && id.trim());
+          return {
+            sourceId: item.sourceId,
+            productIds: objectIds,
+            sheetProductNames: sheetNames,
+            assignedBy: req.ecomUser._id,
+            assignedAt: new Date()
+          };
+        });
     }
 
     if (notes !== undefined) {

@@ -7,6 +7,7 @@ import PasswordResetToken from '../models/PasswordResetToken.js';
 import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
 import { logAudit } from '../middleware/security.js';
+import { notifyUserRegistered } from '../core/notifications/notification.service.js';
 
 const router = express.Router();
 const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
@@ -405,6 +406,11 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
 
     const token = generateEcomToken(user);
 
+    // Envoyer l'email de bienvenue (non bloquant)
+    notifyUserRegistered(user, workspace).catch(err => {
+      console.error('❌ Erreur envoi email bienvenue:', err.message);
+    });
+
     res.status(201).json({
       success: true,
       message: inviteCode ? 'Vous avez rejoint l\'espace avec succès' : 'Espace créé avec succès',
@@ -602,10 +608,10 @@ router.post('/forgot-password', async (req, res) => {
     }
 
     const resend = new Resend(resendApiKey);
-    const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
+    const fromEmail = process.env.EMAIL_FROM || 'contact@infomania.store';
 
     await resend.emails.send({
-      from: `Ecomstarter <${fromEmail}>`,
+      from: `Safitech <${fromEmail}>`,
       to: normalizedEmail,
       subject: 'R\u00e9initialisation de votre mot de passe',
       html: `
@@ -678,9 +684,9 @@ router.post('/reset-password', async (req, res) => {
       const resendApiKey = process.env.RESEND_API_KEY;
       if (resendApiKey) {
         const resend = new Resend(resendApiKey);
-        const fromEmail = process.env.RESEND_FROM_EMAIL || 'noreply@safitech.shop';
+        const fromEmail = process.env.EMAIL_FROM || 'contact@infomania.store';
         await resend.emails.send({
-          from: `Ecomstarter <${fromEmail}>`,
+          from: `Safitech <${fromEmail}>`,
           to: user.email,
           subject: 'Votre mot de passe a \u00e9t\u00e9 modifi\u00e9',
           html: `
