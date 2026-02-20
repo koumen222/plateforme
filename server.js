@@ -1980,6 +1980,7 @@ const startServer = async () => {
       console.log('✅ Routes ecom/analytics.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/analytics.js:', error.message);
+      console.error('   Stack analytics:', error.stack);
     }
 
     // Routes E-commerce Marketing (email campaigns)
@@ -1989,6 +1990,7 @@ const startServer = async () => {
       console.log('✅ Routes ecom/marketing.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/marketing.js:', error.message);
+      console.error('   Stack marketing:', error.stack);
     }
 
     // Routes E-commerce Import (Google Sheets)
