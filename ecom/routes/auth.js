@@ -1,12 +1,14 @@
 import express from 'express';
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import { Resend } from 'resend';
 import EcomUser from '../models/EcomUser.js';
 import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
-import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
+import { generateEcomToken, generatePermanentToken, requireEcomAuth } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
 import { logAudit } from '../middleware/security.js';
+import AnalyticsEvent from '../models/AnalyticsEvent.js';
 import {
   notifyUserRegistered,
   notifyForgotPassword,
@@ -24,6 +26,23 @@ const isSupportedAuthToken = (token = '') => (
   token.startsWith('perm:') ||
   isRawJwt(token)
 );
+
+// Helper: fire-and-forget analytics event from backend
+function trackEvent(req, eventType, userId, extra = {}) {
+  const ua = req.headers['user-agent'] || '';
+  const device = /mobile|android|iphone|ipad/i.test(ua)
+    ? (/ipad|tablet/i.test(ua) ? 'tablet' : 'mobile') : 'desktop';
+  AnalyticsEvent.create({
+    sessionId: req.headers['x-session-id'] || `srv_${Date.now()}`,
+    eventType,
+    userId: userId || null,
+    country: req.headers['cf-ipcountry'] || req.headers['x-country'] || null,
+    city: req.headers['cf-ipcity'] || req.headers['x-city'] || null,
+    device,
+    userAgent: ua.substring(0, 500),
+    ...extra
+  }).catch(err => console.warn('[analytics] track error:', err.message));
+}
 
 // Rate limiting simple pour forgot-password (anti-abus)
 const forgotPasswordAttempts = new Map();
@@ -50,6 +69,7 @@ router.post('/login', validateEmail, async (req, res) => {
       // Log tentative échouée (mauvais mot de passe)
       req.ecomUser = user;
       await logAudit(req, 'LOGIN_FAILED', `Tentative de connexion échouée pour ${email}`, 'auth');
+      trackEvent(req, 'login_failed', user._id, { meta: { email } });
       return res.status(401).json({
         success: false,
         message: 'Email ou mot de passe incorrect'
@@ -77,6 +97,7 @@ router.post('/login', validateEmail, async (req, res) => {
     // Log connexion réussie
     req.ecomUser = user;
     await logAudit(req, 'LOGIN', `Connexion réussie: ${user.email} (${user.role}) - Permanent: ${isPermanent}`, 'auth', user._id);
+    trackEvent(req, 'login', user._id, { workspaceId: user.workspaceId, userRole: user.role });
 
     // Charger le workspace
     let workspace = null;
@@ -372,10 +393,104 @@ router.get('/super-admin-exists', async (req, res) => {
   }
 });
 
-// POST /api/ecom/auth/register - Création d'un compte + workspace
+// ─── OTP store en mémoire (email → { code, expiresAt, attempts }) ─────────────
+const otpStore = new Map();
+const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const OTP_MAX_ATTEMPTS = 5;
+
+// Nettoyage périodique
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of otpStore.entries()) {
+    if (v.expiresAt < now) otpStore.delete(k);
+  }
+}, 5 * 60 * 1000);
+
+// POST /api/ecom/auth/send-otp - Envoyer un code de vérification par email
+router.post('/send-otp', validateEmail, async (req, res) => {
+  try {
+    const { email } = req.body;
+    const normalizedEmail = email.toLowerCase().trim();
+
+    // Vérifier si l'email est déjà utilisé
+    const existing = await EcomUser.findOne({ email: normalizedEmail });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Cet email est déjà utilisé' });
+    }
+
+    // Générer un code à 6 chiffres
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + OTP_TTL_MS;
+
+    otpStore.set(normalizedEmail, { code, expiresAt, attempts: 0 });
+
+    // Envoyer l'email via Resend
+    const resendKey = process.env.RESEND_API_KEY;
+    if (resendKey) {
+      const { Resend: ResendClient } = await import('resend');
+      const resend = new ResendClient(resendKey);
+      const FROM = `Safitech <${process.env.EMAIL_FROM || 'contact@infomania.store'}>`;
+      await resend.emails.send({
+        from: FROM,
+        to: normalizedEmail,
+        subject: `${code} — Votre code de vérification Ecom Cockpit`,
+        html: `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><style>body{margin:0;padding:0;background:#f4f4f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif}.wrapper{max-width:480px;margin:0 auto;padding:32px 16px}.card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)}.header{background:#4f46e5;padding:28px 32px;text-align:center}.header h1{color:#fff;margin:0;font-size:22px;font-weight:700}.body{padding:32px;text-align:center}.code{font-size:48px;font-weight:800;letter-spacing:12px;color:#4f46e5;background:#f0f0ff;border-radius:12px;padding:20px 32px;display:inline-block;margin:16px 0;font-family:monospace}.footer{padding:20px 32px;text-align:center;background:#f8f9ff;border-top:1px solid #eee}.footer p{color:#aaa;font-size:12px;margin:4px 0}</style></head><body><div class="wrapper"><div class="card"><div class="header"><h1>Ecom Cockpit</h1></div><div class="body"><p style="color:#4a4a68;font-size:16px;margin:0 0 8px">Votre code de vérification</p><div class="code">${code}</div><p style="color:#888;font-size:13px;margin:16px 0 0">Ce code expire dans <strong>10 minutes</strong>.<br/>Ne le partagez avec personne.</p></div><div class="footer"><p>© ${new Date().getFullYear()} Safitech · Si vous n'avez pas demandé ce code, ignorez cet email.</p></div></div></div></body></html>`
+      });
+    } else {
+      console.log(`[OTP DEV] Code pour ${normalizedEmail}: ${code}`);
+    }
+
+    res.json({ success: true, message: 'Code envoyé par email' });
+  } catch (error) {
+    console.error('Erreur send-otp:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors de l\'envoi du code' });
+  }
+});
+
+// POST /api/ecom/auth/verify-otp - Vérifier le code OTP
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    if (!email || !code) {
+      return res.status(400).json({ success: false, message: 'Email et code requis' });
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    const entry = otpStore.get(normalizedEmail);
+
+    if (!entry) {
+      return res.status(400).json({ success: false, message: 'Aucun code envoyé pour cet email. Recommencez.' });
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      otpStore.delete(normalizedEmail);
+      return res.status(400).json({ success: false, message: 'Code expiré. Demandez un nouveau code.' });
+    }
+
+    entry.attempts += 1;
+    if (entry.attempts > OTP_MAX_ATTEMPTS) {
+      otpStore.delete(normalizedEmail);
+      return res.status(400).json({ success: false, message: 'Trop de tentatives. Demandez un nouveau code.' });
+    }
+
+    if (entry.code !== code.trim()) {
+      return res.status(400).json({ success: false, message: `Code incorrect (${OTP_MAX_ATTEMPTS - entry.attempts + 1} essai(s) restant(s))` });
+    }
+
+    // Code valide — marquer comme vérifié
+    entry.verified = true;
+
+    res.json({ success: true, message: 'Email vérifié avec succès' });
+  } catch (error) {
+    console.error('Erreur verify-otp:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/register - Création d'un compte (sans workspace ni rôle)
 router.post('/register', validateEmail, validatePassword, async (req, res) => {
   try {
-    const { email, password, name, phone, workspaceName, inviteCode, superAdmin, selectedRole, acceptPrivacy } = req.body;
+    const { email, password, name, phone, superAdmin, acceptPrivacy } = req.body;
 
     // Vérifier l'acceptation de la politique de confidentialité
     if (!superAdmin && !acceptPrivacy) {
@@ -394,9 +509,6 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
       });
     }
 
-    let workspace = null;
-    let role = 'ecom_admin';
-
     // Création super admin (une seule fois)
     if (superAdmin) {
       const superAdminExists = await EcomUser.exists({ role: 'super_admin' });
@@ -406,14 +518,9 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
           message: 'Un super administrateur existe déjà. Impossible d\'en créer un autre.'
         });
       }
-      role = 'super_admin';
-    }
 
-    // Super admin: pas besoin de workspace
-    if (superAdmin) {
       const user = new EcomUser({ email, password, role: 'super_admin' });
       await user.save();
-
       const token = generateEcomToken(user);
 
       return res.status(201).json({
@@ -421,78 +528,265 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
         message: 'Compte Super Admin créé avec succès',
         data: {
           token,
-          user: {
-            id: user._id,
-            email: user.email,
-            role: user.role,
-            isActive: user.isActive,
-            currency: user.currency,
-            workspaceId: null
-          },
+          user: { id: user._id, email: user.email, role: user.role, isActive: user.isActive, currency: user.currency, workspaceId: null },
           workspace: null
         }
       });
     }
 
-    if (inviteCode) {
-      // Rejoindre un workspace existant via code d'invitation
-      workspace = await Workspace.findOne({ inviteCode, isActive: true });
-      if (!workspace) {
-        return res.status(400).json({
-          success: false,
-          message: 'Code d\'invitation invalide ou espace inactif'
-        });
-      }
-      // Permettre de choisir un rôle lors de l'inscription (closeuse par défaut)
-      const allowedJoinRoles = ['ecom_closeuse', 'ecom_compta', 'ecom_livreur'];
-      role = (selectedRole && allowedJoinRoles.includes(selectedRole)) ? selectedRole : 'ecom_closeuse';
-    } else {
-      // Créer un nouveau workspace
-      if (!workspaceName || workspaceName.trim().length < 2) {
-        return res.status(400).json({
-          success: false,
-          message: 'Le nom de l\'espace est requis (min. 2 caractères)'
-        });
-      }
-    }
-
-    // Créer l'utilisateur
+    // Créer l'utilisateur SANS workspace ni rôle
     const user = new EcomUser({
       email,
       password,
       name: name?.trim() || '',
       phone: phone?.trim() || '',
-      role
+      role: null,
+      workspaceId: null
     });
+    await user.save();
 
-    if (!inviteCode) {
-      // Créer le workspace avec cet utilisateur comme owner
-      await user.save(); // Sauver d'abord pour avoir l'ID
-      workspace = new Workspace({
-        name: workspaceName.trim(),
-        owner: user._id
-      });
-      await workspace.save();
-      user.workspaceId = workspace._id;
+    const token = generateEcomToken(user);
+
+    // Email de bienvenue (non bloquant)
+    notifyUserRegistered(user, null).catch(err => console.warn('[notif] register:', err.message));
+
+    console.log(`✅ Nouveau compte créé: ${user.email} (sans workspace)`);
+    trackEvent(req, 'signup_completed', user._id);
+
+    res.status(201).json({
+      success: true,
+      message: 'Compte créé avec succès',
+      data: {
+        token,
+        user: { id: user._id, email: user.email, name: user.name, role: null, isActive: user.isActive, currency: user.currency, workspaceId: null },
+        workspace: null
+      }
+    });
+  } catch (error) {
+    console.error('Erreur register e-commerce:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/google - Connexion / inscription via Google
+router.post('/google', async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Token Google manquant' });
+    }
+
+    // Décoder le JWT Google (ID token)
+    const parts = credential.split('.');
+    if (parts.length !== 3) {
+      return res.status(400).json({ success: false, message: 'Token Google invalide' });
+    }
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    const { sub: googleId, email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email non disponible depuis Google' });
+    }
+
+    // Chercher un utilisateur existant par email ou googleId
+    let user = await EcomUser.findOne({ $or: [{ email }, { googleId }] });
+    let isNewUser = false;
+
+    if (user) {
+      // Utilisateur existant — mettre à jour le googleId si nécessaire
+      if (!user.googleId) user.googleId = googleId;
+      if (!user.name && name) user.name = name;
+      if (!user.avatar && picture) user.avatar = picture;
+      user.lastLogin = new Date();
       await user.save();
     } else {
-      user.workspaceId = workspace._id;
+      // Nouvel utilisateur — créer sans workspace ni rôle
+      user = new EcomUser({
+        email,
+        googleId,
+        name: name || '',
+        avatar: picture || '',
+        role: null,
+        workspaceId: null
+      });
       await user.save();
+      isNewUser = true;
+
+      // Email de bienvenue
+      notifyUserRegistered(user, null).catch(err => console.warn('[notif] google-register:', err.message));
+      console.log(`✅ Nouveau compte Google créé: ${user.email}`);
     }
 
     const token = generateEcomToken(user);
 
-    // Notification de bienvenue (non bloquante)
-    notifyUserRegistered(user, workspace).catch(err => console.warn('[notif] register:', err.message));
+    // Charger le workspace si existant
+    let workspace = null;
+    if (user.workspaceId) {
+      workspace = await Workspace.findById(user.workspaceId);
+    }
 
-    res.status(201).json({
+    res.json({
       success: true,
-      message: inviteCode ? 'Vous avez rejoint l\'espace avec succès' : 'Espace créé avec succès',
+      message: isNewUser ? 'Compte créé avec succès via Google' : 'Connexion réussie via Google',
       data: {
         token,
+        isNewUser,
         user: {
           id: user._id,
           email: user.email,
+          name: user.name,
+          role: user.role,
+          isActive: user.isActive,
+          currency: user.currency,
+          workspaceId: user.workspaceId
+        },
+        workspace: workspace ? {
+          id: workspace._id,
+          name: workspace.name,
+          slug: workspace.slug,
+          inviteCode: user.role === 'ecom_admin' ? workspace.inviteCode : undefined
+        } : null
+      }
+    });
+  } catch (error) {
+    console.error('Erreur Google auth:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/create-workspace - Créer un workspace (utilisateur authentifié)
+router.post('/create-workspace', async (req, res) => {
+  try {
+    const { workspaceName } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token manquant' });
+    }
+
+    const normalizedTk = token.replace(/^ecom:/, '').replace(/^perm:/, '');
+    const decoded = jwt.verify(normalizedTk, ECOM_JWT_SECRET);
+    const user = await EcomUser.findById(decoded.id);
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non trouvé ou inactif' });
+    }
+
+    if (!workspaceName || workspaceName.trim().length < 2) {
+      return res.status(400).json({ success: false, message: 'Le nom de l\'espace est requis (min. 2 caractères)' });
+    }
+
+    const { role = 'ecom_admin' } = req.body;
+    const validRoles = ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'livreur'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Rôle invalide' });
+    }
+
+    // Créer le workspace
+    const workspace = new Workspace({
+      name: workspaceName.trim(),
+      owner: user._id
+    });
+    await workspace.save();
+
+    // Mettre à jour l'utilisateur avec le rôle choisi
+    user.role = role;
+    user.workspaceId = workspace._id;
+    user.addWorkspace(workspace._id, role);
+    await user.save();
+
+    // Regénérer le token avec le nouveau rôle et workspace
+    const newToken = generateEcomToken(user);
+
+    console.log(`✅ Workspace créé: ${workspace.name} par ${user.email}`);
+    trackEvent(req, 'workspace_created', user._id, { workspaceId: workspace._id, userRole: role });
+
+    res.status(201).json({
+      success: true,
+      message: 'Espace créé avec succès',
+      data: {
+        token: newToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isActive: user.isActive,
+          currency: user.currency,
+          workspaceId: workspace._id
+        },
+        workspace: {
+          id: workspace._id,
+          name: workspace.name,
+          slug: workspace.slug,
+          inviteCode: workspace.inviteCode
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Erreur create-workspace:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/join-workspace - Rejoindre un workspace (utilisateur authentifié, tout rôle)
+router.post('/join-workspace', async (req, res) => {
+  try {
+    const { inviteCode, selectedRole } = req.body;
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Token manquant' });
+    }
+
+    const normalizedTk = token.replace(/^ecom:/, '').replace(/^perm:/, '');
+    const decoded = jwt.verify(normalizedTk, ECOM_JWT_SECRET);
+    const user = await EcomUser.findById(decoded.id);
+
+    if (!user || !user.isActive) {
+      return res.status(401).json({ success: false, message: 'Utilisateur non trouvé ou inactif' });
+    }
+
+    if (!inviteCode || !inviteCode.trim()) {
+      return res.status(400).json({ success: false, message: 'Code d\'invitation requis' });
+    }
+
+    // Chercher le workspace
+    const workspace = await Workspace.findOne({ inviteCode: inviteCode.trim(), isActive: true });
+    if (!workspace) {
+      return res.status(400).json({ success: false, message: 'Code d\'invitation invalide ou espace inactif' });
+    }
+
+    // Vérifier que l'utilisateur n'est pas déjà dans ce workspace
+    if (user.hasWorkspaceAccess(workspace._id)) {
+      return res.status(400).json({ success: false, message: 'Vous êtes déjà membre de cet espace' });
+    }
+
+    // Tout rôle est permis
+    const allowedRoles = ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'];
+    const role = (selectedRole && allowedRoles.includes(selectedRole)) ? selectedRole : 'ecom_closeuse';
+
+    // Mettre à jour l'utilisateur
+    user.role = role;
+    user.workspaceId = workspace._id;
+    user.addWorkspace(workspace._id, role);
+    await user.save();
+
+    // Regénérer le token
+    const newToken = generateEcomToken(user);
+
+    console.log(`✅ ${user.email} a rejoint ${workspace.name} en tant que ${role}`);
+    trackEvent(req, 'workspace_joined', user._id, { workspaceId: workspace._id, userRole: role });
+
+    res.json({
+      success: true,
+      message: 'Vous avez rejoint l\'espace avec succès',
+      data: {
+        token: newToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          name: user.name,
           role: user.role,
           isActive: user.isActive,
           currency: user.currency,
@@ -507,11 +801,8 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Erreur register e-commerce:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur serveur'
-    });
+    console.error('Erreur join-workspace:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
@@ -968,6 +1259,157 @@ router.get('/me', async (req, res) => {
       success: false,
       message: 'Token invalide'
     });
+  }
+});
+
+// ─── INVITATIONS PAR LIEN ─────────────────────────────────────────────────────
+
+// Générer un token d'invitation unique
+function generateInviteToken() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let token = '';
+  for (let i = 0; i < 32; i++) {
+    token += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return token;
+}
+
+// GET /api/ecom/auth/invite/:token - Valider un lien d'invitation
+router.get('/invite/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    
+    const workspace = await Workspace.findOne({ 
+      'invites.token': token,
+      'invites.expiresAt': { $gt: new Date() }
+    }).populate('owner', 'name email');
+    
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+    
+    const invite = workspace.invites.find(inv => inv.token === token);
+    
+    res.json({
+      success: true,
+      data: {
+        workspaceName: workspace.name,
+        invitedBy: workspace.owner?.name || workspace.owner?.email || 'Administrateur',
+        expiresAt: invite.expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('Erreur validate invite:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/accept-invite - Accepter une invitation
+router.post('/accept-invite', requireEcomAuth, async (req, res) => {
+  try {
+    const { token, role } = req.body;
+    const user = req.ecomUser;
+    
+    if (!token || !role) {
+      return res.status(400).json({ success: false, message: 'Token et rôle requis' });
+    }
+    
+    const validRoles = ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'livreur'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ success: false, message: 'Rôle invalide' });
+    }
+    
+    const workspace = await Workspace.findOne({ 
+      'invites.token': token,
+      'invites.expiresAt': { $gt: new Date() }
+    });
+    
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+    
+    // Vérifier si l'utilisateur n'est pas déjà dans le workspace
+    if (user.workspaces.some(w => w.workspaceId.toString() === workspace._id.toString())) {
+      return res.status(400).json({ success: false, message: 'Vous êtes déjà membre de cet espace' });
+    }
+    
+    // Ajouter l'utilisateur au workspace
+    user.addWorkspace(workspace._id, role);
+    
+    // Si c'est le premier workspace, le définir comme principal
+    if (!user.workspaceId) {
+      user.workspaceId = workspace._id;
+      user.role = role;
+    }
+    
+    await user.save();
+    
+    // Supprimer l'invitation utilisée
+    workspace.invites = workspace.invites.filter(inv => inv.token !== token);
+    await workspace.save();
+    
+    // Notifier le propriétaire du workspace
+    // TODO: Envoyer une notification au propriétaire
+    
+    res.json({
+      success: true,
+      message: 'Invitation acceptée avec succès',
+      data: {
+        workspaceId: workspace._id,
+        workspaceName: workspace.name,
+        role
+      }
+    });
+  } catch (error) {
+    console.error('Erreur accept invite:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/generate-invite - Générer un lien d'invitation
+router.post('/generate-invite', requireEcomAuth, async (req, res) => {
+  try {
+    const user = req.ecomUser;
+    
+    // Vérifier que l'utilisateur est admin de son workspace
+    if (!user.workspaceId || user.role !== 'ecom_admin') {
+      return res.status(403).json({ success: false, message: 'Seuls les administrateurs peuvent générer des invitations' });
+    }
+    
+    const workspace = await Workspace.findById(user.workspaceId);
+    if (!workspace || workspace.owner.toString() !== user._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Seul le propriétaire peut générer des invitations' });
+    }
+    
+    // Générer un token d'invitation
+    const token = crypto.randomBytes(32).toString('hex');
+    const inviteLink = `${process.env.FRONTEND_URL || 'https://app.safitech.shop'}/ecom/invite/${token}`;
+    
+    // Sauvegarder l'invitation
+    workspace.invites.push({
+      token,
+      createdBy: user._id,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+    });
+    await workspace.save();
+    
+    console.log(`🔗 Invitation générée par ${user.email}: ${inviteLink}`);
+    
+    await logAudit(req, 'GENERATE_INVITE', `Lien d'invitation généré par ${user.email}`, 'workspace', workspace._id.toString());
+    
+    res.json({
+      success: true,
+      message: 'Lien d\'invitation généré',
+      data: {
+        token,
+        inviteLink,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      }
+    });
+  } catch (error) {
+    console.error('Erreur generate invite:', error);
+    res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 

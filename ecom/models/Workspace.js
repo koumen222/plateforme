@@ -36,7 +36,38 @@ const workspaceSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  }
+  },
+  invites: [{
+    token: {
+      type: String,
+      required: true
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomUser',
+      required: true
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now
+    },
+    expiresAt: {
+      type: Date,
+      required: true,
+      default: () => new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+    },
+    used: {
+      type: Boolean,
+      default: false
+    },
+    usedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'EcomUser'
+    },
+    usedAt: {
+      type: Date
+    }
+  }]
 }, {
   collection: 'ecom_workspaces',
   timestamps: true
@@ -61,6 +92,18 @@ workspaceSchema.pre('save', function () {
 workspaceSchema.methods.regenerateInviteCode = function () {
   this.inviteCode = crypto.randomBytes(6).toString('hex');
   return this.save();
+};
+
+// Créer une invitation par lien
+workspaceSchema.methods.createInviteLink = function (createdBy) {
+  const token = crypto.randomBytes(32).toString('hex');
+  this.invites.push({
+    token,
+    createdBy,
+    createdAt: new Date(),
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+  });
+  return this.save().then(() => token);
 };
 
 workspaceSchema.index({ owner: 1 });

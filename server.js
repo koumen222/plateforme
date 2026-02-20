@@ -1866,6 +1866,7 @@ const startServer = async () => {
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
+      console.log('✅ Routes ecom/auth.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
     }
@@ -1970,6 +1971,24 @@ const startServer = async () => {
       app.use("/api/ecom/super-admin", ecomSuperAdminRoutes);
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
+    }
+
+    // Routes E-commerce Analytics (Super Admin)
+    try {
+      const ecomAnalyticsModule = await import("./ecom/routes/analytics.js");
+      app.use("/api/ecom/analytics", ecomAnalyticsModule.default);
+      console.log('✅ Routes ecom/analytics.js chargées avec succès');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/analytics.js:', error.message);
+    }
+
+    // Routes E-commerce Marketing (email campaigns)
+    try {
+      const ecomMarketingModule = await import("./ecom/routes/marketing.js");
+      app.use("/api/ecom/marketing", ecomMarketingModule.default);
+      console.log('✅ Routes ecom/marketing.js chargées avec succès');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/marketing.js:', error.message);
     }
 
     // Routes E-commerce Import (Google Sheets)

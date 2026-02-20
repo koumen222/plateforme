@@ -11,8 +11,13 @@ const ecomUserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true,
+    required: function() { return !this.googleId; },
     minlength: 6
+  },
+  googleId: {
+    type: String,
+    default: null,
+    sparse: true
   },
   name: {
     type: String,
@@ -31,8 +36,8 @@ const ecomUserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur'],
-    default: 'ecom_closeuse'
+    enum: ['super_admin', 'ecom_admin', 'ecom_closeuse', 'ecom_compta', 'ecom_livreur', null],
+    default: null
   },
   workspaceId: {
     type: mongoose.Schema.Types.ObjectId,
