@@ -68,6 +68,9 @@ router.get('/invites/list',
   validateEcomAccess('admin', 'read'),
   async (req, res) => {
     try {
+      if (!req.workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId manquant dans le token' });
+      }
       const workspace = await Workspace.findById(req.workspaceId)
         .populate('invites.createdBy', 'email name')
         .populate('invites.usedBy', 'email name');
@@ -116,6 +119,9 @@ router.get('/audit/logs',
   validateEcomAccess('admin', 'read'),
   async (req, res) => {
     try {
+      if (!req.workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId manquant dans le token' });
+      }
       const { page = 1, limit = 30, action } = req.query;
       const filter = { workspaceId: req.workspaceId };
       if (action) filter.action = action;

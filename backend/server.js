@@ -1862,14 +1862,23 @@ const startServer = async () => {
     }
 
     // ===== MODULE E-COMMERCE ISOLÉ =====
-    
+
+    // Diagnostic: liste des modules ecom chargés (utile pour déboguer les 404)
+    const ecomLoadedModules = [];
+    app.get('/api/ecom/health', (req, res) => {
+      res.json({ status: 'ok', loadedModules: ecomLoadedModules, timestamp: new Date().toISOString() });
+    });
+
     // Routes E-commerce Authentification
     try {
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
+      ecomLoadedModules.push('auth');
+      console.log('✅ Routes E-commerce Auth chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Produits
@@ -1961,8 +1970,11 @@ const startServer = async () => {
       const ecomUsersModule = await import("./ecom/routes/users.js");
       const ecomUsersRoutes = ecomUsersModule.default;
       app.use("/api/ecom/users", ecomUsersRoutes);
+      ecomLoadedModules.push('users');
+      console.log('✅ Routes E-commerce Users chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/users.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Super Admin
@@ -1972,6 +1984,17 @@ const startServer = async () => {
       app.use("/api/ecom/super-admin", ecomSuperAdminRoutes);
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
+    }
+
+    // Routes E-commerce Marketing (Campagnes email internes)
+    try {
+      const ecomMarketingModule = await import("./ecom/routes/marketing.js");
+      app.use("/api/ecom/marketing", ecomMarketingModule.default);
+      ecomLoadedModules.push('marketing');
+      console.log('✅ Routes E-commerce Marketing chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/marketing.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Import (Google Sheets)
@@ -2108,6 +2131,16 @@ const startServer = async () => {
       console.log('✅ Routes E-commerce Auto-Sync chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/autoSync.js:', error.message);
+    }
+
+    // Routes E-commerce Analytics (tracking événements frontend)
+    try {
+      const ecomAnalyticsModule = await import("./ecom/routes/analytics.js");
+      app.use("/api/ecom/analytics", ecomAnalyticsModule.default);
+      ecomLoadedModules.push('analytics');
+      console.log('✅ Routes E-commerce Analytics chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/analytics.js:', error.message);
     }
 
     // Routes E-commerce Agent Vendeur WhatsApp

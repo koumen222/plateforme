@@ -728,21 +728,23 @@ export const fetchWinningProducts = async () => {
   }
 
   let allProducts = [];
-  const batches = [20, 20, 10]; // 20 + 20 + 10 = 50 produits
-  
-  // Générer les batches séquentiellement
-  for (let i = 0; i < batches.length; i++) {
-    const batchSize = batches[i];
-    const batchNumber = i + 1;
-    const totalBatches = batches.length;
-    
-    // Générer le batch
-    const batchProducts = await generateBatch(batchNumber, totalBatches, allProducts, '');
-    
+  const TARGET = 50;
+  const MAX_ATTEMPTS = 8; // garde-fou : max 8 passes au total
+  let attempt = 0;
+
+  while (allProducts.length < TARGET && attempt < MAX_ATTEMPTS) {
+    attempt++;
+    const remaining = TARGET - allProducts.length;
+    console.log(`🔄 Passe ${attempt}/${MAX_ATTEMPTS} — ${allProducts.length}/${TARGET} produits, besoin de ${remaining} de plus...`);
+
+    const batchProducts = attempt <= 3
+      ? await generateBatch(attempt, 3, allProducts, '')
+      : await generateMissingProducts(allProducts, '');
+
     if (batchProducts.length > 0) {
       allProducts = [...allProducts, ...batchProducts];
-      
-      // Éliminer les doublons
+
+      // Dédupliquer par nom
       const seen = new Set();
       allProducts = allProducts.filter(p => {
         const name = (p.name || '').toLowerCase();
@@ -751,41 +753,18 @@ export const fetchWinningProducts = async () => {
         return true;
       });
     }
-    
-    console.log(`📊 Total produits accumulés: ${allProducts.length}/50`);
-    
-    // Si on a déjà 50 produits, arrêter
-    if (allProducts.length >= 50) {
-      break;
-    }
-    
-    // Attendre un peu entre les batches pour éviter les rate limits
-    if (i < batches.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+
+    console.log(`📊 Total produits accumulés: ${allProducts.length}/${TARGET}`);
+
+    if (allProducts.length >= TARGET) break;
+
+    // Pause entre les passes pour éviter les rate limits
+    await new Promise(resolve => setTimeout(resolve, 2000));
   }
 
-  // Si on n'a toujours pas 50 produits, générer les produits manquants
-  if (allProducts.length < 50) {
-    const missingCount = 50 - allProducts.length;
-    console.log(`⚠️ Seulement ${allProducts.length} produits après ${batches.length} batches. Génération de ${missingCount} produits complémentaires...`);
-    
-    const missingProducts = await generateMissingProducts(allProducts, '');
-    allProducts = [...allProducts, ...missingProducts];
-    
-    // Éliminer les doublons à nouveau
-    const seen = new Set();
-    allProducts = allProducts.filter(p => {
-      const name = (p.name || '').toLowerCase();
-      if (!name || seen.has(name)) return false;
-      seen.add(name);
-      return true;
-    });
-  }
-
-  if (allProducts.length < 50) {
-    console.error(`❌ ERREUR CRITIQUE : Impossible de générer 50 produits. Seulement ${allProducts.length} produits obtenus.`);
-    throw new Error(`Impossible de générer 50 produits. Seulement ${allProducts.length} produits obtenus.`);
+  if (allProducts.length < TARGET) {
+    console.error(`❌ ERREUR CRITIQUE : Impossible de générer ${TARGET} produits après ${attempt} passes. Seulement ${allProducts.length} produits obtenus.`);
+    throw new Error(`Impossible de générer ${TARGET} produits. Seulement ${allProducts.length} produits obtenus.`);
   }
   
   // Vérifier que les produits Skin Care sont présents
