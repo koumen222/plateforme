@@ -1,10 +1,11 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 import { Resend } from 'resend';
 import EcomUser from '../models/EcomUser.js';
 import Workspace from '../models/Workspace.js';
 import PasswordResetToken from '../models/PasswordResetToken.js';
-import { generateEcomToken, generatePermanentToken } from '../middleware/ecomAuth.js';
+import { generateEcomToken, generatePermanentToken, requireEcomAuth } from '../middleware/ecomAuth.js';
 import { validateEmail, validatePassword } from '../middleware/validation.js';
 import { logAudit } from '../middleware/security.js';
 import { notifyUserRegistered } from '../core/notifications/notification.service.js';
@@ -921,6 +922,59 @@ router.get('/me', async (req, res) => {
       success: false,
       message: 'Token invalide'
     });
+  }
+});
+
+// POST /api/ecom/auth/generate-invite - Générer un lien d'invitation workspace
+router.post('/generate-invite', requireEcomAuth, async (req, res) => {
+  try {
+    const user = req.ecomUser;
+
+    if (!user || !user.workspaceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun workspace associé à cet utilisateur'
+      });
+    }
+
+    if (!['ecom_admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Permission refusée'
+      });
+    }
+
+    const workspace = await Workspace.findById(user.workspaceId);
+    if (!workspace) {
+      return res.status(404).json({
+        success: false,
+        message: 'Workspace non trouvé'
+      });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    if (!Array.isArray(workspace.invites)) workspace.invites = [];
+    workspace.invites.push({
+      token,
+      createdBy: user._id,
+      createdAt: new Date(),
+      expiresAt,
+      used: false
+    });
+    await workspace.save();
+
+    const frontendBase = process.env.FRONTEND_URL || 'https://ecomcookpit.site';
+    const inviteLink = `${frontendBase}/ecom/invite/${token}`;
+
+    return res.json({
+      success: true,
+      data: { inviteLink, token, expiresAt }
+    });
+  } catch (error) {
+    console.error('Erreur génération invitation:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
   }
 });
 
