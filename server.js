@@ -132,7 +132,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 
-app.use(express.json());
+app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true })); // Pour les requêtes POST avec application/x-www-form-urlencoded
 app.use(cookieParser());
 app.use(referralCapture);
@@ -149,27 +149,27 @@ app.use((req, res, next) => {
   if (req.url.startsWith('/api/coacching-reservations')) {
     req.url = req.url.replace('/api/coacching-reservations', '/api/coaching-reservations');
   }
-  
+
   // Debug: Log toutes les requêtes API
   if (req.url.startsWith('/api/')) {
     console.log(`🔍 Requête API: ${req.method} ${req.url}`);
   }
-  
+
   next();
 });
 
 // Servir les fichiers statiques du backend (pour l'interface de test)
 app.use(express.static(path.join(__dirname)));
 
-// Servir les fichiers statiques du frontend
-app.use(express.static(path.join(__dirname, '../frontend/dist'), {
+// Servir les fichiers statiques du frontend (ecom-frontend)
+app.use(express.static(path.join(__dirname, '../ecom-frontend/dist'), {
   maxAge: '1d',
   redirect: false,
   setHeaders: (res, filePath) => {
     // Définir les headers CORS pour les fichiers statiques
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET');
-    
+
     // Pour les fichiers PDF, optimiser les headers pour mobile
     if (filePath.endsWith('.pdf')) {
       const filename = path.basename(filePath);
@@ -191,7 +191,7 @@ app.use('/uploads', (req, res, next) => {
   // Si on arrive ici, c'est que express.static n'a pas trouvé le fichier
   // Vérifier si c'est vraiment une requête vers /uploads
   if (req.originalUrl.startsWith('/uploads/')) {
-        res.status(404).json({
+    res.status(404).json({
       error: 'Fichier non trouvé',
       path: req.originalUrl,
       uploadsPath: uploadsPath
@@ -284,17 +284,17 @@ app.get("/health", (req, res) => {
 // Placeholder pour éviter les erreurs
 app.get("/api/diagnostic/*", async (req, res) => {
   if (!diagnosticRoutes) {
-    return res.status(503).json({ 
-      success: false, 
-      error: 'Module diagnostic non disponible' 
+    return res.status(503).json({
+      success: false,
+      error: 'Module diagnostic non disponible'
     });
   }
 });
 
 // Route de test pour vérifier que le serveur répond
 app.get("/api/test", (req, res) => {
-  res.json({ 
-    message: "API backend fonctionne", 
+  res.json({
+    message: "API backend fonctionne",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     nodeVersion: process.version
@@ -413,7 +413,7 @@ app.get("/api/valentine-winners", authenticate, async (req, res) => {
 // Route de test pour vérifier que les routes sont bien chargées
 app.get("/api/test-routes", (req, res) => {
   const allRoutes = [];
-  
+
   // Collecter toutes les routes enregistrées
   app._router.stack.forEach((middleware) => {
     if (middleware.route) {
@@ -429,7 +429,7 @@ app.get("/api/test-routes", (req, res) => {
       });
     }
   });
-  
+
   res.json({
     success: true,
     message: 'Routes disponibles',
@@ -449,7 +449,7 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
     }
 
     const user = await User.findById(req.user._id).select('-password');
-    
+
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
@@ -491,20 +491,20 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
 // Route de test pour vérifier les routes Success Radar (sera montée après chargement dynamique)
 app.get("/api/test-success-radar-routes", (req, res) => {
   if (!successRadarRoutes) {
-    return res.status(503).json({ 
+    return res.status(503).json({
       success: false,
-      message: 'Module successRadar non chargé' 
+      message: 'Module successRadar non chargé'
     });
   }
-  
+
   const routes = successRadarRoutes.stack
     .filter(r => r.route)
     .map(r => ({
       method: Object.keys(r.route.methods)[0].toUpperCase(),
       path: r.route.path
     }));
-  
-  res.json({ 
+
+  res.json({
     success: true,
     message: 'Routes Success Radar disponibles',
     routes: routes,
@@ -758,13 +758,13 @@ app.post("/api/chat", authenticate, async (req, res) => {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('Erreur OpenAI API:', errorData);
-      return res.status(response.status).json({ 
-        error: errorData.error?.message || 'Erreur lors de la communication avec OpenAI' 
+      return res.status(response.status).json({
+        error: errorData.error?.message || 'Erreur lors de la communication avec OpenAI'
       });
     }
 
     const data = await response.json();
-    
+
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
       console.error('Format de réponse OpenAI inattendu:', data);
       return res.status(500).json({ error: 'Format de réponse OpenAI inattendu' });
@@ -773,8 +773,8 @@ app.post("/api/chat", authenticate, async (req, res) => {
     res.json({ reply: data.choices[0].message.content });
   } catch (err) {
     console.error('Erreur chatbot:', err);
-    res.status(500).json({ 
-      error: err.message || "Erreur lors du traitement de votre message" 
+    res.status(500).json({
+      error: err.message || "Erreur lors du traitement de votre message"
     });
   }
 });
@@ -786,17 +786,17 @@ const startServer = async () => {
   try {
     // Routes de test simples pour vérifier que le serveur répond (AVANT le chargement des modules)
     app.get("/api/whatsapp-campaigns/health", (req, res) => {
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Serveur actif - Route whatsapp-campaigns en cours de chargement',
         timestamp: new Date().toISOString()
       });
     });
-    
+
     app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
       // Route temporaire pour diagnostiquer
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Route whatsapp-campaigns accessible - Module en cours de chargement',
         campaigns: [],
         note: 'Si vous voyez ce message, le serveur fonctionne mais le module n\'est pas encore chargé'
@@ -976,7 +976,7 @@ const startServer = async () => {
         res.status(500).json({ error: 'Erreur récupération destinataires', details: error.message });
       }
     });
-    
+
     app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, async (req, res) => {
       try {
         let WhatsAppCampaign;
@@ -985,12 +985,12 @@ const startServer = async () => {
           WhatsAppCampaign = campaignModule.default;
         } catch (err) {
           console.error('❌ Erreur import WhatsAppCampaign:', err.message);
-          return res.status(500).json({ 
-            error: 'Modèle WhatsAppCampaign non disponible', 
-            details: err.message 
+          return res.status(500).json({
+            error: 'Modèle WhatsAppCampaign non disponible',
+            details: err.message
           });
         }
-        
+
         const {
           name,
           message,
@@ -999,36 +999,36 @@ const startServer = async () => {
           scheduledAt,
           fromPhone
         } = req.body;
-        
+
         // Générer un nom automatique si non fourni
         const campaignName = name || `Newsletter ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
-        
+
         // Vérifier qu'au moins un message ou une variante est fourni
         const hasMessage = message && message.trim();
         const hasVariants = variants && Array.isArray(variants) && variants.some(v => v && v.trim());
-        
+
         if (!hasMessage && !hasVariants) {
           return res.status(400).json({ error: 'Au moins un message ou une variante doit être fourni' });
         }
-        
+
         if (!recipients || !recipients.type) {
           return res.status(400).json({ error: 'Type de destinataires requis (all, segment, list)' });
         }
-        
+
         // Valider la structure des recipients selon le type
         if (recipients.type === 'list' && (!recipients.customPhones || !Array.isArray(recipients.customPhones))) {
           return res.status(400).json({ error: 'customPhones doit être un tableau pour le type "list"' });
         }
-        
+
         if (recipients.type === 'segment' && !recipients.segment) {
           return res.status(400).json({ error: 'segment est requis pour le type "segment"' });
         }
-        
+
         let recipientCount = 0;
-        
+
         try {
           if (recipients.type === 'all') {
-            recipientCount = await User.countDocuments({ 
+            recipientCount = await User.countDocuments({
               $and: [
                 {
                   $or: [
@@ -1041,7 +1041,7 @@ const startServer = async () => {
             });
           } else if (recipients.type === 'segment') {
             if (['pending', 'active', 'blocked'].includes(recipients.segment)) {
-              recipientCount = await User.countDocuments({ 
+              recipientCount = await User.countDocuments({
                 $and: [
                   {
                     $or: [
@@ -1066,15 +1066,15 @@ const startServer = async () => {
           console.error('❌ Erreur comptage destinataires:', countError.message);
           // Continuer avec recipientCount = 0 si erreur de comptage
         }
-        
+
         // Vérifier que req.user existe
         if (!req.user || !req.user._id) {
           return res.status(401).json({ error: 'Utilisateur non authentifié' });
         }
 
         // Préparer les variants - s'assurer que c'est un tableau
-        const finalVariants = hasVariants && Array.isArray(variants) 
-          ? variants.filter(v => v && v.trim()) 
+        const finalVariants = hasVariants && Array.isArray(variants)
+          ? variants.filter(v => v && v.trim())
           : [];
 
         // Vérifier à nouveau qu'au moins un message ou une variante existe après filtrage
@@ -1095,9 +1095,9 @@ const startServer = async () => {
           fromPhone: fromPhone || process.env.WHATSAPP_FROM_PHONE || '',
           createdBy: req.user._id
         });
-        
+
         await campaign.save();
-        
+
         res.status(201).json({
           success: true,
           campaign: campaign.toObject()
@@ -1112,17 +1112,17 @@ const startServer = async () => {
           recipientsType: req.body.recipients?.type,
           userId: req.user?._id
         });
-        
+
         // Si c'est une erreur de validation Mongoose, retourner les détails
         if (error.name === 'ValidationError') {
           const validationErrors = Object.values(error.errors || {}).map(err => err.message).join(', ');
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: 'Erreur de validation',
             details: validationErrors || error.message
           });
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
           error: 'Erreur lors de la création de la campagne',
           details: error.message
         });
@@ -1130,141 +1130,141 @@ const startServer = async () => {
     });
 
     app.get("/api/whatsapp-campaigns/:id/stream", authenticate, requireAdmin, async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        let WhatsAppCampaign, addSSEConnection;
         try {
-          const { id } = req.params;
-          
-          let WhatsAppCampaign, addSSEConnection;
-          try {
-            const campaignModule = await import("./models/WhatsAppCampaign.js");
-            WhatsAppCampaign = campaignModule.default;
-          } catch (err) {
-            return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
-          }
-          
-          try {
-            const serviceModule = await import("./services/whatsappService.js");
-            addSSEConnection = serviceModule.addSSEConnection;
-          } catch (err) {
-            return res.status(500).json({ error: 'Service WhatsApp non disponible', details: err.message });
-          }
-          
-          const campaign = await WhatsAppCampaign.findById(id).lean();
-          
-          if (!campaign) {
-            return res.status(404).json({ error: 'Campagne non trouvée' });
-          }
-          
-          // Configurer les headers SSE
-          res.setHeader('Content-Type', 'text/event-stream');
-          res.setHeader('Cache-Control', 'no-cache');
-          res.setHeader('Connection', 'keep-alive');
-          res.setHeader('X-Accel-Buffering', 'no');
-          res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://www.safitech.shop');
-          res.setHeader('Access-Control-Allow-Credentials', 'true');
-          
-          // Envoyer un message initial
-          res.write(`event: connected\ndata: ${JSON.stringify({ campaignId: id, campaignName: campaign.name })}\n\n`);
-          
-          // Ajouter cette connexion au système SSE
-          if (addSSEConnection) {
-            addSSEConnection(id, res);
-          }
-          
-          // Envoyer un heartbeat toutes les 30 secondes
-          const heartbeatInterval = setInterval(() => {
-            try {
-              res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
-            } catch (error) {
-              clearInterval(heartbeatInterval);
-            }
-          }, 30000);
-          
-          // Nettoyer quand la connexion se ferme
-          req.on('close', () => {
-            clearInterval(heartbeatInterval);
-            res.end();
-          });
-        } catch (error) {
-          console.error('❌ Erreur stream campagne:', error.message);
-          res.status(500).json({ error: 'Erreur lors de la connexion au stream', details: error.message });
+          const campaignModule = await import("./models/WhatsAppCampaign.js");
+          WhatsAppCampaign = campaignModule.default;
+        } catch (err) {
+          return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
         }
-      });
+
+        try {
+          const serviceModule = await import("./services/whatsappService.js");
+          addSSEConnection = serviceModule.addSSEConnection;
+        } catch (err) {
+          return res.status(500).json({ error: 'Service WhatsApp non disponible', details: err.message });
+        }
+
+        const campaign = await WhatsAppCampaign.findById(id).lean();
+
+        if (!campaign) {
+          return res.status(404).json({ error: 'Campagne non trouvée' });
+        }
+
+        // Configurer les headers SSE
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('Access-Control-Allow-Origin', process.env.FRONTEND_URL || 'https://www.safitech.shop');
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+        // Envoyer un message initial
+        res.write(`event: connected\ndata: ${JSON.stringify({ campaignId: id, campaignName: campaign.name })}\n\n`);
+
+        // Ajouter cette connexion au système SSE
+        if (addSSEConnection) {
+          addSSEConnection(id, res);
+        }
+
+        // Envoyer un heartbeat toutes les 30 secondes
+        const heartbeatInterval = setInterval(() => {
+          try {
+            res.write(`event: heartbeat\ndata: ${JSON.stringify({ timestamp: new Date().toISOString() })}\n\n`);
+          } catch (error) {
+            clearInterval(heartbeatInterval);
+          }
+        }, 30000);
+
+        // Nettoyer quand la connexion se ferme
+        req.on('close', () => {
+          clearInterval(heartbeatInterval);
+          res.end();
+        });
+      } catch (error) {
+        console.error('❌ Erreur stream campagne:', error.message);
+        res.status(500).json({ error: 'Erreur lors de la connexion au stream', details: error.message });
+      }
+    });
 
     app.get("/api/whatsapp-campaigns/:id/status", authenticate, requireAdmin, async (req, res) => {
+      try {
+        const { id } = req.params;
+
+        let WhatsAppCampaign, WhatsAppLog;
         try {
-          const { id } = req.params;
-          
-          let WhatsAppCampaign, WhatsAppLog;
-          try {
-            const campaignModule = await import("./models/WhatsAppCampaign.js");
-            WhatsAppCampaign = campaignModule.default;
-          } catch (err) {
-            return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
-          }
-          
-          try {
-            const logModule = await import("./models/WhatsAppLog.js");
-            WhatsAppLog = logModule.default;
-          } catch (err) {
-            return res.status(500).json({ error: 'Modèle WhatsAppLog non disponible', details: err.message });
-          }
-          
-          const campaign = await WhatsAppCampaign.findById(id).lean();
-          
-          if (!campaign) {
-            return res.status(404).json({ error: 'Campagne non trouvée' });
-          }
-          
-          const logs = await WhatsAppLog.find({ campaignId: id })
-            .select('phone firstName messageSent status sentAt error')
-            .sort({ sentAt: -1 })
-            .lean();
-          
-          const sentLogs = logs.filter(log => log.status === 'sent' || log.status === 'delivered');
-          const failedLogs = logs.filter(log => log.status === 'failed');
-          const pendingLogs = logs.filter(log => log.status === 'pending');
-          
-          res.json({
-            success: true,
-            campaign: {
-              _id: campaign._id,
-              name: campaign.name,
-              status: campaign.status,
-              sentAt: campaign.sentAt,
-              createdAt: campaign.createdAt
-            },
-            stats: {
-              total: logs.length,
-              sent: sentLogs.length,
-              failed: failedLogs.length,
-              pending: pendingLogs.length
-            },
-            sentMessages: sentLogs.map(log => ({
-              phone: log.phone,
-              firstName: log.firstName || '',
-              message: log.messageSent || '',
-              sentAt: log.sentAt
-            })),
-            failedMessages: failedLogs.map(log => ({
-              phone: log.phone,
-              firstName: log.firstName || '',
-              error: log.error || 'Erreur inconnue',
-              sentAt: log.sentAt
-            }))
-          });
-        } catch (error) {
-          console.error('❌ Erreur récupération statut campagne:', error.message);
-          res.status(500).json({ error: 'Erreur lors de la récupération', details: error.message });
+          const campaignModule = await import("./models/WhatsAppCampaign.js");
+          WhatsAppCampaign = campaignModule.default;
+        } catch (err) {
+          return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
         }
-      });
+
+        try {
+          const logModule = await import("./models/WhatsAppLog.js");
+          WhatsAppLog = logModule.default;
+        } catch (err) {
+          return res.status(500).json({ error: 'Modèle WhatsAppLog non disponible', details: err.message });
+        }
+
+        const campaign = await WhatsAppCampaign.findById(id).lean();
+
+        if (!campaign) {
+          return res.status(404).json({ error: 'Campagne non trouvée' });
+        }
+
+        const logs = await WhatsAppLog.find({ campaignId: id })
+          .select('phone firstName messageSent status sentAt error')
+          .sort({ sentAt: -1 })
+          .lean();
+
+        const sentLogs = logs.filter(log => log.status === 'sent' || log.status === 'delivered');
+        const failedLogs = logs.filter(log => log.status === 'failed');
+        const pendingLogs = logs.filter(log => log.status === 'pending');
+
+        res.json({
+          success: true,
+          campaign: {
+            _id: campaign._id,
+            name: campaign.name,
+            status: campaign.status,
+            sentAt: campaign.sentAt,
+            createdAt: campaign.createdAt
+          },
+          stats: {
+            total: logs.length,
+            sent: sentLogs.length,
+            failed: failedLogs.length,
+            pending: pendingLogs.length
+          },
+          sentMessages: sentLogs.map(log => ({
+            phone: log.phone,
+            firstName: log.firstName || '',
+            message: log.messageSent || '',
+            sentAt: log.sentAt
+          })),
+          failedMessages: failedLogs.map(log => ({
+            phone: log.phone,
+            firstName: log.firstName || '',
+            error: log.error || 'Erreur inconnue',
+            sentAt: log.sentAt
+          }))
+        });
+      } catch (error) {
+        console.error('❌ Erreur récupération statut campagne:', error.message);
+        res.status(500).json({ error: 'Erreur lors de la récupération', details: error.message });
+      }
+    });
 
     app.post("/api/whatsapp-campaigns/:id/send", authenticate, requireAdmin, async (req, res) => {
       try {
         const { id } = req.params;
-        
+
         // Importer les modèles et services nécessaires avec gestion d'erreur
         let WhatsAppCampaign, sendNewsletterCampaign, WhatsAppLog;
-        
+
         try {
           const campaignModule = await import("./models/WhatsAppCampaign.js");
           WhatsAppCampaign = campaignModule.default;
@@ -1272,7 +1272,7 @@ const startServer = async () => {
           console.error('❌ Erreur import WhatsAppCampaign:', err.message);
           return res.status(500).json({ error: 'Modèle WhatsAppCampaign non disponible', details: err.message });
         }
-        
+
         try {
           const serviceModule = await import("./services/whatsappService.js");
           sendNewsletterCampaign = serviceModule.sendNewsletterCampaign;
@@ -1280,7 +1280,7 @@ const startServer = async () => {
           console.error('❌ Erreur import whatsappService:', err.message);
           return res.status(500).json({ error: 'Service WhatsApp non disponible', details: err.message });
         }
-        
+
         try {
           const logModule = await import("./models/WhatsAppLog.js");
           WhatsAppLog = logModule.default;
@@ -1288,23 +1288,23 @@ const startServer = async () => {
           console.error('❌ Erreur import WhatsAppLog:', err.message);
           // Ne pas bloquer si WhatsAppLog n'est pas disponible, on continuera sans logs
         }
-        
+
         const frontendUrl = process.env.FRONTEND_URL || 'https://safitech.shop';
-        
+
         const campaign = await WhatsAppCampaign.findById(id);
-        
+
         if (!campaign) {
           return res.status(404).json({ error: 'Campagne non trouvée' });
         }
-        
+
         if (campaign.status === 'sent') {
           return res.status(400).json({ error: 'Campagne déjà envoyée' });
         }
-        
+
         let users = [];
-        
+
         if (campaign.recipients.type === 'all') {
-          users = await User.find({ 
+          users = await User.find({
             $or: [
               { phone: { $exists: true, $ne: '' } },
               { phoneNumber: { $exists: true, $ne: '' } }
@@ -1313,7 +1313,7 @@ const startServer = async () => {
           }).select('phone phoneNumber name _id').lean();
         } else if (campaign.recipients.type === 'segment') {
           if (['pending', 'active', 'blocked'].includes(campaign.recipients.segment)) {
-            users = await User.find({ 
+            users = await User.find({
               $and: [
                 {
                   $or: [
@@ -1337,9 +1337,9 @@ const startServer = async () => {
             if (!phone) return '';
             return phone.toString().replace(/\D/g, '').trim();
           };
-          
+
           const cleanedPhones = campaign.recipients.customPhones.map(p => sanitizePhone(p));
-          
+
           // Chercher les utilisateurs avec ces numéros
           const foundUsers = await User.find({
             $or: [
@@ -1348,7 +1348,7 @@ const startServer = async () => {
             ],
             role: { $ne: 'admin' }
           }).select('phone phoneNumber name _id').lean();
-          
+
           // Créer un map pour retrouver rapidement les utilisateurs par numéro
           const userMap = new Map();
           foundUsers.forEach(user => {
@@ -1357,7 +1357,7 @@ const startServer = async () => {
               userMap.set(userPhone, user);
             }
           });
-          
+
           // Créer la liste des utilisateurs avec les numéros fournis
           users = campaign.recipients.customPhones.map(phone => {
             const cleaned = sanitizePhone(phone);
@@ -1369,7 +1369,7 @@ const startServer = async () => {
             return { phone: cleaned, phoneNumber: cleaned, name: null, _id: null };
           });
         }
-        
+
         // Normaliser les numéros
         users = users
           .map(user => ({
@@ -1377,31 +1377,31 @@ const startServer = async () => {
             phone: (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim()) || null
           }))
           .filter(u => u.phone && u.phone.trim() !== '');
-        
+
         if (users.length === 0) {
-          return res.status(400).json({ 
+          return res.status(400).json({
             error: 'Aucun destinataire trouvé',
             details: 'Aucun utilisateur avec le tag sélectionné n\'a de numéro de téléphone valide.'
           });
         }
-        
-        
+
+
         campaign.status = 'sending';
         await campaign.save();
-        
+
         // Déterminer les variantes
         const useVariants = campaign.variants && campaign.variants.length > 0;
         const variants = useVariants ? campaign.variants : (campaign.message ? [campaign.message] : []);
-        
+
         // Déterminer le lien selon le segment
         let linkToUse = null;
-        if (campaign.recipients.type === 'segment' && 
-            (campaign.recipients.segment === 'blocked' || campaign.recipients.segment === 'pending')) {
+        if (campaign.recipients.type === 'segment' &&
+          (campaign.recipients.segment === 'blocked' || campaign.recipients.segment === 'pending')) {
           linkToUse = `${frontendUrl}/profil`;
         } else {
           linkToUse = `${frontendUrl}/`;
         }
-        
+
         // Préparer les contacts avec le prénom
         const contacts = users.map(user => {
           const phone = (user.phoneNumber && user.phoneNumber.trim()) || (user.phone && user.phone.trim());
@@ -1414,7 +1414,7 @@ const startServer = async () => {
               firstName = nameParts[0].charAt(0).toUpperCase() + nameParts[0].slice(1).toLowerCase();
             }
           }
-          
+
           return {
             to: phone,
             campaignId: campaign._id,
@@ -1423,22 +1423,22 @@ const startServer = async () => {
             firstName: firstName || ''
           };
         });
-        
+
         // Envoyer la campagne
         if (!sendNewsletterCampaign) {
-          return res.status(500).json({ 
+          return res.status(500).json({
             error: 'Service WhatsApp non disponible',
             details: 'Le service sendNewsletterCampaign n\'a pas pu être chargé'
           });
         }
-        
+
         const newsletterResults = await sendNewsletterCampaign(contacts, variants);
-        
+
         const results = newsletterResults.results || [];
         const sent = results.filter(r => r.success);
         const failed = results.filter(r => !r.success && !r.skipped);
         const skipped = results.filter(r => r.skipped);
-        
+
         // Vérification des logs
         let confirmedSent = 0;
         if (WhatsAppLog) {
@@ -1449,7 +1449,7 @@ const startServer = async () => {
             console.warn('⚠️ Erreur récupération logs WhatsApp:', logError.message);
           }
         }
-        
+
         const stats = {
           total: newsletterResults.total || users.length,
           sent: newsletterResults.sent || sent.length,
@@ -1459,10 +1459,10 @@ const startServer = async () => {
           quotaReached: newsletterResults.quotaReached || false,
           failedPhones: failed.map(f => ({ phone: f.phone, error: f.error }))
         };
-        
+
         // Mettre à jour la campagne
-        campaign.status = (newsletterResults.sent > 0 && !newsletterResults.quotaReached) ? 'sent' : 
-                          (newsletterResults.quotaReached ? 'sending' : 'failed');
+        campaign.status = (newsletterResults.sent > 0 && !newsletterResults.quotaReached) ? 'sent' :
+          (newsletterResults.quotaReached ? 'sending' : 'failed');
         campaign.sentAt = campaign.status === 'sent' ? new Date() : null;
         campaign.stats = {
           sent: stats.sent,
@@ -1472,7 +1472,7 @@ const startServer = async () => {
         };
         campaign.error = newsletterResults.quotaReached ? 'Quota atteint' : null;
         await campaign.save();
-        
+
         res.json({
           success: true,
           message: `Campagne "${campaign.name}" ${campaign.status === 'sent' ? 'envoyée' : 'en cours'}`,
@@ -1481,28 +1481,28 @@ const startServer = async () => {
       } catch (error) {
         console.error('❌ Erreur envoi campagne WhatsApp:', error.message);
         console.error('   Stack:', error.stack);
-        
+
         // Mettre à jour le statut de la campagne en cas d'erreur
         try {
           const WhatsAppCampaign = (await import("./models/WhatsAppCampaign.js")).default;
-          await WhatsAppCampaign.findByIdAndUpdate(req.params.id, { 
+          await WhatsAppCampaign.findByIdAndUpdate(req.params.id, {
             status: 'failed',
-            error: error.message 
+            error: error.message
           });
         } catch (updateError) {
           console.error('❌ Erreur mise à jour campagne:', updateError.message);
         }
-        
-        res.status(500).json({ 
+
+        res.status(500).json({
           error: 'Erreur lors de l\'envoi de la campagne',
           details: error.message,
           campaignId: req.params.id
         });
       }
     });
-    
+
     // Charger TOUS les modules dynamiquement pour éviter les crashes si fichiers absents
-    
+
     // 0. Routes Facebook Auth OAuth (doivent être montées EN PREMIER pour capturer /auth/*)
     try {
       const facebookAuthModule = await import("./routes/facebookAuth.js");
@@ -1515,7 +1515,7 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement facebookAuth.js:', error.message);
       console.error('   Stack:', error.stack);
     }
-    
+
     // 1. Routes d'authentification
     try {
       const authModule = await import("./routes/auth.js");
@@ -1543,33 +1543,33 @@ const startServer = async () => {
           return res.status(400).json({ error: 'Veuillez entrer une adresse email valide' });
         }
 
-    // Trouver l'utilisateur par email
-    const User = (await import('./models/User.js')).default;
-    const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-    
-    console.log(`🔍 Tentative de réinitialisation pour: ${email}`);
-    
-    // Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non
-    if (!user) {
-      console.log(`❌ Email non trouvé dans la base: ${email}`);
-      return res.json({ 
-        success: true, 
-        message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.' 
-      });
-    }
+        // Trouver l'utilisateur par email
+        const User = (await import('./models/User.js')).default;
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
-    console.log(`👤 Utilisateur trouvé: ${user.name} (${user._id})`);
-    console.log(`🔑 AuthProvider: ${user.authProvider}`);
-    console.log(`📝 Password présent: ${!!user.password}`);
+        console.log(`🔍 Tentative de réinitialisation pour: ${email}`);
 
-    // Vérifier que l'utilisateur a un mot de passe (pas OAuth)
-    if (!user.password && user.authProvider === 'google') {
-      console.log(`❌ Tentative de réinitialisation pour un compte OAuth Google: ${email}`);
-      return res.json({ 
-        success: true, 
-        message: 'Ce compte utilise l\'authentification Google. Veuillez vous connecter avec Google.' 
-      });
-    }
+        // Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non
+        if (!user) {
+          console.log(`❌ Email non trouvé dans la base: ${email}`);
+          return res.json({
+            success: true,
+            message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.'
+          });
+        }
+
+        console.log(`👤 Utilisateur trouvé: ${user.name} (${user._id})`);
+        console.log(`🔑 AuthProvider: ${user.authProvider}`);
+        console.log(`📝 Password présent: ${!!user.password}`);
+
+        // Vérifier que l'utilisateur a un mot de passe (pas OAuth)
+        if (!user.password && user.authProvider === 'google') {
+          console.log(`❌ Tentative de réinitialisation pour un compte OAuth Google: ${email}`);
+          return res.json({
+            success: true,
+            message: 'Ce compte utilise l\'authentification Google. Veuillez vous connecter avec Google.'
+          });
+        }
 
         // Générer un token de réinitialisation
         const crypto = await import('crypto');
@@ -1587,12 +1587,12 @@ const startServer = async () => {
         try {
           const { Resend } = await import('resend');
           const resend = new Resend(process.env.RESEND_API_KEY);
-          
+
           console.log('🔧 Tentative d\'envoi email avec Resend...');
           console.log('   - API Key:', process.env.RESEND_API_KEY ? '✅ Définie' : '❌ Manquante');
           console.log('   - From:', process.env.EMAIL_FROM || 'noreply@infomania.store');
           console.log('   - To:', email);
-          
+
           const result = await resend.emails.send({
             from: `Ecomstarter <${process.env.EMAIL_FROM || 'noreply@infomania.store'}>`,
             to: email,
@@ -1615,7 +1615,7 @@ const startServer = async () => {
               </p>
             `
           });
-          
+
           console.log('✅ Email de réinitialisation envoyé à:', email);
           console.log('   - Result ID:', result.id);
         } catch (emailError) {
@@ -1626,15 +1626,15 @@ const startServer = async () => {
           console.log('⚠️ Email non envoyé mais token généré - mode dégradé');
         }
 
-        res.json({ 
-          success: true, 
-          message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.' 
+        res.json({
+          success: true,
+          message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.'
         });
 
       } catch (error) {
         console.error('❌ Erreur forgot-password:', error);
-        res.status(500).json({ 
-          error: 'Une erreur est survenue lors du traitement de votre demande. Veuillez réessayer plus tard.' 
+        res.status(500).json({
+          error: 'Une erreur est survenue lors du traitement de votre demande. Veuillez réessayer plus tard.'
         });
       }
     });
@@ -1647,7 +1647,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement referrals.js:', error.message);
     }
-    
+
     // 2. Routes vidéos
     try {
       const videoModule = await import("./routes/videos.js");
@@ -1656,7 +1656,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement videos.js:', error.message);
     }
-    
+
     // 3. Routes cours
     try {
       const coursesModule = await import("./routes/courses.js");
@@ -1674,7 +1674,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-reservations.js:', error.message);
     }
-    
+
     // 3bis2. Routes candidatures coaching 7 jours
     try {
       const coachingApplicationsModule = await import("./routes/coaching-applications.js");
@@ -1683,7 +1683,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-applications.js:', error.message);
     }
-    
+
     // 3ter. Routes recrutement (annuaire interne)
     try {
       const recrutementModule = await import("./routes/recrutement.js");
@@ -1692,7 +1692,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement recrutement.js:', error.message);
     }
-    
+
     // 3quater. Routes partenaires (public)
     try {
       const partenairesModule = await import("./routes/partenaires.js");
@@ -1701,7 +1701,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement partenaires.js:', error.message);
     }
-    
+
     // 4. Routes ressources PDF
     try {
       const ressourcesPdfModule = await import("./routes/ressources-pdf.js");
@@ -1713,7 +1713,7 @@ const startServer = async () => {
         res.status(503).json({ success: false, error: 'Module ressources-pdf non disponible' });
       });
     }
-    
+
     // 5. Routes progression
     try {
       const progressModule = await import("./routes/progress.js");
@@ -1722,7 +1722,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement progress.js:', error.message);
     }
-    
+
     // 6. Routes commentaires
     try {
       const commentsModule = await import("./routes/comments.js");
@@ -1731,7 +1731,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement comments.js:', error.message);
     }
-    
+
     // 7. Routes Success Radar
     try {
       const successRadarModule = await import("./routes/successRadar.js");
@@ -1740,7 +1740,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement successRadar.js:', error.message);
     }
-    
+
     // 8. Routes admin
     try {
       const adminModule = await import("./routes/admin.js");
@@ -1749,7 +1749,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement admin.js:', error.message);
     }
-    
+
     // 9. Routes paiement
     try {
       const paymentModule = await import("./routes/payment.js");
@@ -1758,7 +1758,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement payment.js:', error.message);
     }
-    
+
     // 10. Routes diagnostic
     try {
       const diagnosticModule = await import("./routes/diagnostic.js");
@@ -1767,7 +1767,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement diagnostic.js:', error.message);
     }
-    
+
     // 11. Routes fichiers (File Manager)
     try {
       const filesModule = await import("./routes/files.js");
@@ -1779,7 +1779,7 @@ const startServer = async () => {
         res.status(503).json({ success: false, error: 'Module files non disponible' });
       });
     }
-    
+
     // 12. Routes AI Analyzer
     try {
       const aiAnalyzerModule = await import("./routes/ai-analyzer.js");
@@ -1812,7 +1812,7 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement meta.js:', error.message);
       console.error('   Stack:', error.stack);
     }
-    
+
     // 15. Services Success Radar Cron
     try {
       const successRadarCronModule = await import("./services/successRadarCron.js");
@@ -1821,7 +1821,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement successRadarCron.js:', error.message);
     }
-    
+
     // 16. Routes Web Push (notifications push natives)
     try {
       const pushModule = await import("./routes/push.js");
@@ -1831,7 +1831,7 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement push.js:', error.message);
       console.error('   Stack:', error.stack);
     }
-    
+
     // Routes notifications internes
     try {
       const notificationsModule = await import("./routes/notifications.js");
@@ -1860,15 +1860,38 @@ const startServer = async () => {
     }
 
     // ===== MODULE E-COMMERCE ISOLÉ =====
-    
+
     // Routes E-commerce Authentification
     try {
+      // Test d'import simple pour diagnostiquer
+      console.log('🔍 Test import ecom routes...');
+      console.log('   Current working directory:', process.cwd());
+      
+      // Vérifier si le fichier existe
+      const fs = await import('fs');
+      const path = await import('path');
+      const authPath = path.join(process.cwd(), 'ecom', 'routes', 'auth.js');
+      console.log('   Chemin du fichier auth.js:', authPath);
+      console.log('   Fichier existe?', fs.existsSync(authPath));
+      
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
       console.log('✅ Routes ecom/auth.js chargées avec succès');
+      
+      // Test route availability
+      console.log('🔍 Routes ecom/auth disponibles après montage:');
+      const authStack = ecomAuthRoutes.stack || [];
+      authStack.forEach(layer => {
+        if (layer.route) {
+          const methods = Object.keys(layer.route.methods);
+          console.log(`   ${methods.join(',').toUpperCase()} ${layer.route.path}`);
+        }
+      });
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
+      console.error('   Stack trace:', error.stack);
+      console.error('   Vérifiez que le fichier ./ecom/routes/auth.js existe et exporte bien un router');
     }
 
     // Routes E-commerce Produits
@@ -1894,7 +1917,7 @@ const startServer = async () => {
       const ecomGoalsModule = await import("./ecom/routes/goals.js");
       ecomGoalsRoutes = ecomGoalsModule.default;
       app.use("/api/ecom/goals", ecomGoalsRoutes);
-      
+
       // Forcer la synchronisation des index du modèle Goal
       const Goal = (await import("./ecom/models/Goal.js")).default;
       await Goal.syncIndexes();
@@ -2038,7 +2061,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/ecore.js:', error.message);
     }
-    
+
     // Routes E-commerce Push Notifications
     try {
       const ecomPushModule = await import("./ecom/routes/push.js");
@@ -2132,13 +2155,13 @@ const startServer = async () => {
       const ecomAgentRoutes = ecomAgentModule.default;
       app.use("/api/ecom/agent", ecomAgentRoutes);
       console.log('✅ Routes E-commerce Agent Vendeur chargées');
-      
+
       // Charger les routes des nouvelles commandes agent
       const ecomAgentCommandsModule = await import("./ecom/routes/agentCommands.js");
       const ecomAgentCommandsRoutes = ecomAgentCommandsModule.default;
       app.use("/api/ecom/agent/commands", ecomAgentCommandsRoutes);
       console.log('✅ Routes E-commerce Agent Commandes chargées');
-      
+
       // Démarrer les cron jobs de l'agent vendeur
       const { startAgentCronJobs } = await import("./ecom/services/agentCronService.js");
       startAgentCronJobs();
@@ -2172,7 +2195,7 @@ const startServer = async () => {
           res.status(503).json({ error: 'Erreur import module subscribers', details: importError.message });
         });
       }
-      
+
       const emailCampaignsModule = await import("./routes/email-campaigns.js");
       if (emailCampaignsModule && emailCampaignsModule.default) {
         app.use("/api/email-campaigns", emailCampaignsModule.default);
@@ -2180,31 +2203,31 @@ const startServer = async () => {
         console.error('❌ emailCampaignsModule.default est null ou undefined');
         console.error('   Module:', emailCampaignsModule);
       }
-      
+
       const emailTemplatesModule = await import("./routes/email-templates.js");
       if (emailTemplatesModule && emailTemplatesModule.default) {
         app.use("/api/email-templates", emailTemplatesModule.default);
-        } else {
+      } else {
         console.error('❌ emailTemplatesModule.default est null ou undefined');
       }
-      
+
       const emailTrackingModule = await import("./routes/email-tracking.js");
       if (emailTrackingModule && emailTrackingModule.default) {
         app.use("/api/email", emailTrackingModule.default);
-        } else {
+      } else {
         console.error('❌ emailTrackingModule.default est null ou undefined');
       }
-      
+
       // Routes email-logs (tracking détaillé des emails envoyés)
       try {
         const emailLogsModule = await import("./routes/email-logs.js");
         if (emailLogsModule && emailLogsModule.default) {
           app.use("/api/email-logs", emailLogsModule.default);
-          }
+        }
       } catch (error) {
         console.error('⚠️ Erreur chargement email-logs.js:', error.message);
       }
-      
+
       // Routes de tracking des visites
       try {
         const visitsModule = await import("./routes/visits.js");
@@ -2218,22 +2241,22 @@ const startServer = async () => {
             res.status(503).json({ error: 'Module visits non chargé', visitsModule: !!visitsModule });
           });
           app.post("/api/visits/track", async (req, res) => {
-            res.status(503).json({ 
-              error: 'Module visits non chargé', 
+            res.status(503).json({
+              error: 'Module visits non chargé',
               details: 'visitsModule.default est null ou undefined',
               suggestion: 'Vérifier les logs du serveur pour plus de détails'
             });
           });
           app.get("/api/visits/stats", authenticate, requireAdmin, (req, res) => {
-            res.status(503).json({ 
-              error: 'Module visits non chargé', 
+            res.status(503).json({
+              error: 'Module visits non chargé',
               details: 'visitsModule.default est null ou undefined',
               suggestion: 'Vérifier les logs du serveur pour plus de détails'
             });
           });
           app.get("/api/visits/recent", authenticate, requireAdmin, (req, res) => {
-            res.status(503).json({ 
-              error: 'Module visits non chargé', 
+            res.status(503).json({
+              error: 'Module visits non chargé',
               details: 'visitsModule.default est null ou undefined',
               suggestion: 'Vérifier les logs du serveur pour plus de détails'
             });
@@ -2244,25 +2267,25 @@ const startServer = async () => {
         console.error('   Stack:', importError.stack);
         // Routes de fallback complètes avec logique intégrée
         console.log('⚠️ Utilisation des routes de fallback pour visits');
-        
+
         app.post("/api/visits/track", async (req, res) => {
           try {
             const Visit = (await import("./models/Visit.js")).default;
-            const { 
-              country, 
-              countryCode, 
-              city, 
-              region, 
+            const {
+              country,
+              countryCode,
+              city,
+              region,
               path,
               referrer,
-              sessionId 
+              sessionId
             } = req.body;
 
-            const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                       req.headers['x-real-ip'] || 
-                       req.connection?.remoteAddress || 
-                       req.socket?.remoteAddress ||
-                       'unknown';
+            const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+              req.headers['x-real-ip'] ||
+              req.connection?.remoteAddress ||
+              req.socket?.remoteAddress ||
+              'unknown';
 
             const userAgent = req.headers['user-agent'] || 'unknown';
             const userId = req.user?._id || null;
@@ -2282,20 +2305,20 @@ const startServer = async () => {
 
             await visit.save();
 
-            res.status(201).json({ 
-              success: true, 
+            res.status(201).json({
+              success: true,
               message: 'Visite enregistrée',
-              visitId: visit._id 
+              visitId: visit._id
             });
           } catch (error) {
             console.error('Erreur enregistrement visite (fallback):', error);
-            res.status(500).json({ 
+            res.status(500).json({
               error: 'Erreur lors de l\'enregistrement de la visite',
-              details: error.message 
+              details: error.message
             });
           }
         });
-        
+
         app.get("/api/visits/stats", authenticate, requireAdmin, async (req, res) => {
           try {
             const Visit = (await import("./models/Visit.js")).default;
@@ -2375,13 +2398,13 @@ const startServer = async () => {
             });
           } catch (error) {
             console.error('Erreur récupération statistiques (fallback):', error);
-            res.status(500).json({ 
+            res.status(500).json({
               error: 'Erreur lors de la récupération des statistiques',
-              details: error.message 
+              details: error.message
             });
           }
         });
-        
+
         app.get("/api/visits/recent", authenticate, requireAdmin, async (req, res) => {
           try {
             const Visit = (await import("./models/Visit.js")).default;
@@ -2409,14 +2432,14 @@ const startServer = async () => {
             });
           } catch (error) {
             console.error('Erreur récupération visites récentes (fallback):', error);
-            res.status(500).json({ 
+            res.status(500).json({
               error: 'Erreur lors de la récupération des visites',
-              details: error.message 
+              details: error.message
             });
           }
         });
       }
-      
+
       try {
         const whatsappCampaignsModule = await import("./routes/whatsapp-campaigns.js");
         if (whatsappCampaignsModule && whatsappCampaignsModule.default) {
@@ -2456,25 +2479,25 @@ const startServer = async () => {
       });
       // Routes de fallback complètes avec logique intégrée
       console.log('⚠️ Utilisation des routes de fallback pour visits (bloc marketing)');
-      
+
       app.post("/api/visits/track", async (req, res) => {
         try {
           const Visit = (await import("./models/Visit.js")).default;
-          const { 
-            country, 
-            countryCode, 
-            city, 
-            region, 
+          const {
+            country,
+            countryCode,
+            city,
+            region,
             path,
             referrer,
-            sessionId 
+            sessionId
           } = req.body;
 
-          const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
-                     req.headers['x-real-ip'] || 
-                     req.connection?.remoteAddress || 
-                     req.socket?.remoteAddress ||
-                     'unknown';
+          const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+            req.headers['x-real-ip'] ||
+            req.connection?.remoteAddress ||
+            req.socket?.remoteAddress ||
+            'unknown';
 
           const userAgent = req.headers['user-agent'] || 'unknown';
           const userId = req.user?._id || null;
@@ -2494,20 +2517,20 @@ const startServer = async () => {
 
           await visit.save();
 
-          res.status(201).json({ 
-            success: true, 
+          res.status(201).json({
+            success: true,
             message: 'Visite enregistrée',
-            visitId: visit._id 
+            visitId: visit._id
           });
         } catch (error) {
           console.error('Erreur enregistrement visite (fallback):', error);
-          res.status(500).json({ 
+          res.status(500).json({
             error: 'Erreur lors de l\'enregistrement de la visite',
-            details: error.message 
+            details: error.message
           });
         }
       });
-      
+
       app.get("/api/visits/stats", authenticate, requireAdmin, async (req, res) => {
         try {
           const Visit = (await import("./models/Visit.js")).default;
@@ -2587,13 +2610,13 @@ const startServer = async () => {
           });
         } catch (error) {
           console.error('Erreur récupération statistiques (fallback):', error);
-          res.status(500).json({ 
+          res.status(500).json({
             error: 'Erreur lors de la récupération des statistiques',
-            details: error.message 
+            details: error.message
           });
         }
       });
-      
+
       app.get("/api/visits/recent", authenticate, requireAdmin, async (req, res) => {
         try {
           const Visit = (await import("./models/Visit.js")).default;
@@ -2621,32 +2644,32 @@ const startServer = async () => {
           });
         } catch (error) {
           console.error('Erreur récupération visites récentes (fallback):', error);
-          res.status(500).json({ 
+          res.status(500).json({
             error: 'Erreur lors de la récupération des visites',
-            details: error.message 
+            details: error.message
           });
         }
       });
       app.get("/api/whatsapp-campaigns", authenticate, requireAdmin, (req, res) => {
-        res.status(503).json({ 
-          error: 'Module whatsapp-campaigns non chargé', 
+        res.status(503).json({
+          error: 'Module whatsapp-campaigns non chargé',
           details: error.message,
           suggestion: 'Vérifier les logs du serveur pour plus de détails'
         });
       });
       app.post("/api/whatsapp-campaigns", authenticate, requireAdmin, (req, res) => {
-        res.status(503).json({ 
-          error: 'Module whatsapp-campaigns non chargé', 
+        res.status(503).json({
+          error: 'Module whatsapp-campaigns non chargé',
           details: error.message,
           suggestion: 'Vérifier les logs du serveur pour plus de détails'
         });
       });
     }
-    
-    
+
+
     // Connexion MongoDB
     await connectDB();
-    
+
     // Configuration Web Push (notifications push natives)
     try {
       await configureWebPush();
@@ -2661,7 +2684,7 @@ const startServer = async () => {
     } catch (error) {
       console.warn('⚠️ Service email non configuré:', error.message);
     }
-    
+
     // Configuration WhatsApp Service
     try {
       const { initWhatsAppService } = await import("./services/whatsappService.js");
@@ -2698,29 +2721,29 @@ const startServer = async () => {
               if (['pending', 'active', 'blocked'].includes(campaign.recipients.segment)) {
                 const User = (await import("./models/User.js")).default;
                 const SubscriberModel = (await import("./models/Subscriber.js")).default;
-                
+
                 // Récupérer TOUS les utilisateurs avec le statut sélectionné
-                const users = await User.find({ 
+                const users = await User.find({
                   email: { $exists: true, $ne: '' },
                   $or: [
                     { status: campaign.recipients.segment },
                     { accountStatus: campaign.recipients.segment }
                   ]
                 }).select('email name status accountStatus').lean();
-                
+
                 // Pour chaque utilisateur, s'assurer qu'il existe dans Subscriber
                 const subscriberPromises = users.map(async (user) => {
                   const emailLower = user.email.toLowerCase().trim();
-                  
+
                   // Validation email
                   if (!emailLower || !/^\S+@\S+\.\S+$/.test(emailLower)) {
                     return null;
                   }
-                  
+
                   try {
                     // Vérifier si l'utilisateur existe déjà dans Subscriber
                     let subscriber = await SubscriberModel.findOne({ email: emailLower }).lean();
-                    
+
                     if (!subscriber) {
                       // Créer l'entrée Subscriber si elle n'existe pas
                       const newSubscriber = new SubscriberModel({
@@ -2737,7 +2760,7 @@ const startServer = async () => {
                       await SubscriberModel.findByIdAndUpdate(subscriber._id, { status: 'active' });
                       subscriber.status = 'active';
                     }
-                    
+
                     return {
                       ...subscriber,
                       email: emailLower,
@@ -2748,7 +2771,7 @@ const startServer = async () => {
                     return null;
                   }
                 });
-                
+
                 const subscriberResults = await Promise.all(subscriberPromises);
                 subscribers = subscriberResults.filter(s => s !== null);
               } else {
@@ -2791,19 +2814,19 @@ const startServer = async () => {
         }
       });
 
-      } catch (error) {
+    } catch (error) {
       console.warn('⚠️ Planificateur de campagnes non configuré:', error.message);
     }
-    
+
     // Plus de création automatique d'admin
     // L'admin doit créer son compte via /admin/login (première connexion uniquement)
-    
+
     // S'assurer que Facebook Ads est "activé" (publié) par défaut
     let facebookAdsCourse = await Course.findOne({ slug: 'facebook-ads' });
-    
+
     if (!facebookAdsCourse) {
       console.log('🚀 Initialisation automatique du cours Facebook Ads...');
-      
+
       // Créer le cours Facebook Ads
       facebookAdsCourse = new Course({
         title: 'Facebook Ads',
@@ -3057,14 +3080,14 @@ const startServer = async () => {
         });
         await lesson.save();
       }
-      
+
     } else {
-        if (facebookAdsCourse.isPublished !== true) {
+      if (facebookAdsCourse.isPublished !== true) {
         facebookAdsCourse.isPublished = true;
         await facebookAdsCourse.save();
       }
     }
-    
+
     // Démarrer le Success Radar (cron + exécution initiale) si disponible
     if (startSuccessRadarCron && runSuccessRadarOnce) {
       startSuccessRadarCron();
@@ -3081,7 +3104,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur démarrage auto-sync service:', error.message);
     }
-    
+
     // Middleware de gestion des routes non trouvées (DOIT être après toutes les routes)
     // Exclure les routes /uploads pour permettre le service des fichiers statiques
     app.use((req, res, next) => {
@@ -3089,10 +3112,21 @@ const startServer = async () => {
       if (req.originalUrl.startsWith('/uploads/')) {
         return next();
       }
-      
+
+      // Cas spécial: si la route Google auth n'est pas trouvée, c'est probablement que les routes e-com ne sont pas chargées
+      if (req.originalUrl === '/api/ecom/auth/google' && req.method === 'POST') {
+        console.error('❌ Route Google auth non trouvée - les routes e-com/auth.js ne sont probablement pas chargées');
+        return res.status(503).json({
+          error: 'Service d\'authentification Google indisponible',
+          message: 'Les routes e-commerce n\'ont pas pu être chargées au démarrage du serveur',
+          solution: 'Vérifiez les logs du serveur au démarrage pour identifier l\'erreur de chargement des routes ecom/auth.js',
+          availableFallback: 'Utilisez l\'authentification par email/mot de passe en attendant'
+        });
+      }
+
       console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
       console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
-      res.status(404).json({ 
+      res.status(404).json({
         error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
         availableRoutes: [
           'GET /auth/google',
@@ -3122,16 +3156,19 @@ const startServer = async () => {
           'GET /api/admin/ressources-pdf',
           'POST /api/admin/ressources-pdf',
           'PUT /api/admin/ressources-pdf/:id',
-          'DELETE /api/admin/ressources-pdf/:id'
+          'DELETE /api/admin/ressources-pdf/:id',
+          'POST /api/ecom/auth/google (si routes e-com chargées)',
+          'POST /api/ecom/auth/login',
+          'POST /api/ecom/auth/register'
         ]
       });
     });
-    
+
     // Middleware 404 pour les routes non trouvées (doit être APRÈS toutes les routes)
     app.use((req, res, next) => {
       console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
       console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
-      res.status(404).json({ 
+      res.status(404).json({
         error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
         availableRoutes: [
           'GET /auth/facebook',
@@ -3144,11 +3181,11 @@ const startServer = async () => {
         ]
       });
     });
-    
+
     // Démarrer le serveur Express avec WebSocket support
     const http = await import('http');
     const server = http.createServer(app);
-    
+
     // Initialiser WebSocket pour messagerie temps réel
     try {
       const { initSocketServer } = await import('./ecom/services/socketService.js');
@@ -3157,7 +3194,7 @@ const startServer = async () => {
     } catch (error) {
       console.error('⚠️ Erreur initialisation WebSocket:', error.message);
     }
-    
+
     server.listen(PORT, '0.0.0.0', () => {
       console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     });
