@@ -925,6 +925,108 @@ router.get('/me', async (req, res) => {
   }
 });
 
+// GET /api/ecom/auth/invite/:token - Valider un lien d'invitation
+router.get('/invite/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Token invitation manquant' });
+    }
+
+    const workspace = await Workspace.findOne({ 'invites.token': token })
+      .populate('invites.createdBy', 'name email')
+      .populate('owner', 'name email');
+
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    const invite = (workspace.invites || []).find((inv) => inv.token === token);
+    if (!invite) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    if (invite.used) {
+      return res.status(400).json({ success: false, message: 'Ce lien a déjà été utilisé' });
+    }
+
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    const invitedBy = invite.createdBy?.name || invite.createdBy?.email || workspace.owner?.name || workspace.owner?.email || 'Administrateur';
+
+    return res.json({
+      success: true,
+      data: {
+        workspaceName: workspace.name,
+        invitedBy,
+        expiresAt: invite.expiresAt
+      }
+    });
+  } catch (error) {
+    console.error('Erreur validate invite:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
+// POST /api/ecom/auth/accept-invite - Accepter une invitation
+router.post('/accept-invite', requireEcomAuth, async (req, res) => {
+  try {
+    const { token, role } = req.body;
+    const user = req.ecomUser;
+
+    if (!token || !role) {
+      return res.status(400).json({ success: false, message: 'Token et rôle requis' });
+    }
+
+    const roleMap = {
+      livreur: 'ecom_livreur',
+      ecom_livreur: 'ecom_livreur',
+      ecom_admin: 'ecom_admin',
+      ecom_closeuse: 'ecom_closeuse',
+      ecom_compta: 'ecom_compta'
+    };
+    const finalRole = roleMap[role];
+    if (!finalRole) {
+      return res.status(400).json({ success: false, message: 'Rôle invalide' });
+    }
+
+    const workspace = await Workspace.findOne({ 'invites.token': token });
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    const invite = (workspace.invites || []).find((inv) => inv.token === token);
+    if (!invite || invite.used || (invite.expiresAt && new Date(invite.expiresAt) < new Date())) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    user.workspaceId = workspace._id;
+    user.role = finalRole;
+    await user.save();
+
+    invite.used = true;
+    invite.usedBy = user._id;
+    invite.usedAt = new Date();
+    await workspace.save();
+
+    return res.json({
+      success: true,
+      message: 'Invitation acceptée avec succès',
+      data: {
+        workspaceId: workspace._id,
+        workspaceName: workspace.name,
+        role: finalRole
+      }
+    });
+  } catch (error) {
+    console.error('Erreur accept invite:', error);
+    return res.status(500).json({ success: false, message: 'Erreur serveur' });
+  }
+});
+
 // POST /api/ecom/auth/generate-invite - Générer un lien d'invitation workspace
 router.post('/generate-invite', requireEcomAuth, async (req, res) => {
   try {
