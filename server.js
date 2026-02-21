@@ -116,7 +116,6 @@ const corsOptions = {
       return callback(null, true);
     }
 
-    console.log('🚫 CORS blocked origin:', origin);
     callback(new Error('Not allowed by CORS'));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -150,10 +149,6 @@ app.use((req, res, next) => {
     req.url = req.url.replace('/api/coacching-reservations', '/api/coaching-reservations');
   }
 
-  // Debug: Log toutes les requêtes API
-  if (req.url.startsWith('/api/')) {
-    console.log(`🔍 Requête API: ${req.method} ${req.url}`);
-  }
 
   next();
 });
@@ -445,7 +440,6 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
       await ensureReferralCodeForUser(req.user._id);
       await maybeValidateReferralForUser(req.user._id);
     } catch (referralError) {
-      console.warn('⚠️ Parrainage ignoré (auth/me):', referralError.message);
     }
 
     const user = await User.findById(req.user._id).select('-password');
@@ -1521,7 +1515,6 @@ const startServer = async () => {
       const authModule = await import("./routes/auth.js");
       authRoutes = authModule.default;
       app.use("/api", authRoutes);
-      console.log('✅ Routes auth.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement auth.js:', error.message);
       console.error('   Stack:', error.stack);
@@ -1547,24 +1540,18 @@ const startServer = async () => {
         const User = (await import('./models/User.js')).default;
         const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
 
-        console.log(`🔍 Tentative de réinitialisation pour: ${email}`);
-
+  
         // Pour des raisons de sécurité, on ne révèle pas si l'email existe ou non
         if (!user) {
-          console.log(`❌ Email non trouvé dans la base: ${email}`);
           return res.json({
             success: true,
             message: 'Si cet email existe dans notre base de données, vous recevrez un lien de réinitialisation.'
           });
         }
 
-        console.log(`👤 Utilisateur trouvé: ${user.name} (${user._id})`);
-        console.log(`🔑 AuthProvider: ${user.authProvider}`);
-        console.log(`📝 Password présent: ${!!user.password}`);
 
         // Vérifier que l'utilisateur a un mot de passe (pas OAuth)
         if (!user.password && user.authProvider === 'google') {
-          console.log(`❌ Tentative de réinitialisation pour un compte OAuth Google: ${email}`);
           return res.json({
             success: true,
             message: 'Ce compte utilise l\'authentification Google. Veuillez vous connecter avec Google.'
@@ -1581,17 +1568,12 @@ const startServer = async () => {
         user.passwordResetExpires = resetTokenExpiry;
         await user.save();
 
-        console.log(`✅ Token de réinitialisation généré pour: ${email}`);
 
         // Envoyer l'email avec Resend
         try {
           const { Resend } = await import('resend');
           const resend = new Resend(process.env.RESEND_API_KEY);
 
-          console.log('🔧 Tentative d\'envoi email avec Resend...');
-          console.log('   - API Key:', process.env.RESEND_API_KEY ? '✅ Définie' : '❌ Manquante');
-          console.log('   - From:', process.env.EMAIL_FROM || 'noreply@infomania.store');
-          console.log('   - To:', email);
 
           const result = await resend.emails.send({
             from: `Ecomstarter <${process.env.EMAIL_FROM || 'noreply@infomania.store'}>`,
@@ -1616,14 +1598,11 @@ const startServer = async () => {
             `
           });
 
-          console.log('✅ Email de réinitialisation envoyé à:', email);
-          console.log('   - Result ID:', result.id);
         } catch (emailError) {
           console.error('❌ Erreur envoi email:', emailError);
           console.error('   Details:', emailError.message);
           console.error('   Stack:', emailError.stack);
           // Ne pas retourner d'erreur 500, juste logger et continuer
-          console.log('⚠️ Email non envoyé mais token généré - mode dégradé');
         }
 
         res.json({
@@ -1863,35 +1842,75 @@ const startServer = async () => {
 
     // Routes E-commerce Authentification
     try {
-      // Test d'import simple pour diagnostiquer
-      console.log('🔍 Test import ecom routes...');
-      console.log('   Current working directory:', process.cwd());
-      
-      // Vérifier si le fichier existe
-      const fs = await import('fs');
-      const path = await import('path');
-      const authPath = path.join(process.cwd(), 'ecom', 'routes', 'auth.js');
-      console.log('   Chemin du fichier auth.js:', authPath);
-      console.log('   Fichier existe?', fs.existsSync(authPath));
-      
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
-      console.log('✅ Routes ecom/auth.js chargées avec succès');
-      
-      // Test route availability
-      console.log('🔍 Routes ecom/auth disponibles après montage:');
-      const authStack = ecomAuthRoutes.stack || [];
-      authStack.forEach(layer => {
-        if (layer.route) {
-          const methods = Object.keys(layer.route.methods);
-          console.log(`   ${methods.join(',').toUpperCase()} ${layer.route.path}`);
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/auth.js:', error.message, error.stack);
+
+      // Fallback: monter la route Google auth directement pour ne pas bloquer les utilisateurs
+      app.post("/api/ecom/auth/google", async (req, res) => {
+        try {
+          const { credential } = req.body;
+          if (!credential) {
+            return res.status(400).json({ success: false, message: 'Token Google manquant' });
+          }
+          const { OAuth2Client } = await import('google-auth-library');
+          const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+          const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+          let ticket;
+          try {
+            ticket = await client.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+          } catch (verifyError) {
+            return res.status(401).json({ success: false, message: 'Token Google invalide: ' + verifyError.message });
+          }
+          const payload = ticket.getPayload();
+          const { sub: googleId, email, name, picture } = payload;
+          if (!email) return res.status(400).json({ success: false, message: 'Email non disponible depuis Google' });
+
+          const EcomUser = (await import('./ecom/models/EcomUser.js')).default;
+          const Workspace = (await import('./ecom/models/Workspace.js')).default;
+          const jwt = (await import('jsonwebtoken')).default;
+          const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
+
+          let user = await EcomUser.findOne({ $or: [{ email }, { googleId }] });
+          let isNewUser = false;
+          if (user) {
+            if (!user.googleId) user.googleId = googleId;
+            if (!user.name && name) user.name = name;
+            if (!user.avatar && picture) user.avatar = picture;
+            user.lastLogin = new Date();
+            await user.save();
+          } else {
+            user = new EcomUser({ email, googleId, name: name || '', avatar: picture || '', role: null, workspaceId: null });
+            await user.save();
+            isNewUser = true;
+          }
+
+          const token = 'ecom:' + jwt.sign(
+            { id: user._id, email: user.email, role: user.role, workspaceId: user.workspaceId },
+            ECOM_JWT_SECRET,
+            { expiresIn: '30d' }
+          );
+
+          let workspace = null;
+          if (user.workspaceId) workspace = await Workspace.findById(user.workspaceId);
+
+          res.json({
+            success: true,
+            message: isNewUser ? 'Compte créé avec succès via Google' : 'Connexion réussie via Google',
+            data: {
+              token,
+              isNewUser,
+              user: { id: user._id, email: user.email, name: user.name, role: user.role, isActive: user.isActive, currency: user.currency, workspaceId: user.workspaceId },
+              workspace: workspace ? { id: workspace._id, name: workspace.name, slug: workspace.slug } : null
+            }
+          });
+        } catch (err) {
+          console.error('Erreur Google auth fallback:', err);
+          res.status(500).json({ success: false, message: 'Erreur serveur' });
         }
       });
-    } catch (error) {
-      console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
-      console.error('   Stack trace:', error.stack);
-      console.error('   Vérifiez que le fichier ./ecom/routes/auth.js existe et exporte bien un router');
     }
 
     // Routes E-commerce Produits
@@ -1921,7 +1940,6 @@ const startServer = async () => {
       // Forcer la synchronisation des index du modèle Goal
       const Goal = (await import("./ecom/models/Goal.js")).default;
       await Goal.syncIndexes();
-      console.log('✅ Index des objectifs synchronisés');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/goals.js ou sync indexes:', error.message);
     }
@@ -1973,7 +1991,6 @@ const startServer = async () => {
     try {
       const ecomNotifPrefsModule = await import("./ecom/routes/notificationPreferences.js");
       app.use("/api/ecom/notification-preferences", ecomNotifPrefsModule.default);
-      console.log('✅ Routes ecom/notificationPreferences.js chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/notificationPreferences.js:', error.message);
     }
@@ -2000,7 +2017,6 @@ const startServer = async () => {
     try {
       const ecomAnalyticsModule = await import("./ecom/routes/analytics.js");
       app.use("/api/ecom/analytics", ecomAnalyticsModule.default);
-      console.log('✅ Routes ecom/analytics.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/analytics.js:', error.message);
       console.error('   Stack analytics:', error.stack);
@@ -2010,7 +2026,6 @@ const startServer = async () => {
     try {
       const ecomMarketingModule = await import("./ecom/routes/marketing.js");
       app.use("/api/ecom/marketing", ecomMarketingModule.default);
-      console.log('✅ Routes ecom/marketing.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/marketing.js:', error.message);
       console.error('   Stack marketing:', error.stack);
@@ -2021,7 +2036,6 @@ const startServer = async () => {
       const ecomImportModule = await import("./ecom/routes/import.js");
       const ecomImportRoutes = ecomImportModule.default;
       app.use("/api/ecom/import", ecomImportRoutes);
-      console.log('✅ Routes ecom/import.js chargées avec succès');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/import.js:', error.message);
     }
@@ -2067,7 +2081,6 @@ const startServer = async () => {
       const ecomPushModule = await import("./ecom/routes/push.js");
       const ecomPushRoutes = ecomPushModule.default;
       app.use("/api/ecom/push", ecomPushRoutes);
-      console.log('✅ Routes E-commerce Push chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/push.js:', error.message);
     }
@@ -2077,7 +2090,6 @@ const startServer = async () => {
       const ecomNotificationsModule = await import("./ecom/routes/notifications.js");
       const ecomNotificationsRoutes = ecomNotificationsModule.default;
       app.use("/api/ecom/notifications", ecomNotificationsRoutes);
-      console.log('✅ Routes E-commerce Notifications chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/notifications.js:', error.message);
     }
@@ -2087,7 +2099,6 @@ const startServer = async () => {
       const ecomWorkspacesModule = await import("./ecom/routes/workspaces.js");
       const ecomWorkspacesRoutes = ecomWorkspacesModule.default;
       app.use("/api/ecom/workspaces", ecomWorkspacesRoutes);
-      console.log('✅ Routes E-commerce Workspaces chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/workspaces.js:', error.message);
     }
@@ -2096,7 +2107,6 @@ const startServer = async () => {
     try {
       const ecomMessagesModule = await import("./ecom/routes/messages.js");
       app.use("/api/ecom/messages", ecomMessagesModule.default);
-      console.log('✅ Routes E-commerce Messages (Chat) chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/messages.js:', error.message);
     }
@@ -2105,7 +2115,6 @@ const startServer = async () => {
     try {
       const ecomDmModule = await import("./ecom/routes/dm.js");
       app.use("/api/ecom/dm", ecomDmModule.default);
-      console.log('✅ Routes E-commerce DM chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
     }
@@ -2114,7 +2123,6 @@ const startServer = async () => {
     try {
       const ecomMediaModule = await import("./ecom/routes/media.js");
       app.use("/api/ecom/media", ecomMediaModule.default);
-      console.log('✅ Routes E-commerce Media chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/media.js:', error.message);
     }
@@ -2124,7 +2132,6 @@ const startServer = async () => {
       const ecomContactModule = await import("./ecom/routes/contact.js");
       const ecomContactRoutes = ecomContactModule.default;
       app.use("/api/ecom/contact", ecomContactRoutes);
-      console.log('✅ Routes E-commerce Contact chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/contact.js:', error.message);
     }
@@ -2134,7 +2141,6 @@ const startServer = async () => {
       const ecomAssignmentsModule = await import("./ecom/routes/assignments.js");
       const ecomAssignmentsRoutes = ecomAssignmentsModule.default;
       app.use("/api/ecom/assignments", ecomAssignmentsRoutes);
-      console.log('✅ Routes E-commerce Assignments chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/assignments.js:', error.message);
     }
@@ -2144,7 +2150,6 @@ const startServer = async () => {
       const ecomAutoSyncModule = await import("./ecom/routes/autoSync.js");
       const ecomAutoSyncRoutes = ecomAutoSyncModule.default;
       app.use("/api/ecom/auto-sync", ecomAutoSyncRoutes);
-      console.log('✅ Routes E-commerce Auto-Sync chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/autoSync.js:', error.message);
     }
@@ -2154,13 +2159,11 @@ const startServer = async () => {
       const ecomAgentModule = await import("./ecom/routes/agent.js");
       const ecomAgentRoutes = ecomAgentModule.default;
       app.use("/api/ecom/agent", ecomAgentRoutes);
-      console.log('✅ Routes E-commerce Agent Vendeur chargées');
 
       // Charger les routes des nouvelles commandes agent
       const ecomAgentCommandsModule = await import("./ecom/routes/agentCommands.js");
       const ecomAgentCommandsRoutes = ecomAgentCommandsModule.default;
       app.use("/api/ecom/agent/commands", ecomAgentCommandsRoutes);
-      console.log('✅ Routes E-commerce Agent Commandes chargées');
 
       // Démarrer les cron jobs de l'agent vendeur
       const { startAgentCronJobs } = await import("./ecom/services/agentCronService.js");
@@ -2180,16 +2183,12 @@ const startServer = async () => {
             res.json({ success: true, message: 'Route subscribers fonctionnelle', timestamp: new Date().toISOString() });
           });
         } else {
-          console.error('❌ subscribersModule.default est null ou undefined');
-          console.error('   subscribersModule:', subscribersModule);
           // Route de fallback pour diagnostiquer
           app.get("/api/subscribers/test", (req, res) => {
             res.status(503).json({ error: 'Module subscribers non chargé', subscribersModule: !!subscribersModule });
           });
         }
       } catch (importError) {
-        console.error('❌ Erreur lors de l\'import du module subscribers:', importError.message);
-        console.error('   Stack:', importError.stack);
         // Route de fallback pour diagnostiquer
         app.get("/api/subscribers/test", (req, res) => {
           res.status(503).json({ error: 'Erreur import module subscribers', details: importError.message });
@@ -2200,22 +2199,18 @@ const startServer = async () => {
       if (emailCampaignsModule && emailCampaignsModule.default) {
         app.use("/api/email-campaigns", emailCampaignsModule.default);
       } else {
-        console.error('❌ emailCampaignsModule.default est null ou undefined');
-        console.error('   Module:', emailCampaignsModule);
       }
 
       const emailTemplatesModule = await import("./routes/email-templates.js");
       if (emailTemplatesModule && emailTemplatesModule.default) {
         app.use("/api/email-templates", emailTemplatesModule.default);
       } else {
-        console.error('❌ emailTemplatesModule.default est null ou undefined');
       }
 
       const emailTrackingModule = await import("./routes/email-tracking.js");
       if (emailTrackingModule && emailTrackingModule.default) {
         app.use("/api/email", emailTrackingModule.default);
       } else {
-        console.error('❌ emailTrackingModule.default est null ou undefined');
       }
 
       // Routes email-logs (tracking détaillé des emails envoyés)
@@ -2234,8 +2229,6 @@ const startServer = async () => {
         if (visitsModule && visitsModule.default) {
           app.use("/api/visits", visitsModule.default);
         } else {
-          console.error('❌ visitsModule.default est null ou undefined');
-          console.error('   Module:', visitsModule);
           // Routes de fallback pour diagnostiquer
           app.get("/api/visits/test", (req, res) => {
             res.status(503).json({ error: 'Module visits non chargé', visitsModule: !!visitsModule });
@@ -2263,10 +2256,7 @@ const startServer = async () => {
           });
         }
       } catch (importError) {
-        console.error('❌ Erreur lors de l\'import du module visits:', importError.message);
-        console.error('   Stack:', importError.stack);
         // Routes de fallback complètes avec logique intégrée
-        console.log('⚠️ Utilisation des routes de fallback pour visits');
 
         app.post("/api/visits/track", async (req, res) => {
           try {
@@ -2311,7 +2301,6 @@ const startServer = async () => {
               visitId: visit._id
             });
           } catch (error) {
-            console.error('Erreur enregistrement visite (fallback):', error);
             res.status(500).json({
               error: 'Erreur lors de l\'enregistrement de la visite',
               details: error.message
@@ -2397,7 +2386,6 @@ const startServer = async () => {
               visitsByDay
             });
           } catch (error) {
-            console.error('Erreur récupération statistiques (fallback):', error);
             res.status(500).json({
               error: 'Erreur lors de la récupération des statistiques',
               details: error.message
@@ -2431,7 +2419,6 @@ const startServer = async () => {
               }
             });
           } catch (error) {
-            console.error('Erreur récupération visites récentes (fallback):', error);
             res.status(500).json({
               error: 'Erreur lors de la récupération des visites',
               details: error.message
@@ -2449,16 +2436,12 @@ const startServer = async () => {
             res.json({ success: true, message: 'Route whatsapp-campaigns fonctionnelle', timestamp: new Date().toISOString() });
           });
         } else {
-          console.error('❌ whatsappCampaignsModule.default est null ou undefined');
-          console.error('   whatsappCampaignsModule:', whatsappCampaignsModule);
           // Route de fallback pour diagnostiquer
           app.get("/api/whatsapp-campaigns/test", (req, res) => {
             res.status(503).json({ error: 'Module whatsapp-campaigns non chargé', whatsappCampaignsModule: !!whatsappCampaignsModule });
           });
         }
       } catch (importError) {
-        console.error('❌ Erreur lors de l\'import du module whatsapp-campaigns:', importError.message);
-        console.error('   Stack:', importError.stack);
         // Route de fallback pour diagnostiquer
         app.get("/api/whatsapp-campaigns/test", (req, res) => {
           res.status(503).json({ error: 'Erreur import module whatsapp-campaigns', details: importError.message });
@@ -2478,7 +2461,6 @@ const startServer = async () => {
         res.status(503).json({ error: 'Erreur chargement module visits', details: error.message });
       });
       // Routes de fallback complètes avec logique intégrée
-      console.log('⚠️ Utilisation des routes de fallback pour visits (bloc marketing)');
 
       app.post("/api/visits/track", async (req, res) => {
         try {
@@ -2674,7 +2656,6 @@ const startServer = async () => {
     try {
       await configureWebPush();
     } catch (error) {
-      console.warn('⚠️ Web Push non configuré:', error.message);
     }
 
     // Configuration Email Service (Marketing Automation)
@@ -2682,7 +2663,6 @@ const startServer = async () => {
       const { initEmailService } = await import("./services/emailService.js");
       initEmailService();
     } catch (error) {
-      console.warn('⚠️ Service email non configuré:', error.message);
     }
 
     // Configuration WhatsApp Service
@@ -2690,7 +2670,6 @@ const startServer = async () => {
       const { initWhatsAppService } = await import("./services/whatsappService.js");
       await initWhatsAppService();
     } catch (error) {
-      console.warn('⚠️ Service WhatsApp non configuré:', error.message);
     }
 
     // Planification des campagnes email avec node-cron
@@ -2767,7 +2746,6 @@ const startServer = async () => {
                       name: subscriber.name || user.name || ''
                     };
                   } catch (error) {
-                    console.error(`❌ Erreur traitement ${emailLower}:`, error.message);
                     return null;
                   }
                 });
@@ -2810,12 +2788,10 @@ const startServer = async () => {
             }
           }
         } catch (error) {
-          console.error('❌ Erreur planification campagnes:', error);
         }
       });
 
     } catch (error) {
-      console.warn('⚠️ Planificateur de campagnes non configuré:', error.message);
     }
 
     // Plus de création automatique d'admin
@@ -2825,7 +2801,6 @@ const startServer = async () => {
     let facebookAdsCourse = await Course.findOne({ slug: 'facebook-ads' });
 
     if (!facebookAdsCourse) {
-      console.log('🚀 Initialisation automatique du cours Facebook Ads...');
 
       // Créer le cours Facebook Ads
       facebookAdsCourse = new Course({
@@ -3093,16 +3068,13 @@ const startServer = async () => {
       startSuccessRadarCron();
       runSuccessRadarOnce();
     } else {
-      console.warn('⚠️ Services Success Radar Cron non disponibles');
     }
 
     // Démarrer le service d'auto-synchronisation Google Sheets
     try {
       const autoSyncService = (await import("./services/autoSyncService.js")).default;
       await autoSyncService.start();
-      console.log('✅ Service d\'auto-synchronisation Google Sheets démarré');
     } catch (error) {
-      console.error('⚠️ Erreur démarrage auto-sync service:', error.message);
     }
 
     // Middleware de gestion des routes non trouvées (DOIT être après toutes les routes)
@@ -3115,7 +3087,6 @@ const startServer = async () => {
 
       // Cas spécial: si la route Google auth n'est pas trouvée, c'est probablement que les routes e-com ne sont pas chargées
       if (req.originalUrl === '/api/ecom/auth/google' && req.method === 'POST') {
-        console.error('❌ Route Google auth non trouvée - les routes e-com/auth.js ne sont probablement pas chargées');
         return res.status(503).json({
           error: 'Service d\'authentification Google indisponible',
           message: 'Les routes e-commerce n\'ont pas pu être chargées au démarrage du serveur',
@@ -3124,8 +3095,6 @@ const startServer = async () => {
         });
       }
 
-      console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
-      console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
       res.status(404).json({
         error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
         availableRoutes: [
@@ -3166,8 +3135,6 @@ const startServer = async () => {
 
     // Middleware 404 pour les routes non trouvées (doit être APRÈS toutes les routes)
     app.use((req, res, next) => {
-      console.log(`⚠️ Route non trouvée: ${req.method} ${req.originalUrl}`);
-      console.log(`   - Headers:`, JSON.stringify(req.headers, null, 2));
       res.status(404).json({
         error: `Route non trouvée: ${req.method} ${req.originalUrl}`,
         availableRoutes: [
@@ -3190,13 +3157,11 @@ const startServer = async () => {
     try {
       const { initSocketServer } = await import('./ecom/services/socketService.js');
       initSocketServer(server);
-      console.log('✅ WebSocket server initialisé');
     } catch (error) {
       console.error('⚠️ Erreur initialisation WebSocket:', error.message);
     }
 
     server.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Impossible de démarrer le serveur:', error);
