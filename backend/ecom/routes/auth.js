@@ -965,7 +965,11 @@ router.post('/generate-invite', requireEcomAuth, async (req, res) => {
     });
     await workspace.save();
 
-    const frontendBase = process.env.FRONTEND_URL || 'https://ecomcookpit.site';
+    const configuredFrontend = (process.env.FRONTEND_URL || '').trim();
+    const isLocalFrontend = /localhost|127\.0\.0\.1/i.test(configuredFrontend);
+    const frontendBase = (!configuredFrontend || isLocalFrontend)
+      ? 'https://ecomcookpit.site'
+      : configuredFrontend.replace(/\/$/, '');
     const inviteLink = `${frontendBase}/ecom/invite/${token}`;
 
     return res.json({
