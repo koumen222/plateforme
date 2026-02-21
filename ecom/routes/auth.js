@@ -1278,23 +1278,39 @@ function generateInviteToken() {
 router.get('/invite/:token', async (req, res) => {
   try {
     const { token } = req.params;
-    
-    const workspace = await Workspace.findOne({ 
-      'invites.token': token,
-      'invites.expiresAt': { $gt: new Date() }
-    }).populate('owner', 'name email');
-    
+
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Token invitation manquant' });
+    }
+
+    const workspace = await Workspace.findOne({ 'invites.token': token })
+      .populate('invites.createdBy', 'name email')
+      .populate('owner', 'name email');
+
     if (!workspace) {
       return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
     }
-    
-    const invite = workspace.invites.find(inv => inv.token === token);
-    
+
+    const invite = (workspace.invites || []).find((inv) => inv.token === token);
+    if (!invite) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    if (invite.used) {
+      return res.status(400).json({ success: false, message: 'Ce lien a déjà été utilisé' });
+    }
+
+    if (invite.expiresAt && new Date(invite.expiresAt) < new Date()) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
+    const invitedBy = invite.createdBy?.name || invite.createdBy?.email || workspace.owner?.name || workspace.owner?.email || 'Administrateur';
+
     res.json({
       success: true,
       data: {
         workspaceName: workspace.name,
-        invitedBy: workspace.owner?.name || workspace.owner?.email || 'Administrateur',
+        invitedBy,
         expiresAt: invite.expiresAt
       }
     });
@@ -1309,55 +1325,66 @@ router.post('/accept-invite', requireEcomAuth, async (req, res) => {
   try {
     const { token, role } = req.body;
     const user = req.ecomUser;
-    
+
     if (!token || !role) {
       return res.status(400).json({ success: false, message: 'Token et rôle requis' });
     }
-    
-    const validRoles = ['ecom_admin', 'ecom_closeuse', 'ecom_compta', 'livreur'];
-    if (!validRoles.includes(role)) {
+
+    const roleMap = {
+      livreur: 'ecom_livreur',
+      ecom_livreur: 'ecom_livreur',
+      ecom_admin: 'ecom_admin',
+      ecom_closeuse: 'ecom_closeuse',
+      ecom_compta: 'ecom_compta'
+    };
+    const finalRole = roleMap[role];
+    if (!finalRole) {
       return res.status(400).json({ success: false, message: 'Rôle invalide' });
     }
-    
-    const workspace = await Workspace.findOne({ 
-      'invites.token': token,
-      'invites.expiresAt': { $gt: new Date() }
-    });
-    
+
+    const workspace = await Workspace.findOne({ 'invites.token': token });
+
     if (!workspace) {
       return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
     }
-    
+
+    const invite = (workspace.invites || []).find((inv) => inv.token === token);
+    if (!invite || invite.used || (invite.expiresAt && new Date(invite.expiresAt) < new Date())) {
+      return res.status(404).json({ success: false, message: 'Lien d\'invitation invalide ou expiré' });
+    }
+
     // Vérifier si l'utilisateur n'est pas déjà dans le workspace
     if (user.workspaces.some(w => w.workspaceId.toString() === workspace._id.toString())) {
       return res.status(400).json({ success: false, message: 'Vous êtes déjà membre de cet espace' });
     }
-    
+
     // Ajouter l'utilisateur au workspace
-    user.addWorkspace(workspace._id, role);
-    
+    user.addWorkspace(workspace._id, finalRole);
+
     // Si c'est le premier workspace, le définir comme principal
     if (!user.workspaceId) {
       user.workspaceId = workspace._id;
-      user.role = role;
+      user.role = finalRole;
     }
-    
+
     await user.save();
-    
-    // Supprimer l'invitation utilisée
-    workspace.invites = workspace.invites.filter(inv => inv.token !== token);
+
+    // Marquer l'invitation comme utilisée
+    invite.used = true;
+    invite.usedBy = user._id;
+    invite.usedAt = new Date();
     await workspace.save();
-    
+
     // Notifier le propriétaire du workspace
     // TODO: Envoyer une notification au propriétaire
-    
+
     res.json({
       success: true,
       message: 'Invitation acceptée avec succès',
       data: {
         workspaceId: workspace._id,
         workspaceName: workspace.name,
-        role
+        role: finalRole
       }
     });
   } catch (error) {
@@ -1370,29 +1397,44 @@ router.post('/accept-invite', requireEcomAuth, async (req, res) => {
 router.post('/generate-invite', requireEcomAuth, async (req, res) => {
   try {
     const user = req.ecomUser;
-    
+
+    if (!user || !user.workspaceId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun workspace associé à cet utilisateur'
+      });
+    }
+
     // Vérifier que l'utilisateur est admin de son workspace
-    if (!user.workspaceId || user.role !== 'ecom_admin') {
-      return res.status(403).json({ success: false, message: 'Seuls les administrateurs peuvent générer des invitations' });
+    if (!['ecom_admin', 'super_admin'].includes(user.role)) {
+      return res.status(403).json({ success: false, message: 'Permission refusée' });
     }
-    
+
     const workspace = await Workspace.findById(user.workspaceId);
-    if (!workspace || workspace.owner.toString() !== user._id.toString()) {
-      return res.status(403).json({ success: false, message: 'Seul le propriétaire peut générer des invitations' });
+    if (!workspace) {
+      return res.status(404).json({ success: false, message: 'Workspace non trouvé' });
     }
-    
+
     // Générer un token d'invitation
     const token = crypto.randomBytes(32).toString('hex');
-    const inviteLink = `${process.env.FRONTEND_URL || 'https://app.safitech.shop'}/ecom/invite/${token}`;
-    
+
     // Sauvegarder l'invitation
+    if (!Array.isArray(workspace.invites)) workspace.invites = [];
     workspace.invites.push({
       token,
       createdBy: user._id,
       createdAt: new Date(),
-      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 jours
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      used: false
     });
     await workspace.save();
+
+    const configuredFrontend = (process.env.FRONTEND_URL || '').trim();
+    const isLocalFrontend = /localhost|127\.0\.0\.1/i.test(configuredFrontend);
+    const frontendBase = (!configuredFrontend || isLocalFrontend)
+      ? 'https://ecomcookpit.site'
+      : configuredFrontend.replace(/\/$/, '');
+    const inviteLink = `${frontendBase}/ecom/invite/${token}`;
     
     console.log(`🔗 Invitation générée par ${user.email}: ${inviteLink}`);
     
