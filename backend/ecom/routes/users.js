@@ -1,7 +1,8 @@
 import express from 'express';
 import EcomUser from '../models/EcomUser.js';
+import Workspace from '../models/Workspace.js';
 import { requireEcomAuth, validateEcomAccess } from '../middleware/ecomAuth.js';
-import { logAudit } from '../middleware/security.js';
+import { logAudit, AuditLog } from '../middleware/security.js';
 
 const router = express.Router();
 
@@ -56,6 +57,96 @@ router.get('/livreurs/list',
       res.json({ success: true, data: livreurs });
     } catch (error) {
       console.error('Erreur liste livreurs:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// GET /api/ecom/users/invites/list - Liste des invitations du workspace
+router.get('/invites/list',
+  requireEcomAuth,
+  validateEcomAccess('admin', 'read'),
+  async (req, res) => {
+    try {
+      if (!req.workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId manquant dans le token' });
+      }
+      const workspace = await Workspace.findById(req.workspaceId)
+        .populate('invites.createdBy', 'email name')
+        .populate('invites.usedBy', 'email name');
+      
+      if (!workspace) {
+        return res.status(404).json({ success: false, message: 'Workspace non trouvé' });
+      }
+
+      const invites = (workspace.invites || [])
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+        .map(inv => ({
+          _id: inv._id,
+          token: inv.token,
+          createdBy: inv.createdBy,
+          createdAt: inv.createdAt,
+          expiresAt: inv.expiresAt,
+          used: inv.used,
+          usedBy: inv.usedBy,
+          usedAt: inv.usedAt,
+          isExpired: new Date(inv.expiresAt) < new Date(),
+          inviteLink: `${process.env.FRONTEND_URL || 'https://app.safitech.shop'}/ecom/invite/${inv.token}`
+        }));
+
+      res.json({
+        success: true,
+        data: {
+          invites,
+          stats: {
+            total: invites.length,
+            active: invites.filter(i => !i.used && !i.isExpired).length,
+            used: invites.filter(i => i.used).length,
+            expired: invites.filter(i => i.isExpired && !i.used).length
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Erreur liste invitations:', error);
+      res.status(500).json({ success: false, message: 'Erreur serveur' });
+    }
+  }
+);
+
+// GET /api/ecom/users/audit/logs - Journal d'audit du workspace
+router.get('/audit/logs',
+  requireEcomAuth,
+  validateEcomAccess('admin', 'read'),
+  async (req, res) => {
+    try {
+      if (!req.workspaceId) {
+        return res.status(400).json({ success: false, message: 'workspaceId manquant dans le token' });
+      }
+      const { page = 1, limit = 30, action } = req.query;
+      const filter = { workspaceId: req.workspaceId };
+      if (action) filter.action = action;
+
+      const total = await AuditLog.countDocuments(filter);
+      const logs = await AuditLog.find(filter)
+        .sort({ createdAt: -1 })
+        .skip((parseInt(page) - 1) * parseInt(limit))
+        .limit(parseInt(limit))
+        .lean();
+
+      res.json({
+        success: true,
+        data: {
+          logs,
+          pagination: {
+            page: parseInt(page),
+            limit: parseInt(limit),
+            total,
+            pages: Math.ceil(total / parseInt(limit))
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Erreur audit logs:', error);
       res.status(500).json({ success: false, message: 'Erreur serveur' });
     }
   }
