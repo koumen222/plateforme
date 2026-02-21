@@ -237,30 +237,28 @@ router.post('/campaigns/:id/send', requireMarketingAccess, async (req, res) => {
     let failed = 0;
     const results = [];
 
-    // Send in batches of 10 (Resend rate limit)
-    const BATCH = 10;
-    for (let i = 0; i < recipients.length; i += BATCH) {
-      const batch = recipients.slice(i, i + BATCH);
-      await Promise.all(batch.map(async (email) => {
-        try {
-          const resp = await resend.emails.send({
-            from,
-            to: [email],
-            subject: campaign.subject,
-            html,
-            text: campaign.bodyText || undefined,
-            reply_to: campaign.replyTo || undefined,
-            headers: { 'X-Campaign-Id': campaign._id.toString() }
-          });
-          sent++;
-          results.push({ email, status: 'sent', sentAt: new Date(), resendId: resp?.data?.id || null });
-        } catch (err) {
-          failed++;
-          results.push({ email, status: 'failed', error: err.message, sentAt: new Date() });
-        }
-      }));
-      // Small delay between batches
-      if (i + BATCH < recipients.length) await new Promise(r => setTimeout(r, 200));
+    // Send emails one by one with delay
+    for (const email of recipients) {
+      try {
+        const resp = await resend.emails.send({
+          from,
+          to: [email],
+          subject: campaign.subject,
+          html,
+          text: campaign.bodyText || undefined,
+          reply_to: campaign.replyTo || undefined,
+          headers: { 'X-Campaign-Id': campaign._id.toString() }
+        });
+        sent++;
+        results.push({ email, status: 'sent', sentAt: new Date(), resendId: resp?.data?.id || null });
+      } catch (err) {
+        failed++;
+        results.push({ email, status: 'failed', error: err.message, sentAt: new Date() });
+      }
+      
+      // Delay between 3 and 5 seconds before next email
+      const delay = 3000 + Math.random() * 2000; // 3000ms to 5000ms
+      await new Promise(r => setTimeout(r, delay));
     }
 
     campaign.status = failed === recipients.length ? 'failed' : 'sent';
