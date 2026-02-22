@@ -93,7 +93,7 @@ router.post('/login', validateEmail, async (req, res) => {
       token = generateEcomToken(user);
       console.log('✅ Token normal généré');
     }
-    
+
     // Log connexion réussie
     req.ecomUser = user;
     await logAudit(req, 'LOGIN', `Connexion réussie: ${user.email} (${user.role}) - Permanent: ${isPermanent}`, 'auth', user._id);
@@ -141,7 +141,7 @@ router.post('/login', validateEmail, async (req, res) => {
 router.post('/refresh', async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.status(401).json({
         success: false,
@@ -171,7 +171,7 @@ router.post('/refresh', async (req, res) => {
 
     // Générer un nouveau token
     const newToken = generateEcomToken(user);
-    
+
     // Charger le workspace
     let workspace = null;
     if (user.workspaceId) {
@@ -213,7 +213,7 @@ router.post('/register-device', async (req, res) => {
   try {
     const { deviceInfo } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
@@ -222,7 +222,7 @@ router.post('/register-device', async (req, res) => {
     }
 
     const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({
@@ -233,7 +233,7 @@ router.post('/register-device', async (req, res) => {
 
     // Générer un token permanent
     const permanentToken = generatePermanentToken(user, deviceInfo);
-    
+
     console.log(`📱 Appareil enregistré pour ${user.email}`);
 
     res.json({
@@ -257,7 +257,7 @@ router.post('/register-device', async (req, res) => {
 router.get('/device-status', async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
       return res.json({
         success: true,
@@ -335,7 +335,7 @@ router.get('/device-status', async (req, res) => {
 router.post('/revoke-device', async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !token.startsWith('perm:')) {
       return res.status(400).json({
         success: false,
@@ -345,7 +345,7 @@ router.post('/revoke-device', async (req, res) => {
 
     const ECOM_JWT_SECRET = process.env.ECOM_JWT_SECRET || 'ecom-secret-key-change-in-production';
     const decoded = jwt.verify(token.replace('perm:', ''), ECOM_JWT_SECRET);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({
@@ -568,6 +568,20 @@ router.post('/register', validateEmail, validatePassword, async (req, res) => {
   }
 });
 
+// GET /api/ecom/auth/health - Quick health check
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Auth service is running',
+    timestamp: new Date().toISOString(),
+    env: {
+      hasGoogleClientId: !!process.env.GOOGLE_CLIENT_ID,
+      hasJwtSecret: !!process.env.ECOM_JWT_SECRET,
+      nodeEnv: process.env.NODE_ENV || 'development',
+    }
+  });
+});
+
 // POST /api/ecom/auth/google - Connexion / inscription via Google
 router.post('/google', async (req, res) => {
   try {
@@ -576,13 +590,51 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Token Google manquant' });
     }
 
-    // Décoder le JWT Google (ID token)
-    const parts = credential.split('.');
-    if (parts.length !== 3) {
-      return res.status(400).json({ success: false, message: 'Token Google invalide' });
+    // ─── Vérification sécurisée du id_token via google-auth-library ───
+    const { OAuth2Client } = await import('google-auth-library');
+    const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    
+    if (!GOOGLE_CLIENT_ID) {
+      console.error('❌ [Google Auth] GOOGLE_CLIENT_ID manquant dans les variables d\'environnement');
+      return res.status(503).json({ 
+        success: false, 
+        message: 'GOOGLE_CLIENT_ID manquant côté serveur. Veuillez configurer les variables d\'environnement.' 
+      });
     }
-    const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString());
+    
+    const client = new OAuth2Client(GOOGLE_CLIENT_ID);
+
+    let ticket;
+    try {
+      ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: GOOGLE_CLIENT_ID,
+      });
+    } catch (verifyError) {
+      console.error('❌ [Google Auth] Vérification id_token échouée:', verifyError.message);
+      // Diagnostic précis selon le type d'erreur
+      if (verifyError.message.includes('audience')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Audience mismatch — le token a été émis pour un autre Client ID. Vérifiez GOOGLE_CLIENT_ID côté backend.'
+        });
+      }
+      if (verifyError.message.includes('Token used too late') || verifyError.message.includes('expired')) {
+        return res.status(401).json({
+          success: false,
+          message: 'Token Google expiré. Veuillez réessayer.'
+        });
+      }
+      return res.status(401).json({
+        success: false,
+        message: 'Token Google invalide : ' + verifyError.message
+      });
+    }
+
+    const payload = ticket.getPayload();
     const { sub: googleId, email, name, picture } = payload;
+
+    console.log('✅ [Google Auth] Token vérifié pour:', email, '| aud:', payload.aud);
 
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email non disponible depuis Google' });
@@ -811,13 +863,13 @@ router.get('/me', async (req, res) => {
   try {
     const authHeader = req.header('Authorization');
     const token = authHeader?.replace('Bearer ', '');
-    
+
     console.log('🔐 /auth/me appelé');
     console.log('   Authorization header:', authHeader ? 'Présent' : 'Manquant');
     console.log('   Token length:', token?.length || 0);
     console.log('   Token starts with:', token?.substring(0, 20) + '...');
     console.log('   Origin:', req.headers.origin);
-    
+
     if (!token) {
       console.log('❌ Token manquant');
       return res.status(401).json({
@@ -825,7 +877,7 @@ router.get('/me', async (req, res) => {
         message: 'Token manquant'
       });
     }
-    
+
     if (!isSupportedAuthToken(token)) {
       console.log('❌ Token format non supporté. Raw check:', token.split('.').length === 3 ? 'JWT brut' : 'Format inconnu');
       return res.status(401).json({
@@ -833,18 +885,18 @@ router.get('/me', async (req, res) => {
         message: 'Token invalide'
       });
     }
-    
+
     const normalizedToken = normalizeToken(token);
     console.log('✅ Token normalisé, longueur:', normalizedToken.length);
-    
+
     const decoded = jwt.verify(normalizedToken, ECOM_JWT_SECRET);
     console.log('✅ Token vérifié, userId:', decoded.id);
-    
+
     console.log('🔍 Recherche utilisateur avec ID:', decoded.id);
     const user = await EcomUser.findById(decoded.id).select('-password');
     console.log('👤 Utilisateur trouvé:', user ? user.email : 'Non trouvé');
     console.log('🔑 Utilisateur actif:', user?.isActive);
-    
+
     if (!user || !user.isActive) {
       console.log('❌ Utilisateur non trouvé ou inactif');
       return res.status(401).json({
@@ -867,6 +919,7 @@ router.get('/me', async (req, res) => {
           email: user.email,
           name: user.name,
           phone: user.phone,
+          avatar: user.avatar,
           role: user.role,
           isActive: user.isActive,
           lastLogin: user.lastLogin,
@@ -896,9 +949,9 @@ router.put('/profile', async (req, res) => {
   try {
     const { name, phone } = req.body;
     console.log('🔧 [Profile Update] Données reçues:', { name, phone, body: req.body });
-    
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !isSupportedAuthToken(token)) {
       console.log('❌ [Profile Update] Token invalide:', token?.substring(0, 20));
       return res.status(401).json({ success: false, message: 'Token invalide' });
@@ -906,23 +959,23 @@ router.put('/profile', async (req, res) => {
 
     const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
     console.log('👤 [Profile Update] Token décodé, userId:', decoded.id);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       console.log('❌ [Profile Update] Utilisateur non trouvé ou inactif:', decoded.id);
       return res.status(401).json({ success: false, message: 'Utilisateur non trouvé ou inactif' });
     }
 
-    console.log('📋 [Profile Update] Avant modification:', { 
-      id: user._id, 
-      name: user.name, 
+    console.log('📋 [Profile Update] Avant modification:', {
+      id: user._id,
+      name: user.name,
       phone: user.phone,
-      email: user.email 
+      email: user.email
     });
 
     if (name !== undefined) user.name = name.trim();
     if (phone !== undefined) user.phone = phone.trim();
-    
+
     console.log('💾 [Profile Update] Sauvegarde en cours...');
     await user.save();
     console.log('✅ [Profile Update] Sauvegarde réussie!');
@@ -942,7 +995,7 @@ router.put('/profile', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    
+
     if (!email || !email.trim()) {
       return res.status(400).json({ success: false, message: 'Email requis' });
     }
@@ -953,19 +1006,19 @@ router.post('/forgot-password', async (req, res) => {
     const now = Date.now();
     const key = normalizedEmail;
     const attempts = forgotPasswordAttempts.get(key) || { count: 0, firstAttempt: now };
-    
+
     if (now - attempts.firstAttempt > FORGOT_PASSWORD_WINDOW) {
       attempts.count = 0;
       attempts.firstAttempt = now;
     }
-    
+
     if (attempts.count >= FORGOT_PASSWORD_LIMIT) {
       return res.status(429).json({
         success: false,
         message: 'Trop de tentatives. Veuillez réessayer dans 15 minutes.'
       });
     }
-    
+
     attempts.count++;
     forgotPasswordAttempts.set(key, attempts);
 
@@ -1052,16 +1105,16 @@ router.put('/change-password', async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
-    
+
     const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({
@@ -1112,16 +1165,16 @@ router.put('/currency', async (req, res) => {
   try {
     const { currency } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
         message: 'Token invalide'
       });
     }
-    
+
     const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({
@@ -1175,7 +1228,7 @@ router.put('/avatar', async (req, res) => {
   try {
     const { avatar } = req.body;
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token || !isSupportedAuthToken(token)) {
       return res.status(401).json({
         success: false,
@@ -1184,7 +1237,7 @@ router.put('/avatar', async (req, res) => {
     }
 
     const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
-    
+
     const user = await EcomUser.findById(decoded.id);
     if (!user || !user.isActive) {
       return res.status(401).json({
@@ -1213,54 +1266,6 @@ router.put('/avatar', async (req, res) => {
   }
 });
 
-// GET /api/ecom/auth/me - Retourner les infos utilisateur avec avatar
-router.get('/me', async (req, res) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token || !isSupportedAuthToken(token)) {
-      return res.status(401).json({
-        success: false,
-        message: 'Token invalide'
-      });
-    }
-
-    const decoded = jwt.verify(normalizeToken(token), ECOM_JWT_SECRET);
-    
-    const user = await EcomUser.findById(decoded.id).select('-password');
-    if (!user || !user.isActive) {
-      return res.status(401).json({
-        success: false,
-        message: 'Utilisateur non trouvé ou inactif'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        user: {
-          id: user._id,
-          email: user.email,
-          name: user.name,
-          phone: user.phone,
-          avatar: user.avatar,
-          role: user.role,
-          isActive: user.isActive,
-          lastLogin: user.lastLogin,
-          createdAt: user.createdAt,
-          workspaceId: user.workspaceId,
-          currency: user.currency
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Erreur get profile e-commerce:', error);
-    res.status(401).json({
-      success: false,
-      message: 'Token invalide'
-    });
-  }
-});
 
 // ─── INVITATIONS PAR LIEN ─────────────────────────────────────────────────────
 
@@ -1435,11 +1440,11 @@ router.post('/generate-invite', requireEcomAuth, async (req, res) => {
       ? 'https://ecomcookpit.site'
       : configuredFrontend.replace(/\/$/, '');
     const inviteLink = `${frontendBase}/ecom/invite/${token}`;
-    
+
     console.log(`🔗 Invitation générée par ${user.email}: ${inviteLink}`);
-    
+
     await logAudit(req, 'GENERATE_INVITE', `Lien d'invitation généré par ${user.email}`, 'workspace', workspace._id.toString());
-    
+
     res.json({
       success: true,
       message: 'Lien d\'invitation généré',

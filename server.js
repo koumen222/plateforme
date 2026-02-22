@@ -119,7 +119,7 @@ const corsOptions = {
     callback(new Error('Not allowed by CORS'));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "X-Session-Id"],
   credentials: true, // IMPORTANT pour les cookies cross-domain
   optionsSuccessStatus: 204,
   preflightContinue: false
