@@ -272,7 +272,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 2 - La structure d\'une campagne qui nourrit Andromeda',
         videoId: '1151322854',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 2,
         summary: {
           text: `Aujourd'hui, vous allez découvrir la structure complète d'une campagne Andromeda. Cette méthode révolutionnaire vous permettra de créer des campagnes qui génèrent des ventes de manière prévisible et scalable.`,
@@ -329,7 +329,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 4 - Paramétrer le compte publicitaire',
         videoId: '1151323764',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 4,
       
         summary: {
@@ -363,7 +363,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 5 - Lancement',
         videoId: '1151379720',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 5,
       
         summary: {
@@ -396,7 +396,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 6 - Analyse et optimisation',
         videoId: '148751763',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 6,
         summary: {
           text: `Après 2 jours de lancement, il est temps d'analyser les premiers résultats. Cette phase d'apprentissage est cruciale : vous allez observer ce qui fonctionne et ce qui ne fonctionne pas, sans pour autant intervenir prématurément.`,
@@ -429,7 +429,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 7 - Mini Scaling',
         videoId: '148751763',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 7,
         summary: {
           text: `Après 3 jours d'observation, il est temps de faire votre première optimisation. Cette étape de mini scaling vous permettra d'éliminer les adsets morts et d'augmenter progressivement le budget de votre campagne performante.`,
@@ -462,7 +462,7 @@ router.post('/init-facebook-ads', async (req, res) => {
       {
         title: 'JOUR 8 - Réservation Coaching',
         videoId: '148751763',
-        videoType: 'vimeo',
+        videoType: 'youtube',
         order: 8,
         isCoaching: true,
         summary: {

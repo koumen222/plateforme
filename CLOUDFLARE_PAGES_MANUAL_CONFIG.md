@@ -1,4 +1,4 @@
-# Configuration pour le déploiement Cloudflare Pages
+![alt text](image.png)# Configuration pour le déploiement Cloudflare Pages
 
 ## IMPORTANT: Configuration manuelle requise dans Cloudflare Dashboard
 

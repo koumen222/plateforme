@@ -51,7 +51,7 @@ async function createShopifyModule() {
           icon: '🎯',
           title: 'Formation Shopify 2026',
           type: 'course',
-          link: '/course/formation-shopify-2026',
+          link: 'https://www.safitech.shop/course/formation-shopify-2026',
           download: false
         }
       ]
