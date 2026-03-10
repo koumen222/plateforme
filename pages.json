@@ -1,0 +1,10 @@
+{
+  "build": {
+    "root_directory": "frontend",
+    "build_command": "npm run build",
+    "build_output_directory": "dist",
+    "node_version": "18"
+  },
+  "compatibility_date": "2024-02-08",
+  "pages_build_output_dir": "frontend/dist"
+}
