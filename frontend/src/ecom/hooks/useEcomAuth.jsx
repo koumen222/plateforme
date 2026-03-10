@@ -107,6 +107,12 @@ const authReducer = (state, action) => {
         workspace: action.payload.originalWorkspace
       };
     
+    case 'CLEAR_ERROR':
+      return {
+        ...state,
+        error: null
+      };
+    
     default:
       return state;
   }

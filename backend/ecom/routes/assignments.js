@@ -680,7 +680,7 @@ router.post('/', requireEcomAuth, async (req, res) => {
 router.put('/:id', requireEcomAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { closeuseId, orderSources, productAssignments, notes } = req.body;
+    const { closeuseId, orderSources, productAssignments, cityAssignments, notes } = req.body;
 
     const assignment = await CloseuseAssignment.findOne({
       _id: id,
@@ -697,20 +697,41 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
     }
 
     if (Array.isArray(orderSources)) {
-      assignment.orderSources = orderSources.map(source => ({
-        sourceId: source.sourceId,
-        assignedBy: req.ecomUser._id,
-        assignedAt: new Date()
-      }));
+      assignment.orderSources = orderSources
+        .filter(s => s.sourceId && s.sourceId.length >= 24)
+        .map(source => ({
+          sourceId: source.sourceId,
+          assignedBy: req.ecomUser._id,
+          assignedAt: new Date()
+        }));
     }
 
     if (Array.isArray(productAssignments)) {
-      assignment.productAssignments = productAssignments.map(item => ({
-        sourceId: item.sourceId,
-        productIds: item.productIds,
-        assignedBy: req.ecomUser._id,
-        assignedAt: new Date()
-      }));
+      assignment.productAssignments = productAssignments
+        .filter(pa => pa.sourceId && pa.sourceId.length >= 24)
+        .map(pa => {
+          const allIds = pa.productIds || [];
+          const objectIds = allIds.filter(id => /^[a-f0-9]{24}$/i.test(id));
+          const sheetNames = allIds.filter(id => !/^[a-f0-9]{24}$/i.test(id) && id.trim());
+          return {
+            sourceId: pa.sourceId,
+            productIds: objectIds,
+            sheetProductNames: sheetNames,
+            assignedBy: req.ecomUser._id,
+            assignedAt: new Date()
+          };
+        });
+    }
+
+    if (Array.isArray(cityAssignments)) {
+      assignment.cityAssignments = cityAssignments
+        .filter(ca => ca.sourceId && ca.sourceId.length >= 24)
+        .map(ca => ({
+          sourceId: ca.sourceId,
+          cityNames: ca.cityNames || [],
+          assignedBy: req.ecomUser._id,
+          assignedAt: new Date()
+        }));
     }
 
     if (notes !== undefined) {
@@ -725,7 +746,9 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
       .populate('orderSources.assignedBy', 'name email')
       .populate('productAssignments.sourceId', 'name color icon')
       .populate('productAssignments.productIds', 'name sellingPrice stock')
-      .populate('productAssignments.assignedBy', 'name email');
+      .populate('productAssignments.assignedBy', 'name email')
+      .populate('cityAssignments.sourceId', 'name color icon')
+      .populate('cityAssignments.assignedBy', 'name email');
 
     res.json({
       success: true,

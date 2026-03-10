@@ -2,6 +2,8 @@ import express from 'express';
 import Course from '../models/Course.js';
 import Module from '../models/Module.js';
 import Lesson from '../models/Lesson.js';
+import User from '../models/User.js';
+import { authenticate, checkAccountStatus } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -1024,6 +1026,126 @@ router.post('/init-recherche-produit', async (req, res) => {
   } catch (error) {
     console.error('Erreur initialisation Recherche Produit:', error);
     res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
+/**
+ * POST /api/courses/:courseId/lessons/:lessonId/complete
+ * Marquer une leçon comme terminée
+ */
+router.post('/:courseId/lessons/:lessonId/complete', authenticate, checkAccountStatus, async (req, res) => {
+  try {
+    const { courseId, lessonId } = req.params;
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Vérifier que la leçon existe
+    const lesson = await Lesson.findById(lessonId);
+    if (!lesson) {
+      return res.status(404).json({ error: 'Leçon non trouvée' });
+    }
+
+    // Vérifier si la progression existe déjà
+    const existingProgress = user.lessonProgress.find(
+      p => p.lessonId.toString() === lessonId && p.courseId.toString() === courseId
+    );
+
+    if (existingProgress) {
+      // Mettre à jour la progression existante
+      existingProgress.completed = true;
+      existingProgress.completedAt = new Date();
+      existingProgress.lastAccessedAt = new Date();
+    } else {
+      // Créer une nouvelle progression
+      user.lessonProgress.push({
+        lessonId,
+        courseId,
+        completed: true,
+        completedAt: new Date(),
+        lastAccessedAt: new Date()
+      });
+    }
+
+    await user.save();
+
+    // Calculer la progression du cours
+    const modules = await Module.find({ courseId });
+    const moduleIds = modules.map(m => m._id);
+    const allLessons = await Lesson.find({ moduleId: { $in: moduleIds } });
+    const completedLessons = user.lessonProgress.filter(
+      p => p.courseId.toString() === courseId && p.completed
+    ).length;
+
+    const progressPercentage = allLessons.length > 0 
+      ? Math.round((completedLessons / allLessons.length) * 100) 
+      : 0;
+
+    res.json({
+      success: true,
+      progress: {
+        lessonId,
+        completed: true,
+        completedLessons,
+        totalLessons: allLessons.length,
+        progressPercentage
+      }
+    });
+  } catch (error) {
+    console.error('Erreur marquage leçon complétée:', error);
+    res.status(500).json({ error: 'Erreur lors du marquage de la leçon' });
+  }
+});
+
+/**
+ * GET /api/courses/:courseId/progress
+ * Récupérer la progression d'un cours
+ */
+router.get('/:courseId/progress', authenticate, checkAccountStatus, async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const userId = req.user._id;
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    // Récupérer toutes les leçons du cours
+    const modules = await Module.find({ courseId }).sort({ order: 1 });
+    const moduleIds = modules.map(m => m._id);
+    const allLessons = await Lesson.find({ moduleId: { $in: moduleIds } }).sort({ order: 1 });
+
+    // Calculer la progression
+    const completedLessonIds = user.lessonProgress
+      .filter(p => p.courseId.toString() === courseId && p.completed)
+      .map(p => p.lessonId.toString());
+
+    const lessonsWithProgress = allLessons.map(lesson => ({
+      _id: lesson._id,
+      title: lesson.title,
+      completed: completedLessonIds.includes(lesson._id.toString())
+    }));
+
+    const progressPercentage = allLessons.length > 0 
+      ? Math.round((completedLessonIds.length / allLessons.length) * 100) 
+      : 0;
+
+    res.json({
+      success: true,
+      progress: {
+        completedLessons: completedLessonIds.length,
+        totalLessons: allLessons.length,
+        progressPercentage,
+        lessons: lessonsWithProgress
+      }
+    });
+  } catch (error) {
+    console.error('Erreur récupération progression cours:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de la progression' });
   }
 });
 

@@ -26,13 +26,13 @@ ecomApi.interceptors.request.use(
     const wsId = workspace?._id || workspace?.id;
     
     if (wsId) {
-      // Ajouter workspaceId aux params si c'est une requête GET
-      if (config.method === 'get' && config.params) {
+      // Ajouter workspaceId aux params pour GET et DELETE
+      if (['get', 'delete'].includes(config.method) && config.params) {
         config.params.workspaceId = wsId;
-      } else if (config.method === 'get' && !config.params) {
+      } else if (['get', 'delete'].includes(config.method) && !config.params) {
         config.params = { workspaceId: wsId };
       }
-      // Ajouter workspaceId au body si c'est une requête POST/PUT/DELETE
+      // Ajouter workspaceId au body pour POST/PUT/PATCH
       else if (['post', 'put', 'patch'].includes(config.method) && config.data) {
         config.data.workspaceId = wsId;
       } else if (['post', 'put', 'patch'].includes(config.method) && !config.data) {

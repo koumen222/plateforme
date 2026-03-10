@@ -184,8 +184,7 @@ app.use('/uploads', (req, res, next) => {
   if (req.originalUrl.startsWith('/uploads/')) {
         res.status(404).json({
       error: 'Fichier non trouvé',
-      path: req.originalUrl,
-      uploadsPath: uploadsPath
+      path: req.originalUrl
     });
     return;
   }

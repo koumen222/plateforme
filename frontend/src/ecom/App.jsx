@@ -133,7 +133,8 @@ const ProtectedRoute = ({ children, requiredRole }) => {
         'super_admin': '/ecom/super-admin',
         'ecom_admin': '/ecom/dashboard/admin',
         'ecom_closeuse': '/ecom/dashboard/closeuse',
-        'ecom_compta': '/ecom/dashboard/compta'
+        'ecom_compta': '/ecom/dashboard/compta',
+        'livreur': '/ecom/livreur'
       };
       
       return <Navigate to={roleDashboardMap[user.role] || '/ecom/login'} replace />;

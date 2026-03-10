@@ -113,6 +113,30 @@ const userSchema = new mongoose.Schema({
       default: null
     }
   }],
+  lessonProgress: [{
+    lessonId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Lesson',
+      required: true
+    },
+    courseId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Course',
+      required: true
+    },
+    completed: {
+      type: Boolean,
+      default: false
+    },
+    completedAt: {
+      type: Date,
+      default: null
+    },
+    lastAccessedAt: {
+      type: Date,
+      default: Date.now
+    }
+  }],
   metaSelectedCampaign: {
     campaignId: {
       type: String,

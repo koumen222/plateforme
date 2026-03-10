@@ -224,14 +224,12 @@ function App() {
           {/* Routes E-commerce */}
           <Route path="/ecom/*" element={<EcomApp />} />
           
-          {/* Routes cours avec PlatformLayout (Header + Footer) et Layout (sidebar) */}
+          {/* Routes cours - NOUVEAU CoursePlayer avec sidebar intégré */}
           <Route
             path="/course/:slug/*"
             element={
               <PlatformLayout>
-                <Layout>
-                  <CourseRouter />
-                </Layout>
+                <CourseRouter />
               </PlatformLayout>
             }
           />

@@ -26,7 +26,7 @@ const AdminDashboard = () => {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const daysCount = parseInt(timeRange) || 14;
+      const daysCount = timeRange === '24h' ? 1 : (parseInt(timeRange) || 14);
       const [productsRes, alertsRes, financialRes, decisionsRes, ordersRes, dailyRes] = await Promise.all([
         ecomApi.get('/products?isActive=true'),
         ecomApi.get('/stock/alerts'),
