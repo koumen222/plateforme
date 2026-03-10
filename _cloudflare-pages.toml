@@ -1,0 +1,9 @@
+# Cloudflare Pages Build Configuration
+# This file tells Cloudflare Pages to use the frontend directory
+
+[build]
+command = "cd frontend && npm install && npm run build"
+cwd = "frontend"
+
+[env.production]
+[env.preview]
