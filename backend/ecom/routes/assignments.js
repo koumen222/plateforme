@@ -708,6 +708,7 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
 
     if (Array.isArray(productAssignments)) {
       assignment.productAssignments = productAssignments
+<<<<<<< HEAD
         .filter(pa => pa.sourceId && pa.sourceId.length >= 24)
         .map(pa => {
           const allIds = pa.productIds || [];
@@ -715,12 +716,22 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
           const sheetNames = allIds.filter(id => !/^[a-f0-9]{24}$/i.test(id) && id.trim());
           return {
             sourceId: pa.sourceId,
+=======
+        .filter(item => item.sourceId && item.sourceId.length >= 24)
+        .map(item => {
+          const allIds = item.productIds || [];
+          const objectIds = allIds.filter(id => /^[a-f0-9]{24}$/i.test(id));
+          const sheetNames = allIds.filter(id => !/^[a-f0-9]{24}$/i.test(id) && id.trim());
+          return {
+            sourceId: item.sourceId,
+>>>>>>> 311950ce2902770e7c8f4263bb5fc7f64833eb93
             productIds: objectIds,
             sheetProductNames: sheetNames,
             assignedBy: req.ecomUser._id,
             assignedAt: new Date()
           };
         });
+<<<<<<< HEAD
     }
 
     if (Array.isArray(cityAssignments)) {
@@ -732,6 +743,8 @@ router.put('/:id', requireEcomAuth, async (req, res) => {
           assignedBy: req.ecomUser._id,
           assignedAt: new Date()
         }));
+=======
+>>>>>>> 311950ce2902770e7c8f4263bb5fc7f64833eb93
     }
 
     if (notes !== undefined) {

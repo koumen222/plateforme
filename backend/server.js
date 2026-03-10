@@ -4,6 +4,9 @@ process.on("uncaughtException", err => {
   console.error("Stack:", err.stack);
 });
 
+// Timestamp de build pour forcer le déploiement
+console.log("🚀 Build timestamp:", new Date().toISOString());
+
 process.on("unhandledRejection", (reason, promise) => {
   console.error("❌ UNHANDLED PROMISE REJECTION:", reason);
   console.error("Promise:", promise);
@@ -87,33 +90,41 @@ const app = express();
 
 // ⚠️ Configuration CORS - DOIT être AVANT toutes les routes
 // ✅ Solution propre et sécurisée
+const allowedOrigins = [
+  "https://ecomcookpit.site",
+  "https://www.ecomcookpit.site",
+  "http://ecomcookpit.site",
+  "http://www.ecomcookpit.site",
+  "https://www.safitech.shop",
+  "https://plateforme-backend-production-2ec6.up.railway.app",
+  "https://ecomcookpit.pages.dev",
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "http://localhost:8081"
+];
+
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
+    // autorise requêtes sans origin (mobile apps, postman)
     if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      "https://www.safitech.shop",
-      "https://ecomcookpit.site",
-      "http://ecomcookpit.site",
-      "https://www.ecomcookpit.site",
-      "http://www.ecomcookpit.site",
-      "https://plateformecp.pages.dev",
-      "http://localhost:5173",
-      "http://localhost:8081"
-    ];
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('🚫 CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+
+    // domaine principal
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
+
+    // autorise tous les previews Cloudflare du projet
+    if (origin.endsWith(".ecomcookpit.pages.dev")) {
+      return callback(null, true);
+    }
+
+    console.log('🚫 CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
   },
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-  credentials: true,
-  optionsSuccessStatus: 204, // Répondre avec 204 No Content pour les requêtes OPTIONS
+  credentials: true, // IMPORTANT pour les cookies cross-domain
+  optionsSuccessStatus: 204,
   preflightContinue: false
 };
 
@@ -202,10 +213,11 @@ app.use(session({
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true, // HTTPS uniquement (OBLIGATOIRE pour Render)
+    secure: process.env.NODE_ENV === 'production', // HTTPS uniquement en production
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 heures
-    sameSite: "none" // OBLIGATOIRE pour OAuth cross-domain sur Render
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours au lieu de 24 heures pour mobile
+    sameSite: process.env.NODE_ENV === 'production' ? "none" : "lax", // "lax" pour compatibilité mobile
+    domain: process.env.NODE_ENV === 'production' ? '.up.railway.app' : undefined // Domaine pour Railway
   }
 }));
 
@@ -1849,14 +1861,23 @@ const startServer = async () => {
     }
 
     // ===== MODULE E-COMMERCE ISOLÉ =====
-    
+
+    // Diagnostic: liste des modules ecom chargés (utile pour déboguer les 404)
+    const ecomLoadedModules = [];
+    app.get('/api/ecom/health', (req, res) => {
+      res.json({ status: 'ok', loadedModules: ecomLoadedModules, timestamp: new Date().toISOString() });
+    });
+
     // Routes E-commerce Authentification
     try {
       const ecomAuthModule = await import("./ecom/routes/auth.js");
       ecomAuthRoutes = ecomAuthModule.default;
       app.use("/api/ecom/auth", ecomAuthRoutes);
+      ecomLoadedModules.push('auth');
+      console.log('✅ Routes E-commerce Auth chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/auth.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Produits
@@ -1934,13 +1955,25 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/transactions.js:', error.message);
     }
 
+    // Routes E-commerce Préférences de notifications
+    try {
+      const ecomNotifPrefsModule = await import("./ecom/routes/notificationPreferences.js");
+      app.use("/api/ecom/notification-preferences", ecomNotifPrefsModule.default);
+      console.log('✅ Routes ecom/notificationPreferences.js chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/notificationPreferences.js:', error.message);
+    }
+
     // Routes E-commerce Utilisateurs (Admin)
     try {
       const ecomUsersModule = await import("./ecom/routes/users.js");
       const ecomUsersRoutes = ecomUsersModule.default;
       app.use("/api/ecom/users", ecomUsersRoutes);
+      ecomLoadedModules.push('users');
+      console.log('✅ Routes E-commerce Users chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/users.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Super Admin
@@ -1950,6 +1983,17 @@ const startServer = async () => {
       app.use("/api/ecom/super-admin", ecomSuperAdminRoutes);
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/superAdmin.js:', error.message);
+    }
+
+    // Routes E-commerce Marketing (Campagnes email internes)
+    try {
+      const ecomMarketingModule = await import("./ecom/routes/marketing.js");
+      app.use("/api/ecom/marketing", ecomMarketingModule.default);
+      ecomLoadedModules.push('marketing');
+      console.log('✅ Routes E-commerce Marketing chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/marketing.js:', error.message);
+      console.error('   Stack:', error.stack);
     }
 
     // Routes E-commerce Import (Google Sheets)
@@ -2028,6 +2072,46 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/workspaces.js:', error.message);
     }
 
+    // Routes E-commerce Messages (Chat équipe)
+    try {
+      const ecomMessagesModule = await import("./ecom/routes/messages.js");
+      app.use("/api/ecom/messages", ecomMessagesModule.default);
+      console.log('✅ Routes E-commerce Messages (Chat) chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/messages.js:', error.message);
+    }
+
+    // Routes E-commerce Messages Directs (DM)
+    try {
+      console.log('🔍 Tentative chargement module DM...');
+      const ecomDmModule = await import("./ecom/routes/dm.js");
+      console.log('✅ Module DM chargé avec succès');
+      app.use("/api/ecom/dm", ecomDmModule.default);
+      console.log('✅ Routes E-commerce DM chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/dm.js:', error.message);
+      console.error('Stack:', error.stack);
+    }
+
+    // Routes E-commerce Media (Upload pour messagerie)
+    try {
+      const ecomMediaModule = await import("./ecom/routes/media.js");
+      app.use("/api/ecom/media", ecomMediaModule.default);
+      console.log('✅ Routes E-commerce Media chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/media.js:', error.message);
+    }
+
+    // Routes E-commerce Contact (Formulaire de contact)
+    try {
+      const ecomContactModule = await import("./ecom/routes/contact.js");
+      const ecomContactRoutes = ecomContactModule.default;
+      app.use("/api/ecom/contact", ecomContactRoutes);
+      console.log('✅ Routes E-commerce Contact chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/contact.js:', error.message);
+    }
+
     // Routes E-commerce Affectations (Sources et Produits par closeuse)
     try {
       const ecomAssignmentsModule = await import("./ecom/routes/assignments.js");
@@ -2046,6 +2130,16 @@ const startServer = async () => {
       console.log('✅ Routes E-commerce Auto-Sync chargées');
     } catch (error) {
       console.error('⚠️ Erreur chargement ecom/autoSync.js:', error.message);
+    }
+
+    // Routes E-commerce Analytics (tracking événements frontend)
+    try {
+      const ecomAnalyticsModule = await import("./ecom/routes/analytics.js");
+      app.use("/api/ecom/analytics", ecomAnalyticsModule.default);
+      ecomLoadedModules.push('analytics');
+      console.log('✅ Routes E-commerce Analytics chargées');
+    } catch (error) {
+      console.error('⚠️ Erreur chargement ecom/analytics.js:', error.message);
     }
 
     // Routes E-commerce Agent Vendeur WhatsApp
@@ -3067,8 +3161,21 @@ const startServer = async () => {
       });
     });
     
-    // Démarrer le serveur Express
-    app.listen(PORT, '0.0.0.0', () => {
+    // Démarrer le serveur Express avec WebSocket support
+    const http = await import('http');
+    const server = http.createServer(app);
+    
+    // Initialiser WebSocket pour messagerie temps réel
+    try {
+      const { initSocketServer } = await import('./ecom/services/socketService.js');
+      initSocketServer(server);
+      console.log('✅ WebSocket server initialisé');
+    } catch (error) {
+      console.error('⚠️ Erreur initialisation WebSocket:', error.message);
+    }
+    
+    server.listen(PORT, '0.0.0.0', () => {
+      console.log(`🚀 Serveur démarré sur le port ${PORT}`);
     });
   } catch (error) {
     console.error('❌ Impossible de démarrer le serveur:', error);

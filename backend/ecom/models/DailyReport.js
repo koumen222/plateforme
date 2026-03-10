@@ -69,8 +69,8 @@ const dailyReportSchema = new mongoose.Schema({
   toJSON: { virtuals: true }
 });
 
-// Index unique pour éviter les doublons
-dailyReportSchema.index({ date: 1, productId: 1 }, { unique: true });
+// Index unique pour éviter les doublons (par workspace + date + produit)
+dailyReportSchema.index({ workspaceId: 1, date: 1, productId: 1 }, { unique: true });
 dailyReportSchema.index({ date: -1 });
 dailyReportSchema.index({ productId: 1, date: -1 });
 

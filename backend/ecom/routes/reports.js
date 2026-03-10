@@ -592,16 +592,21 @@ router.post('/',
       console.log('💰 Prix vente:', product.sellingPrice, 'Coûts:', product.productCost, '+', product.deliveryCost);
 
       // Vérifier si un rapport existe déjà pour cette date et ce produit
+      const dayStart = new Date(date);
+      dayStart.setUTCHours(0, 0, 0, 0);
+      const dayEnd = new Date(date);
+      dayEnd.setUTCHours(23, 59, 59, 999);
+
       const existingReport = await DailyReport.findOne({
         workspaceId: req.workspaceId,
-        date: new Date(date),
+        date: { $gte: dayStart, $lte: dayEnd },
         productId
       });
 
       if (existingReport) {
         return res.status(400).json({
           success: false,
-          message: 'Un rapport existe déjà pour cette date et ce produit'
+          message: 'Un rapport existe déjà pour ce produit à cette date'
         });
       }
 

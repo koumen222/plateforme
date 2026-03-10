@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Webhook Réel</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .btn { background: #4f46e5; color: white; border: none; padding: 15px 30px; border-radius: 6px; cursor: pointer; margin: 10px; }
+        .logs { background: #1f2937; color: #f3f4f6; padding: 15px; border-radius: 6px; font-family: monospace; max-height: 500px; overflow-y: auto; white-space: pre-wrap; }
+        .status { padding: 15px; border-radius: 6px; margin: 15px 0; font-weight: bold; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .warning { background: #fef3c7; color: #92400e; }
+        .info { background: #dbeafe; color: #1e40af; }
+        .section { background: #f8fafc; padding: 20px; border-radius: 10px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Webhook Réel</h1>
+    
+    <div class="warning">
+        <strong>⚠️ Problème actuel:</strong> Les messages WhatsApp réels ne sont pas reçus.<br>
+        <strong>Cause probable:</strong> Webhook non configuré dans Green API.<br>
+        <strong>Solution:</strong> Configurez le webhook et testez ici.
+    </div>
+    
+    <div class="section">
+        <h3>📡 Test Direct du Webhook</h3>
+        <button class="btn" onclick="testWebhookDirect()">🧪 Test Webhook Direct</button>
+        <button class="btn" onclick="testMultipleMessages()">📱 Test Messages Multiples</button>
+        <button class="btn" onclick="clearLogs()">🗑️ Clear Logs</button>
+        <button class="btn" onclick="startMonitoring()">🔄 Monitoring Temps Réel</button>
+    </div>
+    
+    <div class="section">
+        <h3>🌐 Configuration Green API</h3>
+        <p><strong>URL Webhook à configurer:</strong></p>
+        <div class="info">
+            https://neda-unspilled-rebbeca.ngrok-free.dev/api/ecom/agent/webhook
+        </div>
+        <p><strong>Étapes:</strong></p>
+        <ol>
+            <li>Allez sur <a href="https://console.green-api.com" target="_blank">Green API Console</a></li>
+            <li>Instance: <strong>7103497791</strong></li>
+            <li>Section "Webhooks"</li>
+            <li>URL: <code>https://neda-unspilled-rebbeca.ngrok-free.dev/api/ecom/agent/webhook</code></li>
+            <li>Cochez: ✅ <strong>incomingMessageReceived</strong></li>
+            <li>Cliquez "Save"</li>
+        </ol>
+    </div>
+    
+    <div id="status"></div>
+    
+    <h3>📋 Logs en Temps Réel</h3>
+    <div class="logs" id="logs">En attente de tests...</div>
+    
+    <script>
+        let monitoringInterval = null;
+        
+        function updateStatus(message, type) {
+            document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function addLog(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function clearLogs() {
+            document.getElementById('logs').textContent = 'Logs effacés, en attente...\n';
+        }
+        
+        async function testWebhookDirect() {
+            addLog('🚀 Test webhook direct...');
+            
+            const testData = {
+                typeWebhook: 'incomingMessageReceived',
+                payload: {
+                    idMessage: 'REAL_' + Date.now(),
+                    senderData: {
+                        chatId: '237676778377@c.us',
+                        sender: '237676778377',
+                        senderName: 'Client Test'
+                    },
+                    textMessage: 'Bonjour, je veux commander une montre',
+                    fromMe: false,
+                    typeMessage: 'textMessage'
+                }
+            };
+            
+            addLog('📤 Envoi webhook: ' + JSON.stringify(testData, null, 2));
+            
+            try {
+                const response = await fetch('/api/ecom/agent/webhook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                addLog('📥 Réponse: ' + JSON.stringify(result, null, 2));
+                
+                if (result.success || result.processed) {
+                    updateStatus('✅ Test webhook réussi ! Le serveur fonctionne.', 'success');
+                    addLog('✅ Le serveur traite bien les messages');
+                } else {
+                    updateStatus('❌ Test webhook échoué: ' + (result.error || 'Erreur inconnue'), 'error');
+                    addLog('❌ Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                updateStatus('❌ Erreur réseau: ' + error.message, 'error');
+                addLog('❌ Erreur réseau: ' + error.message);
+            }
+        }
+        
+        async function testMultipleMessages() {
+            addLog('🚀 Test messages multiples...');
+            
+            const messages = [
+                'Bonjour',
+                'Combien ça coûte ?',
+                'Je veux commander',
+                'C\'est quand la livraison ?',
+                'Merci'
+            ];
+            
+            for (let i = 0; i < messages.length; i++) {
+                const testData = {
+                    typeWebhook: 'incomingMessageReceived',
+                    payload: {
+                        idMessage: 'MULTI_' + Date.now() + '_' + i,
+                        senderData: {
+                            chatId: '237676778377@c.us',
+                            sender: '237676778377',
+                            senderName: 'Client Test'
+                        },
+                        textMessage: messages[i],
+                        fromMe: false,
+                        typeMessage: 'textMessage'
+                    }
+                };
+                
+                addLog(`📤 Message ${i+1}: ${messages[i]}`);
+                
+                try {
+                    const response = await fetch('/api/ecom/agent/webhook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(testData)
+                    });
+                    
+                    const result = await response.json();
+                    addLog(`📥 Réponse ${i+1}: ${result.success ? '✅ Succès' : '❌ Échec'}`);
+                    
+                    // Attendre 2 secondes entre messages
+                    if (i < messages.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 2000));
+                    }
+                } catch (error) {
+                    addLog(`❌ Erreur message ${i+1}: ${error.message}`);
+                }
+            }
+            
+            addLog('✅ Test messages multiples terminé');
+        }
+        
+        function startMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                addLog('⏹️ Monitoring arrêté');
+                return;
+            }
+            
+            addLog('🔄 Démarrage monitoring temps réel...');
+            monitoringInterval = setInterval(() => {
+                addLog('⏳ En attente de messages WhatsApp réels...');
+                addLog('💡 Envoyez un message au +237698459328');
+                addLog('🔍 Le webhook devrait apparaître ici si configuré');
+            }, 5000);
+        }
+        
+        // Auto-test au chargement
+        window.addEventListener('load', () => {
+            setTimeout(testWebhookDirect, 1000);
+        });
+    </script>
+</body>
+</html>

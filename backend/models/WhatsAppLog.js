@@ -4,7 +4,11 @@ const whatsappLogSchema = new mongoose.Schema({
   campaignId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'WhatsAppCampaign',
-    required: true
+    default: null
+  },
+  previewId: {
+    type: String,
+    default: null
   },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
@@ -54,6 +58,7 @@ const whatsappLogSchema = new mongoose.Schema({
 });
 
 whatsappLogSchema.index({ campaignId: 1 });
+whatsappLogSchema.index({ previewId: 1 });
 whatsappLogSchema.index({ userId: 1 });
 whatsappLogSchema.index({ phone: 1 });
 whatsappLogSchema.index({ status: 1 });

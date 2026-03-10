@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Direct Webhook</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .btn {
+            background: #4f46e5;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background: #4338ca;
+        }
+        .status {
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #dbeafe; color: #1e40af; }
+        .logs {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-size: 16px;
+        }
+        .warning {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            color: #92400e;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Direct Webhook WhatsApp</h1>
+        
+        <div class="warning">
+            <strong>⚠️ Important:</strong> Cette page simule l'envoi d'un webhook pour tester si votre serveur réagit correctement.
+        </div>
+        
+        <h2>📡 Configuration Webhook</h2>
+        <div class="info">
+            URL du webhook: <strong>https://neda-unspilled-rebbeca.ngrok-free.dev/api/ecom/agent/webhook</strong>
+        </div>
+        
+        <h2>🧪 Tests Disponibles</h2>
+        
+        <button class="btn" onclick="testHealth()">🏥 Tester la santé du serveur</button>
+        <button class="btn" onclick="testWebhookWithText()">💬 Test webhook avec message texte</button>
+        <button class="btn" onclick="testWebhookWithOrder()">📦 Test webhook avec commande</button>
+        <button class="btn" onclick="testWebhookWithQuestion()">❓ Test webhook avec question</button>
+        
+        <div>
+            <input type="text" id="customMessage" placeholder="Message personnalisé..." value="Bonjour, je suis intéressé par vos produits">
+            <button class="btn" onclick="testCustomMessage()">📤 Envoyer message personnalisé</button>
+        </div>
+        
+        <div id="status"></div>
+        
+        <h2>📊 Logs du test</h2>
+        <div class="logs" id="logs">Cliquez sur un bouton pour commencer le test...</div>
+        
+        <h2>🔍 Étapes de validation</h2>
+        <div id="steps">
+            <div>⏳ Étape 1: Serveur opérationnel</div>
+            <div>⏳ Étape 2: Webhook reçu</div>
+            <div>⏳ Étape 3: Message traité</div>
+            <div>⏳ Étape 4: Réponse générée</div>
+            <div>⏳ Étape 5: Réponse envoyée</div>
+        </div>
+    </div>
+    
+    <script>
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function updateLogs(message) {
+            const logsDiv = document.getElementById('logs');
+            const timestamp = new Date().toLocaleTimeString();
+            logsDiv.textContent += `[${timestamp}] ${message}\n`;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+        
+        function updateStep(step, status) {
+            const steps = document.querySelectorAll('#steps div');
+            if (steps[step]) {
+                steps[step].innerHTML = status === 'success' 
+                    ? '✅ Étape ' + (step + 1) + ': ' + steps[step].textContent.replace('⏳ Étape ' + (step + 1) + ': ', '')
+                    : '❌ Étape ' + (step + 1) + ': ' + steps[step].textContent.replace('⏳ Étape ' + (step + 1) + ': ', '');
+            }
+        }
+        
+        async function testHealth() {
+            updateStatus('🔄 Test de santé en cours...', 'info');
+            updateLogs('Test de santé du serveur...');
+            
+            try {
+                const response = await fetch('/api/ecom/agent/health');
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    updateStatus('✅ Serveur opérationnel!', 'success');
+                    updateLogs('✅ Serveur opérationnel');
+                    updateStep(0, 'success');
+                } else {
+                    updateStatus('❌ Serveur non opérationnel', 'error');
+                    updateLogs('❌ Serveur non opérationnel: ' + JSON.stringify(data));
+                }
+            } catch (error) {
+                updateStatus('❌ Erreur de connexion: ' + error.message, 'error');
+                updateLogs('❌ Erreur: ' + error.message);
+            }
+        }
+        
+        async function testWebhookWithText() {
+            await sendWebhookTest('Bonjour, je veux commander une montre', 'test_message');
+        }
+        
+        async function testWebhookWithOrder() {
+            await sendWebhookTest('Je veux passer une commande de la montre connectée', 'test_order');
+        }
+        
+        async function testWebhookWithQuestion() {
+            await sendWebhookTest('C\'est combien la montre ? Et est-ce que vous livrez aujourd\'hui ?', 'test_question');
+        }
+        
+        async function testCustomMessage() {
+            const message = document.getElementById('customMessage').value;
+            if (!message.trim()) {
+                updateStatus('❌ Veuillez entrer un message', 'error');
+                return;
+            }
+            await sendWebhookTest(message, 'custom_message');
+        }
+        
+        async function sendWebhookTest(messageText, testType) {
+            updateStatus('🔄 Envoi du webhook...', 'info');
+            updateLogs(`Envoi webhook: ${messageText}`);
+            
+            const webhookData = {
+                typeWebhook: 'incomingMessageReceived',
+                instanceData: {
+                    idInstance: 7103497791,
+                    wid: '237676778377@c.us',
+                    typeInstance: 'whatsapp'
+                },
+                timestamp: Math.floor(Date.now() / 1000),
+                idMessage: testType + '_' + Date.now(),
+                senderData: {
+                    chatId: '237698459328@c.us',
+                    sender: '237698459328@c.us',
+                    senderName: 'Test Client',
+                    chatName: 'Test Client'
+                },
+                messageData: {
+                    typeMessage: 'textMessage',
+                    textMessageData: {
+                        textMessage: messageText
+                    }
+                }
+            };
+            
+            updateLogs('Données webhook: ' + JSON.stringify(webhookData, null, 2));
+            
+            try {
+                const response = await fetch('/api/ecom/agent/webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(webhookData)
+                });
+                
+                const result = await response.json();
+                updateLogs('Réponse serveur: ' + JSON.stringify(result, null, 2));
+                
+                if (result.success || result.processed) {
+                    updateStatus('✅ Webhook traité avec succès!', 'success');
+                    updateLogs('✅ Webhook traité avec succès');
+                    updateStep(1, 'success');
+                    updateStep(2, 'success');
+                    
+                    if (result.responseSent) {
+                        updateLogs('✅ Réponse envoyée avec succès');
+                        updateStep(3, 'success');
+                        updateStep(4, 'success');
+                    } else {
+                        updateLogs('⚠️ Réponse non envoyée: ' + (result.reason || 'Raison inconnue'));
+                    }
+                } else {
+                    updateStatus('❌ Erreur traitement webhook: ' + (result.error || 'Erreur inconnue'), 'error');
+                    updateLogs('❌ Erreur: ' + (result.error || 'Erreur inconnue'));
+                }
+            } catch (error) {
+                updateStatus('❌ Erreur réseau: ' + error.message, 'error');
+                updateLogs('❌ Erreur réseau: ' + error.message);
+            }
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            testHealth();
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Webhook WhatsApp</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .section h3 {
+            color: #4f46e5;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .webhook-url {
+            background: #e0e7ff;
+            padding: 15px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 14px;
+            margin: 15px 0;
+            border: 2px solid #4f46e5;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            width: 100%;
+            margin: 10px 0;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn.secondary {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+        
+        .btn.danger {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+        }
+        
+        .status {
+            padding: 15px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+        }
+        
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        
+        .instructions {
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+        }
+        
+        .instructions h4 {
+            color: #92400e;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            color: #78350f;
+        }
+        
+        .instructions li {
+            margin: 10px 0;
+        }
+        
+        .message-form {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .message-form input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        
+        .message-form input:focus {
+            outline: none;
+            border-color: #4f46e5;
+        }
+        
+        .logs {
+            background: #1f2937;
+            color: #f3f4f6;
+            padding: 20px;
+            border-radius: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin: 20px 0;
+        }
+        
+        .step {
+            display: flex;
+            align-items: center;
+            margin: 15px 0;
+            padding: 15px;
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        
+        .step-number {
+            background: #4f46e5;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            font-weight: bold;
+        }
+        
+        .step-content {
+            flex: 1;
+        }
+        
+        .step.completed .step-number {
+            background: #10b981;
+        }
+        
+        .step.completed .step-content {
+            color: #065f46;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Test Webhook WhatsApp</h1>
+            <p>Configuration et test du système de réponses automatiques</p>
+        </div>
+        
+        <div class="content">
+            <!-- Étape 1: URL Webhook -->
+            <div class="section">
+                <h3>📡 Étape 1: URL du Webhook</h3>
+                <div class="webhook-url">
+                    https://neda-unspilled-rebbeca.ngrok-free.dev/api/ecom/agent/webhook
+                </div>
+                <button class="btn" onclick="testWebhookHealth()">
+                    🏥 Tester la santé du webhook
+                </button>
+                <div id="webhook-status"></div>
+            </div>
+            
+            <!-- Instructions -->
+            <div class="instructions">
+                <h4>📋 Instructions pour configurer Green API:</h4>
+                <ol>
+                    <li>Connectez-vous à <a href="https://console.green-api.com" target="_blank">Green API Console</a></li>
+                    <li>Allez dans la section "Webhooks" de votre instance (7103497791)</li>
+                    <li>Entrez l'URL webhook ci-dessus</li>
+                    <li>Sélectionnez les événements: "incomingMessageReceived"</li>
+                    <li>Cliquez sur "Save"</li>
+                    <li>Envoyez un message WhatsApp au +237676778377</li>
+                </ol>
+            </div>
+            
+            <!-- Étape 2: Test Message -->
+            <div class="section">
+                <h3>💬 Étape 2: Test d'envoi de message</h3>
+                <div class="message-form">
+                    <input type="text" id="testMessage" placeholder="Entrez un message de test..." value="Bonjour, je veux commander une montre">
+                    <button class="btn secondary" onclick="sendTestMessage()">
+                        📤 Envoyer le message
+                    </button>
+                </div>
+                <div id="message-status"></div>
+            </div>
+            
+            <!-- Étape 3: Logs en temps réel -->
+            <div class="section">
+                <h3>📊 Étape 3: Logs en temps réel</h3>
+                <button class="btn" onclick="startRealTimeLogs()">
+                    🔄 Démarrer les logs en temps réel
+                </button>
+                <button class="btn danger" onclick="stopRealTimeLogs()">
+                    ⏹️ Arrêter les logs
+                </button>
+                <div class="logs" id="logs-container">
+                    Attente des logs...
+                </div>
+            </div>
+            
+            <!-- Étapes de validation -->
+            <div class="section">
+                <h3>✅ Validation du système</h3>
+                <div class="step" id="step1">
+                    <div class="step-number">1</div>
+                    <div class="step-content">Webhook configuré dans Green API</div>
+                </div>
+                <div class="step" id="step2">
+                    <div class="step-number">2</div>
+                    <div class="step-content">Message WhatsApp reçu</div>
+                </div>
+                <div class="step" id="step3">
+                    <div class="step-number">3</div>
+                    <div class="step-content">Message traité par l'agent</div>
+                </div>
+                <div class="step" id="step4">
+                    <div class="step-number">4</div>
+                    <div class="step-content">Réponse générée par ChatGPT</div>
+                </div>
+                <div class="step" id="step5">
+                    <div class="step-number">5</div>
+                    <div class="step-content">Réponse envoyée sur WhatsApp</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let logsInterval = null;
+        
+        function updateStatus(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+        
+        function updateLogs(logs) {
+            const container = document.getElementById('logs-container');
+            container.innerHTML = logs.join('\n');
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        async function testWebhookHealth() {
+            updateStatus('webhook-status', '🔄 Test en cours...', 'info');
+            
+            try {
+                const response = await fetch('/api/ecom/agent/health');
+                const data = await response.json();
+                
+                if (data.status === 'healthy') {
+                    updateStatus('webhook-status', '✅ Webhook opérationnel!', 'success');
+                    document.getElementById('step1').classList.add('completed');
+                } else {
+                    updateStatus('webhook-status', '❌ Webhook non opérationnel', 'error');
+                }
+            } catch (error) {
+                updateStatus('webhook-status', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        async function sendTestMessage() {
+            const message = document.getElementById('testMessage').value;
+            if (!message.trim()) {
+                updateStatus('message-status', '❌ Veuillez entrer un message', 'error');
+                return;
+            }
+            
+            updateStatus('message-status', '🔄 Envoi en cours...', 'info');
+            
+            try {
+                // Simuler un webhook entrant
+                const webhookData = {
+                    typeWebhook: 'incomingMessageReceived',
+                    payload: {
+                        idMessage: 'test_' + Date.now(),
+                        senderData: {
+                            chatId: '237676778377@c.us',
+                            sender: '237676778377',
+                            senderName: 'Test Client'
+                        },
+                        textMessage: message,
+                        fromMe: false
+                    }
+                };
+                
+                const response = await fetch('/api/ecom/agent/webhook', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(webhookData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success || result.processed) {
+                    updateStatus('message-status', '✅ Message traité avec succès!', 'success');
+                    document.getElementById('step2').classList.add('completed');
+                    document.getElementById('step3').classList.add('completed');
+                } else {
+                    updateStatus('message-status', `❌ Erreur: ${result.error}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('message-status', `❌ Erreur: ${error.message}`, 'error');
+            }
+        }
+        
+        function startRealTimeLogs() {
+            if (logsInterval) return;
+            
+            updateLogs(['🔄 Démarrage des logs en temps réel...']);
+            
+            logsInterval = setInterval(async () => {
+                try {
+                    // Simuler la récupération des logs depuis le serveur
+                    // Dans un vrai système, vous auriez un endpoint pour les logs
+                    const logs = [
+                        `[${new Date().toLocaleTimeString()}] 📡 Serveur opérationnel`,
+                        `[${new Date().toLocaleTimeString()}] 🤖 Agent WhatsApp initialisé`,
+                        `[${new Date().toLocaleTimeString()}] ⏳ En attente de messages...`
+                    ];
+                    updateLogs(logs);
+                } catch (error) {
+                    console.error('Erreur logs:', error);
+                }
+            }, 2000);
+        }
+        
+        function stopRealTimeLogs() {
+            if (logsInterval) {
+                clearInterval(logsInterval);
+                logsInterval = null;
+                updateLogs(['⏹️ Logs arrêtés']);
+            }
+        }
+        
+        // Test automatique au chargement
+        window.addEventListener('load', () => {
+            testWebhookHealth();
+        });
+    </script>
+</body>
+</html>

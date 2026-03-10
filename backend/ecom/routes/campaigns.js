@@ -586,13 +586,58 @@ router.post('/:id/send', requireEcomAuth, validateEcomAccess('products', 'write'
       // Utiliser les filtres clients (ancienne méthode)
       const filter = buildClientFilter(req.workspaceId, campaign.targetFilters || {});
       filter.phone = { $exists: true, $ne: '' };
+      
+      // 🆕 DEBUG: Log des filtres utilisés
+      console.log('🔍 [DEBUG] Filtres de recherche:', JSON.stringify(filter, null, 2));
+      console.log('🔍 [DEBUG] WorkspaceId:', req.workspaceId);
+      console.log('🔍 [DEBUG] TargetFilters:', JSON.stringify(campaign.targetFilters, null, 2));
+      
+      // Vérifier d'abord combien de clients existent au total
+      const totalClients = await Client.countDocuments({ workspaceId: req.workspaceId });
+      console.log('🔍 [DEBUG] Total clients dans workspace:', totalClients);
+      
+      // Vérifier combien ont des numéros
+      const clientsWithPhone = await Client.countDocuments({ 
+        workspaceId: req.workspaceId, 
+        phone: { $exists: true, $ne: '' } 
+      });
+      console.log('🔍 [DEBUG] Clients avec numéro:', clientsWithPhone);
+      
       clients = await Client.find(filter);
+      console.log('🔍 [DEBUG] Clients trouvés avec filtres:', clients.length);
     }
 
     campaign.status = 'sending';
     campaign.stats.targeted = clients.length;
     campaign.results = [];
     await campaign.save();
+
+    // 🆕 VÉRIFICATION PRÉVENTIVE: Si aucun client trouvé, annuler et retourner erreur détaillée
+    if (clients.length === 0) {
+      campaign.status = 'failed';
+      campaign.error = 'Aucun client trouvé correspondant aux critères';
+      await campaign.save();
+      
+      return res.status(400).json({
+        success: false,
+        message: 'Aucun client trouvé correspondant aux critères de ciblage',
+        details: {
+          totalClientsInWorkspace: await Client.countDocuments({ workspaceId: req.workspaceId }),
+          clientsWithPhone: await Client.countDocuments({ 
+            workspaceId: req.workspaceId, 
+            phone: { $exists: true, $ne: '' } 
+          }),
+          targetFilters: campaign.targetFilters,
+          hasOrderFilters: hasOrderFilters,
+          selectedClientIds: campaign.selectedClientIds?.length || 0
+        },
+        recommendations: [
+          'Vérifiez que les clients ont des numéros de téléphone',
+          'Vérifiez que les filtres de ciblage ne sont pas trop restrictifs',
+          'Importez des clients si la base est vide'
+        ]
+      });
+    }
 
     console.log(`🚀 Envoi campagne marketing "${campaign.name}" avec système anti-spam`);
     console.log(`   Clients ciblés: ${clients.length}`);
