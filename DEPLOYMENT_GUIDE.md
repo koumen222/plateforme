@@ -7,7 +7,7 @@
 Allez dans **Site settings → Environment variables** et ajoutez :
 
 ```
-VITE_API_BASE_URL=https://plateforme-backend-production-2ec6.up.railway.app
+VITE_API_BASE_URL=https://plateforme-backend-production-513f.up.railway.app
 ```
 
 ### 2. Configuration Netlify (déjà dans `netlify.toml`)
@@ -34,7 +34,7 @@ VITE_API_BASE_URL=https://plateforme-backend-production-2ec6.up.railway.app
 Allez dans **Project Settings → Environment Variables** et ajoutez :
 
 ```
-VITE_API_BASE_URL=https://plateforme-backend-production-2ec6.up.railway.app
+VITE_API_BASE_URL=https://plateforme-backend-production-513f.up.railway.app
 ```
 
 ### 2. Configuration Vercel (déjà dans `vercel.json`)
@@ -48,7 +48,7 @@ Le fichier `vercel.json` est déjà configuré avec :
 
 ### 1. Backend URL
 
-Le backend doit être accessible à : `https://plateforme-backend-production-2ec6.up.railway.app`
+Le backend doit être accessible à : `https://plateforme-backend-production-513f.up.railway.app`
 
 ### 2. CORS Configuration
 

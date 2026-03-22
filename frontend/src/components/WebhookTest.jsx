@@ -25,7 +25,7 @@ const WebhookTest = () => {
     addLog('🏥 Test santé webhook Railway...');
     
     try {
-      const response = await fetch('https://plateforme-backend-production-2ec6.up.railway.app/api/ecom/agent/health');
+      const response = await fetch('https://plateforme-backend-production-513f.up.railway.app/api/ecom/agent/health');
       const data = await response.json();
       
       if (data.status === 'healthy') {
@@ -69,7 +69,7 @@ const WebhookTest = () => {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-700 mb-3">📡 Configuration Webhook Railway</h2>
           <div className="bg-gray-100 p-3 rounded-lg font-mono text-sm break-all">
-            <strong>URL:</strong> https://plateforme-backend-production-2ec6.up.railway.app/api/ecom/agent/webhook
+            <strong>URL:</strong> https://plateforme-backend-production-513f.up.railway.app/api/ecom/agent/webhook
           </div>
         </div>
         

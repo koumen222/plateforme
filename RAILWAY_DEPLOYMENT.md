@@ -40,7 +40,7 @@ Le backend est configuré pour être déployé sur Railway avec les fichiers sui
 
 4. **Déployer**
    - Railway déploiera automatiquement à chaque push sur `main`
-   - L'URL sera générée automatiquement (ex: `https://plateforme-backend-production-2ec6.up.railway.app`)
+   - L'URL sera générée automatiquement (ex: `https://plateforme-backend-production-513f.up.railway.app`)
 
 ### Option 2 : Via Railway CLI
 
@@ -75,7 +75,7 @@ Après le déploiement, vérifiez que le backend fonctionne :
 
 ```bash
 # Test de santé
-curl https://plateforme-backend-production-2ec6.up.railway.app/health
+curl https://plateforme-backend-production-513f.up.railway.app/health
 
 # Devrait retourner :
 # {"status":"ok"}
@@ -84,7 +84,7 @@ curl https://plateforme-backend-production-2ec6.up.railway.app/health
 ## 🔗 URL de Déploiement
 
 Votre backend est actuellement déployé sur :
-**https://plateforme-backend-production-2ec6.up.railway.app/**
+**https://plateforme-backend-production-513f.up.railway.app/**
 
 ## 📝 Notes Importantes
 

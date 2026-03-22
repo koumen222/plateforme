@@ -93,7 +93,7 @@ const allowedOrigins = [
   "http://ecomcookpit.site",
   "http://www.ecomcookpit.site",
   "https://www.safitech.shop",
-  "https://plateforme-backend-production-2ec6.up.railway.app",
+  "https://plateforme-backend-production-513f.up.railway.app",
   "https://ecomcookpit.pages.dev",
   "http://localhost:5173",
   "http://localhost:5174",
@@ -260,23 +260,7 @@ app.get("/health", (req, res) => {
 // Routes Google OAuth - DÉSACTIVÉES
 // ============================================
 // Les routes OAuth Google ont été désactivées
-// L'authentification se fait maintenant uniquement via email/password
 
-// app.get("/auth/google",
-//   passport.authenticate("google", { scope: ["profile", "email"] })
-// );
-
-// app.get("/auth/google/callback",
-//   passport.authenticate("google", {
-//     failureRedirect: `${FRONTEND_URL}/login`
-//   }),
-//   async (req, res) => {
-//     // ... code désactivé
-//   }
-// );
-
-// Routes de diagnostic - seront montées dans startServer après chargement dynamique
-// Placeholder pour éviter les erreurs
 app.get("/api/diagnostic/*", async (req, res) => {
   if (!diagnosticRoutes) {
     return res.status(503).json({

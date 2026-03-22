@@ -30,7 +30,7 @@ const getBackendUrl = () => {
   }
   
   // Fallback : utiliser l'URL Railway en production si VITE_API_BASE_URL n'est pas défini
-  const railwayBackendUrl = 'https://plateforme-backend-production-2ec6.up.railway.app'
+  const railwayBackendUrl = 'https://plateforme-backend-production-513f.up.railway.app'
   logger.warn('⚠️ VITE_API_BASE_URL n\'est pas défini, utilisation de l\'URL Railway par défaut:', railwayBackendUrl)
   return cleanUrl(railwayBackendUrl)
 }

@@ -88,7 +88,7 @@ VITE_API_BASE_URL=https://votre-backend-url.com
 ```
 
 **Exemples :**
-- Production Railway : `VITE_API_BASE_URL=https://plateforme-backend-production-2ec6.up.railway.app`
+- Production Railway : `VITE_API_BASE_URL=https://plateforme-backend-production-513f.up.railway.app`
 - Production HTTPS : `VITE_API_BASE_URL=https://api.safitech.shop`
 - Cloudflare Tunnel : `VITE_API_BASE_URL=https://plateforme-backend-xxxxx.trycloudflare.com`
 - Développement local : `VITE_API_BASE_URL=http://localhost:3000`

@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
-dotenv.config();
-
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/plateforme';
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
 
 export const connectDB = async () => {
+  const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/plateforme';
   try {
     console.log('🔄 Tentative de connexion à MongoDB...');
     console.log('📡 URI:', MONGO_URI.replace(/\/\/.*@/, '//***:***@')); // Masquer les credentials dans les logs
