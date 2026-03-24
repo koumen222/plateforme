@@ -261,6 +261,10 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
+// Page bio link publique de Morgan
+app.get("/morgan", (req, res) => {
+  res.sendFile(path.join(__dirname, "../biolink-morgan.html"));
+});
 
 // ============================================
 // Routes Google OAuth - DÉSACTIVÉES

@@ -61,6 +61,7 @@ import EbookPage from './pages/EbookPage'
 import CoachingScale7Page from './pages/CoachingScale7Page'
 import WebhookTestPage from './pages/WebhookTestPage'
 import EcomApp from './ecom/App.jsx'
+import BioLinkScalorPage from './pages/BioLinkMorganPage'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
@@ -167,6 +168,8 @@ function App() {
             <CleanUrlRedirect />
             <ReferralCapture />
             <Routes>
+          {/* Bio link public — standalone, sans layout */}
+          <Route path="/morgan" element={<BioLinkScalorPage />} />
           <Route path="/chat" element={<ChatbotPage />} />
           {/* Routes publiques avec PlatformLayout (Header + Footer) */}
           <Route path="/login" element={<PlatformLayout><LoginPage /></PlatformLayout>} />
