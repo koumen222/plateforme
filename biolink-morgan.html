@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Morgan — J'aide les débutants en Afrique à lancer un business e-commerce rentable. Formation gratuite disponible." />
+  <title>Morgan | E-Commerce Afrique</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      --green: #00C853;
+      --green-dark: #009624;
+      --green-glow: rgba(0, 200, 83, 0.25);
+      --black: #0A0A0A;
+      --gray-900: #111111;
+      --gray-800: #1A1A1A;
+      --gray-700: #262626;
+      --gray-400: #888888;
+      --gray-200: #CCCCCC;
+      --white: #FFFFFF;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--black);
+      color: var(--white);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 0 0 60px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ── Background noise texture ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 200, 83, 0.12) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 480px;
+      padding: 0 20px;
+    }
+
+    /* ─────────────────────────────
+       HEADER
+    ───────────────────────────── */
+    .header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 0 32px;
+      text-align: center;
+    }
+
+    .avatar-wrapper {
+      position: relative;
+      width: 96px;
+      height: 96px;
+      margin-bottom: 16px;
+    }
+
+    .avatar-ring {
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: conic-gradient(var(--green), var(--green-dark), var(--green));
+      animation: spin 4s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .avatar-inner {
+      position: absolute;
+      inset: 3px;
+      border-radius: 50%;
+      background: var(--gray-800);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar-inner img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    /* Placeholder avatar when no image */
+    .avatar-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--gray-700), var(--gray-800));
+      font-size: 36px;
+      font-weight: 800;
+      color: var(--green);
+      letter-spacing: -1px;
+      border-radius: 50%;
+    }
+
+    .badge-live {
+      position: absolute;
+      bottom: 2px;
+      right: 2px;
+      background: var(--green);
+      color: var(--black);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 20px;
+      border: 2px solid var(--black);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .header-name {
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: -0.5px;
+      color: var(--white);
+      margin-bottom: 8px;
+    }
+
+    .header-name span {
+      color: var(--green);
+    }
+
+    .header-tagline {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--gray-200);
+      line-height: 1.6;
+      max-width: 300px;
+    }
+
+    /* ─────────────────────────────
+       URGENCY BANNER
+    ───────────────────────────── */
+    .urgency-banner {
+      background: linear-gradient(135deg, rgba(0,200,83,0.15), rgba(0,200,83,0.05));
+      border: 1px solid rgba(0,200,83,0.3);
+      border-radius: var(--radius-sm);
+      padding: 10px 16px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--green);
+    }
+
+    .urgency-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.8); }
+    }
+
+    /* ─────────────────────────────
+       MAIN CTA
+    ───────────────────────────── */
+    .cta-primary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 18px 24px;
+      background: linear-gradient(135deg, var(--green), var(--green-dark));
+      color: var(--black);
+      font-weight: 800;
+      font-size: 16px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      margin-bottom: 12px;
+      box-shadow: 0 0 30px var(--green-glow), 0 4px 20px rgba(0,0,0,0.4);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      letter-spacing: -0.2px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-primary::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, transparent 50%);
+      pointer-events: none;
+    }
+
+    .cta-primary:active {
+      transform: scale(0.98);
+      box-shadow: 0 0 15px var(--green-glow);
+    }
+
+    .cta-sub {
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray-400);
+      margin-bottom: 36px;
+    }
+
+    .cta-sub strong {
+      color: var(--green);
+    }
+
+    /* ─────────────────────────────
+       SECTION TITLES
+    ───────────────────────────── */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--gray-400);
+      margin-bottom: 16px;
+    }
+
+    .section-label::before,
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--gray-700);
+    }
+
+    /* ─────────────────────────────
+       OFFER CARDS
+    ───────────────────────────── */
+    .offers {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .offer-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      text-decoration: none;
+      color: var(--white);
+      transition: border-color 0.2s ease, transform 0.15s ease, background 0.2s ease;
+      cursor: pointer;
+    }
+
+    .offer-card:hover,
+    .offer-card:focus {
+      border-color: var(--green);
+      background: var(--gray-700);
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .offer-card:active {
+      transform: scale(0.99);
+    }
+
+    .offer-icon {
+      font-size: 26px;
+      flex-shrink: 0;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--gray-700);
+      border-radius: var(--radius-sm);
+    }
+
+    .offer-card.featured .offer-icon {
+      background: rgba(0,200,83,0.12);
+    }
+
+    .offer-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .offer-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      background: rgba(0,200,83,0.15);
+      color: var(--green);
+      border: 1px solid rgba(0,200,83,0.3);
+      border-radius: 4px;
+      padding: 2px 7px;
+      margin-bottom: 5px;
+    }
+
+    .offer-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--white);
+      margin-bottom: 3px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .offer-desc {
+      font-size: 12px;
+      color: var(--gray-400);
+      line-height: 1.4;
+    }
+
+    .offer-arrow {
+      color: var(--gray-400);
+      flex-shrink: 0;
+      font-size: 18px;
+      transition: color 0.2s, transform 0.2s;
+    }
+
+    .offer-card:hover .offer-arrow {
+      color: var(--green);
+      transform: translateX(3px);
+    }
+
+    /* ─────────────────────────────
+       SOCIAL PROOF
+    ───────────────────────────── */
+    .proof-section {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: var(--radius);
+      padding: 24px 20px;
+      margin-bottom: 36px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .proof-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--green), transparent);
+    }
+
+    .proof-headline {
+      font-size: 22px;
+      font-weight: 900;
+      color: var(--white);
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+      line-height: 1.2;
+    }
+
+    .proof-headline .highlight {
+      color: var(--green);
+    }
+
+    .proof-sub {
+      font-size: 13px;
+      color: var(--gray-400);
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    .proof-stats {
+      display: flex;
+      gap: 12px;
+    }
+
+    .proof-stat {
+      flex: 1;
+      background: var(--gray-700);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      text-align: center;
+    }
+
+    .proof-stat-number {
+      font-size: 20px;
+      font-weight: 900;
+      color: var(--green);
+      display: block;
+      letter-spacing: -0.5px;
+    }
+
+    .proof-stat-label {
+      font-size: 11px;
+      color: var(--gray-400);
+      font-weight: 500;
+      line-height: 1.3;
+    }
+
+    /* Testimonial */
+    .testimonial {
+      margin-top: 20px;
+      background: var(--gray-700);
+      border-radius: var(--radius-sm);
+      padding: 14px 16px;
+      border-left: 3px solid var(--green);
+    }
+
+    .testimonial-text {
+      font-size: 13px;
+      color: var(--gray-200);
+      line-height: 1.6;
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    .testimonial-author {
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* ─────────────────────────────
+       TRANSFORMATION BLOCK
+    ───────────────────────────── */
+    .transformation {
+      display: grid;
+      grid-template-columns: 1fr 24px 1fr;
+      gap: 0;
+      align-items: center;
+      margin-bottom: 36px;
+    }
+
+    .transform-card {
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: var(--radius);
+      padding: 16px 14px;
+      text-align: center;
+    }
+
+    .transform-card.after {
+      border-color: rgba(0,200,83,0.4);
+      background: rgba(0,200,83,0.05);
+    }
+
+    .transform-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .transform-card:first-child .transform-label { color: var(--gray-400); }
+    .transform-card.after .transform-label { color: var(--green); }
+
+    .transform-emoji {
+      font-size: 24px;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .transform-text {
+      font-size: 12px;
+      color: var(--gray-200);
+      line-height: 1.5;
+    }
+
+    .transform-arrow {
+      text-align: center;
+      font-size: 18px;
+      color: var(--green);
+    }
+
+    /* ─────────────────────────────
+       SOCIAL LINKS
+    ───────────────────────────── */
+    .social-links {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 40px;
+    }
+
+    .social-link {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: var(--gray-800);
+      border: 1px solid var(--gray-700);
+      border-radius: var(--radius);
+      padding: 14px 18px;
+      text-decoration: none;
+      color: var(--white);
+      font-weight: 600;
+      font-size: 14px;
+      transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+    }
+
+    .social-link:hover {
+      border-color: var(--gray-400);
+      background: var(--gray-700);
+      transform: translateY(-1px);
+    }
+
+    .social-link:active {
+      transform: scale(0.99);
+    }
+
+    .social-link.whatsapp {
+      border-color: rgba(37, 211, 102, 0.35);
+    }
+
+    .social-link.whatsapp:hover {
+      border-color: #25D366;
+      background: rgba(37, 211, 102, 0.08);
+    }
+
+    .social-icon {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      font-size: 20px;
+    }
+
+    .social-icon.wa  { background: rgba(37, 211, 102, 0.15); }
+    .social-icon.yt  { background: rgba(255, 0, 0, 0.12); }
+    .social-icon.tt  { background: rgba(255, 255, 255, 0.08); }
+
+    .social-info { flex: 1; }
+    .social-name { font-size: 14px; font-weight: 700; }
+    .social-handle { font-size: 12px; color: var(--gray-400); font-weight: 400; }
+
+    .social-chevron {
+      color: var(--gray-400);
+      font-size: 16px;
+    }
+
+    /* ─────────────────────────────
+       FOOTER
+    ───────────────────────────── */
+    .footer {
+      text-align: center;
+      font-size: 12px;
+      color: var(--gray-400);
+      padding-top: 8px;
+    }
+
+    .footer a {
+      color: var(--green);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    /* ─────────────────────────────
+       RIPPLE ANIMATION ON CLICK
+    ───────────────────────────── */
+    .ripple-container {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple-anim 0.5s linear;
+      background-color: rgba(255,255,255,0.2);
+      pointer-events: none;
+    }
+
+    @keyframes ripple-anim {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ─────────────────────────────
+       UTILITY
+    ───────────────────────────── */
+    @media (min-width: 481px) {
+      .page { padding: 0 24px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── HEADER ── -->
+  <header class="header">
+    <div class="avatar-wrapper">
+      <div class="avatar-ring"></div>
+      <div class="avatar-inner">
+        <!--
+          Pour ajouter votre photo : remplacez le bloc .avatar-placeholder
+          par <img src="votre-photo.jpg" alt="Morgan" />
+        -->
+        <div class="avatar-placeholder">M</div>
+      </div>
+      <span class="badge-live">actif</span>
+    </div>
+
+    <h1 class="header-name">Morgan <span>🚀</span></h1>
+    <p class="header-tagline">J'aide les débutants en Afrique à lancer un&nbsp;business e-commerce&nbsp;rentable</p>
+  </header>
+
+  <!-- ── URGENCY BANNER ── -->
+  <div class="urgency-banner">
+    <span class="urgency-dot"></span>
+    Offre limitée — Formation gratuite disponible maintenant
+  </div>
+
+  <!-- ── MAIN CTA ── -->
+  <a href="[INSERER LIEN]" class="cta-primary ripple-container" id="cta-main">
+    🎁 Accéder à la formation gratuite
+  </a>
+  <p class="cta-sub">✅ 100% gratuit &nbsp;·&nbsp; <strong>Accès immédiat</strong> &nbsp;·&nbsp; Sans engagement</p>
+
+  <!-- ── OFFERS ── -->
+  <p class="section-label">Mes formations & ressources</p>
+
+  <div class="offers">
+
+    <a href="[INSERER LIEN ECOM STARTER]" class="offer-card featured ripple-container">
+      <div class="offer-icon">🚀</div>
+      <div class="offer-info">
+        <span class="offer-badge">Best-seller</span>
+        <div class="offer-title">Ecom Starter 3.0</div>
+        <div class="offer-desc">Formation complète e-commerce — de zéro à tes premières ventes</div>
+      </div>
+      <span class="offer-arrow">›</span>
+    </a>
+
+    <a href="[INSERER LIEN KAMPKARE]" class="offer-card ripple-container">
+      <div class="offer-icon">💼</div>
+      <div class="offer-info">
+        <span class="offer-badge">Solution business</span>
+        <div class="offer-title">Kampkare via Scalor</div>
+        <div class="offer-desc">La solution clé en main pour automatiser et scaler ton business</div>
+      </div>
+      <span class="offer-arrow">›</span>
+    </a>
+
+    <a href="[INSERER LIEN EBOOK]" class="offer-card ripple-container">
+      <div class="offer-icon">📘</div>
+      <div class="offer-info">
+        <span class="offer-badge">Ebook</span>
+        <div class="offer-title">Réussir en e-commerce en Afrique</div>
+        <div class="offer-desc">Le guide pratique pour démarrer et rentabiliser rapidement</div>
+      </div>
+      <span class="offer-arrow">›</span>
+    </a>
+
+  </div>
+
+  <!-- ── TRANSFORMATION ── -->
+  <p class="section-label">Avant / Après</p>
+
+  <div class="transformation" style="margin-bottom: 36px;">
+    <div class="transform-card">
+      <span class="transform-label">Avant</span>
+      <span class="transform-emoji">😓</span>
+      <p class="transform-text">Pas de business, pas de revenus, pas de méthode</p>
+    </div>
+    <div class="transform-arrow">→</div>
+    <div class="transform-card after">
+      <span class="transform-label">Après</span>
+      <span class="transform-emoji">💰</span>
+      <p class="transform-text">Business lancé, premières ventes, revenus qui scalent</p>
+    </div>
+  </div>
+
+  <!-- ── SOCIAL PROOF ── -->
+  <p class="section-label">Résultats concrets</p>
+
+  <div class="proof-section">
+    <p class="proof-headline">+1 000 000 <span class="highlight">FCFA</span> générés par mes élèves</p>
+    <p class="proof-sub">Des débutants comme toi ont appliqué les stratégies et obtenu des résultats réels.</p>
+
+    <div class="proof-stats">
+      <div class="proof-stat">
+        <span class="proof-stat-number">500+</span>
+        <span class="proof-stat-label">Élèves formés</span>
+      </div>
+      <div class="proof-stat">
+        <span class="proof-stat-number">1M+</span>
+        <span class="proof-stat-label">FCFA générés</span>
+      </div>
+      <div class="proof-stat">
+        <span class="proof-stat-number">98%</span>
+        <span class="proof-stat-label">Satisfaits</span>
+      </div>
+    </div>
+
+    <div class="testimonial">
+      <p class="testimonial-text">
+        "Avant Morgan, je cherchais encore ma voie. 3 semaines après la formation,
+        j'avais mes premières ventes. Aujourd'hui je génère plus de 400 000 FCFA par mois."
+      </p>
+      <span class="testimonial-author">— Kouamé A., Côte d'Ivoire ✅</span>
+    </div>
+  </div>
+
+  <!-- ── CONTACT / SOCIAL ── -->
+  <p class="section-label">Me rejoindre</p>
+
+  <div class="social-links">
+
+    <a href="https://wa.me/[NUMERO]" class="social-link whatsapp ripple-container">
+      <div class="social-icon wa">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#25D366"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+      </div>
+      <div class="social-info">
+        <div class="social-name">WhatsApp</div>
+        <div class="social-handle">Message direct — Réponse rapide</div>
+      </div>
+      <span class="social-chevron">›</span>
+    </a>
+
+    <a href="https://youtube.com/@[CHAINE]" class="social-link ripple-container">
+      <div class="social-icon yt">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="#FF0000"><path d="M23.495 6.205a3.007 3.007 0 00-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 00.527 6.205a31.247 31.247 0 00-.522 5.805 31.247 31.247 0 00.522 5.783 3.007 3.007 0 002.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 002.088-2.088 31.247 31.247 0 00.5-5.783 31.247 31.247 0 00-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/></svg>
+      </div>
+      <div class="social-info">
+        <div class="social-name">YouTube</div>
+        <div class="social-handle">Conseils e-commerce gratuits</div>
+      </div>
+      <span class="social-chevron">›</span>
+    </a>
+
+    <a href="https://tiktok.com/@[COMPTE]" class="social-link ripple-container">
+      <div class="social-icon tt">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="#FFFFFF"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.69a8.27 8.27 0 004.84 1.55V6.79a4.85 4.85 0 01-1.07-.1z"/></svg>
+      </div>
+      <div class="social-info">
+        <div class="social-name">TikTok</div>
+        <div class="social-handle">Contenus business & motivation</div>
+      </div>
+      <span class="social-chevron">›</span>
+    </a>
+
+  </div>
+
+  <!-- ── BOTTOM CTA ── -->
+  <a href="[INSERER LIEN]" class="cta-primary ripple-container" style="margin-bottom: 32px;">
+    🎯 Démarrer maintenant — C'est gratuit
+  </a>
+
+  <!-- ── FOOTER ── -->
+  <footer class="footer">
+    <p>© 2026 Morgan &nbsp;·&nbsp; <a href="#">Mentions légales</a></p>
+  </footer>
+
+</div>
+
+<script>
+  /* ── Ripple effect ── */
+  document.querySelectorAll('.ripple-container').forEach(el => {
+    el.addEventListener('click', function (e) {
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = e.clientX - rect.left - size / 2;
+      const y = e.clientY - rect.top - size / 2;
+      const ripple = document.createElement('span');
+      ripple.classList.add('ripple');
+      ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+      this.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+    });
+  });
+
+  /* ── Animated counter for stats ── */
+  const counters = document.querySelectorAll('.proof-stat-number');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const el = entry.target;
+      const raw = el.textContent;
+      const match = raw.match(/^(\d+)/);
+      if (!match) return;
+      const end = parseInt(match[1], 10);
+      const suffix = raw.replace(match[1], '');
+      let current = 0;
+      const step = Math.ceil(end / 50);
+      const timer = setInterval(() => {
+        current = Math.min(current + step, end);
+        el.textContent = current + suffix;
+        if (current >= end) clearInterval(timer);
+      }, 30);
+      observer.unobserve(el);
+    });
+  }, { threshold: 0.5 });
+  counters.forEach(c => observer.observe(c));
+</script>
+
+</body>
+</html>
