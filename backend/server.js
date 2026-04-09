@@ -99,6 +99,7 @@ const allowedOrigins = [
   "https://plateforme-backend-production-513f.up.railway.app",
   "https://ecomcookpit.pages.dev",
   "http://localhost:5173",
+  "http://localhost:5174",
   "http://localhost:3000",
   "http://localhost:8081"
 ];
