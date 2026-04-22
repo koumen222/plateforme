@@ -833,7 +833,96 @@ export default function CoursePlayer({ addShopifyModule = false }) {
               <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
-                    {currentLesson.summary && (currentLesson.summary.text || currentLesson.summary.points?.length > 0) ? (
+                    {/* MODULE CARD */}
+                    {(() => {
+                      const currentModule = typeof currentLesson.moduleIndex === 'number' ? modules[currentLesson.moduleIndex] : null
+                      const moduleLessons = currentModule?.lessons || []
+                      const completedInModule = moduleLessons.filter(l => isLessonCompleted(l._id)).length
+                      const modulePercent = moduleLessons.length > 0 ? Math.round((completedInModule / moduleLessons.length) * 100) : 0
+
+                      return currentModule ? (
+                        <div className="card-startup">
+                          {/* En-tête module */}
+                          <div className="flex items-start justify-between gap-4 mb-5">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                                <FiBookOpen className="w-5 h-5 text-accent" />
+                              </div>
+                              <div>
+                                <p className="text-xs font-bold uppercase tracking-widest text-accent mb-0.5">Module {currentLesson.moduleIndex + 1}</p>
+                                <h3 className="text-base font-bold text-primary leading-tight">{currentModule.title}</h3>
+                              </div>
+                            </div>
+                            <span className="flex-shrink-0 text-sm font-bold text-accent">{modulePercent}%</span>
+                          </div>
+
+                          {/* Barre de progression */}
+                          <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full mb-5 overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-accent to-accent/70 rounded-full transition-all duration-500"
+                              style={{ width: `${modulePercent}%` }}
+                            />
+                          </div>
+
+                          {/* Liste des leçons du module */}
+                          <ul className="space-y-1.5">
+                            {moduleLessons.map((lesson, idx) => {
+                              const isCompleted = isLessonCompleted(lesson._id)
+                              const isCurrent = lesson._id === currentLesson._id
+                              return (
+                                <li key={lesson._id}>
+                                  <button
+                                    onClick={() => handleLessonClick(lesson, currentModule._id)}
+                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group ${
+                                      isCurrent
+                                        ? 'bg-accent/10 border border-accent/30'
+                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'
+                                    }`}
+                                  >
+                                    {/* Icône état */}
+                                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
+                                      isCompleted
+                                        ? 'bg-green-500 text-white'
+                                        : isCurrent
+                                          ? 'bg-accent text-white'
+                                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                    }`}>
+                                      {isCompleted
+                                        ? <FiCheck className="w-3 h-3" strokeWidth={3} />
+                                        : isCurrent
+                                          ? <FiPlay className="w-3 h-3 ml-0.5" />
+                                          : <span>{idx + 1}</span>
+                                      }
+                                    </div>
+                                    {/* Titre */}
+                                    <span className={`flex-1 text-sm leading-snug ${
+                                      isCurrent ? 'font-semibold text-accent' : 'font-medium text-primary'
+                                    }`}>
+                                      {lesson.title}
+                                    </span>
+                                    {/* Badge en cours */}
+                                    {isCurrent && (
+                                      <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 bg-accent text-white rounded-full">
+                                        En cours
+                                      </span>
+                                    )}
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+
+                          {/* Stat basse */}
+                          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2 text-xs text-secondary">
+                            <FiCheck className="w-3.5 h-3.5 text-green-500" />
+                            <span>{completedInModule} / {moduleLessons.length} leçons complétées</span>
+                          </div>
+                        </div>
+                      ) : null
+                    })()}
+
+                    {/* RÉSUMÉ LEÇON */}
+                    {currentLesson.summary && (currentLesson.summary.text || currentLesson.summary.points?.length > 0) && (
                       <>
                         {currentLesson.summary.text && (
                           <div className="prose prose-gray dark:prose-invert max-w-none">
@@ -863,13 +952,6 @@ export default function CoursePlayer({ addShopifyModule = false }) {
                           </div>
                         )}
                       </>
-                    ) : (
-                      <div className="text-center py-12">
-                        <div className="w-14 h-14 mx-auto mb-3 rounded-full bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-                          <FiBookOpen className="w-6 h-6 text-secondary" />
-                        </div>
-                        <p className="text-secondary">Aucun aperçu disponible pour cette leçon.</p>
-                      </div>
                     )}
                   </div>
                 )}
