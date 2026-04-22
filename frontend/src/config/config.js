@@ -17,7 +17,7 @@ const getBackendUrl = () => {
   // En mode développement (localhost), TOUJOURS utiliser le backend local
   if (import.meta.env.DEV || import.meta.env.MODE === 'development' || isLocalhost) {
     // Utiliser 127.0.0.1 pour éviter les conflits IPv6 (::1) sur localhost
-    const localBackendUrl = 'http://127.0.0.1:3000'
+    const localBackendUrl = 'http://127.0.0.1:3001'
     logger.log('🌐 MODE DÉVELOPPEMENT - BACKEND_URL local:', localBackendUrl)
     return cleanUrl(localBackendUrl)
   }

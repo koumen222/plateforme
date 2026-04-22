@@ -19,7 +19,7 @@ const lessonSchema = new mongoose.Schema({
   },
   videoType: {
     type: String,
-    enum: ['youtube', 'vimeo'],
+    enum: ['youtube', 'vimeo', 'mp4'],
     default: 'vimeo'
   },
   order: {

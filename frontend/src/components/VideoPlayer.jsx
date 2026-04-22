@@ -83,6 +83,17 @@ export default function VideoPlayer({ video, title, isFirstVideo = false, isFree
               </button>
             </div>
           </div>
+        ) : type === 'mp4' ? (
+          <video
+            src={url}
+            controls
+            className="absolute inset-0 w-full h-full border-none bg-black"
+            playsInline
+            controlsList="nodownload"
+            onError={(e) => {
+              console.error('Erreur chargement vidéo mp4:', url)
+            }}
+          />
         ) : (
           <iframe
             src={url}
