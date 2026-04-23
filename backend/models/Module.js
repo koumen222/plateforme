@@ -12,6 +12,11 @@ const moduleSchema = new mongoose.Schema({
     required: [true, 'Titre du module requis'],
     trim: true
   },
+  description: {
+    type: String,
+    trim: true,
+    default: ''
+  },
   order: {
     type: Number,
     required: [true, 'Ordre du module requis'],
