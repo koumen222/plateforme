@@ -69,6 +69,44 @@ const parseListParam = (value) => {
     .filter(Boolean);
 };
 
+const clampOrder = (order, max) => {
+  const parsed = Number(order);
+  if (!Number.isFinite(parsed) || parsed < 1) return max;
+  return Math.min(Math.max(1, Math.round(parsed)), max);
+};
+
+const reorderModuleList = async (courseId, moduleId, targetOrder) => {
+  const targetId = moduleId.toString();
+  const modules = await Module.find({ courseId }).sort({ order: 1, createdAt: 1 });
+  const movingModule = modules.find((moduleDoc) => moduleDoc._id.toString() === targetId);
+  if (!movingModule) return;
+
+  const orderedModules = modules.filter((moduleDoc) => moduleDoc._id.toString() !== targetId);
+  const nextOrder = clampOrder(targetOrder, orderedModules.length + 1);
+  orderedModules.splice(nextOrder - 1, 0, movingModule);
+
+  await Promise.all(orderedModules.map((moduleDoc, index) => {
+    moduleDoc.order = index + 1;
+    return moduleDoc.save();
+  }));
+};
+
+const reorderLessonList = async (moduleId, lessonId, targetOrder) => {
+  const targetId = lessonId.toString();
+  const lessons = await Lesson.find({ moduleId }).sort({ order: 1, createdAt: 1 });
+  const movingLesson = lessons.find((lessonDoc) => lessonDoc._id.toString() === targetId);
+  if (!movingLesson) return;
+
+  const orderedLessons = lessons.filter((lessonDoc) => lessonDoc._id.toString() !== targetId);
+  const nextOrder = clampOrder(targetOrder, orderedLessons.length + 1);
+  orderedLessons.splice(nextOrder - 1, 0, movingLesson);
+
+  await Promise.all(orderedLessons.map((lessonDoc, index) => {
+    lessonDoc.order = index + 1;
+    return lessonDoc.save();
+  }));
+};
+
 const shapePartenaire = (partenaire) => {
   const domaines = Array.isArray(partenaire.domaines_activite) && partenaire.domaines_activite.length
     ? partenaire.domaines_activite
@@ -151,8 +189,52 @@ router.post('/validate/:id', async (req, res) => {
   }
 });
 
-// Note: Les uploads de fichiers sont désormais gérés via des URLs externes (Google Drive, etc.)
-// Les routes d'upload Cloudinary ont été supprimées
+// POST /api/admin/upload/course-image - Uploader une image de cours/contenu
+router.post('/upload/course-image', uploadCourseImage.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Image requise' });
+    }
+
+    const imagePath = getImagePublicPath(req.file.filename);
+    res.status(201).json({
+      success: true,
+      imagePath,
+      url: imagePath,
+      filename: req.file.originalname
+    });
+  } catch (error) {
+    console.error('Erreur upload image:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'upload de l\'image' });
+  }
+});
+
+// POST /api/admin/upload/pdf - Uploader un PDF de ressource/leçon
+router.post('/upload/pdf', uploadPdf.single('pdf'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'PDF requis' });
+    }
+
+    const pdfPath = getPdfPublicPath(req.file.filename);
+    res.status(201).json({
+      success: true,
+      pdfPath,
+      url: pdfPath,
+      filename: req.file.originalname
+    });
+  } catch (error) {
+    console.error('Erreur upload PDF:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'upload du PDF' });
+  }
+});
+
+router.use((error, req, res, next) => {
+  if (error instanceof multer.MulterError || error?.message?.includes('autoris')) {
+    return res.status(400).json({ error: error.message });
+  }
+  next(error);
+});
 
 // POST /api/admin/course - Créer un nouveau cours avec Module 1 automatique
 router.post('/course', async (req, res) => {
@@ -355,18 +437,8 @@ router.post('/courses/:courseId/modules', async (req, res) => {
       return res.status(400).json({ error: 'Titre du module requis' });
     }
 
-    // Si order non fourni, on met à la fin
-    let finalOrder = Number.isFinite(Number(order)) ? Number(order) : null;
-    if (!finalOrder) {
-      const last = await Module.findOne({ courseId: course._id }).sort({ order: -1 });
-      finalOrder = (last?.order || 0) + 1;
-    }
-
-    // Empêcher doublon d'ordre dans le même cours
-    const existing = await Module.findOne({ courseId: course._id, order: finalOrder });
-    if (existing) {
-      return res.status(400).json({ error: `Un module existe déjà avec l'ordre ${finalOrder}` });
-    }
+    const last = await Module.findOne({ courseId: course._id }).sort({ order: -1 });
+    const finalOrder = (last?.order || 0) + 1;
 
     const module = new Module({
       courseId: course._id,
@@ -374,6 +446,7 @@ router.post('/courses/:courseId/modules', async (req, res) => {
       order: finalOrder
     });
     await module.save();
+    await reorderModuleList(course._id, module._id, Number.isFinite(Number(order)) ? Number(order) : finalOrder);
 
     res.status(201).json({
       success: true,
@@ -396,17 +469,93 @@ router.put('/modules/:moduleId', async (req, res) => {
     if (!module) return res.status(404).json({ error: 'Module non trouvé' });
 
     if (typeof title === 'string' && title.trim()) module.title = title.trim();
-    if (Number.isFinite(Number(order))) module.order = Number(order);
-
-    // Empêcher doublon d'ordre dans le même cours
-    const conflict = await Module.findOne({ courseId: module.courseId, order: module.order, _id: { $ne: module._id } });
-    if (conflict) return res.status(400).json({ error: `Un module existe déjà avec l'ordre ${module.order}` });
-
     await module.save();
+    if (Number.isFinite(Number(order))) {
+      await reorderModuleList(module.courseId, module._id, Number(order));
+    } else {
+      await reorderModuleList(module.courseId, module._id, module.order);
+    }
     res.json({ success: true, module: module.toObject() });
   } catch (error) {
     console.error('Erreur modification module:', error);
     res.status(500).json({ error: 'Erreur lors de la modification du module' });
+  }
+});
+
+// PUT /api/admin/courses/:courseId/modules/reorder - Réordonner les modules par glisser-déposer
+router.put('/courses/:courseId/modules/reorder', async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { moduleIds } = req.body;
+
+    if (!Array.isArray(moduleIds) || moduleIds.length === 0) {
+      return res.status(400).json({ error: 'Liste des modules requise' });
+    }
+
+    const modules = await Module.find({ courseId });
+    const modulesById = new Map(modules.map((moduleDoc) => [moduleDoc._id.toString(), moduleDoc]));
+    const orderedIds = moduleIds.map((id) => id.toString()).filter((id) => modulesById.has(id));
+    const missingIds = modules
+      .map((moduleDoc) => moduleDoc._id.toString())
+      .filter((id) => !orderedIds.includes(id));
+    const finalIds = [...orderedIds, ...missingIds];
+
+    await Promise.all(finalIds.map((id, index) => {
+      const moduleDoc = modulesById.get(id);
+      moduleDoc.order = index + 1;
+      return moduleDoc.save();
+    }));
+
+    res.json({ success: true, message: 'Modules réordonnés' });
+  } catch (error) {
+    console.error('Erreur réorganisation modules:', error);
+    res.status(500).json({ error: 'Erreur lors de la réorganisation des modules' });
+  }
+});
+
+// POST /api/admin/modules/:moduleId/duplicate - Dupliquer un module avec ses leçons
+router.post('/modules/:moduleId/duplicate', async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const module = await Module.findById(moduleId);
+    if (!module) return res.status(404).json({ error: 'Module non trouvé' });
+
+    const lastModule = await Module.findOne({ courseId: module.courseId }).sort({ order: -1 });
+    const duplicatedModule = new Module({
+      courseId: module.courseId,
+      title: `${module.title} (copie)`,
+      order: (lastModule?.order || 0) + 1
+    });
+    await duplicatedModule.save();
+
+    const lessons = await Lesson.find({ moduleId: module._id }).sort({ order: 1, createdAt: 1 });
+    const duplicatedLessons = await Promise.all(lessons.map((lessonDoc, index) => {
+      const lesson = new Lesson({
+        moduleId: duplicatedModule._id,
+        title: lessonDoc.title,
+        videoId: lessonDoc.videoId || '',
+        videoType: lessonDoc.videoType,
+        content: lessonDoc.content || '',
+        order: index + 1,
+        locked: lessonDoc.locked,
+        isCoaching: lessonDoc.isCoaching,
+        summary: lessonDoc.summary || { text: '', points: [] },
+        resources: Array.isArray(lessonDoc.resources) ? lessonDoc.resources : []
+      });
+      return lesson.save();
+    }));
+
+    res.status(201).json({
+      success: true,
+      message: 'Module dupliqué',
+      module: {
+        ...duplicatedModule.toObject(),
+        lessons: duplicatedLessons.map((lessonDoc) => lessonDoc.toObject())
+      }
+    });
+  } catch (error) {
+    console.error('Erreur duplication module:', error);
+    res.status(500).json({ error: 'Erreur lors de la duplication du module' });
   }
 });
 
@@ -419,6 +568,11 @@ router.delete('/modules/:moduleId', async (req, res) => {
 
     await Lesson.deleteMany({ moduleId: module._id });
     await Module.deleteOne({ _id: module._id });
+    const remainingModules = await Module.find({ courseId: module.courseId }).sort({ order: 1, createdAt: 1 });
+    await Promise.all(remainingModules.map((moduleDoc, index) => {
+      moduleDoc.order = index + 1;
+      return moduleDoc.save();
+    }));
 
     res.json({ success: true, message: 'Module supprimé' });
   } catch (error) {
@@ -431,7 +585,7 @@ router.delete('/modules/:moduleId', async (req, res) => {
 router.post('/modules/:moduleId/lessons', async (req, res) => {
   try {
     const { moduleId } = req.params;
-    const { title, videoId, order, locked, summary, resources, isCoaching, videoType } = req.body;
+    const { title, videoId, order, locked, summary, resources, isCoaching, videoType, content } = req.body;
 
     const module = await Module.findById(moduleId);
     if (!module) {
@@ -441,27 +595,18 @@ router.post('/modules/:moduleId/lessons', async (req, res) => {
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: 'Titre de la leçon requis' });
     }
-    if (!videoId || !String(videoId).trim()) {
-      return res.status(400).json({ error: 'videoId requis' });
+    if (videoType !== 'text' && (!videoId || !String(videoId).trim())) {
+      return res.status(400).json({ error: 'videoId requis pour les vidéos' });
     }
 
-    // Si order non fourni, on met à la fin
-    let finalOrder = Number.isFinite(Number(order)) ? Number(order) : null;
-    if (!finalOrder) {
-      const last = await Lesson.findOne({ moduleId: module._id }).sort({ order: -1 });
-      finalOrder = (last?.order || 0) + 1;
-    }
-
-    // Empêcher doublon d'ordre dans le même module
-    const existing = await Lesson.findOne({ moduleId: module._id, order: finalOrder });
-    if (existing) {
-      return res.status(400).json({ error: `Une leçon existe déjà avec l'ordre ${finalOrder}` });
-    }
+    const last = await Lesson.findOne({ moduleId: module._id }).sort({ order: -1 });
+    const finalOrder = (last?.order || 0) + 1;
 
     const lesson = new Lesson({
       moduleId: module._id,
       title: String(title).trim(),
-      videoId: String(videoId).trim(),
+      videoId: videoId ? String(videoId).trim() : '',
+      content: content ? String(content) : '',
       order: finalOrder,
       locked: typeof locked === 'boolean' ? locked : false,
       summary: summary && typeof summary === 'object' ? summary : { text: '', points: [] },
@@ -471,6 +616,7 @@ router.post('/modules/:moduleId/lessons', async (req, res) => {
     });
 
     await lesson.save();
+    await reorderLessonList(module._id, lesson._id, Number.isFinite(Number(order)) ? Number(order) : finalOrder);
 
     res.status(201).json({
       success: true,
@@ -486,29 +632,61 @@ router.post('/modules/:moduleId/lessons', async (req, res) => {
   }
 });
 
+// PUT /api/admin/modules/:moduleId/lessons/reorder - Réordonner les leçons par glisser-déposer
+router.put('/modules/:moduleId/lessons/reorder', async (req, res) => {
+  try {
+    const { moduleId } = req.params;
+    const { lessonIds } = req.body;
+
+    if (!Array.isArray(lessonIds) || lessonIds.length === 0) {
+      return res.status(400).json({ error: 'Liste des leçons requise' });
+    }
+
+    const lessons = await Lesson.find({ moduleId });
+    const lessonsById = new Map(lessons.map((lessonDoc) => [lessonDoc._id.toString(), lessonDoc]));
+    const orderedIds = lessonIds.map((id) => id.toString()).filter((id) => lessonsById.has(id));
+    const missingIds = lessons
+      .map((lessonDoc) => lessonDoc._id.toString())
+      .filter((id) => !orderedIds.includes(id));
+    const finalIds = [...orderedIds, ...missingIds];
+
+    await Promise.all(finalIds.map((id, index) => {
+      const lessonDoc = lessonsById.get(id);
+      lessonDoc.order = index + 1;
+      return lessonDoc.save();
+    }));
+
+    res.json({ success: true, message: 'Leçons réordonnées' });
+  } catch (error) {
+    console.error('Erreur réorganisation leçons:', error);
+    res.status(500).json({ error: 'Erreur lors de la réorganisation des leçons' });
+  }
+});
+
 // PUT /api/admin/lessons/:lessonId - Modifier une leçon
 router.put('/lessons/:lessonId', async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const { title, videoId, order, locked, summary, resources, isCoaching, videoType } = req.body;
+    const { title, videoId, order, locked, summary, resources, isCoaching, videoType, content } = req.body;
 
     const lesson = await Lesson.findById(lessonId);
     if (!lesson) return res.status(404).json({ error: 'Leçon non trouvée' });
 
     if (typeof title === 'string' && title.trim()) lesson.title = title.trim();
-    if (typeof videoId === 'string' && videoId.trim()) lesson.videoId = videoId.trim();
-    if (Number.isFinite(Number(order))) lesson.order = Number(order);
+    if (typeof videoId === 'string') lesson.videoId = videoId.trim();
+    if (typeof content === 'string') lesson.content = content;
     if (typeof locked === 'boolean') lesson.locked = locked;
     if (typeof isCoaching === 'boolean') lesson.isCoaching = isCoaching;
     if (typeof videoType === 'string') lesson.videoType = videoType;
     if (summary && typeof summary === 'object') lesson.summary = summary;
     if (Array.isArray(resources)) lesson.resources = resources;
 
-    // Empêcher doublon d'ordre dans le même module
-    const conflict = await Lesson.findOne({ moduleId: lesson.moduleId, order: lesson.order, _id: { $ne: lesson._id } });
-    if (conflict) return res.status(400).json({ error: `Une leçon existe déjà avec l'ordre ${lesson.order}` });
-
     await lesson.save();
+    if (Number.isFinite(Number(order))) {
+      await reorderLessonList(lesson.moduleId, lesson._id, Number(order));
+    } else {
+      await reorderLessonList(lesson.moduleId, lesson._id, lesson.order);
+    }
     res.json({ success: true, lesson: lesson.toObject() });
   } catch (error) {
     console.error('Erreur modification leçon:', error);
@@ -524,6 +702,11 @@ router.delete('/lessons/:lessonId', async (req, res) => {
     if (!lesson) return res.status(404).json({ error: 'Leçon non trouvée' });
 
     await Lesson.deleteOne({ _id: lesson._id });
+    const remainingLessons = await Lesson.find({ moduleId: lesson.moduleId }).sort({ order: 1, createdAt: 1 });
+    await Promise.all(remainingLessons.map((lessonDoc, index) => {
+      lessonDoc.order = index + 1;
+      return lessonDoc.save();
+    }));
     res.json({ success: true, message: 'Leçon supprimée' });
   } catch (error) {
     console.error('Erreur suppression leçon:', error);

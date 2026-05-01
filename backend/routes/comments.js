@@ -34,7 +34,7 @@ router.post('/', async (req, res) => {
       userId: req.user._id,
       userEmail: user.email,
       content: content.trim(),
-      lessonId: lessonId || null,
+      lessonId: lessonId ? String(lessonId) : null,
       lessonTitle: lessonTitle || null,
       status: 'pending'
     });
@@ -92,18 +92,17 @@ router.get('/', async (req, res) => {
 router.get('/lesson/:lessonId', async (req, res) => {
   try {
     const { lessonId } = req.params;
-    const lessonIdNum = parseInt(lessonId);
 
-    console.log(`📚 Récupération commentaires pour la leçon ${lessonIdNum}`);
+    console.log(`📚 Récupération commentaires pour la leçon ${lessonId}`);
 
     // Récupérer tous les commentaires approuvés pour cette leçon depuis la DB
     const comments = await Comment.find({ 
-      lessonId: lessonIdNum,
+      lessonId: String(lessonId),
       status: 'approved' // Seulement les commentaires approuvés
     })
       .sort({ createdAt: -1 });
 
-    console.log(`✅ ${comments.length} commentaires approuvés trouvés pour la leçon ${lessonIdNum}`);
+    console.log(`✅ ${comments.length} commentaires approuvés trouvés pour la leçon ${lessonId}`);
 
     res.json({
       success: true,
@@ -165,4 +164,3 @@ router.post('/:id/response', async (req, res) => {
 });
 
 export default router;
-

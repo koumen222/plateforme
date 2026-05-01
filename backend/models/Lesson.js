@@ -14,13 +14,16 @@ const lessonSchema = new mongoose.Schema({
   },
   videoId: {
     type: String,
-    required: [true, 'ID vidéo requis (Vimeo)'],
     trim: true
   },
   videoType: {
     type: String,
-    enum: ['youtube', 'vimeo', 'mp4'],
+    enum: ['youtube', 'vimeo', 'mp4', 'text'],
     default: 'vimeo'
+  },
+  content: {
+    type: String,
+    default: ''
   },
   order: {
     type: Number,

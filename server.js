@@ -153,6 +153,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Monter les routes email critiques tôt pour éviter les 404 en développement.
+try {
+  let emailCampaignsModule;
+  try {
+    emailCampaignsModule = await import("./routes/email-campaigns.js");
+  } catch (rootImportError) {
+    emailCampaignsModule = await import("./backend/routes/email-campaigns.js");
+  }
+  if (emailCampaignsModule?.default) {
+    app.use("/api/email-campaigns", emailCampaignsModule.default);
+  }
+} catch (error) {
+  console.error("⚠️ Erreur montage anticipé email-campaigns.js:", error.message);
+}
+
 // Servir les fichiers statiques du backend (pour l'interface de test)
 app.use(express.static(path.join(__dirname)));
 

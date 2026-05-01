@@ -161,6 +161,17 @@ app.use((req, res, next) => {
   next();
 });
 
+// Monter les routes email critiques tôt pour éviter qu'elles soient manquées par les blocs dynamiques plus bas.
+try {
+  const emailCampaignsModule = await import("./routes/email-campaigns.js");
+  if (emailCampaignsModule?.default) {
+    app.use("/api/email-campaigns", emailCampaignsModule.default);
+    console.log("✅ Routes Email Campaigns montées tôt");
+  }
+} catch (error) {
+  console.error("⚠️ Erreur montage anticipé email-campaigns.js:", error.message);
+}
+
 // Servir les fichiers statiques du backend (pour l'interface de test)
 app.use(express.static(path.join(__dirname)));
 

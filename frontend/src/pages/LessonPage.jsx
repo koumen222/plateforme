@@ -62,10 +62,9 @@ export default function LessonPage({ lesson }) {
             response.data.course.modules.forEach((module) => {
               if (module.lessons) {
                 module.lessons.forEach((l) => {
-                  const isYouTube = l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube'))
-                  const videoType = isYouTube ? 'youtube' : 'vimeo'
+                  const videoType = l.videoType || (l.videoId && (l.videoId.length === 11 || l.videoId.includes('youtube')) ? 'youtube' : 'vimeo')
                   let videoUrl = ''
-                  const videoId = l.videoId.toString().trim()
+                  const videoId = l.videoId ? l.videoId.toString().trim() : ''
 
                   if (videoType === 'youtube') {
                     let youtubeId = videoId
@@ -77,13 +76,14 @@ export default function LessonPage({ lesson }) {
                       youtubeId = videoId.split('embed/')[1]?.split('?')[0] || videoId
                     }
                     videoUrl = `https://www.youtube.com/embed/${youtubeId}?rel=0&modestbranding=1&playsinline=1&autoplay=0`
-                  } else {
+                  } else if (videoType === 'vimeo') {
                     let vimeoId = videoId
                     if (videoId.includes('vimeo.com/')) {
                       vimeoId = videoId.split('vimeo.com/')[1]?.split('?')[0] || videoId
                     }
                     videoUrl = `https://player.vimeo.com/video/${vimeoId}?title=0&byline=0&portrait=0&autoplay=0`
                   }
+
                   const badgeMatch = l.title.match(/JOUR \d+/)
                   const badge = badgeMatch ? badgeMatch[0] : `JOUR ${allLessons.length + 1}`
                   const meta = l.title.split(' - ')[1] || 'Formation'
@@ -94,7 +94,9 @@ export default function LessonPage({ lesson }) {
                     title: l.title,
                     badge: badge,
                     meta: meta,
-                    video: { type: videoType, url: videoUrl },
+                    videoType: videoType,
+                    content: l.content,
+                    video: videoType !== 'text' && videoUrl ? { type: videoType, url: videoUrl } : null,
                     summary: l.summary || { text: '', points: [] },
                     resources: l.resources || [],
                     isCoaching: l.isCoaching || false
@@ -456,14 +458,26 @@ export default function LessonPage({ lesson }) {
       )}
 
       {/* Videos - Conteneur optimisé */}
-      <div className="w-full mb-6 sm:mb-8">
-        {lesson.video && (
-          <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} isFreeCourse={!!course?.isFree} />
-        )}
-        {lesson.videos && lesson.videos.map((video, idx) => (
-          <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} isFreeCourse={!!course?.isFree} />
-        ))}
-      </div>
+      {lesson.videoType !== 'text' && (
+        <div className="w-full mb-6 sm:mb-8">
+          {lesson.video && (
+            <ProtectedVideo video={lesson.video} isFirstVideo={currentIndex === 0} isFreeCourse={!!course?.isFree} />
+          )}
+          {lesson.videos && lesson.videos.map((video, idx) => (
+            <ProtectedVideo key={idx} video={video} title={video.title} isFirstVideo={currentIndex === 0 && idx === 0} isFreeCourse={!!course?.isFree} />
+          ))}
+        </div>
+      )}
+
+      {/* Texte de leçon / complément sous la vidéo */}
+      {lesson.content && (
+        <div className="w-full mb-6 sm:mb-8 card-startup">
+          <div 
+            className="text-base sm:text-lg text-primary leading-relaxed whitespace-pre-wrap"
+            dangerouslySetInnerHTML={{ __html: lesson.content }}
+          />
+        </div>
+      )}
 
       {/* Summary - Design amélioré */}
       {lesson.summary && (

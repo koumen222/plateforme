@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { getImageUrl, handleImageError } from '../../utils/imageUtils'
 import axios from 'axios'
+import ReactQuill from 'react-quill'
+import 'react-quill/dist/quill.snow.css'
 
 /* ── Inline SVG icons ─────────────────────────────────────── */
 const Ico = ({ d, size = 14, style = {} }) => (
@@ -67,8 +69,77 @@ const IconCalendar    = ({ size }) => (
 const IconLayers      = ({ size }) => <Ico size={size} d="M12 2 2 7l10 5 10-5-10-5ZM2 17l10 5 10-5M2 12l10 5 10-5" />
 const IconZap         = ({ size }) => <Ico size={size} d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z" />
 
+const predefinedLessonBlocks = [
+  {
+    id: 'summary',
+    label: 'Résumé',
+    html: `
+      <h2>Résumé</h2>
+      <p>Explique ici les points importants de cette leçon en quelques lignes.</p>
+      <ul>
+        <li>Point important 1</li>
+        <li>Point important 2</li>
+        <li>Point important 3</li>
+      </ul>
+    `
+  },
+  {
+    id: 'comment',
+    label: 'Commentaire',
+    html: `
+      <h3>Espace commentaire</h3>
+      <p>Les apprenants peuvent laisser leurs questions et retours dans l'espace commentaires sous la leçon. Les messages arrivent dans l'administration avant publication.</p>
+    `
+  },
+  {
+    id: 'resources',
+    label: 'Ressources',
+    html: `
+      <h3>Ressources utiles</h3>
+      <p>Ajoute les liens, documents ou fichiers que l'apprenant doit consulter.</p>
+      <ul>
+        <li><a href="https://example.com" target="_blank">Nom de la ressource</a></li>
+      </ul>
+    `
+  },
+  {
+    id: 'exercise',
+    label: 'Exercice',
+    html: `
+      <h3>Exercice à faire</h3>
+      <p>Décris ici l'action concrète que l'apprenant doit réaliser après la vidéo.</p>
+      <ol>
+        <li>Étape 1</li>
+        <li>Étape 2</li>
+        <li>Étape 3</li>
+      </ol>
+    `
+  },
+  {
+    id: 'warning',
+    label: 'Attention',
+    html: `
+      <h3>Attention</h3>
+      <blockquote>Indique ici l'erreur à éviter ou le point de vigilance principal.</blockquote>
+    `
+  },
+  {
+    id: 'checklist',
+    label: 'Checklist',
+    html: `
+      <h3>Checklist</h3>
+      <ul>
+        <li>Élément à vérifier 1</li>
+        <li>Élément à vérifier 2</li>
+        <li>Élément à vérifier 3</li>
+      </ul>
+    `
+  }
+]
+
 export default function AdminCoursesPage() {
   const { token } = useAuth()
+  const quillRef = useRef(null)
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedCourseId, setExpandedCourseId] = useState(null)
@@ -95,6 +166,8 @@ export default function AdminCoursesPage() {
     title: '', 
     videoId: '', 
     videoType: 'vimeo', 
+    content: '',
+    resources: [],
     order: '', 
     locked: false, 
     isCoaching: false 
@@ -117,6 +190,173 @@ export default function AdminCoursesPage() {
   })
   const [uploadingEditImage, setUploadingEditImage] = useState(false)
   const [savingCourse, setSavingCourse] = useState(false)
+  const [uploadingLessonAsset, setUploadingLessonAsset] = useState(false)
+  const [draggedModuleId, setDraggedModuleId] = useState(null)
+  const [draggedLesson, setDraggedLesson] = useState(null)
+
+  const getAssetUrl = (path) => {
+    if (!path) return ''
+    if (/^https?:\/\//i.test(path)) return path
+    return `${CONFIG.BACKEND_URL}${path}`
+  }
+
+  const normalizeOrders = (items = []) => items.map((item, index) => ({ ...item, order: index + 1 }))
+
+  const insertAtOrder = (items = [], item, order) => {
+    const nextItems = items.filter((current) => current._id !== item._id)
+    const parsedOrder = Number(order)
+    const targetIndex = Number.isFinite(parsedOrder) && parsedOrder > 0
+      ? Math.min(Math.round(parsedOrder) - 1, nextItems.length)
+      : nextItems.length
+    nextItems.splice(targetIndex, 0, item)
+    return normalizeOrders(nextItems)
+  }
+
+  const updateModuleLocally = (moduleId, updater) => {
+    setExpandedCourse((prev) => {
+      if (!prev) return prev
+      return {
+        ...prev,
+        modules: normalizeOrders((prev.modules || []).map((mod) => (
+          mod._id === moduleId ? updater(mod) : mod
+        )))
+      }
+    })
+  }
+
+  const updateLessonLocally = (moduleId, lessonId, updater) => {
+    updateModuleLocally(moduleId, (mod) => ({
+      ...mod,
+      lessons: normalizeOrders((mod.lessons || []).map((lesson) => (
+        lesson._id === lessonId ? updater(lesson) : lesson
+      )))
+    }))
+  }
+
+  const insertIntoEditor = (type, value, label = '') => {
+    const editor = quillRef.current?.getEditor()
+    if (!editor) return
+    const range = editor.getSelection(true) || { index: editor.getLength(), length: 0 }
+    if (type === 'image') {
+      editor.insertEmbed(range.index, 'image', value, 'user')
+      editor.setSelection(range.index + 1, 0)
+      return
+    }
+    if (type === 'link') {
+      editor.insertText(range.index, label || value, 'link', value, 'user')
+      editor.setSelection(range.index + (label || value).length, 0)
+    }
+  }
+
+  const insertPredefinedBlock = (block) => {
+    const editor = quillRef.current?.getEditor()
+    if (!editor) return
+    const range = editor.getSelection(true) || { index: editor.getLength(), length: 0 }
+    editor.clipboard.dangerouslyPasteHTML(range.index, block.html, 'user')
+    setTimeout(() => {
+      editor.setSelection(Math.min(range.index + 1, editor.getLength()), 0)
+    }, 0)
+  }
+
+  const uploadLessonAsset = useCallback(async (file, assetType) => {
+    if (!file) return null
+    const isImage = assetType === 'image'
+    const endpoint = isImage ? '/api/admin/upload/course-image' : '/api/admin/upload/pdf'
+    const fieldName = isImage ? 'image' : 'pdf'
+
+    setUploadingLessonAsset(true)
+    setError('')
+    try {
+      const data = new FormData()
+      data.append(fieldName, file)
+      const response = await axios.post(`${CONFIG.BACKEND_URL}${endpoint}`, data, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      })
+      if (!response.data.success) return null
+      return {
+        path: response.data.url || response.data.imagePath || response.data.pdfPath,
+        filename: response.data.filename || file.name
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || `Erreur lors de l'upload ${isImage ? "de l'image" : 'du PDF'}`)
+      return null
+    } finally {
+      setUploadingLessonAsset(false)
+    }
+  }, [token])
+
+  const openLessonAssetPicker = useCallback((assetType) => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = assetType === 'image' ? 'image/*' : 'application/pdf'
+    input.onchange = async () => {
+      const file = input.files?.[0]
+      if (!file) return
+      const uploaded = await uploadLessonAsset(file, assetType)
+      if (!uploaded?.path) return
+
+      const assetUrl = getAssetUrl(uploaded.path)
+      if (assetType === 'image') {
+        insertIntoEditor('image', assetUrl)
+        setSuccess('✅ Image ajoutée au contenu !')
+      } else {
+        const title = uploaded.filename || 'Document PDF'
+        const newResource = {
+          icon: '📎',
+          title,
+          type: 'PDF',
+          link: assetUrl,
+          download: true
+        }
+        setLessonForm((prev) => ({
+          ...prev,
+          resources: [...(prev.resources || []), newResource]
+        }))
+        insertIntoEditor('link', assetUrl, `📎 ${title}`)
+        setSuccess('✅ PDF attaché à la leçon !')
+      }
+      setTimeout(() => setSuccess(''), 2000)
+    }
+    input.click()
+  }, [uploadLessonAsset])
+
+  const quillModules = useMemo(() => ({
+    toolbar: {
+      container: [
+        [{ header: [1, 2, 3, false] }],
+        ['bold', 'italic', 'underline', 'strike'],
+        [{ color: [] }, { background: [] }],
+        [{ list: 'ordered' }, { list: 'bullet' }],
+        [{ align: [] }],
+        ['blockquote', 'code-block'],
+        ['link', 'image'],
+        ['clean']
+      ],
+      handlers: {
+        image: () => openLessonAssetPicker('image')
+      }
+    }
+  }), [openLessonAssetPicker])
+
+  const quillFormats = useMemo(() => [
+    'header',
+    'bold',
+    'italic',
+    'underline',
+    'strike',
+    'color',
+    'background',
+    'list',
+    'bullet',
+    'align',
+    'blockquote',
+    'code-block',
+    'link',
+    'image'
+  ], [])
 
   useEffect(() => {
     if (token) {
@@ -284,7 +524,12 @@ export default function AdminCoursesPage() {
       )
       if (response.data.success) {
         setSuccess(`✅ Cours ${!currentStatus ? 'activé' : 'désactivé'} !`)
-        fetchCourses()
+        setCourses((prev) => prev.map((course) => (
+          course._id === courseId ? { ...course, isPublished: !currentStatus } : course
+        )))
+        setExpandedCourse((prev) => (
+          prev?._id === courseId ? { ...prev, isPublished: !currentStatus } : prev
+        ))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -303,7 +548,12 @@ export default function AdminCoursesPage() {
       )
       if (response.data.success) {
         setSuccess(`✅ Statut ${!currentStatus ? 'gratuit' : 'payant'} appliqué !`)
-        fetchCourses()
+        setCourses((prev) => prev.map((course) => (
+          course._id === courseId ? { ...course, isFree: !currentStatus } : course
+        )))
+        setExpandedCourse((prev) => (
+          prev?._id === courseId ? { ...prev, isFree: !currentStatus } : prev
+        ))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -349,7 +599,10 @@ export default function AdminCoursesPage() {
       if (res.data.success) {
         setSuccess('✅ Module ajouté !')
         setModuleForm({ title: '', order: '' })
-        await fetchCourseDetails(expandedCourseId)
+        setExpandedCourse((prev) => ({
+          ...prev,
+          modules: insertAtOrder(prev.modules || [], { ...res.data.module, lessons: [] }, payload.order)
+        }))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -373,6 +626,8 @@ export default function AdminCoursesPage() {
         title: lessonForm.title,
         videoId: lessonForm.videoId,
         videoType: lessonForm.videoType,
+        content: lessonForm.content,
+        resources: lessonForm.resources || [],
         order: lessonForm.order ? Number(lessonForm.order) : undefined,
         locked: lessonForm.locked,
         isCoaching: lessonForm.isCoaching
@@ -384,16 +639,22 @@ export default function AdminCoursesPage() {
       )
       if (res.data.success) {
         setSuccess('✅ Leçon ajoutée !')
+        const selectedModuleId = lessonForm.moduleId
         setLessonForm({
-          moduleId: lessonForm.moduleId,
+          moduleId: selectedModuleId,
           title: '',
           videoId: '',
           videoType: 'vimeo',
+          content: '',
+          resources: [],
           order: '',
           locked: false,
           isCoaching: false
         })
-        await fetchCourseDetails(expandedCourseId)
+        updateModuleLocally(selectedModuleId, (mod) => ({
+          ...mod,
+          lessons: insertAtOrder(mod.lessons || [], res.data.lesson, payload.order)
+        }))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -434,13 +695,118 @@ export default function AdminCoursesPage() {
       if (res.data.success) {
         setSuccess('✅ Module modifié !')
         handleCancelEditModule()
-        await fetchCourseDetails(expandedCourseId)
+        setExpandedCourse((prev) => {
+          if (!prev) return prev
+          const updatedModules = (prev.modules || []).map((mod) => (
+            mod._id === moduleId ? { ...mod, ...res.data.module, lessons: mod.lessons || [] } : mod
+          ))
+          if (!Number.isFinite(Number(payload.order))) {
+            return { ...prev, modules: normalizeOrders(updatedModules) }
+          }
+          const updatedModule = updatedModules.find((mod) => mod._id === moduleId)
+          return {
+            ...prev,
+            modules: updatedModule ? insertAtOrder(updatedModules, updatedModule, payload.order) : normalizeOrders(updatedModules)
+          }
+        })
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors de la modification du module')
     } finally {
       setUpdatingModule(false)
+    }
+  }
+
+  const handleDropModule = async (targetModuleId) => {
+    if (!draggedModuleId || draggedModuleId === targetModuleId || !expandedCourse?.modules?.length) {
+      setDraggedModuleId(null)
+      return
+    }
+
+    const currentIds = expandedCourse.modules.map((mod) => mod._id)
+    const draggedIndex = currentIds.indexOf(draggedModuleId)
+    const targetIndex = currentIds.indexOf(targetModuleId)
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedModuleId(null)
+      return
+    }
+
+    const nextIds = [...currentIds]
+    const [movedId] = nextIds.splice(draggedIndex, 1)
+    nextIds.splice(targetIndex, 0, movedId)
+
+    setExpandedCourse((prev) => ({
+      ...prev,
+      modules: nextIds.map((id, index) => {
+        const mod = prev.modules.find((item) => item._id === id)
+        return { ...mod, order: index + 1 }
+      })
+    }))
+
+    setDraggedModuleId(null)
+    setError('')
+    try {
+      await axios.put(
+        `${CONFIG.BACKEND_URL}/api/admin/courses/${expandedCourseId}/modules/reorder`,
+        { moduleIds: nextIds },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors du déplacement du module')
+      await fetchCourseDetails(expandedCourseId)
+    }
+  }
+
+  const handleDropLesson = async (targetModuleId, targetLessonId) => {
+    if (!draggedLesson || draggedLesson.moduleId !== targetModuleId || draggedLesson.lessonId === targetLessonId) {
+      setDraggedLesson(null)
+      return
+    }
+
+    const module = expandedCourse?.modules?.find((mod) => mod._id === targetModuleId)
+    if (!module?.lessons?.length) {
+      setDraggedLesson(null)
+      return
+    }
+
+    const currentIds = module.lessons.map((lesson) => lesson._id)
+    const draggedIndex = currentIds.indexOf(draggedLesson.lessonId)
+    const targetIndex = currentIds.indexOf(targetLessonId)
+    if (draggedIndex === -1 || targetIndex === -1) {
+      setDraggedLesson(null)
+      return
+    }
+
+    const nextIds = [...currentIds]
+    const [movedId] = nextIds.splice(draggedIndex, 1)
+    nextIds.splice(targetIndex, 0, movedId)
+
+    setExpandedCourse((prev) => ({
+      ...prev,
+      modules: prev.modules.map((mod) => {
+        if (mod._id !== targetModuleId) return mod
+        return {
+          ...mod,
+          lessons: nextIds.map((id, index) => {
+            const lesson = mod.lessons.find((item) => item._id === id)
+            return { ...lesson, order: index + 1 }
+          })
+        }
+      })
+    }))
+
+    setDraggedLesson(null)
+    setError('')
+    try {
+      await axios.put(
+        `${CONFIG.BACKEND_URL}/api/admin/modules/${targetModuleId}/lessons/reorder`,
+        { lessonIds: nextIds },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors du déplacement de la leçon')
+      await fetchCourseDetails(expandedCourseId)
     }
   }
 
@@ -455,11 +821,37 @@ export default function AdminCoursesPage() {
       )
       if (res.data.success) {
         setSuccess('✅ Module supprimé !')
-        await fetchCourseDetails(expandedCourseId)
+        setExpandedCourse((prev) => ({
+          ...prev,
+          modules: normalizeOrders((prev.modules || []).filter((mod) => mod._id !== moduleId))
+        }))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Erreur lors de la suppression')
+    }
+  }
+
+  const handleDuplicateModule = async (moduleId) => {
+    if (!confirm('Dupliquer ce module avec toutes ses leçons ?')) return
+    setError('')
+    setSuccess('')
+    try {
+      const res = await axios.post(
+        `${CONFIG.BACKEND_URL}/api/admin/modules/${moduleId}/duplicate`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+      if (res.data.success) {
+        setSuccess('✅ Module dupliqué !')
+        setExpandedCourse((prev) => ({
+          ...prev,
+          modules: normalizeOrders([...(prev.modules || []), res.data.module])
+        }))
+        setTimeout(() => setSuccess(''), 2000)
+      }
+    } catch (err) {
+      setError(err.response?.data?.error || 'Erreur lors de la duplication du module')
     }
   }
 
@@ -474,7 +866,13 @@ export default function AdminCoursesPage() {
       )
       if (res.data.success) {
         setSuccess('✅ Leçon supprimée !')
-        await fetchCourseDetails(expandedCourseId)
+        setExpandedCourse((prev) => ({
+          ...prev,
+          modules: (prev.modules || []).map((mod) => ({
+            ...mod,
+            lessons: normalizeOrders((mod.lessons || []).filter((lesson) => lesson._id !== lessonId))
+          }))
+        }))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -487,8 +885,10 @@ export default function AdminCoursesPage() {
     setLessonForm({
       moduleId: lesson.moduleId,
       title: lesson.title,
-      videoId: lesson.videoId,
+      videoId: lesson.videoId || '',
       videoType: lesson.videoType || 'vimeo',
+      content: lesson.content || '',
+      resources: lesson.resources || [],
       order: lesson.order || '',
       locked: lesson.locked || false,
       isCoaching: lesson.isCoaching || false
@@ -510,6 +910,8 @@ export default function AdminCoursesPage() {
         title: lessonForm.title,
         videoId: lessonForm.videoId,
         videoType: lessonForm.videoType,
+        content: lessonForm.content,
+        resources: lessonForm.resources || [],
         order: lessonForm.order ? Number(lessonForm.order) : undefined,
         locked: lessonForm.locked,
         isCoaching: lessonForm.isCoaching
@@ -521,17 +923,29 @@ export default function AdminCoursesPage() {
       )
       if (res.data.success) {
         setSuccess('✅ Leçon modifiée !')
+        const selectedModuleId = lessonForm.moduleId
+        updateLessonLocally(selectedModuleId, editingLesson._id, (lesson) => ({ ...lesson, ...res.data.lesson }))
+        if (Number.isFinite(Number(payload.order))) {
+          updateModuleLocally(selectedModuleId, (mod) => {
+            const updatedLesson = (mod.lessons || []).find((lesson) => lesson._id === editingLesson._id)
+            return {
+              ...mod,
+              lessons: updatedLesson ? insertAtOrder(mod.lessons || [], updatedLesson, payload.order) : mod.lessons
+            }
+          })
+        }
         setEditingLesson(null)
         setLessonForm({
-          moduleId: lessonForm.moduleId,
+          moduleId: selectedModuleId,
           title: '',
           videoId: '',
           videoType: 'vimeo',
+          content: '',
+          resources: [],
           order: '',
           locked: false,
           isCoaching: false
         })
-        await fetchCourseDetails(expandedCourseId)
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -548,8 +962,10 @@ export default function AdminCoursesPage() {
     try {
       const payload = {
         title: `${lesson.title} (copie)`,
-        videoId: lesson.videoId,
+        videoId: lesson.videoId || '',
         videoType: lesson.videoType || 'vimeo',
+        content: lesson.content || '',
+        resources: lesson.resources || [],
         order: (lesson.order || 0) + 1,
         locked: lesson.locked || false,
         isCoaching: lesson.isCoaching || false
@@ -561,7 +977,10 @@ export default function AdminCoursesPage() {
       )
       if (res.data.success) {
         setSuccess('✅ Leçon dupliquée !')
-        await fetchCourseDetails(expandedCourseId)
+        updateModuleLocally(lesson.moduleId, (mod) => ({
+          ...mod,
+          lessons: insertAtOrder(mod.lessons || [], res.data.lesson, payload.order)
+        }))
         setTimeout(() => setSuccess(''), 2000)
       }
     } catch (err) {
@@ -576,6 +995,8 @@ export default function AdminCoursesPage() {
       title: '',
       videoId: '',
       videoType: 'vimeo',
+      content: '',
+      resources: [],
       order: '',
       locked: false,
       isCoaching: false
@@ -628,10 +1049,12 @@ export default function AdminCoursesPage() {
       if (response.data.success) {
         setSuccess('✅ Cours modifié avec succès !')
         setEditingCourse(null)
-        await fetchCourses()
-        if (expandedCourseId === editingCourse) {
-          await fetchCourseDetails(editingCourse)
-        }
+        setCourses((prev) => prev.map((course) => (
+          course._id === editingCourse ? { ...course, ...response.data.course } : course
+        )))
+        setExpandedCourse((prev) => (
+          prev?._id === editingCourse ? { ...prev, ...response.data.course, modules: prev.modules || [] } : prev
+        ))
         setTimeout(() => setSuccess(''), 3000)
       }
     } catch (err) {
@@ -1030,18 +1453,100 @@ export default function AdminCoursesPage() {
                                 required className="admin-input admin-input-sm" style={{ flex: 2 }} />
                             </div>
                             <div className="admin-form-row" style={{ gap: '0.5rem' }}>
-                              <input type="text" placeholder="ID vidéo *" value={lessonForm.videoId}
-                                onChange={(e) => setLessonForm({ ...lessonForm, videoId: e.target.value })}
-                                required className="admin-input admin-input-sm" style={{ flex: 2 }} />
                               <select value={lessonForm.videoType}
                                 onChange={(e) => setLessonForm({ ...lessonForm, videoType: e.target.value })}
                                 className="admin-select" style={{ width: '105px' }}>
                                 <option value="vimeo">Vimeo</option>
                                 <option value="youtube">YouTube</option>
+                                <option value="text">Texte</option>
                               </select>
+                              {lessonForm.videoType !== 'text' && (
+                                <input type="text" placeholder="ID vidéo *" value={lessonForm.videoId}
+                                  onChange={(e) => setLessonForm({ ...lessonForm, videoId: e.target.value })}
+                                  required className="admin-input admin-input-sm" style={{ flex: 2 }} />
+                              )}
                               <input type="number" placeholder="Ordre" value={lessonForm.order}
                                 onChange={(e) => setLessonForm({ ...lessonForm, order: e.target.value })}
-                                className="admin-input admin-input-sm" style={{ width: '70px' }} />
+                                className="admin-input admin-input-sm" style={{ width: '70px', marginLeft: lessonForm.videoType === 'text' ? 'auto' : 0 }} />
+                            </div>
+                            <div style={{ marginBottom: '0.5rem' }}>
+                              <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '0.4rem' }}>
+                                {lessonForm.videoType === 'text' ? 'Contenu de la leçon' : 'Texte supplémentaire sous la vidéo'}
+                              </div>
+                              <div style={{ marginBottom: '0.6rem' }}>
+                                <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '0.35rem' }}>
+                                  Blocs prédéfinis
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                                  {predefinedLessonBlocks.map((block) => (
+                                    <button
+                                      key={block.id}
+                                      type="button"
+                                      onClick={() => insertPredefinedBlock(block)}
+                                      className="admin-btn admin-btn-xs admin-btn-secondary"
+                                    >
+                                      {block.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                    onClick={() => openLessonAssetPicker('image')}
+                                    disabled={uploadingLessonAsset}
+                                    className="admin-btn admin-btn-xs admin-btn-secondary"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                  >
+                                    <IconUpload size={11} /> Image
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => openLessonAssetPicker('pdf')}
+                                    disabled={uploadingLessonAsset}
+                                    className="admin-btn admin-btn-xs admin-btn-secondary"
+                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+                                  >
+                                    <IconUpload size={11} /> PDF
+                                  </button>
+                                  {uploadingLessonAsset && (
+                                    <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
+                                      <IconLoader size={12} /> Upload en cours...
+                                    </span>
+                                  )}
+                                </div>
+                                <ReactQuill 
+                                  ref={quillRef}
+                                  theme="snow" 
+                                  value={lessonForm.content} 
+                                  onChange={(value) => setLessonForm({ ...lessonForm, content: value })} 
+                                  modules={quillModules}
+                                  formats={quillFormats}
+                                  placeholder="Contenu complet du cours..." 
+                                  style={{ background: '#fff', color: '#000', borderRadius: '4px' }} 
+                                />
+                                {lessonForm.resources?.length > 0 && (
+                                  <div style={{ marginTop: '0.6rem', display: 'grid', gap: '0.4rem' }}>
+                                    {lessonForm.resources.map((resource, index) => (
+                                      <div key={`${resource.link}-${index}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.45rem 0.6rem', border: '1px solid var(--border-color)', borderRadius: '6px', background: 'var(--bg-card)' }}>
+                                        <span style={{ fontSize: '0.85rem', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                          {resource.icon || '📎'} {resource.title || resource.link}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => setLessonForm((prev) => ({
+                                            ...prev,
+                                            resources: (prev.resources || []).filter((_, i) => i !== index)
+                                          }))}
+                                          className="admin-btn admin-btn-xs admin-btn-danger"
+                                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+                                        >
+                                          <IconX size={10} /> Retirer
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               <label className="admin-checkbox-label" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -1077,7 +1582,31 @@ export default function AdminCoursesPage() {
                         ) : (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                             {expandedCourse.modules.map((mod, modIdx) => (
-                              <div key={mod._id} style={{ background: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden' }}>
+                              <div
+                                key={mod._id}
+                                draggable={editingModuleId !== mod._id}
+                                onDragStart={(event) => {
+                                  setDraggedModuleId(mod._id)
+                                  event.dataTransfer.effectAllowed = 'move'
+                                }}
+                                onDragOver={(event) => {
+                                  event.preventDefault()
+                                  event.dataTransfer.dropEffect = 'move'
+                                }}
+                                onDrop={(event) => {
+                                  event.preventDefault()
+                                  handleDropModule(mod._id)
+                                }}
+                                onDragEnd={() => setDraggedModuleId(null)}
+                                style={{
+                                  background: 'var(--bg-card)',
+                                  border: `1px solid ${draggedModuleId === mod._id ? 'var(--accent)' : 'var(--border-color)'}`,
+                                  borderRadius: '8px',
+                                  overflow: 'hidden',
+                                  opacity: draggedModuleId === mod._id ? 0.55 : 1,
+                                  cursor: editingModuleId === mod._id ? 'default' : 'grab'
+                                }}
+                              >
                                 {/* Module header */}
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', padding: '0.55rem 0.75rem', background: 'var(--bg-secondary)', borderBottom: mod.lessons?.length ? '1px solid var(--border-color)' : 'none' }}>
                                   {editingModuleId === mod._id ? (
@@ -1104,6 +1633,7 @@ export default function AdminCoursesPage() {
                                       <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--accent)', background: 'rgba(139,92,246,0.12)', padding: '1px 8px', borderRadius: '10px', flexShrink: 0 }}>
                                         M{mod.order ?? modIdx + 1}
                                       </span>
+                                      <span title="Glisser pour déplacer" style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1, flexShrink: 0 }}>⋮⋮</span>
                                       <span style={{ flex: 1, fontSize: '0.84rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{mod.title}</span>
                                       <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                                         <IconVideo size={10} /> {mod.lessons?.length || 0}
@@ -1111,6 +1641,10 @@ export default function AdminCoursesPage() {
                                       <button onClick={() => handleStartEditModule(mod)} className="admin-btn admin-btn-xs admin-btn-primary" title="Modifier"
                                         style={{ display: 'inline-flex', alignItems: 'center' }}>
                                         <IconPencil size={11} />
+                                      </button>
+                                      <button onClick={() => handleDuplicateModule(mod._id)} className="admin-btn admin-btn-xs admin-btn-secondary" title="Dupliquer le module"
+                                        style={{ display: 'inline-flex', alignItems: 'center' }}>
+                                        <IconCopy size={11} />
                                       </button>
                                       <button onClick={() => handleDeleteModule(mod._id)} className="admin-btn admin-btn-xs admin-btn-danger" title="Supprimer"
                                         style={{ display: 'inline-flex', alignItems: 'center' }}>
@@ -1124,13 +1658,34 @@ export default function AdminCoursesPage() {
                                 {mod.lessons?.length > 0 && (
                                   <div>
                                     {mod.lessons.map((lesson, i) => (
-                                      <div key={lesson._id} style={{
-                                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                                        padding: '0.4rem 0.75rem',
-                                        borderBottom: i < mod.lessons.length - 1 ? '1px solid var(--border-color)' : 'none',
-                                        fontSize: '0.82rem'
-                                      }}>
+                                      <div
+                                        key={lesson._id}
+                                        draggable
+                                        onDragStart={(event) => {
+                                          setDraggedLesson({ moduleId: mod._id, lessonId: lesson._id })
+                                          event.dataTransfer.effectAllowed = 'move'
+                                        }}
+                                        onDragOver={(event) => {
+                                          event.preventDefault()
+                                          event.dataTransfer.dropEffect = 'move'
+                                        }}
+                                        onDrop={(event) => {
+                                          event.preventDefault()
+                                          handleDropLesson(mod._id, lesson._id)
+                                        }}
+                                        onDragEnd={() => setDraggedLesson(null)}
+                                        style={{
+                                          display: 'flex', alignItems: 'center', gap: '0.5rem',
+                                          padding: '0.4rem 0.75rem',
+                                          borderBottom: i < mod.lessons.length - 1 ? '1px solid var(--border-color)' : 'none',
+                                          fontSize: '0.82rem',
+                                          opacity: draggedLesson?.lessonId === lesson._id ? 0.55 : 1,
+                                          cursor: 'grab',
+                                          background: draggedLesson?.lessonId === lesson._id ? 'var(--bg-secondary)' : 'transparent'
+                                        }}
+                                      >
                                         <span style={{ color: 'var(--text-secondary)', width: '18px', flexShrink: 0, fontSize: '0.72rem', textAlign: 'right' }}>{lesson.order}.</span>
+                                        <span title="Glisser pour déplacer" style={{ color: 'var(--text-muted)', fontSize: '0.85rem', lineHeight: 1, flexShrink: 0 }}>⋮⋮</span>
                                         <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{lesson.title}</span>
                                         <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', flexShrink: 0 }}>
                                           <span style={{ fontSize: '0.63rem', color: 'var(--text-secondary)', background: 'var(--bg-secondary)', padding: '1px 5px', borderRadius: '4px' }}>{lesson.videoType}</span>

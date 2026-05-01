@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { CONFIG } from '../config/config'
 import axios from 'axios'
 import ProtectedVideo from './ProtectedVideo'
-import { FiChevronDown, FiChevronRight, FiChevronLeft, FiCheck, FiPlay, FiLock, FiMenu, FiX, FiArrowLeft, FiList, FiBookOpen, FiPaperclip, FiSearch, FiClock, FiAward } from 'react-icons/fi'
+import { FiChevronDown, FiChevronRight, FiChevronLeft, FiCheck, FiPlay, FiLock, FiMenu, FiX, FiArrowLeft, FiList, FiBookOpen, FiPaperclip, FiSearch, FiClock, FiAward, FiMessageCircle, FiSend } from 'react-icons/fi'
 
 export default function CoursePlayer({ addShopifyModule = false }) {
   const { slug, lessonId } = useParams()
@@ -27,6 +27,11 @@ export default function CoursePlayer({ addShopifyModule = false }) {
   const [isCurriculumOpen, setIsCurriculumOpen] = useState(true)
   const [activeTab, setActiveTab] = useState('overview')
   const [searchQuery, setSearchQuery] = useState('')
+  const [comments, setComments] = useState([])
+  const [newComment, setNewComment] = useState('')
+  const [loadingComments, setLoadingComments] = useState(false)
+  const [submittingComment, setSubmittingComment] = useState(false)
+  const [commentNotice, setCommentNotice] = useState('')
 
   // Charger le cours et ses modules/leçons
   useEffect(() => {
@@ -53,6 +58,14 @@ export default function CoursePlayer({ addShopifyModule = false }) {
       }
     }
   }, [lessonId, modules, slug, navigate])
+
+  useEffect(() => {
+    if (currentLesson && isAuthenticated && token) {
+      loadComments()
+    } else {
+      setComments([])
+    }
+  }, [currentLesson?._id, isAuthenticated, token])
 
   const loadCourse = async () => {
     try {
@@ -233,6 +246,52 @@ export default function CoursePlayer({ addShopifyModule = false }) {
       console.error('Erreur marquage leçon:', error)
     } finally {
       setMarkingComplete(false)
+    }
+  }
+
+  const loadComments = async () => {
+    if (!currentLesson?._id || !token) return
+
+    setLoadingComments(true)
+    try {
+      const response = await axios.get(`${CONFIG.BACKEND_URL}/api/comments/lesson/${currentLesson._id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (response.data.success) {
+        setComments(response.data.comments || [])
+      }
+    } catch (error) {
+      console.error('Erreur chargement commentaires:', error)
+    } finally {
+      setLoadingComments(false)
+    }
+  }
+
+  const submitComment = async (event) => {
+    event.preventDefault()
+    if (!newComment.trim() || !currentLesson?._id || !token) return
+
+    setSubmittingComment(true)
+    setCommentNotice('')
+    try {
+      const response = await axios.post(
+        `${CONFIG.BACKEND_URL}/api/comments`,
+        {
+          content: newComment.trim(),
+          lessonId: currentLesson._id,
+          lessonTitle: currentLesson.title
+        },
+        { headers: { Authorization: `Bearer ${token}` } }
+      )
+
+      if (response.data.success) {
+        setNewComment('')
+        setCommentNotice('Commentaire envoyé. Il apparaîtra après validation admin.')
+      }
+    } catch (error) {
+      setCommentNotice(error.response?.data?.error || 'Erreur lors de l’envoi du commentaire.')
+    } finally {
+      setSubmittingComment(false)
     }
   }
 
@@ -756,16 +815,33 @@ export default function CoursePlayer({ addShopifyModule = false }) {
                     {currentLesson.title}
                   </h2>
 
-                  {/* Vidéo */}
-                  {currentLesson.videoId && (
-                    <div className="rounded-2xl overflow-hidden shadow-lg ring-1 ring-gray-200 dark:ring-white/10">
-                      <ProtectedVideo
-                        video={getVideoUrl(currentLesson)}
-                        isFirstVideo={false}
-                        isFreeCourse={course.isFree}
+                  {/* Contenu principal */}
+                  {currentLesson.videoType === 'text' && currentLesson.content ? (
+                    <div className="w-full bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-lg ring-1 ring-gray-200 dark:ring-white/10 p-6 sm:p-8">
+                      <div 
+                        className="text-base sm:text-lg text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap"
+                        dangerouslySetInnerHTML={{ __html: currentLesson.content }}
                       />
                     </div>
-                  )}
+                  ) : currentLesson.videoType !== 'text' && currentLesson.videoId ? (
+                    <div className="space-y-5">
+                      <div className="rounded-2xl overflow-hidden shadow-lg ring-1 ring-gray-200 dark:ring-white/10">
+                        <ProtectedVideo
+                          video={getVideoUrl(currentLesson)}
+                          isFirstVideo={false}
+                          isFreeCourse={course.isFree}
+                        />
+                      </div>
+                      {currentLesson.content && (
+                        <div className="w-full bg-white dark:bg-gray-900 rounded-2xl overflow-hidden shadow-sm ring-1 ring-gray-200 dark:ring-white/10 p-6 sm:p-8">
+                          <div
+                            className="text-base sm:text-lg text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-wrap"
+                            dangerouslySetInnerHTML={{ __html: currentLesson.content }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : null}
                 </div>
               </div>
 
@@ -833,94 +909,6 @@ export default function CoursePlayer({ addShopifyModule = false }) {
               <div className="max-w-6xl mx-auto px-4 lg:px-6 py-6 lg:py-8">
                 {activeTab === 'overview' && (
                   <div className="space-y-6">
-                    {/* MODULE CARD */}
-                    {(() => {
-                      const currentModule = typeof currentLesson.moduleIndex === 'number' ? modules[currentLesson.moduleIndex] : null
-                      const moduleLessons = currentModule?.lessons || []
-                      const completedInModule = moduleLessons.filter(l => isLessonCompleted(l._id)).length
-                      const modulePercent = moduleLessons.length > 0 ? Math.round((completedInModule / moduleLessons.length) * 100) : 0
-
-                      return currentModule ? (
-                        <div className="card-startup">
-                          {/* En-tête module */}
-                          <div className="flex items-start justify-between gap-4 mb-5">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
-                                <FiBookOpen className="w-5 h-5 text-accent" />
-                              </div>
-                              <div>
-                                <p className="text-xs font-bold uppercase tracking-widest text-accent mb-0.5">Module {currentLesson.moduleIndex + 1}</p>
-                                <h3 className="text-base font-bold text-primary leading-tight">{currentModule.title}</h3>
-                              </div>
-                            </div>
-                            <span className="flex-shrink-0 text-sm font-bold text-accent">{modulePercent}%</span>
-                          </div>
-
-                          {/* Barre de progression */}
-                          <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full mb-5 overflow-hidden">
-                            <div
-                              className="h-full bg-gradient-to-r from-accent to-accent/70 rounded-full transition-all duration-500"
-                              style={{ width: `${modulePercent}%` }}
-                            />
-                          </div>
-
-                          {/* Liste des leçons du module */}
-                          <ul className="space-y-1.5">
-                            {moduleLessons.map((lesson, idx) => {
-                              const isCompleted = isLessonCompleted(lesson._id)
-                              const isCurrent = lesson._id === currentLesson._id
-                              return (
-                                <li key={lesson._id}>
-                                  <button
-                                    onClick={() => handleLessonClick(lesson, currentModule._id)}
-                                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all duration-200 group ${
-                                      isCurrent
-                                        ? 'bg-accent/10 border border-accent/30'
-                                        : 'hover:bg-gray-50 dark:hover:bg-gray-800 border border-transparent'
-                                    }`}
-                                  >
-                                    {/* Icône état */}
-                                    <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
-                                      isCompleted
-                                        ? 'bg-green-500 text-white'
-                                        : isCurrent
-                                          ? 'bg-accent text-white'
-                                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
-                                    }`}>
-                                      {isCompleted
-                                        ? <FiCheck className="w-3 h-3" strokeWidth={3} />
-                                        : isCurrent
-                                          ? <FiPlay className="w-3 h-3 ml-0.5" />
-                                          : <span>{idx + 1}</span>
-                                      }
-                                    </div>
-                                    {/* Titre */}
-                                    <span className={`flex-1 text-sm leading-snug ${
-                                      isCurrent ? 'font-semibold text-accent' : 'font-medium text-primary'
-                                    }`}>
-                                      {lesson.title}
-                                    </span>
-                                    {/* Badge en cours */}
-                                    {isCurrent && (
-                                      <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 bg-accent text-white rounded-full">
-                                        En cours
-                                      </span>
-                                    )}
-                                  </button>
-                                </li>
-                              )
-                            })}
-                          </ul>
-
-                          {/* Stat basse */}
-                          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700 flex items-center gap-2 text-xs text-secondary">
-                            <FiCheck className="w-3.5 h-3.5 text-green-500" />
-                            <span>{completedInModule} / {moduleLessons.length} leçons complétées</span>
-                          </div>
-                        </div>
-                      ) : null
-                    })()}
-
                     {/* RÉSUMÉ LEÇON */}
                     {currentLesson.summary && (currentLesson.summary.text || currentLesson.summary.points?.length > 0) && (
                       <>
@@ -995,6 +983,80 @@ export default function CoursePlayer({ addShopifyModule = false }) {
                         )}
                       </div>
                     ))}
+                  </div>
+                )}
+
+                {activeTab === 'overview' && isAuthenticated && user?.status === 'active' && (
+                  <div className="mt-8 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-800 p-5 sm:p-6">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <FiMessageCircle className="w-5 h-5 text-accent" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-primary">Commentaires</h3>
+                        <p className="text-sm text-secondary">Posez une question ou laissez un retour sur cette leçon.</p>
+                      </div>
+                    </div>
+
+                    <form onSubmit={submitComment} className="space-y-3">
+                      <textarea
+                        value={newComment}
+                        onChange={(event) => setNewComment(event.target.value)}
+                        placeholder="Écrivez votre commentaire..."
+                        rows={4}
+                        maxLength={2000}
+                        className="w-full rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 px-4 py-3 text-sm text-primary focus:outline-none focus:ring-2 focus:ring-accent/30 resize-none"
+                      />
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <span className="text-xs text-secondary">{newComment.length} / 2000 caractères</span>
+                        <button
+                          type="submit"
+                          disabled={submittingComment || !newComment.trim()}
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-accent hover:bg-accent/90 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {submittingComment ? (
+                            <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <FiSend className="w-4 h-4" />
+                          )}
+                          Envoyer
+                        </button>
+                      </div>
+                      {commentNotice && (
+                        <p className="text-sm text-accent font-medium">{commentNotice}</p>
+                      )}
+                    </form>
+
+                    <div className="mt-6 space-y-3">
+                      {loadingComments ? (
+                        <p className="text-sm text-secondary">Chargement des commentaires...</p>
+                      ) : comments.length === 0 ? (
+                        <p className="text-sm text-secondary">Aucun commentaire approuvé pour le moment.</p>
+                      ) : (
+                        comments.map((comment) => (
+                          <div key={comment._id} className="rounded-xl border border-gray-200 dark:border-gray-800 p-4">
+                            <div className="flex items-center justify-between gap-3 mb-2">
+                              <span className="text-sm font-semibold text-primary">{comment.userEmail || 'Utilisateur'}</span>
+                              <span className="text-xs text-secondary">
+                                {new Date(comment.createdAt).toLocaleDateString('fr-FR', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            <p className="text-sm text-primary whitespace-pre-wrap">{comment.content}</p>
+                            {comment.adminResponse && (
+                              <div className="mt-3 rounded-lg bg-accent/10 border border-accent/20 p-3">
+                                <p className="text-xs font-bold text-accent mb-1">Réponse admin</p>
+                                <p className="text-sm text-primary whitespace-pre-wrap">{comment.adminResponse}</p>
+                              </div>
+                            )}
+                          </div>
+                        ))
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

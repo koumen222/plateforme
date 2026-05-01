@@ -17,7 +17,7 @@ const commentSchema = new mongoose.Schema({
     maxlength: [2000, 'Le commentaire ne peut pas dépasser 2000 caractères']
   },
   lessonId: {
-    type: Number,
+    type: String,
     required: false // Optionnel, pour lier un commentaire à une leçon spécifique
   },
   lessonTitle: {
@@ -44,4 +44,3 @@ const commentSchema = new mongoose.Schema({
 });
 
 export default mongoose.model('Comment', commentSchema);
-
