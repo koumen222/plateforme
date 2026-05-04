@@ -2,7 +2,6 @@ import { Resend } from 'resend';
 import { v4 as uuidv4 } from 'uuid';
 import EmailLog from '../models/EmailLog.js';
 import { 
-  createEmailTemplate, 
   generateAntiSpamHeaders, 
   validateSpamScore,
   formatSubject,
@@ -41,14 +40,55 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
     console.warn('⚠️ Alerte: Contenu email avec risque spam élevé:', spamCheck.warnings);
   }
   
-  // Créer le template complet avec footer et structure anti-spam
-  const emailTemplate = createEmailTemplate({
-    subject: formattedSubject,
-    content: html,
-    recipientName,
-    unsubscribeUrl,
-    previewText: text?.substring(0, 150) || formattedSubject
-  });
+  // Remplacer les variables de substitution dans le HTML et le sujet
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
+  const unsubToken = uuidv4();
+  const finalUnsubscribeUrl = unsubscribeUrl || `${backendUrl}/api/subscribers/unsubscribe/${unsubToken}`;
+  
+  const replaceVariables = (content) => {
+    if (!content) return content;
+    return content
+      .replace(/\{\{name\}\}/gi, recipientName || '')
+      .replace(/\{\{email\}\}/gi, to || '')
+      .replace(/\{\{unsubscribeUrl\}\}/gi, finalUnsubscribeUrl)
+      .replace(/\{\{date\}\}/gi, new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' }))
+      .replace(/\{\{year\}\}/gi, new Date().getFullYear().toString())
+      .replace(/\{\{fromName\}\}/gi, fromName || 'Infomania')
+      .replace(/\{\{subject\}\}/gi, formattedSubject);
+  };
+  
+  // Appliquer les variables au HTML et au sujet
+  let finalHtml = replaceVariables(html);
+  const finalSubject = replaceVariables(formattedSubject);
+  
+  // Auto-détection : si le contenu ne contient pas de balises HTML, 
+  // convertir les retours à la ligne en <br> pour préserver le formatage
+  const hasHtmlTags = /<[a-z][\s\S]*>/i.test(finalHtml);
+  if (!hasHtmlTags) {
+    // C'est du texte brut — convertir en HTML avec formatage préservé
+    const htmlContent = finalHtml
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n\n/g, '</p><p style="margin: 0 0 16px 0; line-height: 1.6; color: #333;">')
+      .replace(/\n/g, '<br>');
+    
+    finalHtml = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 20px; background-color: #f9f9f9; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px 40px; border-radius: 8px;">
+    <p style="margin: 0 0 16px 0; line-height: 1.6; color: #333;">${htmlContent}</p>
+  </div>
+</body>
+</html>`;
+    console.log('📝 Contenu texte brut détecté — auto-converti en HTML avec formatage');
+  }
+  
+  const finalText = replaceVariables(text) || htmlToText(finalHtml);
   
   const emailLog = new EmailLog({
     campaignId,
@@ -59,19 +99,23 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
       openToken: uuidv4(),
       clickToken: uuidv4()
     },
-    unsubscribeToken: uuidv4() // Always generate a unique token
+    unsubscribeToken: unsubToken
   });
   
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3000';
-    
-    // Ajouter le pixel de tracking au HTML formaté
+    // Ajouter le pixel de tracking au HTML
     const trackingPixel = `<img src="${backendUrl}/api/email/track/open/${emailLog.tracking.openToken}" width="1" height="1" style="display:none;" />`;
-    const htmlWithTracking = emailTemplate.html.replace('</body>', `${trackingPixel}</body>`);
+    
+    // Injecter le pixel avant </body> si présent, sinon à la fin
+    if (finalHtml.includes('</body>')) {
+      finalHtml = finalHtml.replace('</body>', `${trackingPixel}</body>`);
+    } else {
+      finalHtml = finalHtml + trackingPixel;
+    }
     
     // Remplacer les liens par des liens de tracking
     const clickTrackingUrl = `${backendUrl}/api/email/track/click/${emailLog.tracking.clickToken}?url=`;
-    const htmlWithClickTracking = htmlWithTracking.replace(
+    const htmlWithClickTracking = finalHtml.replace(
       /href=["']([^"']+)["']/g,
       (match, url) => {
         if (url.startsWith('http') && !url.includes('/api/email/track/') && !url.includes('unsubscribe')) {
@@ -100,9 +144,9 @@ const sendEmail = async ({ to, subject, html, text, fromEmail, fromName, replyTo
         const result = await resend.emails.send({
           from,
           to,
-          subject: formattedSubject,
+          subject: finalSubject,
           html: htmlWithClickTracking,
-          text: emailTemplate.text,
+          text: finalText,
           reply_to: replyTo || fromEmail,
           headers: {
             ...antiSpamHeaders,

@@ -332,7 +332,8 @@ router.post('/:id/send', async (req, res) => {
       fromName: campaign.fromName,
       replyTo: campaign.replyTo,
       campaignId: campaign._id,
-      subscriberId: sub._id
+      subscriberId: sub._id,
+      recipientName: sub.name || ''
     }));
     
     try {

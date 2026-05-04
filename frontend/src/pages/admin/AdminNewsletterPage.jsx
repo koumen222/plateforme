@@ -415,15 +415,57 @@ export default function AdminNewsletterPage() {
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Contenu HTML *</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                <label style={{ fontWeight: '600' }}>Contenu HTML *</label>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {[
+                    { key: 'name', label: '👤 name' },
+                    { key: 'email', label: '📧 email' },
+                    { key: 'date', label: '📅 date' },
+                    { key: 'year', label: '📆 year' },
+                    { key: 'fromName', label: '🏢 fromName' },
+                    { key: 'subject', label: '📝 subject' },
+                    { key: 'unsubscribeUrl', label: '🔗 unsubscribeUrl' }
+                  ].map(v => (
+                    <button
+                      key={v.key}
+                      type="button"
+                      onClick={() => {
+                        const textarea = document.getElementById('newsletter-html-content')
+                        if (textarea) {
+                          const start = textarea.selectionStart
+                          const end = textarea.selectionEnd
+                          const text = textarea.value
+                          const before = text.substring(0, start)
+                          const after = text.substring(end)
+                          const newText = before + `{{${v.key}}}` + after
+                          setFormData({ ...formData, content: { ...formData.content, html: newText } })
+                          setTimeout(() => {
+                            textarea.focus()
+                            const newPos = start + v.key.length + 4
+                            textarea.setSelectionRange(newPos, newPos)
+                          }, 0)
+                        }
+                      }}
+                      style={{ fontSize: '11px', padding: '3px 8px', backgroundColor: '#e8f5e9', border: '1px solid #a5d6a7', borderRadius: '4px', cursor: 'pointer', color: '#2e7d32' }}
+                    >
+                      {v.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <textarea
+                id="newsletter-html-content"
                 value={formData.content.html}
                 onChange={(e) => setFormData({ ...formData, content: { ...formData.content, html: e.target.value } })}
                 required
                 rows="12"
-                placeholder="<h1>Bonjour</h1><p>Votre contenu ici...</p>"
+                placeholder={`<h1>Bonjour {{name}}</h1>\n<p>Votre contenu ici...</p>\n<p>Envoyé le {{date}}</p>\n<a href="{{unsubscribeUrl}}">Se désabonner</a>`}
                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ddd', fontFamily: 'monospace', fontSize: '13px' }}
               />
+              <p style={{ fontSize: '11px', color: '#6c757d', marginTop: '4px' }}>
+                💡 Le HTML est envoyé <strong>tel quel</strong>. Utilisez les boutons ci-dessus pour insérer des variables de substitution.
+              </p>
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -530,6 +572,46 @@ export default function AdminNewsletterPage() {
               <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
                 Tous les abonnés actifs à la newsletter
               </p>
+            </div>
+          </div>
+
+          <h3 style={{ marginTop: '24px', marginBottom: '12px', fontSize: '16px' }}>🔤 Variables de substitution</h3>
+          <div style={{ padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #e9ecef' }}>
+            <p style={{ fontSize: '12px', color: '#6c757d', marginBottom: '10px' }}>
+              Insérez ces variables dans votre HTML — elles seront remplacées automatiquement pour chaque destinataire :
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{name}}'}</code>
+                <span style={{ color: '#6c757d' }}>Nom du destinataire</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{email}}'}</code>
+                <span style={{ color: '#6c757d' }}>Email du destinataire</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{date}}'}</code>
+                <span style={{ color: '#6c757d' }}>Date du jour (ex: 02 mai 2026)</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{year}}'}</code>
+                <span style={{ color: '#6c757d' }}>Année en cours</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{fromName}}'}</code>
+                <span style={{ color: '#6c757d' }}>Nom de l'expéditeur</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{subject}}'}</code>
+                <span style={{ color: '#6c757d' }}>Sujet de l'email</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <code style={{ backgroundColor: '#f0f0f0', padding: '2px 6px', borderRadius: '3px' }}>{'{{unsubscribeUrl}}'}</code>
+                <span style={{ color: '#6c757d' }}>Lien de désabonnement</span>
+              </div>
+            </div>
+            <div style={{ marginTop: '12px', padding: '8px', backgroundColor: '#fff3e0', borderRadius: '4px', fontSize: '11px', color: '#e65100' }}>
+              ⚠️ Le HTML est envoyé <strong>tel quel</strong>, sans template wrapper. Incluez votre propre structure HTML complète si besoin.
             </div>
           </div>
         </div>

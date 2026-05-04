@@ -805,6 +805,26 @@ export default function AdminCoursesPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       )
     } catch (err) {
+      const isMissingReorderRoute = err.response?.status === 404
+        && String(err.response?.data?.error || '').includes('/lessons/reorder')
+
+      if (isMissingReorderRoute) {
+        try {
+          for (const [index, lessonId] of nextIds.entries()) {
+            await axios.put(
+              `${CONFIG.BACKEND_URL}/api/admin/lessons/${lessonId}`,
+              { order: index + 1 },
+              { headers: { Authorization: `Bearer ${token}` } }
+            )
+          }
+          return
+        } catch (fallbackErr) {
+          setError(fallbackErr.response?.data?.error || 'Erreur lors du déplacement de la leçon')
+          await fetchCourseDetails(expandedCourseId)
+          return
+        }
+      }
+
       setError(err.response?.data?.error || 'Erreur lors du déplacement de la leçon')
       await fetchCourseDetails(expandedCourseId)
     }
