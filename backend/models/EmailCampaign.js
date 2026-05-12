@@ -123,4 +123,4 @@ emailCampaignSchema.index({ status: 1 });
 emailCampaignSchema.index({ scheduledAt: 1 });
 emailCampaignSchema.index({ createdAt: -1 });
 
-export default mongoose.model('EmailCampaign', emailCampaignSchema);
+export default mongoose.models.EmailCampaign || mongoose.model('EmailCampaign', emailCampaignSchema);

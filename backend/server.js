@@ -1,3 +1,9 @@
+// Polyfill globalThis.crypto pour Node 18 (requis par MongoDB driver v6+)
+import { webcrypto } from 'node:crypto';
+if (!globalThis.crypto) {
+  globalThis.crypto = webcrypto;
+}
+
 // Gestion des erreurs non capturées (doit être en premier)
 process.on("uncaughtException", err => {
   console.error("❌ UNCAUGHT EXCEPTION:", err);

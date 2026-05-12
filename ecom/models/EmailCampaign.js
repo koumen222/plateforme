@@ -109,5 +109,5 @@ const emailCampaignSchema = new mongoose.Schema({
 emailCampaignSchema.index({ status: 1, scheduledAt: 1 });
 emailCampaignSchema.index({ createdAt: -1 });
 
-const EmailCampaign = mongoose.model('EmailCampaign', emailCampaignSchema);
+const EmailCampaign = mongoose.models.EmailCampaign || mongoose.model('EmailCampaign', emailCampaignSchema);
 export default EmailCampaign;
