@@ -137,10 +137,13 @@ export default function CoursesPage() {
                                course.title?.toLowerCase().includes('sora') ||
                                course.title?.toLowerCase().includes('vidéo publicitaire'))
                               ? '/img/creatives-2026.png'
-                              : (course.slug?.toLowerCase().includes('alibaba') || 
+                              : (course.slug?.toLowerCase().includes('alibaba') ||
                                  course.title?.toLowerCase().includes('alibaba'))
                                 ? '/img/alibaba-2026.png'
-                                : '/img/cours-2026.png'
+                                : (course.slug?.toLowerCase().includes('scalor') ||
+                                   course.title?.toLowerCase().includes('scalor'))
+                                  ? '/img/scalor-2026.png'
+                                  : '/img/cours-2026.png'
                     }
                     alt={course.title}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"

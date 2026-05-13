@@ -1027,4 +1027,471 @@ router.post('/init-recherche-produit', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/courses/init-scalor
+ * Initialise la formation "Prise en main de Scalor"
+ */
+router.post('/init-scalor', async (req, res) => {
+  try {
+    let course = await Course.findOne({ slug: 'prise-en-main-scalor' });
+
+    if (!course) {
+      course = new Course({
+        title: 'Prise en main de Scalor',
+        description: 'Maîtrisez Scalor de A à Z : la solution clé en main pour automatiser et scaler votre business e-commerce en Afrique.',
+        coverImage: '/img/scalor-2026.png',
+        slug: 'prise-en-main-scalor',
+        isPublished: true
+      });
+      await course.save();
+      console.log('✅ Cours Scalor créé');
+    }
+
+    // ─── MODULE 1 — Découverte de Scalor ───────────────────────────────────
+    let module1 = await Module.findOne({ courseId: course._id, order: 1 });
+    if (!module1) {
+      module1 = new Module({ courseId: course._id, title: 'Module 1 – Découverte de Scalor', order: 1 });
+      await module1.save();
+    }
+
+    const module1Lessons = [
+      {
+        title: 'Leçon 1 – Qu\'est-ce que Scalor ?',
+        videoId: '',
+        videoType: 'text',
+        order: 1,
+        locked: false,
+        content: `<h2>Bienvenue dans la formation Prise en main de Scalor</h2>
+<p>Scalor est la solution tout-en-un conçue pour les e-commerçants africains. Elle regroupe en un seul endroit tous les outils dont vous avez besoin pour gérer, automatiser et faire scaler votre business.</p>
+<h3>Ce que Scalor résout pour vous</h3>
+<ul>
+  <li>Fini jongler entre 5 outils différents</li>
+  <li>Gestion centralisée des commandes, produits et clients</li>
+  <li>Automatisation des tâches répétitives</li>
+  <li>Tableaux de bord adaptés au marché africain (Mobile Money, COD…)</li>
+</ul>
+<h3>Pour qui est Scalor ?</h3>
+<p>Scalor est fait pour vous si vous vendez en ligne en Afrique et que vous voulez arrêter de perdre du temps sur l'opérationnel pour vous concentrer sur la croissance.</p>`,
+        summary: {
+          text: 'Découvrez ce qu\'est Scalor, pourquoi il a été créé et comment il va transformer votre façon de gérer votre business e-commerce.',
+          points: [
+            'Comprendre la vision et la mission de Scalor',
+            'Identifier les problèmes que Scalor résout',
+            'Découvrir les fonctionnalités clés de la plateforme',
+            'Savoir si Scalor correspond à votre situation'
+          ]
+        },
+        resources: [
+          { icon: '🌐', title: 'Site officiel Scalor', type: 'Lien', link: 'https://scalor.net', download: false }
+        ]
+      },
+      {
+        title: 'Leçon 2 – Créer et configurer votre compte',
+        videoId: '',
+        videoType: 'text',
+        order: 2,
+        locked: false,
+        content: `<h2>Créer votre compte Scalor en 5 minutes</h2>
+<p>Rendez-vous sur <strong>scalor.net</strong> et cliquez sur « Essai gratuit ».</p>
+<h3>Étapes de création du compte</h3>
+<ol>
+  <li>Renseigner votre email et créer un mot de passe sécurisé</li>
+  <li>Confirmer votre adresse email</li>
+  <li>Choisir votre pays (Cameroun, Côte d'Ivoire, Sénégal, etc.)</li>
+  <li>Sélectionner votre devise locale</li>
+  <li>Nommer votre boutique</li>
+</ol>
+<h3>Paramètres essentiels à configurer dès le départ</h3>
+<ul>
+  <li><strong>Informations boutique</strong> : nom, logo, description</li>
+  <li><strong>Devise & fiscalité</strong> : FCFA, USD ou autre</li>
+  <li><strong>Fuseau horaire</strong> : choisir votre pays pour que les stats soient correctes</li>
+  <li><strong>Email de notification</strong> : celui qui reçoit les alertes commandes</li>
+</ul>`,
+        summary: {
+          text: 'Créez votre compte Scalor et configurez les paramètres de base pour démarrer dans les meilleures conditions.',
+          points: [
+            'Créer un compte en moins de 5 minutes',
+            'Configurer les informations de votre boutique',
+            'Choisir la bonne devise et le bon fuseau horaire',
+            'Activer les notifications de commandes'
+          ]
+        },
+        resources: [
+          { icon: '🌐', title: 'Créer mon compte Scalor', type: 'Lien', link: 'https://scalor.net', download: false }
+        ]
+      },
+      {
+        title: 'Leçon 3 – Tour complet du tableau de bord',
+        videoId: '',
+        videoType: 'text',
+        order: 3,
+        locked: false,
+        content: `<h2>Le tableau de bord Scalor : votre cockpit business</h2>
+<p>Le dashboard Scalor affiche en temps réel toutes les métriques importantes de votre activité.</p>
+<h3>Les sections principales</h3>
+<ul>
+  <li><strong>Chiffre d'affaires du jour / semaine / mois</strong> : avec comparaison à la période précédente</li>
+  <li><strong>Nombre de commandes</strong> : en cours, livrées, annulées</li>
+  <li><strong>Produits top performers</strong> : ce qui se vend le mieux</li>
+  <li><strong>Clients récents</strong> : nouveaux vs clients fidèles</li>
+  <li><strong>Alertes opérationnelles</strong> : stock faible, paiements en attente…</li>
+</ul>
+<h3>Personnaliser votre vue</h3>
+<p>Vous pouvez réorganiser les widgets selon vos priorités. Commencez par afficher les métriques qui comptent le plus pour votre business.</p>`,
+        summary: {
+          text: 'Apprenez à lire et interpréter le tableau de bord Scalor pour piloter votre business avec les bons chiffres.',
+          points: [
+            'Identifier les métriques clés sur le dashboard',
+            'Comprendre le chiffre d\'affaires en temps réel',
+            'Lire les statuts de commandes',
+            'Personnaliser la vue selon vos besoins'
+          ]
+        },
+        resources: []
+      }
+    ];
+
+    for (const l of module1Lessons) {
+      const existing = await Lesson.findOne({ moduleId: module1._id, order: l.order });
+      if (!existing) {
+        await new Lesson({ moduleId: module1._id, ...l }).save();
+        console.log(`✅ Module 1 — Leçon ${l.order} créée`);
+      } else {
+        Object.assign(existing, l);
+        await existing.save();
+        console.log(`✅ Module 1 — Leçon ${l.order} mise à jour`);
+      }
+    }
+
+    // ─── MODULE 2 — Gérer ses produits et commandes ────────────────────────
+    let module2 = await Module.findOne({ courseId: course._id, order: 2 });
+    if (!module2) {
+      module2 = new Module({ courseId: course._id, title: 'Module 2 – Produits, commandes & clients', order: 2 });
+      await module2.save();
+    }
+
+    const module2Lessons = [
+      {
+        title: 'Leçon 1 – Ajouter et gérer vos produits',
+        videoId: '',
+        videoType: 'text',
+        order: 1,
+        locked: false,
+        content: `<h2>Gérer votre catalogue produits sur Scalor</h2>
+<p>Un catalogue bien structuré = plus de conversions. Voici comment ajouter vos produits de façon professionnelle.</p>
+<h3>Ajouter un produit</h3>
+<ol>
+  <li>Aller dans <strong>Produits → Ajouter un produit</strong></li>
+  <li>Renseigner le titre (clair et accrocheur)</li>
+  <li>Ajouter des photos de qualité (fond blanc ou lifestyle)</li>
+  <li>Rédiger une description orientée bénéfices</li>
+  <li>Définir le prix de vente et le coût d'achat</li>
+  <li>Configurer le stock et les variantes (taille, couleur…)</li>
+</ol>
+<h3>Bonnes pratiques</h3>
+<ul>
+  <li>Toujours renseigner le poids pour le calcul des frais de livraison</li>
+  <li>Utiliser des tags pour organiser et filtrer vos produits</li>
+  <li>Mettre un prix barré si vous faites une promo</li>
+</ul>`,
+        summary: {
+          text: 'Construisez un catalogue produits professionnel qui donne confiance à vos clients et facilite vos ventes.',
+          points: [
+            'Ajouter un produit avec toutes les informations nécessaires',
+            'Optimiser les photos et descriptions pour convertir',
+            'Configurer prix, stock et variantes',
+            'Organiser le catalogue avec des catégories et tags'
+          ]
+        },
+        resources: []
+      },
+      {
+        title: 'Leçon 2 – Traiter et suivre les commandes',
+        videoId: '',
+        videoType: 'text',
+        order: 2,
+        locked: false,
+        content: `<h2>Le traitement des commandes sur Scalor</h2>
+<p>Chaque commande passe par plusieurs statuts. Maîtriser ce flux vous permet de livrer vite et de satisfaire vos clients.</p>
+<h3>Les statuts d'une commande</h3>
+<ul>
+  <li><strong>Nouvelle</strong> : commande reçue, à traiter</li>
+  <li><strong>Confirmée</strong> : client appelé et confirmé (surtout en COD)</li>
+  <li><strong>En préparation</strong> : produit packagé</li>
+  <li><strong>Expédiée</strong> : remise au livreur avec numéro de suivi</li>
+  <li><strong>Livrée</strong> : client a reçu sa commande</li>
+  <li><strong>Annulée / Retournée</strong> : à gérer séparément</li>
+</ul>
+<h3>Traitement efficace des commandes COD</h3>
+<p>En Afrique, le Cash on Delivery (paiement à la livraison) représente souvent 70-80% des ventes. Scalor vous permet de gérer ce flux avec des notes clients, rappels et confirmations automatiques.</p>`,
+        summary: {
+          text: 'Traitez vos commandes rapidement et efficacement pour maximiser le taux de livraison et minimiser les retours.',
+          points: [
+            'Comprendre les statuts de commandes',
+            'Confirmer et traiter une commande COD',
+            'Gérer les expéditions et numéros de suivi',
+            'Réduire les annulations et retours'
+          ]
+        },
+        resources: []
+      },
+      {
+        title: 'Leçon 3 – Gérer vos clients et fidélisation',
+        videoId: '',
+        videoType: 'text',
+        order: 3,
+        locked: false,
+        content: `<h2>La base clients : votre actif le plus précieux</h2>
+<p>Un client qui rachète coûte 5x moins cher à convaincre qu'un nouveau client. Scalor vous donne les outils pour entretenir cette relation.</p>
+<h3>La fiche client sur Scalor</h3>
+<ul>
+  <li>Historique complet des commandes</li>
+  <li>Coordonnées et localisation</li>
+  <li>Tags personnalisés (VIP, problème de livraison, etc.)</li>
+  <li>Notes internes pour l'équipe</li>
+</ul>
+<h3>Segmenter votre base pour relancer efficacement</h3>
+<ul>
+  <li>Clients qui n'ont pas commandé depuis 30 jours</li>
+  <li>Clients ayant dépensé plus de X FCFA</li>
+  <li>Clients ayant commandé un produit spécifique</li>
+</ul>
+<p>Ces segments vous permettent d'envoyer des messages WhatsApp ou email ultra-ciblés.</p>`,
+        summary: {
+          text: 'Exploitez votre base clients pour générer plus de ventes sans augmenter votre budget pub.',
+          points: [
+            'Lire et enrichir la fiche d\'un client',
+            'Taguer et segmenter vos clients',
+            'Identifier les clients à relancer en priorité',
+            'Préparer des campagnes de fidélisation'
+          ]
+        },
+        resources: []
+      }
+    ];
+
+    for (const l of module2Lessons) {
+      const existing = await Lesson.findOne({ moduleId: module2._id, order: l.order });
+      if (!existing) {
+        await new Lesson({ moduleId: module2._id, ...l }).save();
+        console.log(`✅ Module 2 — Leçon ${l.order} créée`);
+      } else {
+        Object.assign(existing, l);
+        await existing.save();
+        console.log(`✅ Module 2 — Leçon ${l.order} mise à jour`);
+      }
+    }
+
+    // ─── MODULE 3 — Paiements & livraison ─────────────────────────────────
+    let module3 = await Module.findOne({ courseId: course._id, order: 3 });
+    if (!module3) {
+      module3 = new Module({ courseId: course._id, title: 'Module 3 – Paiements & livraison en Afrique', order: 3 });
+      await module3.save();
+    }
+
+    const module3Lessons = [
+      {
+        title: 'Leçon 1 – Configurer les moyens de paiement',
+        videoId: '',
+        videoType: 'text',
+        order: 1,
+        locked: false,
+        content: `<h2>Accepter les paiements sur Scalor</h2>
+<p>Scalor prend en charge les méthodes de paiement utilisées en Afrique pour que vous ne perdiez aucune vente.</p>
+<h3>Méthodes de paiement disponibles</h3>
+<ul>
+  <li><strong>Cash on Delivery (COD)</strong> : paiement à la livraison — le plus utilisé</li>
+  <li><strong>Mobile Money</strong> : Orange Money, MTN MoMo, Wave, etc.</li>
+  <li><strong>Virement bancaire</strong></li>
+  <li><strong>Carte bancaire</strong> via Stripe ou Flutterwave</li>
+</ul>
+<h3>Activer le COD</h3>
+<p>Dans <strong>Paramètres → Paiements</strong>, activez le mode COD et définissez les zones de livraison où il est disponible. Vous pouvez aussi ajouter des frais supplémentaires pour le COD si vous le souhaitez.</p>
+<h3>Connecter Mobile Money</h3>
+<p>Scalor s'intègre directement avec les APIs Mobile Money des principaux opérateurs. Suivez le guide d'intégration dans les paramètres pour activer cette option en moins de 10 minutes.</p>`,
+        summary: {
+          text: 'Configurez les bons moyens de paiement pour votre marché et ne perdez plus de ventes faute de solution adaptée.',
+          points: [
+            'Activer le Cash on Delivery (COD)',
+            'Connecter Mobile Money (Orange, MTN, Wave…)',
+            'Configurer les frais selon le mode de paiement',
+            'Tester le flux de paiement avant de lancer'
+          ]
+        },
+        resources: []
+      },
+      {
+        title: 'Leçon 2 – Gérer la livraison et les expéditions',
+        videoId: '',
+        videoType: 'text',
+        order: 2,
+        locked: false,
+        content: `<h2>La livraison : là où se gagne ou se perd la fidélité client</h2>
+<p>Une livraison rapide et bien communiquée = client satisfait qui revient. Voici comment configurer ce flux sur Scalor.</p>
+<h3>Configurer les zones de livraison</h3>
+<ol>
+  <li>Aller dans <strong>Paramètres → Livraison</strong></li>
+  <li>Créer des zones géographiques (ex : Douala ville, Douala périphérie, Yaoundé…)</li>
+  <li>Définir un tarif fixe ou calculé selon le poids</li>
+  <li>Activer ou désactiver la livraison gratuite à partir d'un certain montant</li>
+</ol>
+<h3>Connecter votre livreur</h3>
+<p>Si vous travaillez avec un livreur ou un service de coursiers, vous pouvez créer un compte livreur dans Scalor. Il recevra les détails de commande directement sur son interface mobile.</p>
+<h3>Tracking des expéditions</h3>
+<p>Renseignez le numéro de suivi dans la commande. Le client reçoit automatiquement un SMS ou WhatsApp avec le lien de tracking.</p>`,
+        summary: {
+          text: 'Mettez en place un système de livraison professionnel qui réduit les retours et augmente la satisfaction client.',
+          points: [
+            'Créer des zones de livraison avec les bons tarifs',
+            'Connecter votre livreur ou coursier',
+            'Ajouter un numéro de suivi et notifier le client',
+            'Gérer les livraisons échouées et les retours'
+          ]
+        },
+        resources: []
+      }
+    ];
+
+    for (const l of module3Lessons) {
+      const existing = await Lesson.findOne({ moduleId: module3._id, order: l.order });
+      if (!existing) {
+        await new Lesson({ moduleId: module3._id, ...l }).save();
+        console.log(`✅ Module 3 — Leçon ${l.order} créée`);
+      } else {
+        Object.assign(existing, l);
+        await existing.save();
+        console.log(`✅ Module 3 — Leçon ${l.order} mise à jour`);
+      }
+    }
+
+    // ─── MODULE 4 — Automatisation & Scaling ──────────────────────────────
+    let module4 = await Module.findOne({ courseId: course._id, order: 4 });
+    if (!module4) {
+      module4 = new Module({ courseId: course._id, title: 'Module 4 – Automatisation & Scaling', order: 4 });
+      await module4.save();
+    }
+
+    const module4Lessons = [
+      {
+        title: 'Leçon 1 – Automatiser les notifications et relances',
+        videoId: '',
+        videoType: 'text',
+        order: 1,
+        locked: false,
+        content: `<h2>L'automatisation : faire plus sans travailler plus</h2>
+<p>Scalor vous permet d'automatiser les communications avec vos clients à chaque étape du parcours d'achat.</p>
+<h3>Automatisations disponibles</h3>
+<ul>
+  <li><strong>Confirmation de commande</strong> : SMS ou WhatsApp automatique dès la commande reçue</li>
+  <li><strong>Rappel de paiement</strong> : relance automatique si le paiement n'est pas finalisé</li>
+  <li><strong>Notification d'expédition</strong> : message au client quand la commande est expédiée</li>
+  <li><strong>Relance panier abandonné</strong> : message 1h et 24h après l'abandon</li>
+  <li><strong>Demande d'avis</strong> : message automatique 3 jours après la livraison</li>
+</ul>
+<h3>Configurer vos automatisations</h3>
+<p>Dans <strong>Marketing → Automatisations</strong>, activez chaque scénario et personnalisez le message avec les variables disponibles ({{nom_client}}, {{produit}}, {{numéro_commande}}, etc.).</p>`,
+        summary: {
+          text: 'Mettez en place des automatisations qui travaillent pour vous 24h/24 et augmentent vos ventes sans effort supplémentaire.',
+          points: [
+            'Activer les notifications automatiques de commande',
+            'Configurer les relances de panier abandonné',
+            'Automatiser les demandes d\'avis clients',
+            'Personnaliser les messages avec les bonnes variables'
+          ]
+        },
+        resources: []
+      },
+      {
+        title: 'Leçon 2 – Analytics et pilotage de la croissance',
+        videoId: '',
+        videoType: 'text',
+        order: 2,
+        locked: false,
+        content: `<h2>Piloter votre croissance avec les données Scalor</h2>
+<p>Ce qui ne se mesure pas ne se gère pas. Scalor vous donne accès à des analytics claires pour prendre de meilleures décisions.</p>
+<h3>KPIs à suivre chaque semaine</h3>
+<ul>
+  <li><strong>Taux de conversion</strong> : visiteurs qui achètent (objectif : >2%)</li>
+  <li><strong>Panier moyen</strong> : à augmenter via les upsells</li>
+  <li><strong>Taux de livraison</strong> : commandes livrées / commandes expédiées (objectif : >75%)</li>
+  <li><strong>Taux de retour</strong> : à maintenir sous 15%</li>
+  <li><strong>LTV (Lifetime Value)</strong> : valeur totale d'un client sur le long terme</li>
+</ul>
+<h3>Rapport hebdomadaire automatique</h3>
+<p>Activez le rapport hebdomadaire par email dans <strong>Paramètres → Rapports</strong>. Chaque lundi matin, vous recevrez un résumé complet de la semaine passée.</p>`,
+        summary: {
+          text: 'Utilisez les données Scalor pour prendre de meilleures décisions et accélérer la croissance de votre business.',
+          points: [
+            'Identifier les KPIs les plus importants pour votre activité',
+            'Lire et interpréter les rapports Scalor',
+            'Repérer les points de friction dans le parcours client',
+            'Prendre des décisions basées sur les données, pas sur le feeling'
+          ]
+        },
+        resources: []
+      },
+      {
+        title: 'Leçon 3 – Stratégies de scaling avec Scalor',
+        videoId: '',
+        videoType: 'text',
+        order: 3,
+        locked: false,
+        content: `<h2>Scaler votre business avec Scalor</h2>
+<p>Une fois les bases en place, Scalor vous donne les leviers pour multiplier votre chiffre d'affaires sans multiplier votre charge de travail.</p>
+<h3>Levier 1 — Upsell et cross-sell</h3>
+<p>Proposez des produits complémentaires sur la page produit et dans la confirmation de commande. Un upsell bien placé peut augmenter le panier moyen de 20 à 40%.</p>
+<h3>Levier 2 — Programme de fidélité</h3>
+<p>Récompensez vos meilleurs clients avec des points ou des remises exclusives. Scalor gère ce programme automatiquement.</p>
+<h3>Levier 3 — Référence et parrainage</h3>
+<p>Créez un programme de parrainage où chaque client satisfait vous ramène de nouveaux clients en échange d'une récompense. Le meilleur canal d'acquisition au coût le plus bas.</p>
+<h3>Levier 4 — Équipe et délégation</h3>
+<p>Scalor vous permet d'inviter des collaborateurs (gestionnaire de commandes, SAV, livreur) avec des droits d'accès limités. Déléguer sans perdre le contrôle.</p>`,
+        summary: {
+          text: 'Appliquez les stratégies de scaling pour multiplier votre chiffre d\'affaires en utilisant pleinement les capacités de Scalor.',
+          points: [
+            'Configurer les upsells et cross-sells',
+            'Mettre en place un programme de fidélité',
+            'Lancer un système de parrainage',
+            'Inviter et gérer votre équipe sur Scalor'
+          ]
+        },
+        resources: [
+          { icon: '🌐', title: 'Tester Scalor gratuitement', type: 'Lien', link: 'https://scalor.net', download: false }
+        ]
+      }
+    ];
+
+    for (const l of module4Lessons) {
+      const existing = await Lesson.findOne({ moduleId: module4._id, order: l.order });
+      if (!existing) {
+        await new Lesson({ moduleId: module4._id, ...l }).save();
+        console.log(`✅ Module 4 — Leçon ${l.order} créée`);
+      } else {
+        Object.assign(existing, l);
+        await existing.save();
+        console.log(`✅ Module 4 — Leçon ${l.order} mise à jour`);
+      }
+    }
+
+    // Retourner le cours complet
+    const allModules = await Module.find({ courseId: course._id }).sort({ order: 1 });
+    const modulesWithLessons = await Promise.all(
+      allModules.map(async (mod) => {
+        const lessons = await Lesson.find({ moduleId: mod._id }).sort({ order: 1 });
+        return { ...mod.toObject(), lessons };
+      })
+    );
+
+    res.json({
+      success: true,
+      message: 'Formation Prise en main de Scalor initialisée avec succès',
+      course: { ...course.toObject(), modules: modulesWithLessons }
+    });
+  } catch (error) {
+    console.error('Erreur initialisation Scalor:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation', details: process.env.NODE_ENV === 'development' ? error.message : undefined });
+  }
+});
+
 export default router;

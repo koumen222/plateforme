@@ -530,6 +530,19 @@ export default function CoursePlayer({ addShopifyModule = false }) {
       })
     },
     {
+      id: 'scalor',
+      test: /(scalor|tableau.de.bord|dashboard|commande|catalogue|fiche.client|livraison|expédition|mobile.money|cod|upsell|scaling|fidélit|parrainage|automatisation|relance|kpi|panier.moyen)/i,
+      build: (t, m) => ({
+        text: `Cette leçon vous guide pas-à-pas dans la maîtrise de Scalor. Chaque étape est conçue pour être appliquée immédiatement dans votre activité e-commerce.`,
+        points: [
+          'Comprendre la fonctionnalité en détail',
+          'Les étapes de configuration à suivre',
+          'Les bonnes pratiques pour éviter les erreurs classiques',
+          'Comment tirer le maximum de cette fonctionnalité'
+        ]
+      })
+    },
+    {
       id: 'juridique',
       test: /(juridique|légal|impôt|fiscal|société|entreprise|statut|facture)/i,
       build: (t) => ({
