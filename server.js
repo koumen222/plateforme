@@ -475,7 +475,8 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
         createdAt: user.createdAt,
         referralCode: user.referralCode || null,
         referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
-        accessGranted: accessFlags.hasAccess
+        accessGranted: accessFlags.hasAccess,
+        allowedModules: user.allowedModules || []
       }
     });
   } catch (error) {

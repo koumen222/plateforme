@@ -857,6 +857,41 @@ router.put('/users/:id/status', async (req, res) => {
   }
 });
 
+// PUT /api/admin/users/:id/modules - Mettre à jour les modules autorisés
+router.put('/users/:id/modules', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { allowedModules } = req.body;
+
+    if (!Array.isArray(allowedModules)) {
+      return res.status(400).json({ error: 'allowedModules doit être un tableau' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    user.allowedModules = allowedModules;
+    await user.save();
+
+    await logAudit(req, 'UPDATE_MODULES', `Modules mis à jour pour ${user.email}: ${allowedModules.join(', ')}`, 'user', user._id);
+
+    res.json({
+      success: true,
+      message: 'Modules mis à jour avec succès',
+      user: {
+        id: user._id,
+        email: user.email,
+        allowedModules: user.allowedModules
+      }
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour modules:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour des modules' });
+  }
+});
+
 // PUT /api/admin/users/:id - Mettre à jour un utilisateur
 router.put('/users/:id', async (req, res) => {
   try {

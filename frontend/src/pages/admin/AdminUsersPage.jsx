@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
-import { FiSearch, FiFilter, FiRefreshCw, FiEdit, FiTrash2, FiUser, FiMail, FiPhone, FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiTrendingUp, FiDownload, FiMoreVertical, FiUserCheck, FiUserX, FiMessageCircle } from 'react-icons/fi'
+import { MODULES, ALL_MODULE_KEYS } from '../../config/modules'
+import { FiSearch, FiFilter, FiRefreshCw, FiEdit, FiTrash2, FiUser, FiMail, FiPhone, FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiTrendingUp, FiDownload, FiMoreVertical, FiUserCheck, FiUserX, FiMessageCircle, FiLock, FiUnlock } from 'react-icons/fi'
 
 export default function AdminUsersPage() {
   const { token } = useAuth()
@@ -166,14 +167,18 @@ export default function AdminUsersPage() {
         })
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
+        if (editingUser.role !== 'superadmin') {
+          await handleUpdateModules(editingUser._id, editingUser.allowedModules || [], true)
+        }
         showNotification('Utilisateur mis à jour avec succès')
         setEditingUser(null)
         fetchUsers()
-        
+
         if (data.user && data.user.status) {
-          const event = new CustomEvent('userStatusChanged', { 
+          const event = new CustomEvent('userStatusChanged', {
             detail: { userId: editingUser._id, newStatus: data.user.status },
             bubbles: true,
             cancelable: true
@@ -181,7 +186,6 @@ export default function AdminUsersPage() {
           window.dispatchEvent(event)
         }
       } else {
-        const data = await response.json()
         showNotification(data.error || 'Erreur lors de la mise à jour', 'error')
       }
     } catch (error) {
@@ -241,6 +245,42 @@ export default function AdminUsersPage() {
       showNotification(`Erreur: ${error.message || 'Erreur lors de la réinitialisation'}`, 'error')
       return false
     }
+  }
+
+  const handleUpdateModules = async (userId, allowedModules, silent = false) => {
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/users/${userId}/modules`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ allowedModules })
+      })
+
+      if (response.ok) {
+        if (!silent) {
+          showNotification('Modules mis à jour avec succès')
+          fetchUsers()
+        }
+        return true
+      } else {
+        const data = await response.json()
+        showNotification(data.error || 'Erreur lors de la mise à jour des modules', 'error')
+        return false
+      }
+    } catch (error) {
+      showNotification('Erreur lors de la mise à jour des modules', 'error')
+      return false
+    }
+  }
+
+  const toggleModule = (moduleKey) => {
+    const current = editingUser.allowedModules || []
+    const updated = current.includes(moduleKey)
+      ? current.filter(k => k !== moduleKey)
+      : [...current, moduleKey]
+    setEditingUser({ ...editingUser, allowedModules: updated })
   }
 
   const getStatusBadge = (status) => {
@@ -776,6 +816,62 @@ export default function AdminUsersPage() {
                       </div>
                     </div>
                   </div>
+
+                  {editingUser.role !== 'superadmin' && (
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold text-primary">🧩 Modules autorisés</h3>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser({ ...editingUser, allowedModules: ALL_MODULE_KEYS })}
+                            className="text-xs px-3 py-1.5 bg-accent/10 text-accent hover:bg-accent/20 rounded-lg font-medium transition-all"
+                          >
+                            Tout sélectionner
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setEditingUser({ ...editingUser, allowedModules: [] })}
+                            className="text-xs px-3 py-1.5 bg-secondary hover:bg-hover text-secondary rounded-lg font-medium transition-all"
+                          >
+                            Tout désélectionner
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-secondary mb-3">
+                        Sélectionnez les modules auxquels cet utilisateur aura accès.
+                        {editingUser.role === 'superadmin' && ' Les super admins ont accès à tout par défaut.'}
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {ALL_MODULE_KEYS.map((key) => {
+                          const mod = MODULES[key]
+                          const isActive = (editingUser.allowedModules || []).includes(key)
+                          return (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => toggleModule(key)}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-left transition-all ${
+                                isActive
+                                  ? 'bg-accent/10 border-accent/50 text-accent'
+                                  : 'bg-secondary border-theme text-secondary hover:border-accent/30'
+                              }`}
+                            >
+                              <span className="text-lg">{mod.icon}</span>
+                              <div className="flex-1 min-w-0">
+                                <div className={`text-sm font-semibold ${isActive ? 'text-accent' : 'text-primary'}`}>{mod.label}</div>
+                                <div className="text-xs text-secondary truncate">{mod.description}</div>
+                              </div>
+                              {isActive
+                                ? <FiUnlock className="w-4 h-4 flex-shrink-0 text-accent" />
+                                : <FiLock className="w-4 h-4 flex-shrink-0 text-secondary" />
+                              }
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-theme">
                   <button 

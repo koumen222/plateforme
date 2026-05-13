@@ -99,6 +99,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     select: false
   },
+  allowedModules: {
+    type: [String],
+    default: []
+  },
   progress: [{
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

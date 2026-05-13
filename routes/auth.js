@@ -308,7 +308,8 @@ router.post('/register', async (req, res) => {
       createdAt: savedUser.createdAt || new Date(),
       referralCode: savedUser.referralCode || null,
       referralAccessUnlocked: Boolean(savedUser.referralAccessUnlocked),
-      accessGranted: accessFlags.hasAccess
+      accessGranted: accessFlags.hasAccess,
+      allowedModules: savedUser.allowedModules || []
     };
 
     // Validation finale avant envoi
@@ -435,7 +436,8 @@ router.post('/login', async (req, res) => {
       createdAt: user.createdAt,
       referralCode: user.referralCode || null,
       referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
-      accessGranted: accessFlags.hasAccess
+      accessGranted: accessFlags.hasAccess,
+      allowedModules: user.allowedModules || []
     };
 
     console.log(`✅ Réponse login - Nom: "${userResponse.name}"`);
@@ -777,7 +779,8 @@ router.get('/user/me', authenticate, async (req, res) => {
         createdAt: user.createdAt,
         referralCode: user.referralCode || null,
         referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
-        accessGranted: accessFlags.hasAccess
+        accessGranted: accessFlags.hasAccess,
+        allowedModules: user.allowedModules || []
       }
     });
   } catch (error) {

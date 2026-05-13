@@ -65,6 +65,7 @@ import BioLinkScalorPage from './pages/BioLinkMorganPage'
 import { lessons } from './data/lessons'
 import { useEffect, useState } from 'react'
 import MobileBottomNav from './components/mobile/MobileBottomNav'
+import ModuleGuard from './components/ModuleGuard'
 
 // Import des styles E-commerce
 import './ecom/index.css'
@@ -183,56 +184,56 @@ function App() {
           {/* Routes avec PlatformLayout (Header + Footer) */}
           <Route path="/" element={<HomeSwitcher />} />
           <Route path="/home" element={<HomeSwitcher />} />
-          <Route path="/cours" element={<PlatformLayout><CoursesPage /></PlatformLayout>} />
-          <Route path="/ressources-pdf" element={<PlatformLayout><RessourcesPdfPage /></PlatformLayout>} />
-          <Route path="/ebook/:id" element={<PlatformLayout><PrivateRoute><EbookPage /></PrivateRoute></PlatformLayout>} />
-          <Route path="/produits-gagnants" element={<PlatformLayout><ProductsPage /></PlatformLayout>} />
+          <Route path="/cours" element={<PlatformLayout><ModuleGuard moduleKey="cours"><CoursesPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/ressources-pdf" element={<PlatformLayout><ModuleGuard moduleKey="ressources_pdf"><RessourcesPdfPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/ebook/:id" element={<PlatformLayout><ModuleGuard moduleKey="ebooks"><EbookPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/produits-gagnants" element={<PlatformLayout><ModuleGuard moduleKey="produits_gagnants"><ProductsPage /></ModuleGuard></PlatformLayout>} />
           <Route path="/winners-st-valentin" element={<PlatformLayout><ValentineWinnersPage /></PlatformLayout>} />
           <Route path="/generateur-pub" element={<PlatformLayout><GenerateurPubPage /></PlatformLayout>} />
-          <Route path="/partenaires" element={<PlatformLayout><PartenairesPage /></PlatformLayout>} />
-          <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><PartenairesCategoryPage /></PlatformLayout>} />
-          <Route path="/coaching-application" element={<PlatformLayout><CoachingApplicationForm /></PlatformLayout>} />
+          <Route path="/partenaires" element={<PlatformLayout><ModuleGuard moduleKey="partenaires"><PartenairesPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/partenaires/categorie/:domaine" element={<PlatformLayout><ModuleGuard moduleKey="partenaires"><PartenairesCategoryPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/coaching-application" element={<PlatformLayout><ModuleGuard moduleKey="coaching"><CoachingApplicationForm /></ModuleGuard></PlatformLayout>} />
           <Route
             path="/partenaires/:id"
             element={
               <PlatformLayout showHeader={false} showFooter={false} showChatbot={false}>
-                <PartenaireProfilePage />
+                <ModuleGuard moduleKey="partenaires"><PartenaireProfilePage /></ModuleGuard>
               </PlatformLayout>
             }
           />
           <Route path="/recrutement" element={<PlatformLayout><RecrutementPage /></PlatformLayout>} />
-          <Route path="/analyseur-ads" element={<PlatformLayout><AndromedaAdsAnalyzerPage /></PlatformLayout>} />
-          <Route path="/analyseur-ia" element={<PlatformLayout><AIAdsAnalyzerPage /></PlatformLayout>} />
+          <Route path="/analyseur-ads" element={<PlatformLayout><ModuleGuard moduleKey="facebook_ads"><AndromedaAdsAnalyzerPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/analyseur-ia" element={<PlatformLayout><ModuleGuard moduleKey="facebook_ads"><AIAdsAnalyzerPage /></ModuleGuard></PlatformLayout>} />
           <Route
             path="/replays-lives"
             element={
               <PlatformLayout>
-                <LiveReplaysPage />
+                <ModuleGuard moduleKey="replays"><LiveReplaysPage /></ModuleGuard>
               </PlatformLayout>
             }
           />
           <Route
             path="/coaching-scale-7"
-            element={<CoachingScale7Page />}
+            element={<ModuleGuard moduleKey="coaching"><CoachingScale7Page /></ModuleGuard>}
           />
-          <Route path="/communaute" element={<PlatformLayout><CommunautePage /></PlatformLayout>} />
+          <Route path="/communaute" element={<PlatformLayout><ModuleGuard moduleKey="communaute"><CommunautePage /></ModuleGuard></PlatformLayout>} />
           <Route path="/profil" element={<PlatformLayout><PrivateRoute><ProfilePage /></PrivateRoute></PlatformLayout>} />
-          <Route path="/mes-fichiers" element={<PlatformLayout><PrivateRoute><FileManagerPage /></PrivateRoute></PlatformLayout>} />
-          <Route path="/commentaires" element={<PlatformLayout><PrivateRoute><CommentsPage /></PrivateRoute></PlatformLayout>} />
-          <Route path="/connect-facebook" element={<PlatformLayout><PrivateRoute><ConnectFacebook /></PrivateRoute></PlatformLayout>} />
+          <Route path="/mes-fichiers" element={<PlatformLayout><ModuleGuard moduleKey="fichiers"><FileManagerPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/commentaires" element={<PlatformLayout><ModuleGuard moduleKey="commentaires"><CommentsPage /></ModuleGuard></PlatformLayout>} />
+          <Route path="/connect-facebook" element={<PlatformLayout><ModuleGuard moduleKey="facebook_ads"><ConnectFacebook /></ModuleGuard></PlatformLayout>} />
           <Route path="/test-notifications" element={<PlatformLayout><PrivateRoute><TestNotificationsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/test-webhook" element={<WebhookTestPage />} />
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
-          
+
           {/* Routes E-commerce */}
-          <Route path="/ecom/*" element={<EcomApp />} />
-          
+          <Route path="/ecom/*" element={<ModuleGuard moduleKey="ecommerce"><EcomApp /></ModuleGuard>} />
+
           {/* Routes cours - NOUVEAU CoursePlayer avec sidebar intégré */}
           <Route
             path="/course/:slug/*"
             element={
               <PlatformLayout>
-                <CourseRouter />
+                <ModuleGuard moduleKey="cours"><CourseRouter /></ModuleGuard>
               </PlatformLayout>
             }
           />
