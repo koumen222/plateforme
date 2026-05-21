@@ -50,11 +50,10 @@ export default function CoursePlayer({ addShopifyModule = false }) {
     if (lessonId && modules.length > 0) {
       loadCurrentLesson()
     } else if (!lessonId && modules.length > 0) {
-      // Rediriger vers la première leçon si pas de lessonId
-      const firstModule = modules[0]
-      if (firstModule.lessons && firstModule.lessons.length > 0) {
-        const firstLesson = firstModule.lessons[0]
-        navigate(`/course/${slug}/lesson/${firstLesson._id}`, { replace: true })
+      // Rediriger vers la première leçon du premier module autorisé
+      const firstAllowedModule = modules.find(m => isModuleAllowed(m._id))
+      if (firstAllowedModule?.lessons?.length > 0) {
+        navigate(`/course/${slug}/lesson/${firstAllowedModule.lessons[0]._id}`, { replace: true })
       }
     }
   }, [lessonId, modules, slug, navigate])
@@ -171,6 +170,14 @@ export default function CoursePlayer({ addShopifyModule = false }) {
       const module = modules[mi]
       const lessonIdx = module.lessons?.findIndex(l => l._id === lessonId) ?? -1
       if (lessonIdx !== -1) {
+        // Si le module n'est pas autorisé, rediriger vers la première leçon autorisée
+        if (!isModuleAllowed(module._id)) {
+          const firstAllowedModule = modules.find(m => isModuleAllowed(m._id))
+          if (firstAllowedModule?.lessons?.[0]) {
+            navigate(`/course/${slug}/lesson/${firstAllowedModule.lessons[0]._id}`, { replace: true })
+          }
+          return
+        }
         const lesson = module.lessons[lessonIdx]
         setCurrentLesson({
           ...lesson,
@@ -191,25 +198,31 @@ export default function CoursePlayer({ addShopifyModule = false }) {
     }))
   }
 
+  const isModuleAllowed = (moduleId) => {
+    return true
+  }
+
   const isLessonCompleted = (lessonId) => {
     return progress.lessons.some(l => l._id === lessonId && l.completed)
   }
 
   const handleLessonClick = (lesson, moduleId) => {
+    if (!isModuleAllowed(moduleId)) return
+
     // Cas spécial : leçon de redirection Shopify
     if (lesson._id === 'shopify-lesson-redirect') {
       navigate('/course/formation-shopify-2026')
       return
     }
-    
+
     navigate(`/course/${slug}/lesson/${lesson._id}`)
-    
+
     // Ouvrir le module de la leçon cliquée
     setExpandedModules(prev => ({
       ...prev,
       [moduleId]: true
     }))
-    
+
     // Fermer le sidebar mobile
     setIsMobileSidebarOpen(false)
   }
@@ -298,11 +311,10 @@ export default function CoursePlayer({ addShopifyModule = false }) {
   const goToNextLesson = () => {
     if (!currentLesson) return
 
-    // Trouver la leçon suivante
     let foundCurrent = false
     for (const module of modules) {
       for (const lesson of module.lessons || []) {
-        if (foundCurrent) {
+        if (foundCurrent && isModuleAllowed(module._id)) {
           navigate(`/course/${slug}/lesson/${lesson._id}`)
           return
         }
@@ -317,15 +329,17 @@ export default function CoursePlayer({ addShopifyModule = false }) {
     if (!currentLesson) return
 
     let previousLesson = null
+    let previousModuleId = null
     for (const module of modules) {
       for (const lesson of module.lessons || []) {
         if (lesson._id === currentLesson._id) {
-          if (previousLesson) {
+          if (previousLesson && isModuleAllowed(previousModuleId)) {
             navigate(`/course/${slug}/lesson/${previousLesson._id}`)
           }
           return
         }
         previousLesson = lesson
+        previousModuleId = module._id
       }
     }
   }
@@ -632,45 +646,58 @@ export default function CoursePlayer({ addShopifyModule = false }) {
             const stats = getModuleStats(module)
             const isExpanded = expandedModules[module._id]
             const hasActiveLesson = module.lessons?.some((l) => l._id === currentLesson?._id)
+            const moduleAllowed = isModuleAllowed(module._id)
 
             return (
               <div key={module._id} className="border-b border-gray-100 dark:border-gray-800 last:border-b-0">
                 <button
-                  onClick={() => toggleModule(module._id)}
+                  onClick={() => moduleAllowed ? toggleModule(module._id) : null}
                   className={`w-full px-4 py-3.5 flex items-center gap-3 transition-colors ${
-                    hasActiveLesson ? 'bg-accent/5' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
+                    !moduleAllowed
+                      ? 'opacity-50 cursor-not-allowed'
+                      : hasActiveLesson ? 'bg-accent/5' : 'hover:bg-gray-50 dark:hover:bg-gray-800/50'
                   }`}
                 >
                   <div className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm transition-colors ${
-                    stats.done === stats.total && stats.total > 0
-                      ? 'bg-green-500 text-white'
-                      : 'bg-accent/10 text-accent'
+                    !moduleAllowed
+                      ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500'
+                      : stats.done === stats.total && stats.total > 0
+                        ? 'bg-green-500 text-white'
+                        : 'bg-accent/10 text-accent'
                   }`}>
-                    {stats.done === stats.total && stats.total > 0 ? (
+                    {!moduleAllowed ? (
+                      <FiLock className="w-4 h-4" />
+                    ) : stats.done === stats.total && stats.total > 0 ? (
                       <FiCheck className="w-4 h-4" />
                     ) : isShopifyModule ? '🛍️' : moduleIndex + 1}
                   </div>
                   <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center gap-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-accent">
+                      <div className={`text-[10px] font-bold uppercase tracking-wider ${moduleAllowed ? 'text-accent' : 'text-gray-400 dark:text-gray-500'}`}>
                         Module {moduleIndex + 1}
                       </div>
-                      <div className="text-[10px] text-secondary font-medium">
-                        {stats.done}/{stats.total}
-                      </div>
+                      {moduleAllowed && (
+                        <div className="text-[10px] text-secondary font-medium">
+                          {stats.done}/{stats.total}
+                        </div>
+                      )}
                     </div>
-                    <div className="font-semibold text-sm text-primary truncate leading-tight">
+                    <div className={`font-semibold text-sm truncate leading-tight ${moduleAllowed ? 'text-primary' : 'text-gray-400 dark:text-gray-500'}`}>
                       {cleanTitle || `Module ${moduleIndex + 1}`}
                     </div>
                   </div>
-                  <FiChevronDown
-                    className={`w-4 h-4 text-secondary flex-shrink-0 transition-transform ${
-                      isExpanded ? 'rotate-180' : ''
-                    }`}
-                  />
+                  {moduleAllowed ? (
+                    <FiChevronDown
+                      className={`w-4 h-4 text-secondary flex-shrink-0 transition-transform ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  ) : (
+                    <FiLock className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                  )}
                 </button>
 
-                {isExpanded && (
+                {isExpanded && moduleAllowed && (
                   <div className="bg-gray-50/50 dark:bg-gray-900/50 py-1">
                     {module.lessons?.map((lesson, index) => {
                       const isCompleted = isLessonCompleted(lesson._id)

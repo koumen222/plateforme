@@ -60,6 +60,9 @@ import LiveReplaysPage from './pages/LiveReplaysPage'
 import EbookPage from './pages/EbookPage'
 import CoachingScale7Page from './pages/CoachingScale7Page'
 import WebhookTestPage from './pages/WebhookTestPage'
+import FormationGratuitePage from './pages/FormationGratuitePage'
+import AdminFormationLeadsPage from './pages/admin/AdminFormationLeadsPage'
+import FormationVideoPage from './pages/FormationVideoPage'
 import EcomApp from './ecom/App.jsx'
 import BioLinkScalorPage from './pages/BioLinkMorganPage'
 import { lessons } from './data/lessons'
@@ -224,6 +227,8 @@ function App() {
           <Route path="/test-notifications" element={<PlatformLayout><PrivateRoute><TestNotificationsPage /></PrivateRoute></PlatformLayout>} />
           <Route path="/test-webhook" element={<WebhookTestPage />} />
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
+          <Route path="/formation-gratuite" element={<FormationGratuitePage />} />
+          <Route path="/formation-video" element={<FormationVideoPage />} />
 
           {/* Routes E-commerce */}
           <Route path="/ecom/*" element={<ModuleGuard moduleKey="ecommerce"><EcomApp /></ModuleGuard>} />
@@ -265,6 +270,7 @@ function App() {
             <Route path="email-logs" element={<AdminEmailLogsPage />} />
             <Route path="ebooks" element={<AdminEbooksPage />} />
             <Route path="visits" element={<AdminVisitsPage />} />
+            <Route path="formation-leads" element={<AdminFormationLeadsPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="comments" element={<AdminCommentsPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />

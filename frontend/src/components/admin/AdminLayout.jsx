@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import ThemeToggle from '../ThemeToggle'
 import Chatbot from '../Chatbot'
 import Footer from '../Footer'
-import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar, FiBriefcase, FiMail, FiSend, FiPhone, FiBookOpen, FiGlobe } from 'react-icons/fi'
+import { FiBarChart2, FiBook, FiUsers, FiMessageSquare, FiSettings, FiShield, FiFileText, FiCalendar, FiBriefcase, FiMail, FiSend, FiPhone, FiBookOpen, FiGlobe, FiUserCheck } from 'react-icons/fi'
 
 export default function AdminLayout() {
   const { isAuthenticated, user, logout } = useAuth()
@@ -47,6 +47,7 @@ export default function AdminLayout() {
     { path: '/admin/email-campaigns', label: 'Campagnes', icon: FiMail },
     { path: '/admin/email-logs', label: 'Tracking Emails', icon: FiBarChart2 },
     { path: '/admin/email-templates', label: 'Templates', icon: FiMail },
+    { path: '/admin/formation-leads', label: 'Leads Formation', icon: FiUserCheck },
     { path: '/admin/users', label: 'Utilisateurs', icon: FiUsers },
     { path: '/admin/comments', label: 'Commentaires', icon: FiMessageSquare },
     { path: '/admin/settings', label: 'Paramètres', icon: FiSettings }

@@ -309,7 +309,8 @@ router.post('/register', async (req, res) => {
       referralCode: savedUser.referralCode || null,
       referralAccessUnlocked: Boolean(savedUser.referralAccessUnlocked),
       accessGranted: accessFlags.hasAccess,
-      allowedModules: savedUser.allowedModules || []
+      allowedModules: savedUser.allowedModules || [],
+      allowedCourseModules: (savedUser.allowedCourseModules || []).map(id => id.toString())
     };
 
     // Validation finale avant envoi
@@ -437,7 +438,8 @@ router.post('/login', async (req, res) => {
       referralCode: user.referralCode || null,
       referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
       accessGranted: accessFlags.hasAccess,
-      allowedModules: user.allowedModules || []
+      allowedModules: user.allowedModules || [],
+      allowedCourseModules: (user.allowedCourseModules || []).map(id => id.toString())
     };
 
     console.log(`✅ Réponse login - Nom: "${userResponse.name}"`);
@@ -780,7 +782,8 @@ router.get('/user/me', authenticate, async (req, res) => {
         referralCode: user.referralCode || null,
         referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
         accessGranted: accessFlags.hasAccess,
-        allowedModules: user.allowedModules || []
+        allowedModules: user.allowedModules || [],
+        allowedCourseModules: (user.allowedCourseModules || []).map(id => id.toString())
       }
     });
   } catch (error) {

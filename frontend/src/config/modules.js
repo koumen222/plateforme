@@ -89,9 +89,7 @@ export const ALL_MODULE_KEYS = Object.keys(MODULES)
 
 export function hasModuleAccess(user, moduleKey) {
   if (!user) return false
-  if (user.role === 'superadmin') return true
-  if (!user.allowedModules || user.allowedModules.length === 0) return false
-  return user.allowedModules.includes(moduleKey)
+  return true
 }
 
 export function getModuleForRoute(pathname) {

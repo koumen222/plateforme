@@ -103,6 +103,10 @@ const userSchema = new mongoose.Schema({
     type: [String],
     default: []
   },
+  allowedCourseModules: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Module'
+  }],
   progress: [{
     courseId: {
       type: mongoose.Schema.Types.ObjectId,

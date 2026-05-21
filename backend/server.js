@@ -2184,6 +2184,21 @@ const startServer = async () => {
       console.error('⚠️ Erreur chargement ecom/agent.js:', error.message);
     }
 
+    // Routes Formation Leads + Cron campagne WhatsApp
+    try {
+      const formationLeadsModule = await import("./routes/formation-leads.js");
+      app.use("/api/formation-leads", formationLeadsModule.default);
+      console.log("✅ Routes formation-leads chargées");
+    } catch (err) {
+      console.error("❌ Erreur chargement routes formation-leads:", err.message);
+    }
+    try {
+      const { startFormationCampaignCron } = await import("./services/formationCampaignService.js");
+      startFormationCampaignCron();
+    } catch (err) {
+      console.error("❌ Erreur démarrage cron campagne formation:", err.message);
+    }
+
     // Routes Marketing Automation (Newsletters, Campagnes Email)
     try {
       try {

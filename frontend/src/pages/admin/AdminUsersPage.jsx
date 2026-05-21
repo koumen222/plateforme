@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { CONFIG } from '../../config/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { MODULES, ALL_MODULE_KEYS } from '../../config/modules'
-import { FiSearch, FiFilter, FiRefreshCw, FiEdit, FiTrash2, FiUser, FiMail, FiPhone, FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiTrendingUp, FiDownload, FiMoreVertical, FiUserCheck, FiUserX, FiMessageCircle, FiLock, FiUnlock } from 'react-icons/fi'
+import { FiSearch, FiFilter, FiRefreshCw, FiEdit, FiTrash2, FiUser, FiMail, FiPhone, FiCalendar, FiCheckCircle, FiXCircle, FiClock, FiTrendingUp, FiDownload, FiMoreVertical, FiUserCheck, FiUserX, FiMessageCircle, FiLock, FiUnlock, FiBook, FiChevronDown, FiChevronRight } from 'react-icons/fi'
 
 export default function AdminUsersPage() {
   const { token } = useAuth()
@@ -18,10 +18,16 @@ export default function AdminUsersPage() {
   const [notification, setNotification] = useState(null)
   const [showFilters, setShowFilters] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [courses, setCourses] = useState([])
+  const [expandedCourses, setExpandedCourses] = useState({})
 
   useEffect(() => {
     fetchUsers()
   }, [token])
+
+  useEffect(() => {
+    if (editingUser) fetchCoursesWithModules()
+  }, [editingUser?._id])
 
   const fetchUsers = async () => {
     try {
@@ -173,6 +179,7 @@ export default function AdminUsersPage() {
         if (editingUser.role !== 'superadmin') {
           await handleUpdateModules(editingUser._id, editingUser.allowedModules || [], true)
         }
+        await handleUpdateCourseModules(editingUser._id, editingUser.allowedCourseModules || [], true)
         showNotification('Utilisateur mis à jour avec succès')
         setEditingUser(null)
         fetchUsers()
@@ -247,6 +254,62 @@ export default function AdminUsersPage() {
     }
   }
 
+  const handleUpdateCourseModules = async (userId, allowedCourseModules, silent = false) => {
+    try {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/users/${userId}/course-modules`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ allowedCourseModules })
+      })
+      if (response.ok) {
+        if (!silent) {
+          showNotification('Accès aux modules mis à jour')
+          fetchUsers()
+        }
+        return true
+      } else {
+        const data = await response.json()
+        showNotification(data.error || 'Erreur mise à jour modules de cours', 'error')
+        return false
+      }
+    } catch (e) {
+      showNotification('Erreur mise à jour modules de cours', 'error')
+      return false
+    }
+  }
+
+  const fetchCoursesWithModules = async () => {
+    try {
+      const listRes = await fetch(`${CONFIG.BACKEND_URL}/api/admin/courses`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      })
+      if (!listRes.ok) return
+      const listData = await listRes.json()
+      const courseList = listData.courses || []
+
+      const detailed = await Promise.all(
+        courseList.map(async (c) => {
+          const res = await fetch(`${CONFIG.BACKEND_URL}/api/admin/courses/${c._id}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+          if (!res.ok) return { ...c, modules: [] }
+          const d = await res.json()
+          return d.course || { ...c, modules: [] }
+        })
+      )
+      setCourses(detailed)
+      // Ouvrir tous les cours par défaut
+      const expanded = {}
+      detailed.forEach(c => { expanded[c._id] = true })
+      setExpandedCourses(expanded)
+    } catch (e) {
+      console.error('Erreur chargement cours:', e)
+    }
+  }
+
   const handleUpdateModules = async (userId, allowedModules, silent = false) => {
     try {
       const response = await fetch(`${CONFIG.BACKEND_URL}/api/admin/users/${userId}/modules`, {
@@ -281,6 +344,34 @@ export default function AdminUsersPage() {
       ? current.filter(k => k !== moduleKey)
       : [...current, moduleKey]
     setEditingUser({ ...editingUser, allowedModules: updated })
+  }
+
+  const toggleCourseModule = (moduleId) => {
+    const current = editingUser.allowedCourseModules || []
+    const updated = current.includes(moduleId)
+      ? current.filter(id => id !== moduleId)
+      : [...current, moduleId]
+    setEditingUser({ ...editingUser, allowedCourseModules: updated })
+  }
+
+  const selectAllCourseModules = (course) => {
+    const ids = (course.modules || []).map(m => m._id)
+    const current = editingUser.allowedCourseModules || []
+    const allSelected = ids.every(id => current.includes(id))
+    const updated = allSelected
+      ? current.filter(id => !ids.includes(id))
+      : [...new Set([...current, ...ids])]
+    setEditingUser({ ...editingUser, allowedCourseModules: updated })
+  }
+
+  const isCourseFullySelected = (course) => {
+    const ids = (course.modules || []).map(m => m._id)
+    const current = editingUser.allowedCourseModules || []
+    return ids.length > 0 && ids.every(id => current.includes(id))
+  }
+
+  const hasRestrictions = (user) => {
+    return user?.allowedCourseModules && user.allowedCourseModules.length > 0
   }
 
   const getStatusBadge = (status) => {
@@ -814,6 +905,104 @@ export default function AdminUsersPage() {
                           )}
                         </p>
                       </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-lg font-semibold text-primary">📚 Accès aux modules des cours</h3>
+                      <button
+                        type="button"
+                        onClick={() => setEditingUser({ ...editingUser, allowedCourseModules: [] })}
+                        className="text-xs px-3 py-1.5 bg-secondary hover:bg-hover text-secondary rounded-lg font-medium transition-all"
+                      >
+                        Tout autoriser
+                      </button>
+                    </div>
+                    <p className="text-sm text-secondary mb-3">
+                      {(editingUser.allowedCourseModules || []).length === 0
+                        ? '✅ Accès libre à tous les modules (aucune restriction)'
+                        : `🔒 ${(editingUser.allowedCourseModules || []).length} module(s) autorisé(s) — les autres sont verrouillés`
+                      }
+                    </p>
+                    <div className="space-y-3">
+                      {courses.length === 0 ? (
+                        <p className="text-sm text-secondary">Chargement des cours...</p>
+                      ) : courses.map((course) => {
+                        const moduleIds = (course.modules || []).map(m => m._id)
+                        const selectedCount = moduleIds.filter(id => (editingUser.allowedCourseModules || []).includes(id)).length
+                        const allSelected = isCourseFullySelected(course)
+                        const isOpen = expandedCourses[course._id]
+
+                        return (
+                          <div key={course._id} className="border border-theme rounded-xl overflow-hidden">
+                            <button
+                              type="button"
+                              className="w-full flex items-center gap-3 px-4 py-3 bg-secondary hover:bg-hover text-left transition-all"
+                              onClick={() => setExpandedCourses(prev => ({ ...prev, [course._id]: !prev[course._id] }))}
+                            >
+                              <FiBook className="w-4 h-4 text-accent flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-semibold text-primary truncate">{course.title}</div>
+                                <div className="text-xs text-secondary">
+                                  {(editingUser.allowedCourseModules || []).length === 0
+                                    ? `${moduleIds.length} modules — accès libre`
+                                    : `${selectedCount} / ${moduleIds.length} modules autorisés`
+                                  }
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); selectAllCourseModules(course) }}
+                                className={`text-xs px-2 py-1 rounded-lg font-medium transition-all flex-shrink-0 ${
+                                  allSelected ? 'bg-accent/10 text-accent' : 'bg-secondary text-secondary hover:text-primary'
+                                }`}
+                              >
+                                {allSelected ? 'Tout retirer' : 'Tout sélectionner'}
+                              </button>
+                              {isOpen
+                                ? <FiChevronDown className="w-4 h-4 text-secondary flex-shrink-0" />
+                                : <FiChevronRight className="w-4 h-4 text-secondary flex-shrink-0" />
+                              }
+                            </button>
+                            {isOpen && (
+                              <div className="border-t border-theme divide-y divide-theme">
+                                {(course.modules || []).length === 0 ? (
+                                  <p className="px-4 py-3 text-sm text-secondary">Aucun module dans ce cours</p>
+                                ) : (course.modules || []).map((mod) => {
+                                  const isChecked = (editingUser.allowedCourseModules || []).length === 0
+                                    ? true
+                                    : (editingUser.allowedCourseModules || []).includes(mod._id)
+                                  const isExplicitlySelected = (editingUser.allowedCourseModules || []).includes(mod._id)
+                                  return (
+                                    <button
+                                      key={mod._id}
+                                      type="button"
+                                      onClick={() => toggleCourseModule(mod._id)}
+                                      className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-all ${
+                                        isExplicitlySelected ? 'bg-accent/5' : 'hover:bg-secondary'
+                                      }`}
+                                    >
+                                      <div className={`w-5 h-5 rounded flex items-center justify-center flex-shrink-0 border-2 transition-all ${
+                                        isExplicitlySelected
+                                          ? 'bg-accent border-accent'
+                                          : 'border-gray-300 dark:border-gray-600'
+                                      }`}>
+                                        {isExplicitlySelected && (
+                                          <FiCheckCircle className="w-3 h-3 text-white" />
+                                        )}
+                                      </div>
+                                      <span className={`text-sm ${isExplicitlySelected ? 'text-accent font-medium' : 'text-primary'}`}>
+                                        {mod.title}
+                                      </span>
+                                    </button>
+                                  )
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
 

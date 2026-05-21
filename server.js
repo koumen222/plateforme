@@ -476,7 +476,8 @@ app.get("/api/auth/me", authenticate, async (req, res) => {
         referralCode: user.referralCode || null,
         referralAccessUnlocked: Boolean(user.referralAccessUnlocked),
         accessGranted: accessFlags.hasAccess,
-        allowedModules: user.allowedModules || []
+        allowedModules: user.allowedModules || [],
+        allowedCourseModules: (user.allowedCourseModules || []).map(id => id.toString())
       }
     });
   } catch (error) {
@@ -1629,6 +1630,52 @@ const startServer = async () => {
       }
     });
 
+    // 1.2. Route reset-password sous /api/auth/ pour compatibilité frontend
+    app.post("/api/auth/reset-password", async (req, res) => {
+      try {
+        const { token, newPassword } = req.body;
+
+        if (!token || !newPassword) {
+          return res.status(400).json({ error: 'Le token et le nouveau mot de passe sont requis' });
+        }
+
+        if (newPassword.length < 6) {
+          return res.status(400).json({ error: 'Le nouveau mot de passe doit contenir au moins 6 caractères' });
+        }
+
+        const UserModel = (await import('./models/User.js')).default;
+        const user = await UserModel.findOne({
+          passwordResetToken: token,
+          passwordResetExpires: { $gt: new Date() }
+        }).select('+password passwordResetToken passwordResetExpires email');
+
+        if (!user) {
+          const expiredUser = await UserModel.findOne({ passwordResetToken: token });
+          if (expiredUser) {
+            console.log(`⚠️ Token trouvé mais expiré à: ${expiredUser.passwordResetExpires}`);
+          }
+          return res.status(400).json({ error: 'Token invalide ou expiré. Veuillez demander une nouvelle réinitialisation.' });
+        }
+
+        user.password = newPassword;
+        user.passwordResetToken = undefined;
+        user.passwordResetExpires = undefined;
+        await user.save();
+
+        console.log(`✅ Mot de passe réinitialisé pour: ${user.email}`);
+
+        res.json({
+          success: true,
+          message: 'Mot de passe réinitialisé avec succès. Vous pouvez maintenant vous connecter.'
+        });
+      } catch (error) {
+        console.error('❌ Erreur reset-password:', error);
+        res.status(500).json({
+          error: 'Une erreur est survenue lors de la réinitialisation du mot de passe. Veuillez réessayer plus tard.'
+        });
+      }
+    });
+
     // 1bis. Routes parrainage (optionnelles)
     try {
       const referralsModule = await import("./routes/referrals.js");
@@ -1672,6 +1719,14 @@ const startServer = async () => {
       app.use("/api/coaching-applications", coachingApplicationsRoutes);
     } catch (error) {
       console.error('⚠️ Erreur chargement coaching-applications.js:', error.message);
+    }
+
+    // Leads formation gratuite
+    try {
+      const formationLeadsModule = await import("./routes/formation-leads.js");
+      app.use("/api/formation-leads", formationLeadsModule.default);
+    } catch (error) {
+      console.error('⚠️ Erreur chargement formation-leads.js:', error.message);
     }
 
     // 3ter. Routes recrutement (annuaire interne)

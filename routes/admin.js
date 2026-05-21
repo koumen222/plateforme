@@ -857,6 +857,41 @@ router.put('/users/:id/status', async (req, res) => {
   }
 });
 
+// PUT /api/admin/users/:id/course-modules - Mettre à jour les modules de cours autorisés
+router.put('/users/:id/course-modules', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { allowedCourseModules } = req.body;
+
+    if (!Array.isArray(allowedCourseModules)) {
+      return res.status(400).json({ error: 'allowedCourseModules doit être un tableau' });
+    }
+
+    const user = await User.findById(id);
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
+    }
+
+    user.allowedCourseModules = allowedCourseModules;
+    await user.save();
+
+    await logAudit(req, 'UPDATE_COURSE_MODULES', `Modules de cours mis à jour pour ${user.email}: ${allowedCourseModules.length} modules`, 'user', user._id);
+
+    res.json({
+      success: true,
+      message: 'Modules de cours mis à jour avec succès',
+      user: {
+        id: user._id,
+        email: user.email,
+        allowedCourseModules: user.allowedCourseModules
+      }
+    });
+  } catch (error) {
+    console.error('Erreur mise à jour modules de cours:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour des modules de cours' });
+  }
+});
+
 // PUT /api/admin/users/:id/modules - Mettre à jour les modules autorisés
 router.put('/users/:id/modules', async (req, res) => {
   try {
