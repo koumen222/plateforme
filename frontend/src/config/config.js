@@ -40,6 +40,7 @@ export const CONFIG = {
   MORGAN_PHONE: '237676778377', // Numéro WhatsApp de Morgan (sans + pour l'URL WhatsApp)
   WHATSAPP_MESSAGE: "Bonjour Morgan, je souhaite réactiver mon compte pour débloquer toutes les formations et ressources premium. Merci de m'indiquer la procédure et les modalités de paiement. Je suis prêt(e) à finaliser rapidement.",
   GOOGLE_CLIENT_ID: import.meta.env.VITE_GOOGLE_CLIENT_ID || '1001981040159-an283jv5dfi5c94g0dkj5agdujn3rs34.apps.googleusercontent.com',
-  SUBSCRIPTION_MONTHLY: 5000, // Abonnement mensuel en FCFA
-  SUBSCRIPTION_YEARLY: 25000 // Abonnement annuel en FCFA
+  SUBSCRIPTION_MONTHLY: 10000, // Abonnement mensuel en FCFA
+  SUBSCRIPTION_LIFETIME: 100000, // Accès à vie en FCFA
+  MONEYFUSION_PAYMENT_URL: 'https://www.pay.moneyfusion.net/scalor/597e2cf962834532/pay/'
 };

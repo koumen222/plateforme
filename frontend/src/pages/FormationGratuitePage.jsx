@@ -16,16 +16,26 @@ const MODULES = [
   },
   {
     num: 'Vidéo 3',
-    title: 'Créer une offre irrésistible',
-    desc: 'La différence entre un produit et une offre. Comment faire acheter sans forcer.',
+    title: 'Fournisseurs et achats en chine',
+    desc: 'Comment trouver un fournisseur fiable en Chine et expédier tes produits en Afrique en toute sécurité.',
   },
   {
     num: 'Vidéo 4',
+    title: 'Créer une boutique sur Scalor',
+    desc: 'Comment configurer rapidement ta boutique en ligne sur Scalor pour commencer à recevoir des commandes.',
+  },
+  {
+    num: 'Vidéo 5',
+    title: 'Lancer une campagne Facebook Ads',
+    desc: 'La structure pas-à-pas pour lancer ta première campagne publicitaire et cibler les bons acheteurs.',
+  },
+  {
+    num: 'Vidéo 6',
     title: 'Facebook Ads sans gaspiller',
     desc: 'Lancer une vraie campagne avec 10€. Lire les chiffres. Savoir quand couper ou scaler.',
   },
   {
-    num: 'Vidéo 5',
+    num: 'Vidéo 7',
     title: 'Le système complet',
     desc: 'Tout assembler en un vrai business. Closing WhatsApp, rentabilité, scaling et la suite.',
   },
@@ -233,7 +243,7 @@ export default function FormationGratuitePage() {
       <section className="fg-what-section">
         <div className="fg-section-label">Au programme</div>
         <div className="fg-section-title">
-          Les 5 clés que tu vas<br />maîtriser gratuitement
+          Les 7 clés que tu vas<br />maîtriser gratuitement
         </div>
         <div className="fg-modules-grid">
           {MODULES.map((m) => (

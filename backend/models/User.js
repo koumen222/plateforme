@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema({
   },
   subscriptionType: {
     type: String,
-    enum: ['monthly', 'yearly'],
+    enum: ['monthly', 'lifetime'],
     default: null
   },
   subscriptionExpiry: {
