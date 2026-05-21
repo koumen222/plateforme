@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { countries } from '../data/countries'
 import { FiUser, FiMail, FiPhone, FiLock, FiChevronDown, FiSearch, FiGlobe, FiEye, FiEyeOff, FiArrowLeft } from 'react-icons/fi'
+import { CONFIG } from '../config/config'
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true)
@@ -146,7 +147,7 @@ export default function LoginPage() {
     
     try {
       // Appel à l'API pour la réinitialisation du mot de passe
-      const response = await fetch('/api/auth/forgot-password', {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/auth/forgot-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

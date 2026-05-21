@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FiLock, FiEye, FiEyeOff, FiCheck, FiArrowLeft } from 'react-icons/fi'
+import { CONFIG } from '../config/config'
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()
@@ -56,7 +57,7 @@ export default function ResetPasswordPage() {
     setError('')
 
     try {
-      const response = await fetch('/api/auth/reset-password', {
+      const response = await fetch(`${CONFIG.BACKEND_URL}/api/auth/reset-password`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
