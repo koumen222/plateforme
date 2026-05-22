@@ -82,6 +82,9 @@ function CleanUrlRedirect() {
     const hasTokenParam = location.search.includes('token=')
     const hasUserParam = location.search.includes('user=')
 
+    // Ne pas nettoyer les paramètres sur la page de reset-password
+    if (location.pathname === '/reset-password') return
+
     // Si l'URL contient des paramètres token ou user, les supprimer
     if (hasTokenParam || hasUserParam) {
       const cleanPath = location.pathname
