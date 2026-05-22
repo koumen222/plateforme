@@ -1597,7 +1597,7 @@ const startServer = async () => {
         // Générer un token de réinitialisation
         const crypto = await import('crypto');
         const resetToken = crypto.randomBytes(32).toString('hex');
-        const resetTokenExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 heure
 
         // Sauvegarder le token dans la base de données
         user.passwordResetToken = resetToken;
@@ -1630,7 +1630,7 @@ const startServer = async () => {
                   Réinitialiser mon mot de passe
                 </a>
               </div>
-              <p style="color: #999; font-size: 14px; font-family: Arial, sans-serif;">Ce lien expirera dans 10 minutes.</p>
+              <p style="color: #999; font-size: 14px; font-family: Arial, sans-serif;">Ce lien expirera dans 1 heure.</p>
               <p style="color: #999; font-size: 14px; font-family: Arial, sans-serif;">Si vous n'avez pas demandé cette réinitialisation, vous pouvez ignorer cet email.</p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
               <p style="color: #999; font-size: 12px; font-family: Arial, sans-serif;">
