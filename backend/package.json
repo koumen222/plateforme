@@ -2,6 +2,9 @@
   "name": "formation-andromeda-backend",
   "version": "1.0.0",
   "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Backend pour le chatbot OpenAI - Plateforme de formation Andromeda",
   "main": "server.js",
   "scripts": {
