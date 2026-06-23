@@ -9,10 +9,7 @@
     "restartPolicyMaxRetries": 10
   }
 
-  {
-  "engines": {
-    "node": "22.x"
-  }
-}
+ 
+
 }
 
