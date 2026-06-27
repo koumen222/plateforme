@@ -86,8 +86,7 @@ const reorderModuleList = async (courseId, moduleId, targetOrder) => {
   orderedModules.splice(nextOrder - 1, 0, movingModule);
 
   await Promise.all(orderedModules.map((moduleDoc, index) => {
-    moduleDoc.order = index + 1;
-    return moduleDoc.save();
+    return Module.updateOne({ _id: moduleDoc._id }, { $set: { order: index + 1 } });
   }));
 };
 
@@ -102,8 +101,7 @@ const reorderLessonList = async (moduleId, lessonId, targetOrder) => {
   orderedLessons.splice(nextOrder - 1, 0, movingLesson);
 
   await Promise.all(orderedLessons.map((lessonDoc, index) => {
-    lessonDoc.order = index + 1;
-    return lessonDoc.save();
+    return Lesson.updateOne({ _id: lessonDoc._id }, { $set: { order: index + 1 } });
   }));
 };
 
@@ -501,9 +499,7 @@ router.put('/courses/:courseId/modules/reorder', async (req, res) => {
     const finalIds = [...orderedIds, ...missingIds];
 
     await Promise.all(finalIds.map((id, index) => {
-      const moduleDoc = modulesById.get(id);
-      moduleDoc.order = index + 1;
-      return moduleDoc.save();
+      return Module.updateOne({ _id: id }, { $set: { order: index + 1 } });
     }));
 
     res.json({ success: true, message: 'Modules réordonnés' });
@@ -534,7 +530,7 @@ router.post('/modules/:moduleId/duplicate', async (req, res) => {
         moduleId: duplicatedModule._id,
         title: lessonDoc.title,
         videoId: lessonDoc.videoId || '',
-        videoType: lessonDoc.videoType,
+        videoType: ['youtube', 'vimeo', 'mp4', 'text'].includes(lessonDoc.videoType) ? lessonDoc.videoType : 'vimeo',
         content: lessonDoc.content || '',
         order: index + 1,
         locked: lessonDoc.locked,
@@ -570,8 +566,7 @@ router.delete('/modules/:moduleId', async (req, res) => {
     await Module.deleteOne({ _id: module._id });
     const remainingModules = await Module.find({ courseId: module.courseId }).sort({ order: 1, createdAt: 1 });
     await Promise.all(remainingModules.map((moduleDoc, index) => {
-      moduleDoc.order = index + 1;
-      return moduleDoc.save();
+      return Module.updateOne({ _id: moduleDoc._id }, { $set: { order: index + 1 } });
     }));
 
     res.json({ success: true, message: 'Module supprimé' });
@@ -651,9 +646,7 @@ router.put('/modules/:moduleId/lessons/reorder', async (req, res) => {
     const finalIds = [...orderedIds, ...missingIds];
 
     await Promise.all(finalIds.map((id, index) => {
-      const lessonDoc = lessonsById.get(id);
-      lessonDoc.order = index + 1;
-      return lessonDoc.save();
+      return Lesson.updateOne({ _id: id }, { $set: { order: index + 1 } });
     }));
 
     res.json({ success: true, message: 'Leçons réordonnées' });
@@ -704,8 +697,7 @@ router.delete('/lessons/:lessonId', async (req, res) => {
     await Lesson.deleteOne({ _id: lesson._id });
     const remainingLessons = await Lesson.find({ moduleId: lesson.moduleId }).sort({ order: 1, createdAt: 1 });
     await Promise.all(remainingLessons.map((lessonDoc, index) => {
-      lessonDoc.order = index + 1;
-      return lessonDoc.save();
+      return Lesson.updateOne({ _id: lessonDoc._id }, { $set: { order: index + 1 } });
     }));
     res.json({ success: true, message: 'Leçon supprimée' });
   } catch (error) {

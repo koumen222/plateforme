@@ -74,22 +74,38 @@ export default function FormationVideoPage() {
           )}
         </div>
 
-        {/* CTA WHATSAPP */}
+        {/* CTA VIDÉO SUIVANTE */}
         <div className="fg-after-video">
           <h3>Tu veux aller plus loin ?</h3>
           <p>
-            {activeIndex === 0
-              ? "La vidéo 2 est déjà disponible dans le menu ci-dessus ! Si tu as des questions, envoie-moi un message."
-              : "Des questions sur cette leçon ou sur ton projet e-commerce ? Envoie-moi un message maintenant."}
+            {activeIndex === 0 && "Super ! Continue maintenant avec la vidéo 2 pour découvrir comment trouver un produit gagnant."}
+            {activeIndex === 1 && "Continue avec la vidéo 3 pour apprendre à trouver des fournisseurs fiables et acheter en Chine."}
+            {activeIndex === 2 && "Continue avec la vidéo 4 pour découvrir comment créer ta boutique e-commerce sur Scalor."}
+            {activeIndex === 3 && "Continue avec la vidéo 5 pour apprendre à lancer ta première campagne Facebook Ads."}
+            {activeIndex === 4 && "Dernière étape : la vidéo 6 avec le système complet arrive très bientôt !"}
+            {activeIndex === 5 && "Tu as terminé la formation ! Des questions sur ton projet e-commerce ? Envoie-moi un message."}
           </p>
-          <a
-            className="fg-btn-wa"
-            href={`https://wa.me/TONNUM?text=Bonjour%2C+j%27ai+regardé+la+${encodeURIComponent(currentVideo.num.toLowerCase())}+(${encodeURIComponent(currentVideo.title)})+de+la+mini-formation+!`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            ✉ Envoyer un message WhatsApp
-          </a>
+          {activeIndex < VIDEOS.length - 1 && VIDEOS[activeIndex + 1].youtubeId ? (
+            <button
+              className="fg-btn-wa"
+              onClick={() => setActiveIndex(activeIndex + 1)}
+            >
+              {VIDEOS[activeIndex + 1].num} →
+            </button>
+          ) : activeIndex < VIDEOS.length - 1 ? (
+            <div className="fg-video-label" style={{ marginTop: 12, fontWeight: 600 }}>
+              La prochaine vidéo sera bientôt disponible !
+            </div>
+          ) : (
+            <a
+              className="fg-btn-wa"
+              href={`https://wa.me/237676778377?text=Bonjour%2C+j%27ai+terminé+la+mini-formation+!`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              ✉ Envoyer un message WhatsApp
+            </a>
+          )}
         </div>
 
         {/* RETOUR */}
