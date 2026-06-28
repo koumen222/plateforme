@@ -63,6 +63,7 @@ import WebhookTestPage from './pages/WebhookTestPage'
 import FormationGratuitePage from './pages/FormationGratuitePage'
 import AdminFormationLeadsPage from './pages/admin/AdminFormationLeadsPage'
 import FormationVideoPage from './pages/FormationVideoPage'
+import PaiementFormationPage from './pages/PaiementFormationPage'
 import EcomApp from './ecom/App.jsx'
 import BioLinkScalorPage from './pages/BioLinkMorganPage'
 import { lessons } from './data/lessons'
@@ -232,6 +233,7 @@ function App() {
           <Route path="/videos-guides" element={<VideoShowcasePage />} />
           <Route path="/formation-gratuite" element={<FormationGratuitePage />} />
           <Route path="/formation-video" element={<FormationVideoPage />} />
+          <Route path="/paiement-formation" element={<PaiementFormationPage />} />
 
           {/* Routes E-commerce */}
           <Route path="/ecom/*" element={<ModuleGuard moduleKey="ecommerce"><EcomApp /></ModuleGuard>} />

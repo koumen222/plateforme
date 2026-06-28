@@ -8,7 +8,7 @@ const VIDEOS = [
   { num: 'Vidéo 3', title: 'Fournisseurs et achats en chine', youtubeId: 'Qv57Dwrw8wA' },
   { num: 'Vidéo 4', title: 'Créer une boutique sur Scalor', youtubeId: '1H6B0wJ0I3M' },
   { num: 'Vidéo 5', title: 'Lancer une campagne Facebook Ads', youtubeId: 'IJDGrQAzegw' },
-  { num: 'Vidéo 6', title: 'Le système complet', youtubeId: '' },
+  { num: 'Vidéo 6', title: 'Le système complet', youtubeId: 'r2sgLD8TatE' },
 ]
 
 export default function FormationVideoPage() {
@@ -82,8 +82,8 @@ export default function FormationVideoPage() {
             {activeIndex === 1 && "Continue avec la vidéo 3 pour apprendre à trouver des fournisseurs fiables et acheter en Chine."}
             {activeIndex === 2 && "Continue avec la vidéo 4 pour découvrir comment créer ta boutique e-commerce sur Scalor."}
             {activeIndex === 3 && "Continue avec la vidéo 5 pour apprendre à lancer ta première campagne Facebook Ads."}
-            {activeIndex === 4 && "Dernière étape : la vidéo 6 avec le système complet arrive très bientôt !"}
-            {activeIndex === 5 && "Tu as terminé la formation ! Des questions sur ton projet e-commerce ? Envoie-moi un message."}
+            {activeIndex === 4 && "Continue avec la vidéo 6 pour découvrir le système complet !"}
+            {activeIndex === 5 && "Tu as terminé la formation gratuite ! Passe à la formation complète pour aller encore plus loin."}
           </p>
           {activeIndex < VIDEOS.length - 1 && VIDEOS[activeIndex + 1].youtubeId ? (
             <button
@@ -105,6 +105,27 @@ export default function FormationVideoPage() {
             >
               ✉ Envoyer un message WhatsApp
             </a>
+          )}
+
+          {/* BOUTON REJOINDRE LA FORMATION COMPLÈTE — uniquement sur la dernière vidéo */}
+          {activeIndex === VIDEOS.length - 1 && (
+            <div style={{ marginTop: 20 }}>
+              <button
+                className="fg-btn-wa"
+                onClick={() => navigate('/paiement-formation')}
+                style={{
+                  background: 'linear-gradient(135deg, #6c3fc5 0%, #8b5cf6 100%)',
+                  boxShadow: '0 4px 20px rgba(108, 63, 197, 0.35)',
+                  fontSize: 16,
+                  padding: '16px 32px',
+                }}
+              >
+                🚀 Rejoindre Ecom Starter 3.0
+              </button>
+              <div style={{ marginTop: 8, fontSize: 12, color: '#a78bcc' }}>
+                À partir de 10 000 FCFA/mois · Accès à vie dès 45 000 FCFA
+              </div>
+            </div>
           )}
         </div>
 
