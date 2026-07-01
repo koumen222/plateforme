@@ -799,6 +799,148 @@
   border-top: 1px solid var(--border);
 }
 
+/* ── COUNTRY CODE SELECTOR ── */
+.fg-required {
+  color: var(--red);
+  font-weight: 700;
+  font-size: 10px;
+}
+
+.fg-phone-row {
+  display: flex;
+  gap: 8px;
+  position: relative;
+}
+
+.fg-country-selector {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #f7f5f2;
+  border: 1.5px solid #e0ddd8;
+  border-radius: 10px;
+  padding: 12px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--black);
+  cursor: pointer;
+  white-space: nowrap;
+  min-width: 130px;
+  transition: border-color 0.2s, background 0.2s;
+}
+.fg-country-selector:hover { border-color: #c0bdb6; }
+.fg-country-selector.open { border-color: var(--green-light); background: #fff; }
+.fg-country-selector.error { border-color: var(--red); animation: fg-shake 0.3s ease; }
+
+@keyframes fg-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.fg-country-flag { font-size: 18px; line-height: 1; }
+.fg-country-dial { font-weight: 600; font-size: 14px; }
+.fg-country-placeholder { font-size: 13px; color: #bbb; }
+.fg-country-chevron { font-size: 8px; color: #999; margin-left: auto; }
+
+.fg-phone-input {
+  flex: 1;
+  background: #f7f5f2;
+  border: 1.5px solid #e0ddd8;
+  border-radius: 10px;
+  padding: 14px 16px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  color: var(--black);
+  outline: none;
+  transition: border-color 0.2s;
+  min-width: 0;
+}
+.fg-phone-input::placeholder { color: #bbb; }
+.fg-phone-input:focus { border-color: var(--green-light); background: #fff; }
+.fg-phone-input.error { border-color: var(--red); }
+
+/* Dropdown panel */
+.fg-country-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1.5px solid #e0ddd8;
+  border-radius: 12px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.15);
+  z-index: 100;
+  overflow: hidden;
+  animation: fg-dropdown-in 0.15s ease forwards;
+}
+
+@keyframes fg-dropdown-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.fg-country-search-wrap {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid #f0eeea;
+}
+
+.fg-country-search {
+  width: 100%;
+  background: #f7f5f2;
+  border: 1.5px solid #e0ddd8;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--black);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.fg-country-search::placeholder { color: #bbb; }
+.fg-country-search:focus { border-color: var(--green-light); background: #fff; }
+
+.fg-country-list {
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #ddd #f7f5f2;
+}
+.fg-country-list::-webkit-scrollbar { width: 6px; }
+.fg-country-list::-webkit-scrollbar-track { background: #f7f5f2; }
+.fg-country-list::-webkit-scrollbar-thumb { background: #ddd; border-radius: 3px; }
+.fg-country-list::-webkit-scrollbar-thumb:hover { background: #ccc; }
+
+.fg-country-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  color: var(--black);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+}
+.fg-country-option:hover { background: var(--green-pale); }
+.fg-country-option.selected { background: var(--green-pale); font-weight: 600; }
+
+.fg-country-option .fg-country-flag { font-size: 18px; flex-shrink: 0; }
+.fg-country-option .fg-country-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fg-country-option .fg-country-code { font-size: 13px; color: var(--gray); font-weight: 500; flex-shrink: 0; }
+
+.fg-country-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
+  color: #999;
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 480px) {
   .fg-form-card { padding: 28px 20px 24px; border-radius: 16px; }
@@ -807,4 +949,6 @@
   .fg-vp-item { min-width: 100px; padding: 10px; }
   .fg-modal { padding: 36px 20px 28px; border-radius: 16px; }
   .fg-btn-cta { width: 100%; font-size: 15px; padding: 16px 24px; }
+  .fg-country-selector { min-width: 110px; padding: 10px 8px; font-size: 13px; }
+  .fg-phone-row { gap: 6px; }
 }

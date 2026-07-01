@@ -64,6 +64,7 @@ import FormationGratuitePage from './pages/FormationGratuitePage'
 import AdminFormationLeadsPage from './pages/admin/AdminFormationLeadsPage'
 import FormationVideoPage from './pages/FormationVideoPage'
 import PaiementFormationPage from './pages/PaiementFormationPage'
+import EcomStarterLandingPage from './pages/EcomStarterLandingPage'
 import EcomApp from './ecom/App.jsx'
 import BioLinkScalorPage from './pages/BioLinkMorganPage'
 import { lessons } from './data/lessons'
@@ -234,6 +235,7 @@ function App() {
           <Route path="/formation-gratuite" element={<FormationGratuitePage />} />
           <Route path="/formation-video" element={<FormationVideoPage />} />
           <Route path="/paiement-formation" element={<PaiementFormationPage />} />
+          <Route path="/ecom-starter" element={<EcomStarterLandingPage />} />
 
           {/* Routes E-commerce */}
           <Route path="/ecom/*" element={<ModuleGuard moduleKey="ecommerce"><EcomApp /></ModuleGuard>} />

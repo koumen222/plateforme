@@ -37,6 +37,26 @@ async function notifyNewLead(lead) {
   }
 }
 
+// Envoyer automatiquement le 1er message WhatsApp (J1) au nouveau prospect
+async function sendFirstMessage(lead) {
+  try {
+    const { SEQUENCE, scalorSend } = await import('../services/formationCampaignService.js');
+    const firstStep = SEQUENCE[0];
+    const text = firstStep.text(lead.name);
+
+    await scalorSend(lead.phone, text);
+
+    // Marquer le message J1 comme envoyé pour éviter un doublon via le cron
+    lead.campaign = lead.campaign || { active: true, messagesSent: [] };
+    lead.campaign.messagesSent.push({ day: firstStep.day, sentAt: new Date(), status: 'sent' });
+    await lead.save();
+
+    console.log(`✅ Message de bienvenue J1 envoyé automatiquement → ${lead.name} (${lead.phone})`);
+  } catch (err) {
+    console.error(`❌ Échec envoi message bienvenue J1 → ${lead.name} (${lead.phone}): ${err.message}`);
+  }
+}
+
 // POST /api/formation-leads — inscription publique depuis la landing
 router.post('/', async (req, res) => {
   try {
@@ -62,7 +82,11 @@ router.post('/', async (req, res) => {
     console.log(`🕐 Date    : ${new Date().toLocaleString('fr-FR', { timeZone: 'Africa/Douala' })}`);
     console.log('==================================================');
 
+    // Notifier l'admin du nouveau lead
     notifyNewLead(lead).catch(() => {});
+
+    // Envoyer automatiquement le premier message WhatsApp (J1) au prospect
+    sendFirstMessage(lead).catch(() => {});
 
     return res.status(201).json({ success: true, id: lead._id });
   } catch (err) {

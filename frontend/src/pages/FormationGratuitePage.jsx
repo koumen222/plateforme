@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CONFIG } from '../config/config'
+import { countries } from '../data/countries'
 import './FormationGratuitePage.css'
 
 const MODULES = [
@@ -66,13 +67,19 @@ function FormModal({ onClose, onSuccess }) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState(countries.find(c => c.code === 'CM') || null)
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false)
+  const [countrySearch, setCountrySearch] = useState('')
   const [nameError, setNameError] = useState(false)
   const [phoneError, setPhoneError] = useState(false)
   const [emailError, setEmailError] = useState(false)
+  const [countryError, setCountryError] = useState(false)
   const [loading, setLoading] = useState(false)
   const phoneRef = useRef(null)
   const emailRef = useRef(null)
   const firstInputRef = useRef(null)
+  const dropdownRef = useRef(null)
+  const searchInputRef = useRef(null)
 
   // Focus premier champ à l'ouverture
   useEffect(() => {
@@ -81,10 +88,18 @@ function FormModal({ onClose, onSuccess }) {
 
   // Fermer avec Escape
   useEffect(() => {
-    const handler = (e) => e.key === 'Escape' && onClose()
+    const handler = (e) => {
+      if (e.key === 'Escape') {
+        if (countryDropdownOpen) {
+          setCountryDropdownOpen(false)
+        } else {
+          onClose()
+        }
+      }
+    }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [onClose])
+  }, [onClose, countryDropdownOpen])
 
   // Bloquer le scroll du body
   useEffect(() => {
@@ -92,19 +107,57 @@ function FormModal({ onClose, onSuccess }) {
     return () => { document.body.style.overflow = '' }
   }, [])
 
+  // Fermer dropdown au clic extérieur
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setCountryDropdownOpen(false)
+        setCountrySearch('')
+      }
+    }
+    if (countryDropdownOpen) {
+      document.addEventListener('mousedown', handler)
+    }
+    return () => document.removeEventListener('mousedown', handler)
+  }, [countryDropdownOpen])
+
+  // Focus sur le champ de recherche quand le dropdown s'ouvre
+  useEffect(() => {
+    if (countryDropdownOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 50)
+    }
+  }, [countryDropdownOpen])
+
+  const filteredCountries = countries.filter((c) => {
+    const q = countrySearch.toLowerCase()
+    return c.name.toLowerCase().includes(q) || c.dialCode.includes(q)
+  })
+
+  function selectCountry(country) {
+    setSelectedCountry(country)
+    setCountryDropdownOpen(false)
+    setCountrySearch('')
+    setCountryError(false)
+    // Focus sur le champ téléphone après sélection
+    setTimeout(() => phoneRef.current?.focus(), 50)
+  }
+
   async function handleSubmit() {
     let valid = true
     if (!name.trim()) { setNameError(true); setTimeout(() => setNameError(false), 2000); valid = false }
+    if (!selectedCountry) { setCountryError(true); setTimeout(() => setCountryError(false), 2000); valid = false }
     if (!phone.trim()) { setPhoneError(true); setTimeout(() => setPhoneError(false), 2000); valid = false }
     if (!email.trim()) { setEmailError(true); setTimeout(() => setEmailError(false), 2000); valid = false }
     if (!valid) return
+
+    const fullPhone = selectedCountry.dialCode + phone.trim().replace(/^0+/, '')
 
     setLoading(true)
     try {
       await fetch(`${CONFIG.BACKEND_URL}/api/formation-leads`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), phone: phone.trim(), email: email.trim() }),
+        body: JSON.stringify({ name: name.trim(), phone: fullPhone, email: email.trim() }),
       })
     } catch (_) {}
     setLoading(false)
@@ -137,23 +190,82 @@ function FormModal({ onClose, onSuccess }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={nameError ? 'error' : ''}
-            onKeyDown={(e) => e.key === 'Enter' && phoneRef.current?.focus()}
+            onKeyDown={(e) => e.key === 'Enter' && setCountryDropdownOpen(true)}
           />
         </div>
 
         <div className="fg-form-group">
-          <label htmlFor="fg-phone">Ton numéro WhatsApp</label>
-          <input
-            id="fg-phone"
-            ref={phoneRef}
-            type="tel"
-            placeholder="Ex : +237 6XX XXX XXX"
-            autoComplete="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className={phoneError ? 'error' : ''}
-            onKeyDown={(e) => e.key === 'Enter' && emailRef.current?.focus()}
-          />
+          <label>Ton numéro WhatsApp <span className="fg-required">*</span></label>
+          <div className="fg-phone-row" ref={dropdownRef}>
+            {/* Sélecteur indicatif */}
+            <button
+              type="button"
+              className={`fg-country-selector ${countryError ? 'error' : ''} ${countryDropdownOpen ? 'open' : ''}`}
+              onClick={() => setCountryDropdownOpen(!countryDropdownOpen)}
+            >
+              {selectedCountry ? (
+                <>
+                  <span className="fg-country-flag">{selectedCountry.flag}</span>
+                  <span className="fg-country-dial">{selectedCountry.dialCode}</span>
+                </>
+              ) : (
+                <span className="fg-country-placeholder">🌍 Indicatif</span>
+              )}
+              <span className="fg-country-chevron">{countryDropdownOpen ? '▲' : '▼'}</span>
+            </button>
+
+            {/* Dropdown list */}
+            {countryDropdownOpen && (
+              <div className="fg-country-dropdown">
+                <div className="fg-country-search-wrap">
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    className="fg-country-search"
+                    placeholder="Rechercher un pays..."
+                    value={countrySearch}
+                    onChange={(e) => setCountrySearch(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && filteredCountries.length > 0) {
+                        selectCountry(filteredCountries[0])
+                      }
+                    }}
+                  />
+                </div>
+                <div className="fg-country-list">
+                  {filteredCountries.length === 0 ? (
+                    <div className="fg-country-empty">Aucun pays trouvé</div>
+                  ) : (
+                    filteredCountries.map((c) => (
+                      <button
+                        key={c.code}
+                        type="button"
+                        className={`fg-country-option ${selectedCountry?.code === c.code ? 'selected' : ''}`}
+                        onClick={() => selectCountry(c)}
+                      >
+                        <span className="fg-country-flag">{c.flag}</span>
+                        <span className="fg-country-name">{c.name}</span>
+                        <span className="fg-country-code">{c.dialCode}</span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Champ numéro */}
+            <input
+              id="fg-phone"
+              ref={phoneRef}
+              type="tel"
+              placeholder="6XX XXX XXX"
+              autoComplete="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className={`fg-phone-input ${phoneError ? 'error' : ''}`}
+              onKeyDown={(e) => e.key === 'Enter' && emailRef.current?.focus()}
+            />
+          </div>
         </div>
 
         <div className="fg-form-group">

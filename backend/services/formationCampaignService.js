@@ -10,19 +10,19 @@ export const SEQUENCE = [
   },
   {
     day: 2,
-    text: (name) => `${name}, beaucoup de gens font cette erreur fatale sur Facebook Ads ❌\n\nIls lancent des pubs sans avoir testé leur audience. Résultat : 0 ventes, budget gaspillé.\n\nLa méthode Andromeda corrige exactement ça.\n\nTu veux voir comment ? Réponds OUI et je t'envoie la vidéo 🎯`,
+    text: (name) => `${name}, beaucoup de personnes veulent se lancer en e-commerce, mais elles commencent dans le désordre.\n\nElles choisissent un produit au hasard, lancent une boutique rapidement, mettent un peu de publicité… puis abandonnent quand les ventes ne viennent pas.\n\nLe problème, ce n'est pas toujours le produit.\n\nSouvent, c'est la méthode.\n\nC'est pour ça que j'ai créé *Ecom Starter 3.0* : une formation pour t'aider à comprendre comment lancer ton business e-commerce avec une vraie structure.\n\nTu peux regarder la vidéo ici 👇\n\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video`,
   },
   {
     day: 4,
-    text: (name) => `${name} 👀\n\nTu savais qu'on peut générer des ventes avec un budget de seulement 5000 FCFA/jour ?\n\nC'est ce qu'on appelle la structure "micro-budget haute conversion".\n\nJe t'explique tout dans la formation. Clique ici pour accéder à la vidéo gratuite 👇\n\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video`,
+    text: (name) => `${name}, réussir en e-commerce ne se limite pas à créer une boutique.\n\nTu dois comprendre :\n\n– comment choisir un bon produit\n– comment construire une offre qui donne envie d'acheter\n– comment créer une page produit convaincante\n– comment lancer tes publicités\n– comment gérer les commandes, les clients et la livraison\n\nC'est exactement ce que je t'explique dans *Ecom Starter 3.0*.\n\nL'objectif est simple : t'aider à partir avec une méthode claire au lieu d'avancer au hasard.\n\nRegarde la vidéo ici 👇\n\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video`,
   },
   {
     day: 7,
-    text: (name) => `${name}, 7 jours déjà ! ⏰\n\nCeux qui ont appliqué la méthode cette semaine ont déjà vu leurs premières ventes.\n\nSi tu n'as pas encore regardé la formation, c'est le bon moment.\n\nLa vidéo est toujours disponible gratuitement ici 👇\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video\n\nDes questions ? Réponds directement à ce message 🙂`,
+    text: (name) => `${name}, ça fait déjà quelques jours que tu as accès à la vidéo.\n\nSi tu veux vraiment te lancer en e-commerce ou mieux structurer ce que tu fais déjà, prends le temps de regarder la formation.\n\n*Ecom Starter 3.0* a été pensé pour les personnes qui veulent comprendre les bases importantes : produit, boutique, offre, publicité, gestion client et livraison.\n\nMême si tu débutes, tu vas voir plus clairement quoi faire et dans quel ordre avancer.\n\nLa vidéo est toujours disponible ici 👇\n\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video\n\nEt si tu as une question, tu peux répondre directement à ce message.`,
   },
   {
     day: 14,
-    text: (name) => `${name}, dernière chance 🔥\n\nLa session de coaching personnalisée offerte avec la formation ferme bientôt.\n\nSi tu veux qu'on analyse ensemble ta stratégie Facebook Ads et qu'on construise une campagne qui convertit — c'est maintenant.\n\nRéserve ta place ici 👇\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/coaching\n\nÀ très vite ! 🚀`,
+    text: (name) => `${name}, je te relance une dernière fois concernant *Ecom Starter 3.0*.\n\nSi tu veux te lancer sérieusement en e-commerce, le plus important n'est pas de faire comme tout le monde.\n\nLe plus important, c'est d'avoir une méthode claire, de comprendre comment choisir ton produit, structurer ton offre, créer ta boutique et lancer tes premières campagnes correctement.\n\nC'est ce que je t'accompagne à faire dans *Ecom Starter 3.0*.\n\nTu peux accéder à la formation ici 👇\n\n🔗 ${process.env.FRONTEND_URL || 'https://andromeda.safitech.shop'}/formation-video\n\nÀ très vite 👋`,
   },
 ];
 

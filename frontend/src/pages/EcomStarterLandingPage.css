@@ -1,0 +1,97 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+.es-root {
+  font-family: 'Inter', -apple-system, sans-serif;
+  background: #000;
+  color: #fff;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.es-main {
+  max-width: 720px;
+  width: 100%;
+  padding: 64px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.es-label {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #666;
+  margin: 0 0 24px;
+}
+
+.es-title {
+  font-size: clamp(22px, 4vw, 36px);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+  margin: 0 0 48px;
+  color: #fff;
+  text-align: center;
+  max-width: 600px;
+}
+
+.es-desc {
+  font-size: 16px;
+  font-weight: 300;
+  color: #888;
+  margin: 0 0 48px;
+}
+
+.es-video {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  margin-bottom: 48px;
+  border: 1px solid #2a2a2a;
+  box-shadow:
+    0 4px 30px rgba(108, 63, 197, 0.4),
+    0 12px 60px rgba(108, 63, 197, 0.3),
+    0 0 160px rgba(108, 63, 197, 0.2);
+}
+
+.es-video iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+.es-btn {
+  background: #6c3fc5;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 14px 32px;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.es-btn:hover {
+  opacity: 0.85;
+}
+
+.es-note {
+  font-size: 13px;
+  color: #444;
+  margin: 16px 0 0;
+}
+
+@media (max-width: 480px) {
+  .es-main { padding: 48px 16px; }
+  .es-btn { width: 100%; }
+}
