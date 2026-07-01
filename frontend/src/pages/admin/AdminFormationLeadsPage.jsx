@@ -261,6 +261,25 @@ export default function AdminFormationLeadsPage() {
     }
   }
 
+  const handleLaunchCampaign = async () => {
+    if (!confirm('Envoyer le message J1 à tous les leads actifs ? Cette action est irréversible.')) return
+    try {
+      const res = await fetch(`${CONFIG.BACKEND_URL}/api/formation-leads/campaign/launch`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const data = await res.json()
+      if (data.success) {
+        showNotification(`✅ Campagne lancée — ${data.sent} envoyés, ${data.failed} échoués, ${data.skipped || 0} ignorés`)
+        fetchLeads()
+      } else {
+        showNotification(data.error || 'Erreur', 'error')
+      }
+    } catch {
+      showNotification('Erreur lancement campagne', 'error')
+    }
+  }
+
   const handleRunCron = async () => {
     try {
       const res = await fetch(`${CONFIG.BACKEND_URL}/api/formation-leads/campaign/run`, {
@@ -276,6 +295,34 @@ export default function AdminFormationLeadsPage() {
       }
     } catch {
       showNotification('Erreur exécution cron', 'error')
+    }
+  }
+
+  const [testPhone, setTestPhone] = useState('')
+  const [testName, setTestName] = useState('')
+  const [sendingTest, setSendingTest] = useState(false)
+
+  const handleSendTest = async () => {
+    if (!testPhone.trim()) return showNotification('Numéro de téléphone requis', 'error')
+    setSendingTest(true)
+    try {
+      const res = await fetch(`${CONFIG.BACKEND_URL}/api/formation-leads/campaign/test`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: testPhone.trim(), name: testName.trim() || 'Test' }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        showNotification(`✅ Message test envoyé à ${testPhone}`)
+        setTestPhone('')
+        setTestName('')
+      } else {
+        showNotification(data.error || 'Erreur envoi test', 'error')
+      }
+    } catch {
+      showNotification('Erreur envoi test', 'error')
+    } finally {
+      setSendingTest(false)
     }
   }
 
@@ -419,7 +466,7 @@ export default function AdminFormationLeadsPage() {
             </div>
           </div>
 
-          {/* Recherche + bouton test cron */}
+          {/* Recherche + boutons campagne */}
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative max-w-md flex-1">
               <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary" />
@@ -432,12 +479,59 @@ export default function AdminFormationLeadsPage() {
               />
             </div>
             <button
-              onClick={handleRunCron}
+              onClick={handleLaunchCampaign}
               className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity whitespace-nowrap"
             >
               <FiSend className="w-4 h-4" />
-              Lancer campagne maintenant
+              🚀 Lancer la campagne (J1 à tous)
             </button>
+            <button
+              onClick={handleRunCron}
+              className="flex items-center gap-2 px-4 py-2.5 bg-secondary text-primary rounded-xl text-sm font-medium hover:bg-hover transition-colors whitespace-nowrap"
+              title="Exécuter le cron manuellement (envoie les messages J2, J4, J7, J14 aux leads éligibles)"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+              Cron suivis
+            </button>
+          </div>
+
+          {/* Envoi test */}
+          <div className="bg-card border border-theme rounded-2xl p-5">
+            <h3 className="text-sm font-semibold text-primary flex items-center gap-2 mb-3">
+              <FiZap className="w-4 h-4 text-accent" />
+              Envoi test
+            </h3>
+            <p className="text-xs text-secondary mb-3">
+              Envoie le message J1 à un numéro spécifique pour tester avant de lancer la campagne.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                type="text"
+                placeholder="Numéro (ex: 237676778377)"
+                value={testPhone}
+                onChange={(e) => setTestPhone(e.target.value)}
+                className="flex-1 px-4 py-2.5 bg-secondary border border-theme rounded-xl text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+              <input
+                type="text"
+                placeholder="Prénom (optionnel)"
+                value={testName}
+                onChange={(e) => setTestName(e.target.value)}
+                className="w-40 px-4 py-2.5 bg-secondary border border-theme rounded-xl text-sm text-primary placeholder:text-secondary focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+              <button
+                onClick={handleSendTest}
+                disabled={sendingTest || !testPhone.trim()}
+                className="flex items-center gap-2 px-5 py-2.5 bg-green-600 text-white rounded-xl text-sm font-medium hover:opacity-90 transition-opacity disabled:opacity-40 whitespace-nowrap"
+              >
+                {sendingTest ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <FiSend className="w-4 h-4" />
+                )}
+                {sendingTest ? 'Envoi...' : 'Envoyer test'}
+              </button>
+            </div>
           </div>
 
           {/* Table */}

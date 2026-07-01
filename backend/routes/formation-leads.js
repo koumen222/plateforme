@@ -131,6 +131,72 @@ router.post('/campaign/run', authenticate, requireAdmin, async (req, res) => {
   }
 });
 
+// POST /api/formation-leads/campaign/launch — Envoyer le message J1 à TOUS les leads actifs
+router.post('/campaign/launch', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { SEQUENCE, scalorSend } = await import('../services/formationCampaignService.js');
+    const leads = await FormationLead.find({ 'campaign.active': true });
+    if (!leads.length) return res.json({ success: true, sent: 0, failed: 0, message: 'Aucun lead actif' });
+
+    const firstStep = SEQUENCE[0]; // J1
+    let sent = 0;
+    let failed = 0;
+    const details = [];
+
+    for (const lead of leads) {
+      // Vérifier que J1 n'a pas déjà été envoyé
+      const alreadySent = (lead.campaign?.messagesSent || []).some(m => m.day === firstStep.day && m.status === 'sent');
+      if (alreadySent) {
+        details.push({ name: lead.name, phone: lead.phone, status: 'skipped', reason: 'Déjà envoyé' });
+        continue;
+      }
+
+      try {
+        const text = firstStep.text(lead.name);
+        await scalorSend(lead.phone, text);
+        if (!lead.campaign) lead.campaign = { active: true, messagesSent: [] };
+        lead.campaign.messagesSent.push({ day: firstStep.day, sentAt: new Date(), status: 'sent' });
+        await lead.save();
+        sent++;
+        details.push({ name: lead.name, phone: lead.phone, status: 'sent' });
+        console.log(`✅ Campagne J1 lancée → ${lead.name} (${lead.phone})`);
+      } catch (err) {
+        if (!lead.campaign) lead.campaign = { active: true, messagesSent: [] };
+        lead.campaign.messagesSent.push({ day: firstStep.day, sentAt: new Date(), status: 'failed' });
+        await lead.save();
+        failed++;
+        details.push({ name: lead.name, phone: lead.phone, status: 'failed', error: err.message });
+        console.error(`❌ Campagne J1 échouée → ${lead.name}: ${err.message}`);
+      }
+    }
+
+    console.log(`📊 Lancement campagne — envoyés: ${sent}, échoués: ${failed}, ignorés: ${details.filter(d => d.status === 'skipped').length}`);
+    return res.json({ success: true, sent, failed, skipped: details.filter(d => d.status === 'skipped').length, details });
+  } catch (err) {
+    console.error('❌ campaign/launch error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/formation-leads/campaign/test — Envoi test à un numéro spécifique
+router.post('/campaign/test', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { phone, name } = req.body;
+    if (!phone) return res.status(400).json({ error: 'Numéro de téléphone requis' });
+
+    const { SEQUENCE, scalorSend } = await import('../services/formationCampaignService.js');
+    const testName = name || 'Test';
+    const text = SEQUENCE[0].text(testName);
+
+    await scalorSend(phone, text);
+    console.log(`✅ Message test envoyé → ${testName} (${phone})`);
+    return res.json({ success: true, message: `Message test envoyé à ${phone}` });
+  } catch (err) {
+    console.error('❌ campaign/test error:', err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // PATCH /api/formation-leads/:id/campaign — activer/désactiver campagne
 router.patch('/:id/campaign', authenticate, requireAdmin, async (req, res) => {
   try {

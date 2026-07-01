@@ -3,10 +3,10 @@ import FormationLead from '../models/FormationLead.js';
 
 // Séquence de messages — J1 à J14
 // {{name}} est remplacé par le prénom du prospect
-const SEQUENCE = [
+export const SEQUENCE = [
   {
     day: 1,
-    text: (name) => `Salut ${name} ! 👋\n\nMerci de t'être inscrit à la formation gratuite.\n\nDans les prochaines heures tu vas recevoir les premières clés pour créer des campagnes Facebook Ads qui vendent vraiment 🚀\n\nReste connecté — ça commence maintenant.`,
+    text: (name) => `Bienvenue ${name} ! 🎉\n\nOn est super contents de t'accueillir dans la formation gratuite !\n\nBon courage pour la suite, tu vas apprendre énormément 💪🚀\n\nRejoins tout de suite le groupe WhatsApp de la communauté pour échanger avec les autres membres 👇\n\nhttps://chat.whatsapp.com/ELrkH1Fbv7WEcqg1laF36Y?mode=gi_t\n\nÀ très vite dans le groupe ! 🙌`,
   },
   {
     day: 2,
@@ -26,7 +26,7 @@ const SEQUENCE = [
   },
 ];
 
-async function scalorSend(phone, text) {
+export async function scalorSend(phone, text) {
   const apiKey = process.env.SCALOR_API_KEY;
   const instanceId = process.env.SCALOR_INSTANCE_ID;
   if (!apiKey || !instanceId) throw new Error('Scalor non configuré');
